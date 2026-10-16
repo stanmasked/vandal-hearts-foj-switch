@@ -27,7 +27,6 @@ typedef struct {
     float extent;
     float yaw, pitch, zoom;
     int flip_v; /* manually configured research texture orientation */
-    int bilinear; /* 0 = nearest, 1 = bilinear alpha-aware sampler */
 } FojTextureCamera;
 
 /* Sections are contiguous triangle-soup vertex ranges. The native caller
