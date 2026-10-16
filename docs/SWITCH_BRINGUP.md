@@ -1,7 +1,8 @@
 # Nintendo Switch homebrew bring-up
 
-This phase verifies **compiler/toolchain integration only**, using generated
-console text and no game files. The NRO is **not** the PS3 game.
+This phase verifies **compiler/toolchain integration and a synthetic tactical
+logic demonstrator**, using console text and no game files. The NRO is **not**
+the PS3 game.
 
 ## Build
 
@@ -24,13 +25,22 @@ See [Switch NRO workflow](../.github/workflows/switch-nro.yml).
 
 ## Controls
 
-- A: records an A button press.
-- B: records a B button press.
+- D-pad: move a cursor across the invented 8×6 battlefield.
+- A: select the hero at H, or attempt a reachable move.
+- B: cancel a selection.
 - Plus: exits to the homebrew loader.
 
-These input events are solely an interactive smoke test. They are **not**
-Flames of Judgment's original menus, save system, tactics rules, renderer,
-PS3 executable, or game assets.
+The invented elevation- and obstacle-aware movement uses `core/tactical_demo.c`.
+A breadth-first search computes reachable tiles with a four-step budget and
+maximum one-level climb per step. This is **not** the original game's battle
+rules, meshes, renderer, menus, save system, PS3 executable or data.
+
+## Portable movement core
+
+Host-side tests in `tests/test_tactical_demo.c` validate reachability, slope
+limits, blocking, selection, rejection, cancellation and cursor clamping.
+They are executed through `.github/workflows/ci.yml` with the system C compiler.
+The same core source is linked into the Switch `NRO` build.
 
 ## Evidence ladder
 
