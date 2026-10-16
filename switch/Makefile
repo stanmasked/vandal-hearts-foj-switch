@@ -8,6 +8,8 @@ NACPTOOL := $(DEVKITPRO)/tools/bin/nacptool
 
 TARGET := build/foj-switch-research
 ISO_TARGET := build/foj-isometric-research
+COLL_TARGET := build/foj-coll-map-research
+COLL_SRC := switch/source/coll_main.c core/coll_grid.c core/coll_view.c
 ISO_SRC := switch/source/iso_main.c core/tactical_demo.c core/isometric_demo.c
 SRC := switch/source/main.c core/tactical_demo.c
 HDR := core/tactical_demo.h
@@ -18,7 +20,7 @@ LDFLAGS := -specs=$(DEVKITPRO)/libnx/switch.specs \
     -Wl,--gc-sections -pie -L$(DEVKITPRO)/libnx/lib
 
 .PHONY: all verify clean
-all: $(TARGET).nro $(ISO_TARGET).nro
+all: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro
 
 build:
 	mkdir -p build
@@ -41,10 +43,21 @@ $(ISO_TARGET).nacp: | build
 $(ISO_TARGET).nro: $(ISO_TARGET).elf $(ISO_TARGET).nacp
 	$(ELF2NRO) $< $@ --nacp=$(ISO_TARGET).nacp
 
-verify: $(TARGET).nro $(ISO_TARGET).nro
+$(COLL_TARGET).elf: $(COLL_SRC) core/coll_grid.h core/coll_view.h | build
+	$(CC) $(CFLAGS) $(LDFLAGS) $(COLL_SRC) -o $@ -lnx -lm
+
+$(COLL_TARGET).nacp: | build
+	$(NACPTOOL) --create "FoJ Map Research" "VH FoJ contributors" "0.3.0" $@
+
+$(COLL_TARGET).nro: $(COLL_TARGET).elf $(COLL_TARGET).nacp
+	$(ELF2NRO) $< $@ --nacp=$(COLL_TARGET).nacp
+
+verify: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro
 	python3 tools/validate_nro.py $(TARGET).nro
 	python3 tools/validate_nro.py $(ISO_TARGET).nro
+	python3 tools/validate_nro.py $(COLL_TARGET).nro
 
 clean:
 	rm -f $(TARGET).elf $(TARGET).nro $(TARGET).nacp \
-	       $(ISO_TARGET).elf $(ISO_TARGET).nro $(ISO_TARGET).nacp
+	       $(ISO_TARGET).elf $(ISO_TARGET).nro $(ISO_TARGET).nacp \
+	       $(COLL_TARGET).elf $(COLL_TARGET).nro $(COLL_TARGET).nacp
