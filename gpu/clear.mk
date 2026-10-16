@@ -15,6 +15,8 @@ HOST_SHADERS := build/foj-deko3d-shader-layout-host
 HOST_SHADERS_SAN := build/foj-deko3d-shader-layout-asan
 HOST_DKSH := build/foj-dksh-intake-host
 HOST_DKSH_SAN := build/foj-dksh-intake-asan
+HOST_DKSH_INTEGRATION := build/foj-dksh-layout-integration
+HOST_DKSH_INTEGRATION_SAN := build/foj-dksh-layout-integration-asan
 DEVKITA64 ?= $(DEVKITPRO)/devkitA64
 CC := $(DEVKITA64)/bin/aarch64-none-elf-gcc
 ELF2NRO := $(DEVKITPRO)/tools/bin/elf2nro
@@ -72,6 +74,12 @@ $(HOST_DKSH_SAN): tests/test_dksh_module.c gpu/dksh_module.c \
 	  -fsanitize=address,undefined -fno-omit-frame-pointer -Igpu \
 	  tests/test_dksh_module.c gpu/dksh_module.c -o $@
 
+$(HOST_DKSH_INTEGRATION): tests/test_gpu_dksh_integration.c gpu/dksh_module.c gpu/shader_layout.c gpu/dksh_module.h gpu/shader_layout.h | build
+	$(HOSTCC) -std=c11 -Wall -Wextra -Werror -pedantic -Igpu tests/test_gpu_dksh_integration.c gpu/dksh_module.c gpu/shader_layout.c -o $@
+
+$(HOST_DKSH_INTEGRATION_SAN): tests/test_gpu_dksh_integration.c gpu/dksh_module.c gpu/shader_layout.c gpu/dksh_module.h gpu/shader_layout.h | build
+	$(HOSTCC) -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined -fno-omit-frame-pointer -Igpu tests/test_gpu_dksh_integration.c gpu/dksh_module.c gpu/shader_layout.c -o $@
+
 $(HOST_MOCK): tests/test_deko3d_clear_host.c tests/mock_switch_sdk/deko3d.h \
               tests/mock_switch_sdk/switch.h gpu/deko3d_clear_main.c \
               gpu/smoke_plan.c gpu/smoke_plan.h core/gpu_vertex_stream.h | build
@@ -95,17 +103,19 @@ host-triangle-check:
 	  -Itests/mock_switch_sdk -Icore -Igpu \
 	  gpu/deko3d_clear_main.c
 
-host-check: host-triangle-check $(HOST_TEST) $(HOST_ABI) $(HOST_SHADERS) $(HOST_DKSH) $(HOST_MOCK)
+host-check: host-triangle-check $(HOST_TEST) $(HOST_ABI) $(HOST_SHADERS) $(HOST_DKSH) $(HOST_DKSH_INTEGRATION) $(HOST_MOCK)
 	./$(HOST_TEST)
 	./$(HOST_ABI)
 	./$(HOST_SHADERS)
 	./$(HOST_DKSH)
+	./$(HOST_DKSH_INTEGRATION)
 	./$(HOST_MOCK)
 
-host-mock-sanitized: $(HOST_MOCK_SAN) $(HOST_SHADERS_SAN) $(HOST_DKSH_SAN)
+host-mock-sanitized: $(HOST_MOCK_SAN) $(HOST_SHADERS_SAN) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION_SAN)
 	./$(HOST_MOCK_SAN)
 	./$(HOST_SHADERS_SAN)
 	./$(HOST_DKSH_SAN)
+	./$(HOST_DKSH_INTEGRATION_SAN)
 
 $(OUT).elf: $(SRC) gpu/smoke_plan.h gpu/deko3d_api_contract.h core/gpu_vertex_stream.h | build preflight
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $@ -l$(GPU_LIB) -lstdc++ -lnx -lm
@@ -120,4 +130,4 @@ verify: $(OUT).nro
 	python3 tools/validate_nro.py $(OUT).nro
 
 clean:
-	rm -f $(OUT).elf $(OUT).nacp $(OUT).nro $(HOST_TEST) $(HOST_ABI) $(HOST_MOCK) $(HOST_MOCK_SAN) $(HOST_SHADERS) $(HOST_SHADERS_SAN) $(HOST_DKSH) $(HOST_DKSH_SAN)
+	rm -f $(OUT).elf $(OUT).nacp $(OUT).nro $(HOST_TEST) $(HOST_ABI) $(HOST_MOCK) $(HOST_MOCK_SAN) $(HOST_SHADERS) $(HOST_SHADERS_SAN) $(HOST_DKSH) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_SAN)
