@@ -270,3 +270,10 @@ No claim of a full host suite pass or hardware draw is made for this stage.
 - [x] Add the test path to both main push and pull-request workflow triggers, so edits to the integration test itself schedule the dedicated SDK-free GPU jobs.
 - [ ] Observe actual workflow execution and run the complete GPU host suite. No CI success is claimed from the trigger change alone.
 - [ ] Validate UAM shader compilation, Switch ARM64 cross-build and physical GPU rendering separately.
+
+## Stage 80: occupied DKSH slot stage-guard regression (2026-10-17)
+
+- [x] Extend the generated two-stage integration test with an otherwise structurally valid vertex module presented to an already populated fragment slot. Require rejection, unchanged caller byte count, byte-for-byte preservation of the fragment module and unchanged protected tail.
+- [x] Commit test to main; the dedicated GPU workflow path filter includes this test source.
+- [ ] Execute the updated test and full GPU host suite on a complete checkout. Local GitHub DNS is unavailable; status/PR workflow queries expose no confirmed pass or fail for push runs.
+- [ ] Confirm genuine UAM DKSH, ARM64 NRO and physical Switch GPU frame independently.
