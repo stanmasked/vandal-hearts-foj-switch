@@ -14,6 +14,7 @@ typedef struct FakeSwapchain* DkSwapchain;
 typedef struct FakeMemBlock* DkMemBlock;
 typedef uintptr_t DkCmdList;
 typedef uint64_t DkGpuAddr;
+#define DK_GPU_ADDR_INVALID UINT64_MAX
 typedef struct { unsigned index; DkMemBlock memory; } DkImage;
 typedef struct { const DkImage* pImage; } DkImageView;
 typedef struct { uint32_t x,y,width,height; } DkScissor;
