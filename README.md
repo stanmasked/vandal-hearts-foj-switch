@@ -393,6 +393,31 @@ The attempted GitHub Actions builds still fail **before recording steps**,
 not with source compiler diagnostics. These limits are documented in
 [the GPU smoke guide](docs/DEKO3D_GPU_CLEAR_SMOKE.md).
 
+## First GPU-addressable vertex upload path
+
+The isolated [deko3d clear smoke NRO source](gpu/deko3d_clear_main.c)
+now also **allocates and fills a GPU-addressable vertex buffer** with
+three **generated** six-float XYZW/UV vertices (72 bytes). This uses
+the same [24-byte vertex record](core/gpu_vertex_stream.h) as the
+prepared original actor data. No original resources are bundled and
+**the program does not yet issue any GPU triangle draw call**.
+
+Its stateful host mock now has tests for **14 planned scenarios**,
+including three extra failures during GPU vertex allocation and
+CPU/GPU address lookup, and verifies the bytes uploaded on the normal
+mock path. The implementation checks upstream's
+`DK_GPU_ADDR_INVALID == UINT64_MAX` sentinel, instead of treating a
+zero address as the official error marker.
+
+Local strict C11 and ASan/UBSan allocation-size tests confirmed 4 KiB
+for the generated triangle, 221,184 bytes for a Daldren-sized buffer,
+and 483,328 bytes for the current 20,000-vertex maximum.
+
+**The full newest 14-scenario GPU host test, native deko3d compilation
+and actual Switch GPU frames remain unverified** while GitHub Actions
+fails before running any job steps. See
+[GPU clear smoke technical guide](docs/DEKO3D_GPU_CLEAR_SMOKE.md).
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
