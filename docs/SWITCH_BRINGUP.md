@@ -69,3 +69,15 @@ the NRO metadata validator proves proper runtime behavior.
 No downloaded game, game patches, PSN entitlements, cryptographic material or
 copyrighted commercial assets are ever included in this CI workflow. Keep
 original game files local.
+
+## Synthetic host reference image
+
+`tools/render_isometric_preview.c` produces an RGB PPM from the **same**
+portable rasterizer as the Switch NRO; `tools/ppm_to_png.py` packages that image
+as PNG without third-party Python packages. GitHub Actions workflow
+[`isometric-preview.yml`](../.github/workflows/isometric-preview.yml)
+uploads artifact `foj-isometric-synthetic-preview`.
+
+The PNG shows invented geometry and units, **not actual FoJ graphics**.
+Compare this reference to a later real Switch capture to detect rendering
+issues; passing its host pipeline is not proof the NRO was run on hardware.
