@@ -149,6 +149,20 @@ jobs:
         run: |
           make -f gpu/clear.mk host-mock-sanitized
 
+      - name: Check DKSH stage, program-header bounds and shader file loader
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Igpu \
+            tests/test_dksh_module.c gpu/dksh_module.c \
+            -o /tmp/foj_dksh_module
+          /tmp/foj_dksh_module
+      - name: Address/undefined-behavior checks for DKSH shader intake
+        run: |
+          cc -std=c11 -O1 -g -fsanitize=address,undefined \
+            -fno-omit-frame-pointer -Igpu \
+            tests/test_dksh_module.c gpu/dksh_module.c \
+            -o /tmp/foj_dksh_module_asan
+          /tmp/foj_dksh_module_asan
+
       - name: Compile and run portable tactical logic tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
