@@ -23,10 +23,15 @@ to:
 5. Acquire one presentation image, submit its matching pre-recorded list,
    then present it. Colors alternate every 120 frames. The program waits
    for the graphics queue to become idle before releasing any resources.
-6. Handle Plus to exit and release allocated GPU objects.
+6. Allocate a 4 KiB GPU-addressable vertex block and write **72 bytes**
+   (three generated vertices × six float32 values). Confirm both memory
+   accessors succeed, without yet binding or drawing these vertices.
+7. Handle Plus to exit and release allocated GPU objects.
 
 This program uses **no shaders**, textures, original FoJ resources,
-triangle vertices, or gameplay systems. It aims to confirm the first
+GPU draw calls, or gameplay systems. It **uploads three generated triangle
+vertices into an allocated GPU-addressable buffer**, but does not render
+the triangle. It aims to confirm the first
 native **GPU-cleared/presented frame** in isolation. The existing nine
 research NROs still use their prior paths and are not modified by this
 new target.
@@ -86,6 +91,49 @@ alignment escalation, overflow failure, palette values, and frames
 UBSan, and combined ASan/UBSan all passed. This confirms only CPU-side
 arithmetic/decision logic, not the GPU driver, swapchain or video output.
 
+## GPU vertex upload milestone — no shaders or draw calls yet
+
+The optional NRO now uses the same
+[`FojGpuVertex` XYZW/UV record](../core/gpu_vertex_stream.h) (24 bytes)
+as the original model GPU staging path. It creates an **invented triangle**
+with three vertices, allocates a CPU-visible/GPU-addressable memory block,
+queries `dkMemBlockGetCpuAddr` and `dkMemBlockGetGpuAddr`, and copies
+the exact **72-byte vertex payload** into the CPU address.
+
+The buffer is deliberately **not yet bound to a vertex attribute state**
+or passed to `dkCmdBufDraw`. The active GPU command lists still *only
+clear a framebuffer to a generated color*.
+
+The upstream deko3d API identifies an invalid GPU address with
+`DK_GPU_ADDR_INVALID == UINT64_MAX`. The prototype and mock now
+check this sentinel (rather than incorrectly using zero), and the
+ABI contract asserts the sentinel and 64-bit address representation.
+
+Three more failure paths were added to the host mock:
+failure to allocate vertex memory, failure to obtain its CPU address,
+and failure to obtain its GPU address. The normal host scenario
+byte-compares the entire **72-byte upload** against the generated
+vertex array before the first simulated command submission.
+
+**Host test coverage now comprises 14 scenarios** (normal operation,
+nine original resource/acquisition failures, Plus exit, and these
+three new failures). These new integration paths are committed for
+strict C11/ASan/UBSan CI and `host-check`; a full run against the
+newest code has **not** been confirmed on GitHub while runner jobs fail
+before execution.
+
+The allocation math itself was independently compiled and executed
+in the local sandbox under C11 and combined ASan/UBSan:
+
+| Vertex count | Payload bytes | 4 KiB-aligned allocation |
+| ---: | ---: | ---: |
+| 3 (invented triangle) | 72 | 4,096 |
+| 9,066 (original Daldren model capacity) | 217,584 | 221,184 |
+| 20,000 (current maximum) | 480,000 | 483,328 |
+
+**The Daldren row is an allocation-size calculation**, not proof that
+Daldren's commercial vertex data were transferred to the Switch.
+
 ## Host-executed deko3d lifecycle test (new gate)
 
 A **stateful fake of the deko3d and libnx C API** now compiles and runs
@@ -112,18 +160,21 @@ both generated clear-color modes. Host coverage:
 | Buffer slots | Both visited **121** times |
 | Color palette A / B | Selected **122 / 120** times |
 | Recorded GPU lists | **Four** (2 image slots × 2 color modes) |
-| Deliberate setup/acquire faults | **Nine** recovery paths |
+| Deliberate setup/acquire faults | **Nine** original recovery paths |
+| New vertex GPU allocation / CPU address / GPU address faults | **Three** additional paths |
+| Synthetic vertex upload | Byte-for-byte verification of 72-byte triangle |
 | User presses Plus after two frames | Normal exit and complete cleanup |
-| Live allocations after exit | **Zero** in all eleven scenarios |
+| Expected live allocations after exit | **Zero** across all fourteen scenarios (latest host run pending) |
 | Strict C11 host compile | **Passed locally** |
 | ASan + UBSan host compile/run | **Passed locally** |
 
 The nine simulated faults cover device creation, graphics queue
 creation, each of two image-memory allocations, swapchain creation,
 command memory, command-buffer creation, command-list finalization and
-image acquisition. A separate eleventh scenario simulates pressing
-Plus after two frames, verifying a successful exit with all allocated
-resources released.
+image acquisition. A separate scenario simulates pressing Plus after two frames. Three
+additional cases validate vertex upload failures and cleanup. These
+new cases are committed but remain unverified against the latest full
+host executable until a successful test run.
 
 The tests exercise resource lifetime and the C call flow without
 emulating actual deko3d command execution. The mock implements only
@@ -132,9 +183,10 @@ the public signatures needed by this NRO, matching the upstream
 compiling against the real SDK**. No hardware/display/color correctness,
 GPU memory residency or native API version compatibility is established.
 
-The repository CI now calls `host-check` and
-`host-mock-sanitized` whenever runner jobs work again. In the meantime,
-the above commands were run successfully in the local container.
+The repository CI calls `host-check` and `host-mock-sanitized`
+when runner jobs execute again. The **earlier 11-case** version of these
+commands was run successfully; the new 14-case version has yet to run
+end-to-end on the official runner.
 The GPU workflow also executes `host-check` before attempting its
 independent ARM64 build.
 
