@@ -73,6 +73,21 @@ regression tests, and a fourth native homebrew build
 running on Switch.** Decoding a texture atlas is a necessary step, not a
 complete 3D game port.
 
+## Original 3D format header reconnaissance
+
+Initial safe header decoding has been implemented for `.bmodel` and
+`.banim`, based on the user's real archive. Among **45 sampled models**,
+the opening signature and first shape-name length field matched in every
+case. Among **41 sampled animations**, a float32 field is compatible with
+clip duration; its interpretation remains provisional. See
+[real header findings](docs/REAL_MODEL_ANIM_HEADERS.md).
+
+Use the optional `--header-samples 8` on
+[tools/inspect_debug_pkg_assets.py](tools/inspect_debug_pkg_assets.py)
+to reproduce a bounded model/animation header summary without writing
+the original asset contents to disk. Actual 3D geometry, UVs, skeleton
+hierarchies and original scene rendering remain outstanding.
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
@@ -119,6 +134,7 @@ Never publish the game package, license files, executables, keys or assets.
 - `core/coll_view.c` — diagnostic six-channel heatmap on large grids.
 - `core/dds_texture.c` — portable DDS BGRA8 + DXT1 decoder.
 - `tools/export_local_texture.py` — explicit local-only DDS texture export.
+- `tools/inspect_bmodel_banim.py` — provisional original model and animation header probe.
 - `switch/source/dds_main.c` — DDS viewer reading local files.
 - `tests/` — synthetic test fixtures, no proprietary data.
 - `docs/PKG_INPUT.md` — local package preparation and safe validation.
