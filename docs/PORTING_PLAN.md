@@ -27,6 +27,8 @@ reverse engineering, new platform code, and clean-room implementations.
 - [x] Recover names and extents of 21 actual PKG items and the 3,212-entry PSARC manifest.
 - [x] Verify PSARC/zlib layout and discover Lua, models, animations, texture and map filenames.
 - [x] Summarize the first original 50×50 map's collision, visibility and placement structures.
+- [x] Add portable C grid loader for observed COLL schema, plus generated 50×50 strict/sanitizer tests.
+- [x] Compile a separate native Switch COLL heatmap inspector NRO (runtime still to be tested).
 - [ ] Establish full semantic meanings for proprietary resource formats and original battle rules.
 - [ ] Determine actual renderer, mesh/texture/animation/audio formats.
 - [ ] Identify script/event/battle data formats and code architecture.
