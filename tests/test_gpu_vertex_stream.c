@@ -20,7 +20,8 @@ static void test_two_material_batches(void) {
     assert(batches[0].texture_index==0&&batches[1].texture_index==1);
     assert(batches[1].first_vertex==3&&batches[1].vertex_count==3);
     assert(near(out[0].x,-.4725f)&&near(out[0].y,-.84f));
-    assert(near(out[0].z,.5f)&&near(out[3].z,0));
+    assert(near(out[0].z,.99f)&&near(out[3].z,.01f));
+    assert(near(info.camera_depth_min,0)&&near(info.camera_depth_max,1));
     assert(near(out[2].u,.5f)&&near(out[2].v,1.f));
     assert(out[0].w==1.f);
     cam.flip_v=1;
@@ -33,7 +34,7 @@ static void test_validation_is_transactional(void) {
     FojTextureSection section={0,3,0};
     FojTextureCamera cam={0,0,0,2,0,0,1,0};
     FojGpuVertex output[3]={{9,0,0,0,0,0}};
-    FojGpuBatch batch={0};FojGpuStreamInfo info={17,19};
+    FojGpuBatch batch={0};FojGpuStreamInfo info={17,19,8,9};
     v[2].u=NAN;
     assert(foj_gpu_prepare_stream(v,3,&section,1,1,&cam,1280,720,
            output,3,&batch,1,&info)==FOJ_GPU_STREAM_INVALID);
