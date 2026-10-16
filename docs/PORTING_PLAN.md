@@ -56,7 +56,10 @@ reverse engineering, new platform code, and clean-room implementations.
 - [x] Decode original avatar_texture DDS 1024×1024 and render authentic original static mesh with it.
 - [x] Produce experimental original-textured avatar_idle poses at 0, 3.317 and 6.603 seconds on desktop.
 - [x] Compile ninth native NRO accepting private rigged mesh, BANIM clip and DDS atlas together.
-- [ ] Reproduce PS3-original shader/sampler, multimat material, pose and camera conventions.
+- [x] Re-audit all 583 PS3 BMODEL material tables: 120 genuinely multi-atlas models, six with embedded skeletons.
+- [x] Add private FOJMAT01 section-to-DDS mapping and user-local multi-atlas exporter.
+- [x] Add shared-depth multi-texture triangle drawing to ninth native Switch NRO.
+- [ ] Reproduce PS3-original shader/sampler material parameters, pose and camera conventions.
 - [ ] Validate actual FoJ pose composition, bind conventions, material mapping and skinned movement.
 - [ ] Establish full semantic meanings for proprietary resource formats and original battle rules.
 - [x] Identify BGRA8 and DXT1 DDS texture formats and validate actual images.
