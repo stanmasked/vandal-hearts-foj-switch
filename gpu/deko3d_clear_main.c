@@ -126,7 +126,10 @@ int main(int argc,char **argv) {
     if (!vertex_mem)goto cleanup;
     void *vertex_cpu_addr=dkMemBlockGetCpuAddr(vertex_mem);
     vertex_gpu_addr=dkMemBlockGetGpuAddr(vertex_mem);
-    if (!vertex_cpu_addr || !vertex_gpu_addr)goto cleanup;
+    /* deko3d uses UINT64_MAX as its INVALID GPU-address sentinel.
+     * Zero alone must not be treated as the documented error value. */
+    if (!vertex_cpu_addr || vertex_gpu_addr==DK_GPU_ADDR_INVALID)
+        goto cleanup;
     memcpy(vertex_cpu_addr,kResearchTriangle,sizeof(kResearchTriangle));
 
     /* Mirror switchbrew's deko_basic/Example01 approach: pre-record
