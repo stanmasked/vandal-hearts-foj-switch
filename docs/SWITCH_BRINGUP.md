@@ -81,3 +81,17 @@ uploads artifact `foj-isometric-synthetic-preview`.
 The PNG shows invented geometry and units, **not actual FoJ graphics**.
 Compare this reference to a later real Switch capture to detect rendering
 issues; passing its host pipeline is not proof the NRO was run on hardware.
+
+
+## Real-format COLL diagnostic viewer
+
+A **third** NRO is now included in the devkitA64 build:
+`build/foj-coll-map-research.nro`. It parses a user-provided local
+`map1-1.coll` at `sdmc:/switch/foj/maps/map1-1.coll` and visualizes its
+four numeric and two boolean fields as a top-down diagnostic heatmap.
+If no valid file is present, it uses a generated 50×50 synthetic grid;
+the status marker at the top-right is green for loaded files and red for
+the synthetic fallback. These are *not* original collision gameplay rules.
+
+For extraction to a local (gitignored) directory and Switch SD card
+placement, see [COLL_SWITCH_VIEWER.md](COLL_SWITCH_VIEWER.md).
