@@ -84,6 +84,7 @@ void dkImageLayoutInitialize(DkImageLayout* l,
                              const DkImageLayoutMaker* m) {
     assert(m->type==DkImageType_2D);
     assert(m->format==DkImageFormat_RGBA8_Unorm);
+    assert(m->flags&DkImageFlags_UsageRender);
     assert(m->flags&DkImageFlags_UsagePresent);
     l->w=m->dimensions[0];l->h=m->dimensions[1];
     assert(l->w==1280&&l->h==720);
@@ -99,6 +100,7 @@ void dkMemBlockMakerDefaults(DkMemBlockMaker* m,DkDevice d,uint32_t size) {
 }
 DkMemBlock dkMemBlockCreate(const DkMemBlockMaker* m) {
     assert(m->device);
+    /* GPU-only framebuffer blocks must carry the Image flag. */
     ++g.block_creates;
     if(g.block_creates<3) {
         assert(m->flags&DkMemBlockFlags_Image);
