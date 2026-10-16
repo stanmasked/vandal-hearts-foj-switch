@@ -52,6 +52,35 @@ class InspectPKGTests(unittest.TestCase):
         self.assertTrue(r["checks"]["expected_title_id_in_content_id"])
         self.assertEqual(r["warnings"], [])
 
+    def test_nonfinalized_ps3_header_with_typed_metadata(self):
+        # Generated structure uses the public PKG schema, not game bytes.
+        make_pkg(self.path, revision=0, metadata_count=5, metadata_size=64)
+        data = bytearray(self.path.read_bytes())
+        payloads = [
+            (1, struct.pack(">I", 3)),
+            (2, struct.pack(">I", 5)),
+            (3, struct.pack(">I", 78)),
+            (4, struct.pack(">Q", 0x40)),
+            (5, bytes.fromhex("17320100")),
+        ]
+        off = 0xC0
+        for kind, body in payloads:
+            struct.pack_into(">II", data, off, kind, len(body))
+            data[off + 8:off + 8 + len(body)] = body
+            off += 8 + len(body)
+        self.assertEqual(off, 0xC0 + 64)
+        self.path.write_bytes(data)
+
+        r = inspect_pkg(self.path, expected_title_id="NPEB00148")
+        self.assertEqual(r["header"]["revision_kind"], "debug")
+        self.assertEqual(r["header"]["trailer_size"], 0)
+        self.assertEqual(r["metadata"][0]["drm_type"], 3)
+        self.assertEqual(r["metadata"][1]["content_type"], 5)
+        self.assertEqual(r["metadata"][2]["package_flags"], 78)
+        self.assertEqual(r["metadata"][3]["metadata_package_size"], 64)
+        self.assertEqual(r["metadata"][4]["builder_version_raw"], "17320100")
+        self.assertEqual(r["warnings"], [])
+
     def test_rejects_wrong_magic(self):
         make_pkg(self.path, magic=b"XXXX")
         with self.assertRaisesRegex(PKGError, "Invalid PKG magic"):
