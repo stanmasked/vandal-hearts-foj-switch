@@ -297,3 +297,14 @@ This evidence covers reconstructed host-only modules, not real deko3d GPU execut
 - [ ] Compile genuine UAM shaders, devkitA64 GPU NRO and observe the actual hardware frame.
 
 Local tests use manually reconstructed source, not a full repository checkout or real Nintendo Switch.
+
+## Stage 83: verified updated DKSH slot preservation (2026-10-17)
+
+- [x] Retrieved current DKSH loader, shader layout and updated integration-test source through the GitHub connector.
+- [x] Reconstructed the standalone C sources in a local test directory and executed the complete two-slot integration scenario using GCC and Clang with strict C11 warnings: both passed.
+- [x] Repeated the same integration scenario with GCC and Clang ASan/UBSan: both passed (four total executions).
+- [x] Verified that a wrong-stage or corrupted fragment replacement preserves both loaded GPU shader slots, the unused gap, protected tail and output byte count.
+- [ ] Run the complete repository host-check and CI workflow on an actual checkout; clone from this container is blocked by DNS resolution.
+- [ ] Build real UAM DKSH and ARM64 NRO, then validate rendering on physical Switch hardware.
+
+These results are limited to the locally reconstructed standalone host test, not deko3d device execution.
