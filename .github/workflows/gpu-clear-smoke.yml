@@ -37,6 +37,7 @@ jobs:
         run: |
           set -euxo pipefail
           make -f gpu/clear.mk host-check
+          make -f gpu/clear.mk host-triangle-check
       - name: Check Switch GPU compiler, libraries and UAM presence
         shell: bash
         run: |
