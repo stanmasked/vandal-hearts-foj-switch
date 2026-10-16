@@ -135,3 +135,14 @@ audio/video codecs; localization; and required work are **unconfirmed**.
 - [ ] Restore GitHub Actions jobs, compile actual optional deko3d NRO against the real Switch SDK and inspect linker output.
 - [ ] Verify first GPU-cleared frame on Nintendo Switch hardware.
 
+
+## GPU vertex memory upload (2026-10-16)
+
+- [x] Add shader-free deko3d GPU memory block for three generated XYZW/UV vertices (72-byte payload, 4096-byte allocation).
+- [x] Reuse 24-byte FojGpuVertex record from the original-model GPU staging layer.
+- [x] Add CPU/GPU address accessors and check upstream `DK_GPU_ADDR_INVALID == UINT64_MAX` with real SDK compile-time contract.
+- [x] Extend stateful deko3d host mock to verify uploaded vertex bytes, with additional vertex memory/CPU/GPU address failure scenarios.
+- [x] Independently confirm allocator calculations for 3, 9066 and 20000 vertices under C11 and ASan/UBSan.
+- [ ] Run the new full 14-scenario mock executable and optional native deko3d build on a working GitHub runner; latest Actions jobs still start with zero steps.
+- [ ] Bind generated triangle vertex attributes/shaders and issue an actual GPU draw call; observe the frame on real Switch hardware.
+- [ ] Upload user-local original Daldren vertex stream and both DDS atlases only after real GPU rendering is validated.
