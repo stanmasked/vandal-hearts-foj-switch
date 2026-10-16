@@ -12,6 +12,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include "smoke_plan.h"
+#include "deko3d_api_contract.h"
 
 enum { SCREEN_WIDTH=1280, SCREEN_HEIGHT=720, BUFFER_COUNT=2 };
 enum { CMD_MEMORY_SIZE=0x10000 };
