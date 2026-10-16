@@ -101,6 +101,58 @@ the module's 24-byte header, 64-byte program table entry, 256-byte
 section alignment, code references, exact shader type and 126,976
 byte per-slot limit.
 
+## Reproducible first-frame pixel reference
+
+An additional **generated-only CPU reference** is available at
+[tools/gpu_triangle_reference.py](../tools/gpu_triangle_reference.py).
+It uses the exact three hardcoded test positions and UVs in
+`gpu/deko3d_clear_main.c` and the `vec4(U,V,0.30,1)` formula from
+`foj_triangle.frag`. There are no PS3 assets and no claim that the
+Nintendo Switch GPU has produced an image.
+
+Generate five representative pixel probes:
+
+```sh
+python3 -m tools.gpu_triangle_reference --frame 0
+python3 -m tools.gpu_triangle_reference --frame 120
+python3 -m unittest tests.test_gpu_triangle_reference -v
+```
+
+Expected theoretical geometry under the chosen viewport mapping:
+
+| Point | Pixel position |
+| --- | --- |
+| Triangle left/bottom | (256, 558) |
+| Triangle right/bottom | (1024, 558) |
+| Triangle top | (640, 126) |
+| Triangle centroid | approximately (640, 414) |
+
+At the centroid, the expected **synthetic fragment color** is
+approximately `RGBA=(0.500, 0.333, 0.300, 1.000)` before framebuffer
+quantization. An outside pixel such as (0,0) has background
+`RGBA=(0.210, 0.120, 0.230, 1)` at frame 0 and
+`RGBA=(0.440, 0.570, 0.430, 1)` at frame 120.
+
+The reference uses a comparison tolerance of **0.02 per color
+channel** as an initial hardware acceptance threshold, excluding
+triangle-edge pixels where coverage rules may differ. Both winding
+and Y-axis behavior still require a real Switch screenshot.
+
+The four [generated-data Python unit tests](../tests/test_gpu_triangle_reference.py)
+**passed locally**. This constitutes geometry and shader-formula
+verification only; no native DKSH/GPU frame is demonstrated.
+
+### Host shader-mode source syntax checks
+
+`make -f gpu/clear.mk host-triangle-check` now checks the *actual*
+shader-backed C source with strict C11 using a focused host-only
+deko3d declaration mock. The source uses explicitly named vertex
+attribute fields and compile-time checks of the 24-byte
+`FojGpuVertex` stride and byte offsets 0/16.
+An independent local strict-C11 compilation of the attribute and
+bitfield layout succeeded. The complete source-only syntax target
+is wired into CI but **has not been confirmed executing on GitHub**.
+
 ## Verification and limitations
 
 - **Verified locally:** standalone
