@@ -9,7 +9,7 @@ CC := $(DEVKITA64)/bin/aarch64-none-elf-gcc
 ELF2NRO := $(DEVKITPRO)/tools/bin/elf2nro
 NACPTOOL := $(DEVKITPRO)/tools/bin/nacptool
 OUT := build/foj-deko3d-clear-smoke
-SRC := gpu/deko3d_clear_main.c
+SRC := gpu/deko3d_clear_main.c gpu/smoke_plan.c
 
 CFLAGS := -std=c11 -O2 -Wall -Wextra -Werror -fPIE -ffunction-sections \
   -fdata-sections -I$(DEVKITPRO)/libnx/include
@@ -22,12 +22,12 @@ all: $(OUT).nro
 preflight:
 	@test -x "$(CC)" || { echo "Missing devkitA64 cross-compiler" >&2; exit 2; }
 	@test -f "$(DEVKITPRO)/libnx/include/deko3d.h" || { echo "Missing deko3d.h from switch-dev" >&2; exit 2; }
-	@test -f "$(DEVKITPRO)/libnx/lib/lib$(GPU_LIB).a" || { echo "Missing libdeko3d.a" >&2; exit 2; }
+	@test -f "$(DEVKITPRO)/libnx/lib/lib$(GPU_LIB).a" || { echo "Missing lib$(GPU_LIB).a" >&2; exit 2; }
 
 build:
 	mkdir -p build
 
-$(OUT).elf: $(SRC) | build preflight
+$(OUT).elf: $(SRC) gpu/smoke_plan.h | build preflight
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $@ -l$(GPU_LIB) -lstdc++ -lnx -lm
 
 $(OUT).nacp: | build
