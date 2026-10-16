@@ -34,10 +34,16 @@ reverse engineering, new platform code, and clean-room implementations.
 - [x] Recover first-section XYZ/UV/normals/face normals/index data in all 583 original .bmodel files.
 - [x] Export one original 3D model locally as OBJ and create a diagnostic render.
 - [x] Compile a fifth native libnx NRO for a user-provided local OBJ wireframe.
+- [x] Decode all 1,380 original mesh parts across 583 BMODEL files (583,431 triangles).
+- [x] Validate 275 per-vertex bone-influence tables from 87 original models.
+- [x] Resolve 895 genuine material/texture links including 143 same-name ambiguities.
+- [x] Export a five-section authentic avatar as OBJ/MTL/PNG privately for Blender.
+- [x] Update native Switch OBJ wireframe reader to accept material directives.
 - [ ] Establish full semantic meanings for proprietary resource formats and original battle rules.
 - [x] Identify BGRA8 and DXT1 DDS texture formats and validate actual images.
 - [x] Identify recurring .bmodel and .banim header fields in bounded real samples.
-- [ ] Recover complete mesh vertex/index/UV format, animation tracks and audio formats.
+- [x] Recover all static mesh vertex/index/UV arrays and material name tables.
+- [ ] Decode full bone hierarchy/transforms, animation tracks and audio formats.
 - [ ] Identify script/event/battle data formats and code architecture.
 - [ ] Choose source-port, reimplementation, or other viable strategy.
 
