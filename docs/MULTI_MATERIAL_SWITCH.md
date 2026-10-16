@@ -42,6 +42,36 @@ and 3 material entries, but only **2 actual DDS atlases**:
 `daldren_texture.tga` and `stone_of_judgment.tga`.
 Different material names for the cape/body share the first DDS.
 
+## End-to-end verification with original Daldren character
+
+The first **real two-atlas model** was also decoded and rendered locally
+with the user's original protected PS3 resources:
+
+- Original BMODEL: `data/actors/npc/cape_daldren_stone.bmodel`.
+- **6 shapes, 9,066 vertices, 3,022 triangles**.
+- Material assignments: `daldren_mat`, `daldren_twosided`,
+  `stone_mat`. The first two share the same DDS.
+- Two actual 256×256 DDS files:
+  `data/actors/npc/daldren_texture.tga` and
+  `data/actors/npc/stone_of_judgment.tga`.
+- Original embedded skeleton: **50 bones**.
+- `data/actors/anims/cape_daldren_judgement.banim` has **50 tracks
+  matching the complete model parent array**. This is a structural
+  compatibility result, not confirmation of scene association or a
+  PS3-accurate movement.
+- A user-private `FOJRM001` original-model conversion and
+  `FOJMAT01` two-texture mapping have been generated and checked.
+- Three computer-rendered static camera angles visibly show gold armor,
+  red cape and the separate stone using the correct respective atlas.
+  The desktop probe **composes per-section depth results**, consistent
+  with the new native shared-depth implementation; it is not evidence
+  of Switch hardware rendering.
+
+No asset pixels, rigged original mesh bytes, BANIM clip or rendered
+commercial image has been committed to GitHub. The original static model
+preview and private SD bundle are available **only in the user's
+conversation artifacts**.
+
 ## Portable research implementation
 
 - [core/material_table.c](../core/material_table.c): bounded, strict
