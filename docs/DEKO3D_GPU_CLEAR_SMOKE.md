@@ -113,14 +113,17 @@ both generated clear-color modes. Host coverage:
 | Color palette A / B | Selected **122 / 120** times |
 | Recorded GPU lists | **Four** (2 image slots × 2 color modes) |
 | Deliberate setup/acquire faults | **Nine** recovery paths |
-| Live allocations after exit | **Zero** in all ten scenarios |
+| User presses Plus after two frames | Normal exit and complete cleanup |
+| Live allocations after exit | **Zero** in all eleven scenarios |
 | Strict C11 host compile | **Passed locally** |
 | ASan + UBSan host compile/run | **Passed locally** |
 
 The nine simulated faults cover device creation, graphics queue
 creation, each of two image-memory allocations, swapchain creation,
 command memory, command-buffer creation, command-list finalization and
-image acquisition.
+image acquisition. A separate eleventh scenario simulates pressing
+Plus after two frames, verifying a successful exit with all allocated
+resources released.
 
 The tests exercise resource lifetime and the C call flow without
 emulating actual deko3d command execution. The mock implements only
