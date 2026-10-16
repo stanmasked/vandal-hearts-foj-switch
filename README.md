@@ -21,6 +21,22 @@ A new [local-only file inventory tool](tools/inventory_game_files.py) is ready
 for any already lawfully accessible resources; see
 [docs/ASSET_INVENTORY.md](docs/ASSET_INVENTORY.md).
 
+## Original asset discovery (verified 2026-10-16)
+
+The **real** non-finalized PS3 package has now been indexed beyond its header:
+21 PKG items, including a 235,982,224-byte `cdata.psarc` and a PS3 SELF
+`EBOOT.BIN`. The PSARC manifest contains **3,212 actual resource paths** —
+including models, animations, textures, 51 Lua scripts, and map data.
+
+See [real PSARC findings](docs/REAL_PSARC_NPEB00148.md) and
+[map1-1's original 50×50 grid measurements](docs/MAP1_1_ORIGINAL_GRID.md).
+Our [read-only local PSARC inspector](tools/inspect_debug_pkg_assets.py)
+can reproduce the manifest analysis (and optionally `--map map1-1`)
+using the user's two split ZIP files **without exporting game assets**.
+
+The original game's 3D engine and logic are not running on Switch yet. The
+existing native NRO builds remain independent synthetic probes.
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
@@ -60,6 +76,8 @@ Never publish the game package, license files, executables, keys or assets.
 
 - `tools/inspect_pkg.py` — bounded, read-only PKG header/metadata inspector.
 - `tools/inspect_split_pkg.py` — stream multipart ZIP + embedded PKG in place.
+- `tools/inspect_debug_pkg_assets.py` — read-only debug PKG / PSARC file index.
+- `tools/inspect_map_coll.py` — structural original-map metadata inspection.
 - `tests/` — synthetic test fixtures, no proprietary data.
 - `docs/PKG_INPUT.md` — local package preparation and safe validation.
 - `docs/PORTING_PLAN.md` — milestones and technical unknowns.
