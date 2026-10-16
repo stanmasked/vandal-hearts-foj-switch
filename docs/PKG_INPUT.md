@@ -12,6 +12,25 @@ Keep the original and all license/activation material off GitHub.
 First **inspect the filenames and confirm both volumes are present**.
 There are multiple incompatible multipart ZIP conventions.
 
+**Preferred method: read all parts as a virtual ZIP, without assembling,
+extracting or uploading the package.** From the repository root run:
+
+```sh
+python3 -m tools.inspect_split_pkg \
+  "Vandal.Hearts.Flames.of.Judgement_d30n_NPEB00148.pkg.zip.001" \
+  "Vandal.Hearts.Flames.of.Judgement_d30n_NPEB00148.pkg.zip.002" \
+  --expected-title-id NPEB00148 --sha256 --verify-crc --json > foj-pkg-report.json
+```
+
+The full-file hash and CRC require reading/decompressing the entire archive
+but do not write the 605 MB payload anywhere. The JSON report contains no
+extracted assets. Without these flags the inspector reads primarily the ZIP
+index, PKG header and plaintext metadata; it does **not** verify archive
+integrity. This only supports a raw byte-split regular ZIP, **not** a genuine
+multi-disk/spanned ZIP.
+
+**Fallback** if Python reports that the parts cannot form a regular ZIP:
+
 For a ZIP that was **split into consecutive raw byte chunks**, on macOS/Linux:
 
 ```sh
