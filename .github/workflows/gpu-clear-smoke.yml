@@ -5,6 +5,11 @@ on:
     paths:
       - 'gpu/deko3d_clear_main.c'
       - 'gpu/clear.mk'
+      - 'gpu/smoke_plan.c'
+      - 'gpu/smoke_plan.h'
+      - 'tests/test_gpu_smoke_plan.c'
+      - 'tests/test_deko3d_clear_host.c'
+      - 'tests/mock_switch_sdk/**'
       - '.github/workflows/gpu-clear-smoke.yml'
   workflow_dispatch:
 permissions:
