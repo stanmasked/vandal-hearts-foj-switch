@@ -374,6 +374,25 @@ Run `make -f gpu/clear.mk host-check` or
 or Switch presentation was verified: current GitHub-hosted jobs continue
 to fail before recording any executable steps.
 
+## Native deko3d SDK compatibility and environment diagnosis
+
+Cross-checked the optional GPU NRO against the public deko3d header.
+The previous host mock incorrectly assigned RGBA8 format `37` and
+render-target usage flag `64`; the real values are **28** and **256**.
+Both are corrected, and [nine compile-time checks](gpu/deko3d_api_contract.h)
+are included in the actual NRO so a future real cross-build validates the
+installed SDK ABI. A local negative compilation test demonstrated that
+wrong values cause a hard error.
+
+A [GPU toolchain preflight tool](tools/check_switch_gpu_toolchain.py)
+reports every required devkitPro path and optional UAM independently.
+Four synthetic directory/permissions unit tests passed locally. The
+current execution environment has **no devkitA64 compiler or libnx/deko3d
+libraries**, so a native GPU NRO cannot be compiled here.
+The attempted GitHub Actions builds still fail **before recording steps**,
+not with source compiler diagnostics. These limits are documented in
+[the GPU smoke guide](docs/DEKO3D_GPU_CLEAR_SMOKE.md).
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
