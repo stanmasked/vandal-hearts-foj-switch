@@ -53,6 +53,8 @@ FojGpuStreamStatus foj_gpu_prepare_stream(
     const float nx=2.0f*scale/(float)width;
     const float ny=2.0f*scale/(float)height;
     if (!isfinite(nx)||!isfinite(ny))return FOJ_GPU_STREAM_INVALID;
+    /* Validate all camera-space depths first, before modifying outputs. */
+    float depth_min=INFINITY,depth_max=-INFINITY;
     for (size_t i=0;i<vertex_count;++i) {
         const FojTexturedVertex *v=&input[i];
         const float x=v->x-camera->center_x;
@@ -62,9 +64,14 @@ FojGpuStreamStatus foj_gpu_prepare_stream(
         const float ry=cp*y-sp*rz;
         const float rz_camera=sp*y+cp*rz;
         if (!isfinite(rx*nx)||!isfinite(ry*ny)||
-            !isfinite(rz_camera/camera->extent))
+            !isfinite(rz_camera))
             return FOJ_GPU_STREAM_INVALID;
+        if (rz_camera<depth_min)depth_min=rz_camera;
+        if (rz_camera>depth_max)depth_max=rz_camera;
     }
+    const float depth_span=depth_max-depth_min;
+    if (!isfinite(depth_span)||depth_span<0.0f)
+        return FOJ_GPU_STREAM_INVALID;
     for (size_t s=0;s<section_count;++s) {
         batches_out[s].first_vertex=(uint32_t)sections[s].first_vertex;
         batches_out[s].vertex_count=(uint32_t)sections[s].vertex_count;
@@ -78,12 +85,19 @@ FojGpuStreamStatus foj_gpu_prepare_stream(
         const float rx=cy*x+sy*z,rz=-sy*x+cy*z;
         const float ry=cp*y-sp*rz;
         const float rz_camera=sp*y+cp*rz;
+        /* More camera-space Z is nearer: map into deko3d's 0..1 clip
+         * range and preserve CPU depth ordering with GPU GREATER/clear 0. */
+        const float normalized=depth_span>1e-7f ?
+            (rz_camera-depth_min)/depth_span : .5f;
+        const float gpu_z=.01f+.98f*fmaxf(0.f,fminf(1.f,normalized));
         vertices_out[i]=(FojGpuVertex){
-            rx*nx,ry*ny,rz_camera/camera->extent,1.0f,
+            rx*nx,ry*ny,gpu_z,1.0f,
             v->u,camera->flip_v?1.0f-v->v:v->v
         };
     }
     result->vertices_written=vertex_count;
     result->batches_written=section_count;
+    result->camera_depth_min=depth_min;
+    result->camera_depth_max=depth_max;
     return FOJ_GPU_STREAM_OK;
 }
