@@ -1,6 +1,8 @@
 #ifndef FOJ_HOST_DEKO3D_H
 #define FOJ_HOST_DEKO3D_H
 /* TEST-ONLY declarations checked against public deko3d C signatures.
+ * Numeric enums are pinned to upstream devkitPro/deko3d deko3d.h and
+ * cross-checked separately during optional real toolchain preflight.
  * A small mock contract, NOT the SDK and NOT for compiling a real NRO.
  */
 #include <stdint.h>
@@ -30,8 +32,8 @@ enum {
     DkDeviceFlags_DepthZeroToOne=256,
     DkDeviceFlags_OriginUpperLeft=0, DkDeviceFlags_YAxisPointsUp=0,
     DkQueueFlags_Graphics=1, DkImageType_2D=2,
-    DkImageFormat_RGBA8_Unorm=37,
-    DkImageFlags_UsageRender=64, DkImageFlags_UsagePresent=1024,
+    DkImageFormat_RGBA8_Unorm=28,
+    DkImageFlags_UsageRender=256, DkImageFlags_UsagePresent=1024,
     DkMemBlockFlags_GpuCached=8, DkMemBlockFlags_Image=32,
     DkMemBlockFlags_CpuUncached=1,
     DkColorMask_RGBA=15, DK_MEMBLOCK_ALIGNMENT=4096
