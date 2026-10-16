@@ -17,7 +17,7 @@ from tools.inspect_debug_pkg_assets import (
 from tools.inspect_split_pkg import JoinedParts
 
 
-def synthetic_psarc(with_map=False, with_headers=False):
+def synthetic_psarc(with_map=False, with_headers=False, with_animation=False):
     filenames = ["data/example.tga", "data/example.lua"]
     texture = bytearray(128 + 4 * 4 * 4)
     texture[:4] = b"DDS "
@@ -59,7 +59,11 @@ def synthetic_psarc(with_map=False, with_headers=False):
                  + bytes(64))
         anim = b"\x0d" + struct.pack("<f", 1.5) + b"\x25\x00\x00\x00\x00"
         blobs.extend([model, anim])
-    if with_map or with_headers:
+    if with_animation:
+        from tests.test_decode_rig_banim import synthetic_banim
+        filenames.append("data/actors/anims/synthetic_test.banim")
+        blobs.append(synthetic_banim())
+    if with_map or with_headers or with_animation:
         blobs[0] = ("\n".join(filenames) + "\n").encode()
 
     compressed = [zlib.compress(blob) for blob in blobs]
@@ -84,8 +88,10 @@ def synthetic_psarc(with_map=False, with_headers=False):
     return bytes(out)
 
 
-def synthetic_pkg(*, revision=0, with_map=False, with_headers=False):
-    psarc = synthetic_psarc(with_map=with_map, with_headers=with_headers)
+def synthetic_pkg(*, revision=0, with_map=False, with_headers=False,
+                  with_animation=False):
+    psarc = synthetic_psarc(with_map=with_map, with_headers=with_headers,
+                            with_animation=with_animation)
     names = [b"PARAM.SFO", b"USRDIR/cdata.psarc"]
     body_start = 2 * 32 + sum(len(x) for x in names)
     body_start = (body_start + 15) & ~15
