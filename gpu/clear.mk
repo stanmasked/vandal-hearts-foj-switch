@@ -5,6 +5,7 @@ DEVKITPRO ?= /opt/devkitpro
 # Debug deko3d includes API validation; select deko3d for final release.
 GPU_LIB ?= deko3dd
 HOSTCC ?= cc
+HOST_ABI := build/foj-deko3d-contract-host
 HOST_TEST := build/foj-gpu-smoke-plan-host
 HOST_MOCK := build/foj-deko3d-lifecycle-host
 HOST_MOCK_SAN := build/foj-deko3d-lifecycle-asan
@@ -36,6 +37,12 @@ $(HOST_TEST): tests/test_gpu_smoke_plan.c gpu/smoke_plan.c gpu/smoke_plan.h | bu
 	$(HOSTCC) -std=c11 -Wall -Wextra -Werror -pedantic -Igpu \
 	  tests/test_gpu_smoke_plan.c gpu/smoke_plan.c -lm -o $@
 
+$(HOST_ABI): tests/test_deko3d_api_contract.c \
+            tests/mock_switch_sdk/deko3d.h gpu/deko3d_api_contract.h | build
+	$(HOSTCC) -std=c11 -Wall -Wextra -Werror -pedantic \
+	  -Itests/mock_switch_sdk -Igpu \
+	  tests/test_deko3d_api_contract.c -o $@
+
 $(HOST_MOCK): tests/test_deko3d_clear_host.c tests/mock_switch_sdk/deko3d.h \
               tests/mock_switch_sdk/switch.h gpu/deko3d_clear_main.c \
               gpu/smoke_plan.c gpu/smoke_plan.h | build
@@ -51,14 +58,15 @@ $(HOST_MOCK_SAN): tests/test_deko3d_clear_host.c tests/mock_switch_sdk/deko3d.h 
 	  -Itests/mock_switch_sdk -Igpu \
 	  tests/test_deko3d_clear_host.c gpu/smoke_plan.c -lm -o $@
 
-host-check: $(HOST_TEST) $(HOST_MOCK)
+host-check: $(HOST_TEST) $(HOST_ABI) $(HOST_MOCK)
 	./$(HOST_TEST)
+	./$(HOST_ABI)
 	./$(HOST_MOCK)
 
 host-mock-sanitized: $(HOST_MOCK_SAN)
 	./$(HOST_MOCK_SAN)
 
-$(OUT).elf: $(SRC) gpu/smoke_plan.h | build preflight
+$(OUT).elf: $(SRC) gpu/smoke_plan.h gpu/deko3d_api_contract.h | build preflight
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $@ -l$(GPU_LIB) -lstdc++ -lnx -lm
 
 $(OUT).nacp: | build
@@ -71,4 +79,4 @@ verify: $(OUT).nro
 	python3 tools/validate_nro.py $(OUT).nro
 
 clean:
-	rm -f $(OUT).elf $(OUT).nacp $(OUT).nro $(HOST_TEST) $(HOST_MOCK) $(HOST_MOCK_SAN)
+	rm -f $(OUT).elf $(OUT).nacp $(OUT).nro $(HOST_TEST) $(HOST_ABI) $(HOST_MOCK) $(HOST_MOCK_SAN)
