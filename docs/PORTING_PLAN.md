@@ -287,3 +287,13 @@ No claim of a full host suite pass or hardware draw is made for this stage.
 - [ ] Compile real UAM shader DKSH, link ARM64 NRO, and validate first physical GPU triangle.
 
 This evidence covers reconstructed host-only modules, not real deko3d GPU execution.
+
+## Stage 82: GPU smoke host execution and slot-preservation regression (2026-10-17)
+
+- [x] Locally compile and run reconstructed `gpu/smoke_plan.c` + its generated-only host test with GCC and Clang in strict C11 modes: two passes.
+- [x] Run the same source and tests with AddressSanitizer and UndefinedBehaviorSanitizer on GCC and Clang: two passes.
+- [x] Extend the two-slot DKSH test to assert both the original vertex module and loaded fragment module, slot gap, and reserved tail survive failed fragment replacement attempts.
+- [ ] Execute updated full GPU host test suite in a repository checkout / GitHub Actions, and validate the newly added slot assertions: no pass is claimed yet.
+- [ ] Compile genuine UAM shaders, devkitA64 GPU NRO and observe the actual hardware frame.
+
+Local tests use manually reconstructed source, not a full repository checkout or real Nintendo Switch.
