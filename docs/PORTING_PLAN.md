@@ -12,18 +12,19 @@ reverse engineering, new platform code, and clean-room implementations.
 
 ## Milestones
 
-### Gate 0 — Package identification (active)
+### Gate 0 — Package identification (completed)
 - [x] New independent GitHub repository.
 - [x] Read-only PKG header parser and synthetic tests.
-- [ ] Validate the user's local reconstructed ZIP.
-- [ ] Confirm raw package magic, revision, type, content ID, bounds and SHA-256.
-- [ ] Save a redacted/asset-free technical report.
+- [x] Read original uploaded ZIP as a virtual concatenated stream; full CRC32 matched.
+- [x] Confirm raw package magic, non-finalized revision, type, content ID, bounds and SHA-256.
+- [x] Save a redacted/asset-free technical report ([verified results](REAL_PKG_NPEB00148.md)).
 
 **Exit criterion:** reproducible report for a real file; no proprietary data in Git.
 
-### Gate 1 — Asset and engine feasibility
+### Gate 1 — Asset and engine feasibility (in progress)
 - [ ] Establish lawful access to game resources for local research.
-- [ ] Catalog file tree, compression, and candidate format signatures.
+- [x] Prepare local-only, signatures-and-extensions inventory tool with synthetic tests.
+- [ ] Catalog actual game file tree, compression and resource format signatures.
 - [ ] Determine actual renderer, mesh/texture/animation/audio formats.
 - [ ] Identify script/event/battle data formats and code architecture.
 - [ ] Choose source-port, reimplementation, or other viable strategy.
