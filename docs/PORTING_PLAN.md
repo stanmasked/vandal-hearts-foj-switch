@@ -327,3 +327,11 @@ Configuration changes do not prove compiler or device execution.
 - [ ] Run UAM DKSH compilation, devkitA64 GPU NRO link and physical Switch triangle draw.
 
 The local dependency reproduction was not a full real SDK build.
+
+## Stage 86: GPU Makefile regression fixture correction (2026-10-17)
+
+- [x] Fix the timestamp fixture in `tests/test_gpu_make_dependencies.sh`: copied Makefiles inherited current mtimes and could incorrectly trigger the baseline ELF rebuild assertion. Normalize both Makefiles to the fixture's old timestamp before dry-running make.
+- [x] Make the common GPU build depend on `gpu/clear.mk` and the triangle variant also depend on `gpu/triangle.mk`, so future compiler/linker flag edits invalidate the corresponding ELF.
+- [x] Extend the SDK-free Makefile dependency regression to cover both Makefiles in addition to DKSH and shader-layout headers.
+- [ ] Confirm complete test execution on a GitHub checkout and validate actual Actions logs; source commits alone are not proof of a passing test run.
+- [ ] Validate real devkitA64/UAM compilation and a physical Switch GPU frame.
