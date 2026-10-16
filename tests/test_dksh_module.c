@@ -58,6 +58,9 @@ static void test_user_local_file_loader(void) {
                               FOJ_DKSH_VERTEX,&count));
     assert(count==sizeof(sample));
     assert(!memcmp(sample,loaded,sizeof(sample)));
+    /* Successful bounded copy must not alter bytes beyond the DKSH. */
+    for(size_t i=sizeof(sample);i<sizeof(loaded);++i)
+        assert(loaded[i]==0);
     /* Rejected modules must leave both destination and output untouched. */
     memset(loaded,0xCC,sizeof(loaded));count=99;
     assert(!foj_dksh_read_file(path,loaded,sizeof(loaded),
@@ -75,6 +78,11 @@ static void test_user_local_file_loader(void) {
     assert(fclose(file)==0);
     assert(!foj_dksh_read_file(path,loaded,sizeof(loaded),
                                FOJ_DKSH_VERTEX,&count));
+    assert(count==99);
+    for(size_t i=0;i<sizeof(loaded);++i)assert(loaded[i]==0xCC);
+    /* Unknown shader stage is rejected before any file read/copy. */
+    assert(!foj_dksh_read_file(path,loaded,sizeof(loaded),
+                               99,&count));
     assert(count==99);
     for(size_t i=0;i<sizeof(loaded);++i)assert(loaded[i]==0xCC);
     assert(unlink(path)==0);
