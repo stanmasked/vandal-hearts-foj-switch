@@ -14,6 +14,8 @@ OBJ_TARGET := build/foj-obj-wireframe-research
 BANIM_TARGET := build/foj-banim-research
 SKIN_TARGET := build/foj-skinning-research
 ACTOR_TARGET := build/foj-rigged-actor-research
+TEX_ACTOR_TARGET := build/foj-textured-actor-research
+TEX_ACTOR_SRC := switch/source/textured_actor_main.c core/rigmesh_io.c core/skeletal_skin.c core/banim_core.c core/dds_texture.c core/textured_triangles.c
 ACTOR_SRC := switch/source/rigged_actor_main.c core/rigmesh_io.c core/skeletal_skin.c core/banim_core.c core/obj_wireframe.c
 SKIN_SRC := switch/source/skinning_main.c core/skeletal_skin.c core/banim_core.c core/obj_wireframe.c
 BANIM_SRC := switch/source/banim_main.c core/banim_core.c
@@ -30,7 +32,7 @@ LDFLAGS := -specs=$(DEVKITPRO)/libnx/switch.specs \
     -Wl,--gc-sections -pie -L$(DEVKITPRO)/libnx/lib
 
 .PHONY: all verify clean
-all: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(OBJ_TARGET).nro $(BANIM_TARGET).nro $(SKIN_TARGET).nro $(ACTOR_TARGET).nro
+all: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(OBJ_TARGET).nro $(BANIM_TARGET).nro $(SKIN_TARGET).nro $(ACTOR_TARGET).nro $(TEX_ACTOR_TARGET).nro
 
 build:
 	mkdir -p build
@@ -107,7 +109,16 @@ $(ACTOR_TARGET).nacp: | build
 $(ACTOR_TARGET).nro: $(ACTOR_TARGET).elf $(ACTOR_TARGET).nacp
 	$(ELF2NRO) $< $@ --nacp=$(ACTOR_TARGET).nacp
 
-verify: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(OBJ_TARGET).nro $(BANIM_TARGET).nro $(SKIN_TARGET).nro $(ACTOR_TARGET).nro
+$(TEX_ACTOR_TARGET).elf: $(TEX_ACTOR_SRC) core/rigmesh_io.h core/skeletal_skin.h core/banim_core.h core/dds_texture.h core/textured_triangles.h | build
+	$(CC) $(CFLAGS) $(LDFLAGS) $(TEX_ACTOR_SRC) -o $@ -lnx -lm
+
+$(TEX_ACTOR_TARGET).nacp: | build
+	$(NACPTOOL) --create "FoJ Textured Actor Research" "VH FoJ contributors" "0.9.0" $@
+
+$(TEX_ACTOR_TARGET).nro: $(TEX_ACTOR_TARGET).elf $(TEX_ACTOR_TARGET).nacp
+	$(ELF2NRO) $< $@ --nacp=$(TEX_ACTOR_TARGET).nacp
+
+verify: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(OBJ_TARGET).nro $(BANIM_TARGET).nro $(SKIN_TARGET).nro $(ACTOR_TARGET).nro $(TEX_ACTOR_TARGET).nro
 	python3 tools/validate_nro.py $(TARGET).nro
 	python3 tools/validate_nro.py $(ISO_TARGET).nro
 	python3 tools/validate_nro.py $(COLL_TARGET).nro
@@ -116,6 +127,7 @@ verify: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(O
 	python3 tools/validate_nro.py $(BANIM_TARGET).nro
 	python3 tools/validate_nro.py $(SKIN_TARGET).nro
 	python3 tools/validate_nro.py $(ACTOR_TARGET).nro
+	python3 tools/validate_nro.py $(TEX_ACTOR_TARGET).nro
 
 clean:
 	rm -f $(TARGET).elf $(TARGET).nro $(TARGET).nacp \
@@ -125,4 +137,5 @@ clean:
 	       $(OBJ_TARGET).elf $(OBJ_TARGET).nro $(OBJ_TARGET).nacp \
 	       $(BANIM_TARGET).elf $(BANIM_TARGET).nro $(BANIM_TARGET).nacp \
 	       $(SKIN_TARGET).elf $(SKIN_TARGET).nro $(SKIN_TARGET).nacp \
-	       $(ACTOR_TARGET).elf $(ACTOR_TARGET).nro $(ACTOR_TARGET).nacp
+	       $(ACTOR_TARGET).elf $(ACTOR_TARGET).nro $(ACTOR_TARGET).nacp \
+	       $(TEX_ACTOR_TARGET).elf $(TEX_ACTOR_TARGET).nro $(TEX_ACTOR_TARGET).nacp
