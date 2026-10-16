@@ -41,9 +41,13 @@ class FirstShape:
         high = [max(v[d] for v in self.vertices) for d in range(3)]
         uv_low = [min(v[d] for v in self.uvs) for d in range(2)]
         uv_high = [max(v[d] for v in self.uvs) for d in range(2)]
+        normal_lengths = [
+            math.sqrt(sum(v*v for v in normal)) for normal in self.normals
+        ]
+        zero_normals = sum(length < 1e-5 for length in normal_lengths)
         worst_normal_delta = max(
-            abs(math.sqrt(sum(v*v for v in normal)) - 1)
-            for normal in self.normals
+            (abs(length - 1) for length in normal_lengths if length >= 1e-5),
+            default=0.0,
         )
         return {
             "first_shape_name": self.name,
@@ -52,7 +56,8 @@ class FirstShape:
             "indexed_vertex_count": len(self.indices),
             "bounds_xyz": {"minimum": low, "maximum": high},
             "uv_bounds": {"minimum": uv_low, "maximum": uv_high},
-            "maximum_normal_length_error": worst_normal_delta,
+            "zero_length_vertex_normals": zero_normals,
+            "maximum_nonzero_normal_length_error": worst_normal_delta,
             "first_shape_end_offset": self.section_end,
             "note": "First shape only. Remaining .bmodel sections unparsed.",
         }
@@ -121,10 +126,14 @@ def decode_first_shape(data: bytes) -> FirstShape:
 
     array_tag(0x10, count)
     normals = floats(count, 3)
+    # Real files include some all-zero vertex normals (196 across 583
+    # initial shapes). Non-zero normals must still be near unit length.
     if not all(
-        abs(sum(c*c for c in vector) - 1) <= 0.02 for vector in normals
+        sum(component*component for component in vector) < 1e-10 or
+        abs(sum(component*component for component in vector) - 1) <= 0.04
+        for vector in normals
     ):
-        raise BModelError("Normal vectors are not near unit length")
+        raise BModelError("Nonzero normal vectors are not near unit length")
 
     face_count = array_tag(0x15, count//3)
     face_normals = floats(face_count, 3)
@@ -139,7 +148,8 @@ def decode_first_shape(data: bytes) -> FirstShape:
 
 
 def write_local_obj(shape: FirstShape, destination: Path,
-                    *, flip_v: bool = False) -> None:
+                    *, flip_v: bool = False,
+                    reverse_winding: bool = False) -> None:
     """Export only user-selected first geometry section, never overwrite."""
     if destination.suffix.lower() != ".obj":
         raise ValueError("Only .obj output supported")
@@ -159,12 +169,14 @@ def write_local_obj(shape: FirstShape, destination: Path,
             out.write(f"vn {x:.9g} {y:.9g} {z:.9g}\n")
         for i in range(0, len(shape.indices), 3):
             ids = [shape.indices[i+j] + 1 for j in range(3)]
+            if reverse_winding:
+                ids[1], ids[2] = ids[2], ids[1]
             out.write("f " + " ".join(f"{n}/{n}/{n}" for n in ids) + "\n")
 
 
 def inspect_split_archive_asset(
     parts: list[Path], asset: str, destination: Path | None = None,
-    *, flip_v: bool = False,
+    *, flip_v: bool = False, reverse_winding: bool = False,
 ) -> dict:
     """Read a particular .bmodel in memory from user's local split PKG ZIP."""
     if (not asset.startswith("data/") or
@@ -196,7 +208,8 @@ def inspect_split_archive_asset(
         data = archive.entry_data(index, limit=MAX_BMODEL_BYTES)
         shape = decode_first_shape(data)
     if destination is not None:
-        write_local_obj(shape, destination, flip_v=flip_v)
+        write_local_obj(shape, destination, flip_v=flip_v,
+                        reverse_winding=reverse_winding)
     return {
         "asset": asset,
         "source_bytes": len(data),
@@ -215,10 +228,13 @@ def main(argv=None) -> int:
                         help="Optional explicit, NEW local .obj filename")
     parser.add_argument("--flip-v", action="store_true",
                         help="Flip texture V coordinate only in optional OBJ")
+    parser.add_argument("--reverse-winding", action="store_true",
+                        help="Swap last two face indices to align geometric and stored normals")
     args = parser.parse_args(argv)
     try:
         report = inspect_split_archive_asset(
-            args.parts, args.asset, args.output, flip_v=args.flip_v
+            args.parts, args.asset, args.output, flip_v=args.flip_v,
+            reverse_winding=args.reverse_winding
         )
     except (BModelError, OSError, ValueError) as exc:
         print(f"BMODEL decode error: {exc}", file=sys.stderr)
