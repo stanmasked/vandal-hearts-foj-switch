@@ -1,0 +1,37 @@
+name: Switch NRO bring-up
+
+on:
+  push:
+    paths:
+      - 'switch/**'
+      - 'tools/validate_nro.py'
+      - '.github/workflows/switch-nro.yml'
+  pull_request:
+    paths:
+      - 'switch/**'
+      - 'tools/validate_nro.py'
+      - '.github/workflows/switch-nro.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkita64:latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build NRO and validate segments
+        shell: bash
+        run: |
+          set -euxo pipefail
+          make -f switch/Makefile verify
+      - name: Upload synthetic research NRO
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-switch-research-nro
+          path: build/foj-switch-research.nro
+          if-no-files-found: error
