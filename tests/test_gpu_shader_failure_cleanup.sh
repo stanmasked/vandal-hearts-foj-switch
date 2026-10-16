@@ -13,6 +13,9 @@ set -euo pipefail
 while (($#)); do
     if [[ "$1" == "-o" ]]; then
         printf 'invalid-dksh\n' > "$2"
+        if [[ "${FAKE_UAM_FAIL:-0}" == "1" ]]; then
+            exit 17
+        fi
         exit 0
     fi
     shift
@@ -21,7 +24,6 @@ exit 2
 EOF
 chmod +x "$tmp/fake-uam"
 cat > "$tmp/tools/validate_dksh.py" <<'EOF'
-import sys
 raise SystemExit(1)
 EOF
 touch "$tmp/tools/__init__.py"
@@ -49,6 +51,11 @@ if [[ -e "$target" ]]; then
     echo "FAIL: compiler-failed DKSH remains on disk" >&2
     exit 1
 fi
+grep -q "Error 17" "$tmp/compiler-failure.log" || {
+    echo "FAIL: fake UAM did not exit with its intended compiler error" >&2
+    cat "$tmp/compiler-failure.log" >&2
+    exit 1
+}
 grep -q "Deleting file" "$tmp/compiler-failure.log" || {
     echo "FAIL: make did not remove compiler-failed DKSH" >&2
     cat "$tmp/compiler-failure.log" >&2
