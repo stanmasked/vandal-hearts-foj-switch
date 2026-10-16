@@ -69,6 +69,9 @@ reverse engineering, new platform code, and clean-room implementations.
 - [x] Match upstream deko3d static command-list lifecycle; pre-record 4 immutable 2-framebuffer × 2-color GPU clear commands.
 - [x] Use correctly aligned GPU image allocations, full-screen scissor and GPU-only image memory flags.
 - [x] Add devkitPro-free host-check with locally run C11 + ASan/UBSan tests of allocation and palette scheduling.
+- [x] Execute real optional GPU smoke C entrypoint against host-only deko3d/libnx stateful fake; validate 242 frames and four GPU command lists.
+- [x] Inject nine GPU allocation/queue/acquire failures; confirm no live mock resources after exit and pass C11/ASan/UBSan.
+- [x] Wire mock API smoke verification into standalone Makefile and future GitHub CI (not yet run on GitHub due to zero-step failure).
 - [ ] Produce and launch the optional GPU clear NRO on physical hardware, verify color-changing frame and Plus exit.
 - [ ] Verify native UAM shader compilation, implement deko3d GPU draw calls and display actual frames on Switch.
 - [ ] Reproduce PS3-original shader/sampler material parameters, pose and camera conventions.
