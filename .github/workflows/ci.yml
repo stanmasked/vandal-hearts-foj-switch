@@ -102,6 +102,18 @@ jobs:
             -lm -o /tmp/foj_textured_triangles_asan
           /tmp/foj_textured_triangles_asan
 
+      - name: Validate private multi-material FOJMAT01 mapping
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tests/test_material_table.c core/material_table.c -o /tmp/foj_material_map
+          /tmp/foj_material_map
+      - name: Sanitize private multi-material FOJMAT01 mapping
+        run: |
+          cc -std=c11 -O1 -g -fsanitize=address,undefined \
+            -fno-omit-frame-pointer -Icore \
+            tests/test_material_table.c core/material_table.c -o /tmp/foj_material_asan
+          /tmp/foj_material_asan
+
       - name: Compile and run portable tactical logic tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
