@@ -353,3 +353,12 @@ The local dependency reproduction was not a full real SDK build.
 - [ ] Obtain actual GitHub Actions pass/fail results for the full GPU host regression workflow.
 
 No NRO or DKSH files were produced in this stage.
+
+## Stage 89: SDK-free GPU preflight regression (2026-10-17)
+
+- [x] Add `tests/test_gpu_preflight.sh`: create a temporary fake devkitPro tree, verify the six diagnostic failures (cross-compiler, elf2nro, nacptool, switch.specs, deko3d.h, libdeko3dd.a) sequentially, then verify a complete fake presence-only preflight passes.
+- [x] Include it in both dedicated GPU CI matrix host strict jobs, with automatic triggers for edits to the script.
+- [ ] Execute the new test in an actual checkout and inspect GitHub Actions results; changes committed via GitHub connector do not demonstrate execution.
+- [ ] Build with real UAM / devkitA64 and test hardware GPU output.
+
+The fake toolchain is suitable for validating diagnostic presence checks only. It cannot produce ARM64 binaries or verify SDK compatibility.
