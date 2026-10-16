@@ -149,6 +149,20 @@ jobs:
         run: |
           make -f gpu/clear.mk host-mock-sanitized
 
+      - name: Validate disjoint deko3d shader slots and reserved code tail
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Igpu \
+            tests/test_shader_layout.c gpu/shader_layout.c \
+            -o /tmp/foj_shader_layout
+          /tmp/foj_shader_layout
+      - name: Sanitize GPU shader slot overflow and failure rollback
+        run: |
+          cc -std=c11 -O1 -g -fsanitize=address,undefined \
+            -fno-omit-frame-pointer -Igpu \
+            tests/test_shader_layout.c gpu/shader_layout.c \
+            -o /tmp/foj_shader_layout_asan
+          /tmp/foj_shader_layout_asan
+
       - name: Check DKSH stage, program-header bounds and shader file loader
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Igpu \
