@@ -1,0 +1,50 @@
+name: GPU host regression checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/gpu-host-regression.yml"
+      - "gpu/**"
+      - "core/gpu_vertex_stream.h"
+      - "tests/test_dksh_module.c"
+      - "tests/test_shader_layout.c"
+      - "tests/test_gpu_smoke_plan.c"
+      - "tests/test_deko3d_api_contract.c"
+      - "tests/test_deko3d_clear_host.c"
+      - "tests/mock_switch_sdk/**"
+  pull_request:
+    paths:
+      - ".github/workflows/gpu-host-regression.yml"
+      - "gpu/**"
+      - "core/gpu_vertex_stream.h"
+      - "tests/test_dksh_module.c"
+      - "tests/test_shader_layout.c"
+      - "tests/test_gpu_smoke_plan.c"
+      - "tests/test_deko3d_api_contract.c"
+      - "tests/test_deko3d_clear_host.c"
+      - "tests/mock_switch_sdk/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host-gpu:
+    name: SDK-free GPU C11 and sanitizer tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Print toolchain versions
+        run: |
+          cc --version
+          make --version
+      - name: Strict C11 host suite and triangle syntax
+        run: make -f gpu/clear.mk host-check
+      - name: ASan and UBSan host suite
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: make -f gpu/clear.mk host-mock-sanitized
