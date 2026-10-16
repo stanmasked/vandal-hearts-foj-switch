@@ -110,8 +110,14 @@ def inspect_pkg_stream(
                 break
             record = {"id": kind, "size": payload_size}
             payload = region[position:position + payload_size]
-            if kind == 2 and payload_size == 4:
-                record["content_type"] = struct.unpack(">I", payload)[0]
+            if kind in (1, 2, 3) and payload_size == 4:
+                key = {1: "drm_type", 2: "content_type", 3: "package_flags"}[kind]
+                record[key] = struct.unpack(">I", payload)[0]
+            elif kind == 4 and payload_size == 8:
+                record["metadata_package_size"] = struct.unpack(">Q", payload)[0]
+            elif kind == 5 and payload_size == 4:
+                # A package-builder revision/version tuple, not a title ID.
+                record["builder_version_raw"] = payload.hex()
             elif kind == 6 and payload_size <= 128:
                 raw_id = payload.split(b"\x00", 1)[0]
                 if raw_id and all(0x20 <= b <= 0x7E for b in raw_id):
@@ -141,6 +147,9 @@ def inspect_pkg_stream(
             "declared_size": declared_size,
             "data_offset": data_offset,
             "data_size": data_size,
+            "trailer_size": actual_size - data_offset - data_size
+            if data_offset <= actual_size and data_size <= actual_size - data_offset
+            else None,
         },
         "metadata": metadata,
         "checks": {
