@@ -18,14 +18,14 @@ touch "$target"
 touch -t 202201010000 "$target"
 cd "$tmp"
 # The preflight target is order-only. A current ELF must not be rebuilt.
-build_command='aarch64-none-elf-gcc'
-if make -f gpu/triangle.mk -n build/foj-deko3d-triangle-research.elf | grep -q "$build_command"; then
+build_command='-o build/foj-deko3d-triangle-research.elf'
+if make -f gpu/triangle.mk -n build/foj-deko3d-triangle-research.elf | grep -Fq -- "$build_command"; then
     echo "FAIL: current triangle ELF should not rebuild" >&2
     exit 1
 fi
 for header in gpu/dksh_module.h gpu/shader_layout.h; do
     touch -t 202401010000 "$header"
-    if ! make -f gpu/triangle.mk -n build/foj-deko3d-triangle-research.elf | grep -q "$build_command"; then
+    if ! make -f gpu/triangle.mk -n build/foj-deko3d-triangle-research.elf | grep -Fq -- "$build_command"; then
         echo "FAIL: editing $header did not trigger the triangle ELF compiler" >&2
         exit 1
     fi
