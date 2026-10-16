@@ -62,6 +62,21 @@ Interpretations of the fields are from the public PS3 PKG format schema;
 the existence, types and lengths of these records were confirmed by inspection.
 See https://www.psdevwiki.com/ps3/PKG_files .
 
+## Opaque payload probe (read-only)
+
+As an additional non-decrypting check, the first 64 KiB of the declared data
+section were sampled through the original split archive. Observations:
+
+- All 256 possible byte values occur in the sample.
+- Measured sample Shannon entropy: **7.9972 bits per byte** (maximum 8).
+- A direct, unencrypted PS3 item-table interpretation of the first 32 bytes
+  yields clearly out-of-range lengths/offsets, not plausible package entries.
+
+This is consistent with a ciphertext-like or otherwise high-entropy payload.
+**Entropy alone cannot prove encryption, identify a cipher, or establish
+the game engine.** No keys were used, no protected records were decoded,
+and raw data bytes are deliberately omitted from this report.
+
 ## Key discovery and boundaries
 
 Revision `0x0000` is **not** the standard finalized retail PKG revision
