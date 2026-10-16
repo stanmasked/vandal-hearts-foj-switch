@@ -317,3 +317,13 @@ These results are limited to the locally reconstructed standalone host test, not
 - [ ] Compile shaders with real UAM, cross-compile devkitA64 NRO and observe GPU draw on real Nintendo Switch.
 
 Configuration changes do not prove compiler or device execution.
+
+## Stage 85: native triangle Makefile dependency regression (2026-10-17)
+
+- [x] Confirm with a local GNU Make dependency reproduction that a newer shader layout header makes the native triangle ELF out of date (`make -q` exits 1).
+- [x] Add `tests/test_gpu_make_dependencies.sh` to check both shader headers and a current-ELF control case in a temporary SDK-free workspace.
+- [x] Include the regression in dedicated GCC/Clang GPU CI strict step; log errors together with the existing host suite and update path filters.
+- [ ] Confirm the new regression against the complete GitHub checkout and actual CI results.
+- [ ] Run UAM DKSH compilation, devkitA64 GPU NRO link and physical Switch triangle draw.
+
+The local dependency reproduction was not a full real SDK build.
