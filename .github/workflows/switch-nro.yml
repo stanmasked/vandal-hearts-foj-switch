@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'switch/**'
+      - 'core/**'
       - 'tools/validate_nro.py'
       - '.github/workflows/switch-nro.yml'
   pull_request:
