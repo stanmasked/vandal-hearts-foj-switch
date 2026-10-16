@@ -11,8 +11,12 @@
  * Pinned against devkitPro/deko3d include/deko3d.h (Oct 2026).
  */
 #include <stdint.h>
-_Static_assert(DkDeviceFlags_DepthZeroToOne == 256u,
-               "deko3d uses 0..1 clip-space depth");
+/* 0-to-1 depth is selected by CLEARING bit 8. Setting bit 8 instead
+ * selects the incompatible -1-to-1 clip-depth convention. */
+_Static_assert(DkDeviceFlags_DepthZeroToOne == 0u,
+               "deko3d 0..1 clip-depth flag must be zero");
+_Static_assert(DkDeviceFlags_DepthMinusOneToOne == 256u,
+               "deko3d -1..1 clip-depth flag must set bit 8");
 _Static_assert(DkImageType_2D == 2, "unexpected 2D image enum");
 _Static_assert(DkImageFormat_RGBA8_Unorm == 28,
                "wrong RGBA8 render target enum");
