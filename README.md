@@ -4,8 +4,8 @@ Research project for a **native Nintendo Switch homebrew port** of
 *Vandal Hearts: Flames of Judgment* (PlayStation 3 / Xbox 360, 2010).
 
 > **Status: research / native ARM64 smoke-test only — no playable port, PS3
-> code translation, decrypted game assets, or original gameplay.** A synthetic
-> libnx console/input NRO builds in CI; this does not run Flames of Judgment.
+> code translation, decrypted game assets, or original gameplay.** Two synthetic
+> libnx NROs (text console and CPU-isometric map) build in CI. Neither runs the PS3 game.
 
 ## Immediate goal
 
@@ -51,17 +51,24 @@ Never publish the game package, license files, executables, keys or assets.
 - `docs/PORTING_PLAN.md` — milestones and technical unknowns.
 - `docs/LEGAL.md` — clean-repository rules.
 - `.github/workflows/ci.yml` — automatic host-side tests.
-- `switch/` — minimal, assets-free libnx native NRO smoke test.
+- `switch/` — two assets-free libnx native NROs (console and isometric framebuffer).
+- `core/tactical_demo.c` — portable synthetic movement BFS, heights and obstacles.
+- `core/isometric_demo.c` — portable synthetic CPU rasterizer for isometric tiles.
+- `tools/render_isometric_preview.c` — host preview generator using the same renderer.
+- `.github/workflows/isometric-preview.yml` — shareable synthetic PNG render artifact.
 - `tools/validate_nro.py` — structural check for compiled NRO output.
 - `.github/workflows/switch-nro.yml` — CI build with devkitA64.
 - `docs/SWITCH_BRINGUP.md` — build and validation evidence levels.
 
 ## Native Switch bring-up
 
-A minimal, independently written Switch console NRO compiles through devkitA64
-and passes NRO container checks in [CI run 38865695651](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/38865695651).
-Download the `foj-switch-research-nro` artifact from that run if desired.
-This is only a **homebrew startup / controller probe**, not a playable port.
+Two independently written research binaries compile through devkitA64 and
+pass NRO structure validation in [CI run 38867186153](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/38867186153):
+`foj-switch-research.nro` (ASCII tactics) and `foj-isometric-research.nro`
+(CPU-rendered isometric tactics), packaged as artifact `foj-switch-research-nros`.
+The corresponding pixel renderer is also compiled on Ubuntu to generate a
+**synthetic screenshot** through the [preview workflow](.github/workflows/isometric-preview.yml).
+These are **homebrew graphics/input/logic probes**, not a playable FoJ port.
 See [docs/SWITCH_BRINGUP.md](docs/SWITCH_BRINGUP.md).
 
 ## Relationship to the PS1 project
