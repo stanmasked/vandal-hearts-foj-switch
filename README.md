@@ -4,8 +4,8 @@ Research project for a **native Nintendo Switch homebrew port** of
 *Vandal Hearts: Flames of Judgment* (PlayStation 3 / Xbox 360, 2010).
 
 > **Status: research / native ARM64 smoke-test only — no playable port, PS3
-> code translation or original gameplay.** Eight independent libnx NROs now
-> compile in CI, including a user-local original-actor wireframe animation research viewer;
+> code translation or original gameplay.** Nine independent libnx NROs now
+> compile in CI, including original-data wireframe and DDS-textured actor research viewers;
 > none runs the original PS3 game.
 
 ## Verified user-provided PS3 package
@@ -201,6 +201,32 @@ was ~6.8 source units; **the original game's exact bind/pose conventions
 are not yet confirmed**. This is a milestone toward graphical animation,
 not a playable or visually faithful PS3 engine port.
 
+## First original textured actor rendering (2026-10-16)
+
+The project's first independent **filled 3D textured mesh renderer** is now
+implemented. [core/textured_triangles.c](core/textured_triangles.c) renders
+UV-interpolated triangles with DDS BGRA8/DXT1 atlas sampling, transparent
+texel rejection and a depth buffer. Generated C regression tests pass
+(including sanitizers).
+
+An original user-supplied FoJ `avatar_body.bmodel` has now been displayed
+on the desktop **with its original `avatar_texture.tga` (DDS DXT1,
+1024×1024)**, rather than false flat colors. Multiple genuine
+`avatar_idle.banim` timestamps have also been rendered using experimental
+skeletal deformation, retaining texture UVs. The initial nonflipped V
+orientation yields visibly more plausible atlas mapping than a flipped-V
+comparison, although original PS3 material fidelity remains unverified.
+
+The **ninth native Switch build**, `foj-textured-actor-research.nro`,
+can load the same user-controlled original character mesh + BANIM + DDS
+atlas from SD, without embedding commercial files in NRO or GitHub. See
+[local setup and limitations](docs/TEXTURED_ACTOR_SWITCH.md).
+
+The program is **CPU rasterized, orthographic, single-atlas and does not
+recreate the FoJ game engine**. It has passed ARM64 compilation, but
+real-console performance and exact original character animation are not
+yet verified. This is not a finished HD remake or playable game.
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
@@ -259,6 +285,8 @@ Never publish the game package, license files, executables, keys or assets.
 - `core/rigmesh_io.c` — bounded private FOJRM001 native mesh/bone/weight reader.
 - `tools/export_local_rigmesh.py` — local original BMODEL to FOJRM001 conversion.
 - `tools/check_local_rig_pair.py` — local rigged mesh and animation compatibility audit.
+- `core/textured_triangles.c` — portable per-pixel textured triangle rasterizer with z-buffer.
+- `switch/source/textured_actor_main.c` — ninth real-data-capable CPU textured character viewer.
 - `tools/audit_rig_clip_pairs.py` — original-game bone-hierarchy pairing audit.
 - `core/obj_wireframe.c` — native-compatible OBJ diagnostic renderer.
 - `switch/source/dds_main.c` — DDS viewer reading local files.
@@ -267,7 +295,7 @@ Never publish the game package, license files, executables, keys or assets.
 - `docs/PORTING_PLAN.md` — milestones and technical unknowns.
 - `docs/LEGAL.md` — clean-repository rules.
 - `.github/workflows/ci.yml` — automatic host-side tests.
-- `switch/` — eight native libnx research NROs; original-data-capable builds contain no bundled game assets.
+- `switch/` — nine native libnx research NROs; original-data-capable builds contain no bundled game assets.
 - `core/tactical_demo.c` — portable synthetic movement BFS, heights and obstacles.
 - `core/isometric_demo.c` — portable synthetic CPU rasterizer for isometric tiles.
 - `tools/render_isometric_preview.c` — host preview generator using the same renderer.
@@ -278,15 +306,16 @@ Never publish the game package, license files, executables, keys or assets.
 
 ## Native Switch bring-up
 
-Eight independent research binaries compile through devkitA64 and
-pass NRO structure validation in the [eighth-NRO build](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/38935584944):
+Nine independent research binaries compile through devkitA64 and
+pass NRO structure validation in the [ninth-NRO build](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/38938041742):
 `foj-switch-research.nro` (ASCII tactics), `foj-isometric-research.nro`
 (CPU isometric tactics), `foj-coll-map-research.nro` (COLL viewer), and
 `foj-dds-texture-research.nro` (DDS viewer), and
 `foj-obj-wireframe-research.nro` (user-local mesh wireframe), and
 `foj-banim-research.nro` (user-local bone-track timeline), and
 `foj-skinning-research.nro` (generated two-bone wireframe), and
-`foj-rigged-actor-research.nro` (private original-avatar/clip wireframe), in artifact
+`foj-rigged-actor-research.nro` (user-original avatar/clip wireframe), and
+`foj-textured-actor-research.nro` (user-original avatar/clip/DDS CPU raster), in artifact
 `foj-switch-research-nros` in the updated workflow runs.
 The corresponding pixel renderer is also compiled on Ubuntu to generate a
 **synthetic screenshot** through the [preview workflow](.github/workflows/isometric-preview.yml).
