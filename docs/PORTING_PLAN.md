@@ -39,11 +39,16 @@ reverse engineering, new platform code, and clean-room implementations.
 - [x] Resolve 895 genuine material/texture links including 143 same-name ambiguities.
 - [x] Export a five-section authentic avatar as OBJ/MTL/PNG privately for Blender.
 - [x] Update native Switch OBJ wireframe reader to accept material directives.
+- [x] Recover BMODEL 0x0A bone hierarchy, quaternion/translation transforms (89 rigs, 2512 bones).
+- [x] Parse all 450 BANIM clips into 16631 tracks / 1274805 validated keyframes.
+- [x] Add portable C BANIM parser and shortest-path quaternion interpolation tests.
+- [x] Compile sixth Switch NRO that reads user-local BANIM and samples track poses.
 - [ ] Establish full semantic meanings for proprietary resource formats and original battle rules.
 - [x] Identify BGRA8 and DXT1 DDS texture formats and validate actual images.
 - [x] Identify recurring .bmodel and .banim header fields in bounded real samples.
 - [x] Recover all static mesh vertex/index/UV arrays and material name tables.
-- [ ] Decode full bone hierarchy/transforms, animation tracks and audio formats.
+- [x] Decode bone hierarchy/transforms and BANIM local tracks.
+- [ ] Validate original inverse bind matrices/skin deformation and audio formats.
 - [ ] Identify script/event/battle data formats and code architecture.
 - [ ] Choose source-port, reimplementation, or other viable strategy.
 
