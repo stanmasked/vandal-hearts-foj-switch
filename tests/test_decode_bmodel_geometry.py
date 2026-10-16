@@ -135,7 +135,7 @@ class BModelTriangleMeshTests(unittest.TestCase):
         normals_start = (8 + len(b"syntheticShape_0")
                          + 3 + n*12 + 5 + n*8 + 3)
         struct.pack_into(">3f", data, normals_start, 5., 5., 5.)
-        with self.assertRaisesRegex(BModelError, "Normal"):
+        with self.assertRaisesRegex(BModelError, "normal vectors"):
             decode_first_shape(bytes(data))
 
     def test_reject_unknown_uv_prefix_and_triangle_count(self):
