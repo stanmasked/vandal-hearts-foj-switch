@@ -32,7 +32,9 @@ reverse engineering, new platform code, and clean-room implementations.
 - [x] Validate five original BGRA8/DXT1 textures locally and publish format-only findings.
 - [x] Add portable C DDS decoder, generated regression tests, and native viewer NRO.
 - [ ] Establish full semantic meanings for proprietary resource formats and original battle rules.
-- [ ] Determine actual renderer, mesh/texture/animation/audio formats.
+- [x] Identify BGRA8 and DXT1 DDS texture formats and validate actual images.
+- [x] Identify recurring .bmodel and .banim header fields in bounded real samples.
+- [ ] Recover complete mesh vertex/index/UV format, animation tracks and audio formats.
 - [ ] Identify script/event/battle data formats and code architecture.
 - [ ] Choose source-port, reimplementation, or other viable strategy.
 
