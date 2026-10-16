@@ -450,6 +450,29 @@ GitHub-hosted Actions workflows still fail before executing steps.
 The new renderer is a source implementation pending native execution,
 not a working game or finished HD remake.
 
+## GPU triangle draw ABI and pixel reference gates
+
+The opt-in `foj-deko3d-triangle-research` NRO source now has
+**explicit deko3d vertex-attribute field initializers**, with C11
+assertions for `FojGpuVertex` size **24 bytes**, position at offset 0,
+and UV at offset 16. A matching generated-only strict-C11 layout test
+passed locally. The SDK-independent
+`make -f gpu/clear.mk host-triangle-check` checks the optional
+shader-backed branch; it is wired into Actions for execution once jobs
+can start.
+
+A new [deterministic GPU triangle pixel reference](tools/gpu_triangle_reference.py)
+calculates approximate viewport coordinates and UV-derived colors at
+five fixed points in a 1280×720 frame. **Four local unit tests
+passed**, including color changes between frames 0 and 120. The
+[reference guide](docs/DEKO3D_FIRST_TRIANGLE.md) specifies expected
+center color and background probes for future physical Switch capture
+comparison. This reference is **not a GPU screenshot**.
+
+Native UAM compilation, ARM64 triangle build, and actual GPU display
+remain unverified because the current environment lacks devkitPro
+and GitHub-hosted jobs still fail before running any steps.
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
