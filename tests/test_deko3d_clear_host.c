@@ -144,7 +144,7 @@ void* dkMemBlockGetCpuAddr(DkMemBlock m) {
 }
 DkGpuAddr dkMemBlockGetGpuAddr(DkMemBlock m) {
     assert(m&&m==g.vertex_buffer);
-    return g.failure==FAIL_VERTEX_GPU?0u:UINT64_C(0x7f000000);
+    return g.failure==FAIL_VERTEX_GPU?DK_GPU_ADDR_INVALID:UINT64_C(0x7f000000);
 }
 void dkImageInitialize(DkImage* im,const DkImageLayout* l,
                        DkMemBlock m,uint32_t off) {
