@@ -236,3 +236,11 @@ audio/video codecs; localization; and required work are **unconfirmed**.
 - [x] Confirm committed workflow content through GitHub connector.
 - [ ] Confirm actual Actions job execution and pass/fail logs; neither a committed workflow nor empty commit statuses proves a run occurred.
 - [ ] Verify genuine UAM shader compilation, devkitA64 NRO link, and first physical Switch GPU draw.
+
+## Stage 76: synthetic DKSH GPU two-slot integration (2026-10-17)
+
+- [x] Add generated-only integration test `tests/test_gpu_dksh_integration.c` combining the real DKSH file loader and GPU shader layout calculator.
+- [x] Cover maximum 126,976-byte vertex/fragment stages, disjoint shader slots, preserved gap/tail, and refusal to replace a valid loaded fragment with a damaged module.
+- [x] Wire test into strict host-check, sanitizer host suite, and clean targets via `gpu/clear.mk`.
+- [ ] Run the new integration test on a full checkout / CI runner; GitHub connector writes and source review do not prove successful C compilation or test execution.
+- [ ] Validate actual UAM DKSH modules, ARM64 NRO and first physical Switch GPU frame.
