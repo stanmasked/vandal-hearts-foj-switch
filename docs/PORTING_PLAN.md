@@ -72,6 +72,8 @@ reverse engineering, new platform code, and clean-room implementations.
 - [x] Execute real optional GPU smoke C entrypoint against host-only deko3d/libnx stateful fake; validate 242 frames and four GPU command lists.
 - [x] Inject nine GPU allocation/queue/acquire failures; confirm no live mock resources after exit and pass C11/ASan/UBSan.
 - [x] Wire mock API smoke verification into standalone Makefile and future GitHub CI (not yet run on GitHub due to zero-step failure).
+- [x] Mock deko3d/libnx public calls while compiling the real optional GPU smoke entrypoint on desktop; 242 frame cycles, 9 simulated failures, and Plus exit exercised.
+- [x] Validate no live resources in 11 host mock scenarios; strict C11 and ASan/UBSan passed locally, CI steps registered pending runner recovery.
 - [ ] Produce and launch the optional GPU clear NRO on physical hardware, verify color-changing frame and Plus exit.
 - [ ] Verify native UAM shader compilation, implement deko3d GPU draw calls and display actual frames on Switch.
 - [ ] Reproduce PS3-original shader/sampler material parameters, pose and camera conventions.
