@@ -491,6 +491,25 @@ Actions zero-step failure remains a separate blocker. This is a
 correction to SDK/test compatibility rather than a claim of GPU output.
 [Technical evidence](docs/DEKO3D_GPU_CLEAR_SMOKE.md).
 
+## Validated DKSH GPU code-memory slots (2026-10-16)
+
+The first shader-backed deko3d triangle research source now uses a
+separate [shader memory planner](gpu/shader_layout.c) to place its
+UAM-generated **vertex and fragment DKSH** modules into distinct
+128-KiB slots of a 256-KiB code memory block. It validates aligned
+module sizes, rejects overlap and respects deko3d's final **1-KiB
+unusable code tail**, before calling `dkShaderInitialize`.
+
+A new [host test](tests/test_shader_layout.c) passes strict C11 and
+ASan/UBSan in the local runtime. The existing SDK-free
+`make -f gpu/clear.mk host-check` and `host-mock-sanitized`
+now also include these checks, in addition to GitHub CI jobs.
+
+This result establishes memory-plan arithmetic safety only.
+**No UAM DKSH compile, ARM64 GPU NRO build or physical Switch GPU
+triangle has been verified.** See
+[DEKO3D_FIRST_TRIANGLE.md](docs/DEKO3D_FIRST_TRIANGLE.md).
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
