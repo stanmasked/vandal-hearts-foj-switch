@@ -228,3 +228,11 @@ audio/video codecs; localization; and required work are **unconfirmed**.
 - [x] Keep per-suite outcomes, saved logs, and existing workflow failure propagation.
 - [ ] Verify an actual GitHub Actions run. Empty combined commit statuses do not establish workflow execution or outcome.
 - [ ] Validate real UAM DKSH and ARM64 GPU NRO compilation with installed Switch toolchain, then observe physical hardware output.
+
+## Stage 75: cross-compiler host CI (2026-10-17)
+
+- [x] Expand dedicated SDK-free GPU workflow to GCC and Clang matrix jobs with fail-fast disabled.
+- [x] Set `HOSTCC` per compiler, show selected compiler version and retain compiler-specific CI log artifacts.
+- [x] Confirm committed workflow content through GitHub connector.
+- [ ] Confirm actual Actions job execution and pass/fail logs; neither a committed workflow nor empty commit statuses proves a run occurred.
+- [ ] Verify genuine UAM shader compilation, devkitA64 NRO link, and first physical Switch GPU draw.
