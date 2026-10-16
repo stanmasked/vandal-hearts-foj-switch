@@ -1,5 +1,11 @@
 name: Optional FoJ deko3d GPU smoke
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'gpu/deko3d_clear_main.c'
+      - 'gpu/clear.mk'
+      - '.github/workflows/gpu-clear-smoke.yml'
   workflow_dispatch:
 permissions:
   contents: read
