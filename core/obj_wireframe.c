@@ -101,6 +101,8 @@ int foj_obj_read(FILE *file, FojObjMesh *mesh) {
             mesh->triangle_count++;
         } else if (line[0] == '#' || line[0] == '\n' ||
                    line[0] == 'o' || line[0] == 'g' ||
+                   strncmp(line, "usemtl ", 7) == 0 ||
+                   strncmp(line, "mtllib ", 7) == 0 ||
                    (line[0] == 'v' && (line[1] == 'n' || line[1] == 't'))) {
             /* Object names, texture coordinates and normals are deliberately
                ignored in the *wireframe-only* diagnostic viewer. */
