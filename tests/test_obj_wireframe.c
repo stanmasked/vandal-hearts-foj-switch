@@ -21,6 +21,8 @@ static void test_triangle_mesh_and_camera(void) {
     static const char source[] =
         "# synthetic mesh\n"
         "o invented_shape\n"
+        "mtllib synthetic.mtl\n"
+        "usemtl sample_mat\n"
         "v -1 0 0\n"
         "v 1 0 0\n"
         "v 0 2 0\n"
