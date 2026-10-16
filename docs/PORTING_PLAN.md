@@ -335,3 +335,11 @@ The local dependency reproduction was not a full real SDK build.
 - [x] Extend the SDK-free Makefile dependency regression to cover both Makefiles in addition to DKSH and shader-layout headers.
 - [ ] Confirm complete test execution on a GitHub checkout and validate actual Actions logs; source commits alone are not proof of a passing test run.
 - [ ] Validate real devkitA64/UAM compilation and a physical Switch GPU frame.
+
+## Stage 87: executed GPU triangle Makefile dependency regression (2026-10-17)
+
+- [x] Retrieved the current Makefile dependency regression and GPU variant configuration through GitHub connector.
+- [x] Recreated the pertinent native GPU ELF dependency and compile rule locally, using GNU Make dry-run mode; validated all four change cases: `dksh_module.h`, `shader_layout.h`, `triangle.mk`, and `clear.mk`.
+- [x] Confirmed control case: unchanged headers and Makefiles do not cause ELF recompilation. The SDK-free regression passed locally after replacing an older local placeholder rule with the actual compiler-shaped rule.
+- [ ] Execute the exact script within a complete repository checkout/CI environment; this is not an end-to-end Makefile execution on cloned repository files.
+- [ ] Verify GitHub Actions logs, actual UAM DKSH, devkitA64 NRO output, and GPU draw on physical Switch.
