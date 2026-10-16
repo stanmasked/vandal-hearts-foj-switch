@@ -308,3 +308,12 @@ Local tests use manually reconstructed source, not a full repository checkout or
 - [ ] Build real UAM DKSH and ARM64 NRO, then validate rendering on physical Switch hardware.
 
 These results are limited to the locally reconstructed standalone host test, not deko3d device execution.
+
+## Stage 84: native triangle rebuild dependency correctness (2026-10-17)
+
+- [x] Add optional `GPU_EXTRA_DEPS` to the GPU ELF target in `gpu/clear.mk` without changing the standalone clear smoke-test variant.
+- [x] Declare `gpu/dksh_module.h` and `gpu/shader_layout.h` as native triangle build dependencies in `gpu/triangle.mk` so editing either header invalidates the ARM64 ELF target.
+- [ ] Verify these make dependencies on a complete repository checkout, run full GCC/Clang host suites and inspect actual GitHub Actions results.
+- [ ] Compile shaders with real UAM, cross-compile devkitA64 NRO and observe GPU draw on real Nintendo Switch.
+
+Configuration changes do not prove compiler or device execution.
