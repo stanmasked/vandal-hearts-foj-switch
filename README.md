@@ -4,8 +4,9 @@ Research project for a **native Nintendo Switch homebrew port** of
 *Vandal Hearts: Flames of Judgment* (PlayStation 3 / Xbox 360, 2010).
 
 > **Status: research / native ARM64 smoke-test only — no playable port, PS3
-> code translation or original gameplay.** Three independent libnx NROs build
-> in CI, including a diagnostic 50×50 COLL data viewer; none runs the PS3 game.
+> code translation or original gameplay.** Four independent libnx NROs now
+> compile in CI, including original-format map and texture diagnostic viewers;
+> none runs the original PS3 game.
 
 ## Verified user-provided PS3 package
 
@@ -54,6 +55,24 @@ This is **diagnostic visualization only**. Numeric values and boolean columns
 do not yet have verified in-game meanings, and the FoJ 3D engine / combat
 systems remain unported.
 
+## Original textures decoded and fourth Switch NRO
+
+Five original textures were read directly from the user's `cdata.psarc`
+and successfully decoded locally. Two contain BGRA8 data and three contain
+DXT1/BC1 DDS blocks, despite the game's `.tga` filenames. See
+[verified resource signatures](docs/REAL_RESOURCE_SIGNATURES.md).
+
+A new [portable C DDS decoder](core/dds_texture.c), dedicated generated-data
+regression tests, and a fourth native homebrew build
+`foj-dds-texture-research.nro` are now present. That viewer loads a
+**user-supplied local** DDS-in-TGA resource from
+`sdmc:/switch/foj/textures/preview.tga`, with a generated-only fallback.
+[See viewer instructions](docs/DDS_SWITCH_VIEWER.md).
+
+**The original FoJ models, skeletons, materials and gameplay are not yet
+running on Switch.** Decoding a texture atlas is a necessary step, not a
+complete 3D game port.
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
@@ -98,12 +117,15 @@ Never publish the game package, license files, executables, keys or assets.
 - `tools/export_local_coll.py` — explicit local-only original COLL export.
 - `core/coll_grid.c` — portable C loader for the real-format 50×50 map data.
 - `core/coll_view.c` — diagnostic six-channel heatmap on large grids.
+- `core/dds_texture.c` — portable DDS BGRA8 + DXT1 decoder.
+- `tools/export_local_texture.py` — explicit local-only DDS texture export.
+- `switch/source/dds_main.c` — DDS viewer reading local files.
 - `tests/` — synthetic test fixtures, no proprietary data.
 - `docs/PKG_INPUT.md` — local package preparation and safe validation.
 - `docs/PORTING_PLAN.md` — milestones and technical unknowns.
 - `docs/LEGAL.md` — clean-repository rules.
 - `.github/workflows/ci.yml` — automatic host-side tests.
-- `switch/` — two assets-free libnx native NROs (console and isometric framebuffer).
+- `switch/` — four native, data-free libnx diagnostic NRO builds.
 - `core/tactical_demo.c` — portable synthetic movement BFS, heights and obstacles.
 - `core/isometric_demo.c` — portable synthetic CPU rasterizer for isometric tiles.
 - `tools/render_isometric_preview.c` — host preview generator using the same renderer.
@@ -114,11 +136,11 @@ Never publish the game package, license files, executables, keys or assets.
 
 ## Native Switch bring-up
 
-Three independently written research binaries compile through devkitA64 and
-pass NRO structure validation in [CI run 38867186153](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/38867186153):
-`foj-switch-research.nro` (ASCII tactics) and `foj-isometric-research.nro`
-(CPU-rendered isometric tactics), and `foj-coll-map-research.nro`
-(50×50 six-channel COLL inspector), packaged as artifact
+Four independently written research binaries compile through devkitA64 and
+pass NRO structure validation in the [latest four-NRO build](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/38921473035):
+`foj-switch-research.nro` (ASCII tactics), `foj-isometric-research.nro`
+(CPU isometric tactics), `foj-coll-map-research.nro` (COLL viewer), and
+`foj-dds-texture-research.nro` (original-format DDS viewer), in artifact
 `foj-switch-research-nros` in the updated workflow runs.
 The corresponding pixel renderer is also compiled on Ubuntu to generate a
 **synthetic screenshot** through the [preview workflow](.github/workflows/isometric-preview.yml).
@@ -136,7 +158,8 @@ mistake compatibility probes for completed game systems.
 
 - PKG content may be encrypted, and the container header alone does not reveal
   models, maps or executable game logic.
-- The game engine and asset formats are **not yet verified**.
+- Map COLL and sampled DDS formats are verified; 3D meshes, animations,
+  engine implementation and authentic gameplay remain unknown.
 - The goal is homebrew development, not an official Nintendo release.
 - Compatibility, performance, and game completeness are unknown until tested.
 
