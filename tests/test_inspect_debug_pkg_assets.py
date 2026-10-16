@@ -17,10 +17,29 @@ from tools.inspect_debug_pkg_assets import (
 from tools.inspect_split_pkg import JoinedParts
 
 
-def synthetic_psarc():
+def synthetic_psarc(with_map=False):
     filenames = ["data/example.tga", "data/example.lua"]
     blobs = [("\n".join(filenames) + "\n").encode(), b"DDS " + b"X" * 40,
              b"-- synthetic Lua test\nvalue=1\n"]
+    if with_map:
+        filenames += [
+            "data/maps/map1-1.coll",
+            "data/maps/map1-1.vis",
+            "data/maps/map1-1.ini",
+        ]
+        blobs[0] = ("\n".join(filenames) + "\n").encode()
+        coll = (
+            b"2,2,-10,-10,10,10,\n"
+            b"0,0,0,0,0,0,false,false,\n"
+            b"1,0,1,1,1,1,true,false,\n"
+            b"0,1,0,1,2,3,false,true,\n"
+            b"1,1,2,2,2,2,false,false,\n"
+        )
+        vis = (b"0\n2\n4\n" +
+               b"0,0,false,true\n1,0,false,true\n" +
+               b"0,1,false,true\n1,1,false,true\n")
+        ini = b"[tree0]\nbase=tree\nlocation=1,2,3\n"
+        blobs.extend([coll, vis, ini])
     compressed = [zlib.compress(blob) for blob in blobs]
     block_size = 65536
     toc_len = 32 + len(blobs) * 30 + len(blobs) * 2
@@ -43,8 +62,8 @@ def synthetic_psarc():
     return bytes(out)
 
 
-def synthetic_pkg(*, revision=0):
-    psarc = synthetic_psarc()
+def synthetic_pkg(*, revision=0, with_map=False):
+    psarc = synthetic_psarc(with_map=with_map)
     names = [b"PARAM.SFO", b"USRDIR/cdata.psarc"]
     body_start = 2 * 32 + sum(len(x) for x in names)
     body_start = (body_start + 15) & ~15
@@ -111,6 +130,17 @@ class DebugPKGResearchTests(unittest.TestCase):
         self.assertEqual(len(report["pkg_items"]), 2)
         self.assertNotIn("-- synthetic Lua test", json.dumps(report))
         self.assertNotIn("DDS X", json.dumps(report))
+
+    def test_inline_original_style_map_summary(self):
+        paths = make_parts(self.temp.name, synthetic_pkg(with_map=True))
+        report = summarize([str(path) for path in paths], map_name="map1-1")
+        selected = report["selected_map"]
+        self.assertEqual(selected["collision"]["width"], 2)
+        self.assertEqual(selected["collision"]["cells"], 4)
+        self.assertEqual(selected["collision"]["flag_true_counts"], [1, 1])
+        self.assertEqual(selected["visibility"]["records"], 4)
+        self.assertEqual(selected["placements"]["section_count"], 1)
+        self.assertNotIn("base=tree", json.dumps(report))
 
     def test_wrong_revision_fails_without_fallback(self):
         paths = make_parts(self.temp.name, synthetic_pkg(revision=0x8000))
