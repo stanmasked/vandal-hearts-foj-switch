@@ -16,7 +16,7 @@ make -f switch/Makefile verify
 ```
 
 
-Produces eight independently built research executables, without bundled
+Produces nine independently built research executables, without bundled
 commercial game assets, and validates NRO0 magic, file size and segments:
 
 - `build/foj-switch-research.nro` — text-console map, controls, and logic.
@@ -148,3 +148,14 @@ The exact procedure for local original asset preparation and the limitations
 of experimental skinning are in
 [ORIGINAL_RIGGED_ACTOR_SWITCH.md](ORIGINAL_RIGGED_ACTOR_SWITCH.md).
 Physical Switch execution and matching the PS3 engine are still unverified.
+
+## Ninth build: original user-controlled DDS textured animated mesh
+
+`build/foj-textured-actor-research.nro` combines local original rigged
+geometry, matching `BANIM` animation, and original DDS-in-TGA atlas from
+SD. Its CPU triangle rasterizer interpolates UV coordinates, performs
+alpha cutout and depth testing, and renders an experimental animated mesh.
+No copyrighted asset is bundled in GitHub or NRO. The original engine's
+materials, skinning transform order, visual style and console performance
+are not yet validated. See
+[TEXTURED_ACTOR_SWITCH.md](TEXTURED_ACTOR_SWITCH.md).
