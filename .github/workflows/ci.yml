@@ -128,6 +128,20 @@ jobs:
             -lm -o /tmp/foj_gpu_stage_asan
           /tmp/foj_gpu_stage_asan
 
+      - name: Validate GPU framebuffer alignment and persistent color command plans
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Igpu \
+            tests/test_gpu_smoke_plan.c gpu/smoke_plan.c \
+            -lm -o /tmp/foj_gpu_clear_math
+          /tmp/foj_gpu_clear_math
+      - name: Address/undefined-behavior checks on portable GPU smoke math
+        run: |
+          cc -std=c11 -O1 -g -fsanitize=address,undefined \
+            -fno-omit-frame-pointer -Igpu \
+            tests/test_gpu_smoke_plan.c gpu/smoke_plan.c \
+            -lm -o /tmp/foj_gpu_clear_math_asan
+          /tmp/foj_gpu_clear_math_asan
+
       - name: Compile and run portable tactical logic tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
