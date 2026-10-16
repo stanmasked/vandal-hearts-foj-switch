@@ -13,4 +13,5 @@ void padUpdate(PadState* pad);
 u64 padGetButtonsDown(PadState* pad);
 int appletMainLoop(void);
 void* nwindowGetDefault(void);
+int fsdevMountSdmc(void); /* triangle-mode compile-only, no real SD mount */
 #endif
