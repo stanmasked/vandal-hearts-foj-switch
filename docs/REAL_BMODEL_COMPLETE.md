@@ -1,7 +1,7 @@
 # Full FoJ BMODEL mesh sections, skin weights and material links
 
 **Research date:** 2026-10-16. Investigated directly from the user's original
-PS3 \`NPEB00148\` split archive → \`cdata.psarc\`. The GitHub repository
+PS3 `NPEB00148` split archive → `cdata.psarc`. The GitHub repository
 contains only our parser, synthetic test fixtures and aggregate observations.
 The commercial data and exported models remain outside GitHub.
 
@@ -26,19 +26,19 @@ This substantially extends the
 
 Shape count varies from 1 up to 50 sections per model. Each observed mesh
 section repeats the same big-endian XYZ/UV/normal/face-normal/index record
-sequence; individual section boundaries are separated by marker \`0x07\`.
-After each section, an \`0x14\` material name and \`0x21\`-prefixed six-float
+sequence; individual section boundaries are separated by marker `0x07`.
+After each section, an `0x14` material name and `0x21`-prefixed six-float
 bounds record are present. All 1,380 sections were traced through these
 structures by a local independent validation probe.
 
 ### Skinning / vertex bone weight records
 
-An optional \`0x0F\` record follows the triangle indices before the material
+An optional `0x0F` record follows the triangle indices before the material
 and bounds block.
 
 | Field | Observed representation |
 | --- | --- |
-| Marker | \`0F\` |
+| Marker | `0F` |
 | Next two bytes | uint16 BE: **total influence records** |
 | Next two bytes | uint16 BE: **influences per vertex** |
 | Each influence record | uint16 BE **bone index**, float32 BE **weight** |
@@ -61,9 +61,9 @@ yet been decoded.
 
 ### Material and texture table
 
-After the final mesh section, \`0x07\` introduces a list of material entries.
-Each \`0x06\` entry contains a length-prefixed material name and one or more
-length-prefixed texture names. The observed materials refer to \`.tga\`
+After the final mesh section, `0x07` introduces a list of material entries.
+Each `0x06` entry contains a length-prefixed material name and one or more
+length-prefixed texture names. The observed materials refer to `.tga`
 **filenames**, whose bytes can actually be legacy DDS images.
 
 Across all 583 models, 895 individual texture-name links were found.
@@ -82,8 +82,8 @@ original renderer lacks additional per-material configuration.
 
 ### Undecoded trailing records
 
-After the material bundle, 494 models continue with marker \`0x0C\` and
-89 with \`0x0A\`. The semantics of those trailing records remain unknown.
+After the material bundle, 494 models continue with marker `0x0C` and
+89 with `0x0A`. The semantics of those trailing records remain unknown.
 **No animation skeleton, hierarchy or transforms should be inferred**
 from their mere presence.
 
@@ -100,31 +100,31 @@ from their mere presence.
 
 To reproduce aggregate findings on your own local split PKG ZIP:
 
-\`\`\`sh
+```sh
 python3 -m tools.audit_all_bmodels \
   "/path/to/NPEB00148.pkg.zip.001" \
   "/path/to/NPEB00148.pkg.zip.002" > local-bmodel-audit.json
-\`\`\`
+```
 
 To inspect one original model, without extracting any bytes:
 
-\`\`\`sh
+```sh
 python3 -m tools.inspect_complete_bmodel \
   "/path/to/NPEB00148.pkg.zip.001" \
   "/path/to/NPEB00148.pkg.zip.002" \
   --asset "data/actors/npc/avatar_body.bmodel" --json
-\`\`\`
+```
 
 To opt in to **local-only multi-shape OBJ export**:
 
-\`\`\`sh
+```sh
 mkdir -p local-data/models
 python3 -m tools.inspect_complete_bmodel \
   "/path/to/NPEB00148.pkg.zip.001" \
   "/path/to/NPEB00148.pkg.zip.002" \
   --asset "data/actors/npc/avatar_body.bmodel" \
   --reverse-winding --flip-v --output "local-data/models/preview.obj"
-\`\`\`
+```
 
 The new OBJ includes all shape groups, XYZ, UVs, normals and original
 **material labels**, but does not bundle textures or skeletons. It refuses
@@ -134,12 +134,12 @@ OBJ after the user places it on their own SD card.
 
 ## First complete model tested visually
 
-\`data/actors/npc/avatar_body.bmodel\`:
+`data/actors/npc/avatar_body.bmodel`:
 
 - **5** geometric sections; **4,722** vertices and **1,574** triangles.
 - **14,166** individual skin-influence records.
-- All sections refer to material \`avatar_mat\`, linked to
-  \`avatar_texture.tga\`.
+- All sections refer to material `avatar_mat`, linked to
+  `avatar_texture.tga`.
 - The original atlas and all five mesh sections were loaded locally and a
   two-view diagnostic render was created.
 - A private Blender-compatible OBJ/MTL/PNG bundle was built from the user's
@@ -151,9 +151,9 @@ filtering. Real shaders, skeleton and poses must be implemented separately.
 
 ## Remaining milestones
 
-1. Understand \`0x0A\` / \`0x0C\` trailing blocks, original bone hierarchies
+1. Understand `0x0A` / `0x0C` trailing blocks, original bone hierarchies
    and skin transforms.
-2. Parse original \`.banim\` pose/keyframe streams and interpolate them.
+2. Parse original `.banim` pose/keyframe streams and interpolate them.
 3. Build a true textured triangle rasterizer (UV interpolation + depth
    buffer), then bring the original textured mesh to Switch using only
    user-provided local resource files.
