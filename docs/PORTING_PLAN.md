@@ -66,6 +66,9 @@ reverse engineering, new platform code, and clean-room implementations.
 - [x] Add structural DKSH validator and synthetic integrity tests, invoked by optional UAM Makefile.
 - [x] Implement separate source-only deko3d device, double-buffered RGBA8 swapchain, GPU clear queue and present loop without game assets.
 - [x] Add optional GPU-only devkitPro debug build Makefile and isolated Actions workflow (first run failed before any steps; no GPU build success).
+- [x] Match upstream deko3d static command-list lifecycle; pre-record 4 immutable 2-framebuffer × 2-color GPU clear commands.
+- [x] Use correctly aligned GPU image allocations, full-screen scissor and GPU-only image memory flags.
+- [x] Add devkitPro-free host-check with locally run C11 + ASan/UBSan tests of allocation and palette scheduling.
 - [ ] Produce and launch the optional GPU clear NRO on physical hardware, verify color-changing frame and Plus exit.
 - [ ] Verify native UAM shader compilation, implement deko3d GPU draw calls and display actual frames on Switch.
 - [ ] Reproduce PS3-original shader/sampler material parameters, pose and camera conventions.
