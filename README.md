@@ -271,6 +271,29 @@ Recent GitHub Actions runs have not exposed even their individual job
 steps or logs, so current GitHub CI failures are **not sufficient
 evidence of code/test failures**; local C tests are verified separately.
 
+## GPU clip-depth correction and DKSH safety gate
+
+Verified against the original user-local Daldren model, the
+[GPU-oriented vertex stream](core/gpu_vertex_stream.c) now maps the
+model's camera-space depth range to **[0.01,0.99]**, avoiding rejection
+by deko3d's default **0-to-1** clip-depth interval. This preserves
+the CPU renderer's closer-is-larger depth order with GPU depth compare
+`GREATER` and clear value `0`. Across all **9,066** model vertices,
+output remains finite; six shape batches and both original DDS atlas
+assignments were unchanged.
+
+The future optional [UAM shader build](gpu/Makefile) now runs a
+[DKSH container integrity check](tools/validate_dksh.py), with
+synthetic format regression tests. **The DKSH shaders are not compiled
+yet** because UAM is absent locally; no deko3d draw calls or physical
+Switch GPU frames are claimed.
+
+Latest GitHub Actions runs still report failures **without any job
+step logs**, so the locally executed strict C11/ASan/UBSan vertex tests
+are the reliable confirmation for this specific change. See
+[GPU staging details](docs/GPU_VERTEX_STAGING.md) and
+[the CI infrastructure issue](https://github.com/stanmasked/vandal-hearts-foj-switch/issues/15).
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
