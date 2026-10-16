@@ -23,7 +23,7 @@ CFLAGS := -std=c11 -O2 -Wall -Wextra -Werror -fPIE -ffunction-sections \
 LDFLAGS := -specs=$(DEVKITPRO)/libnx/switch.specs -Wl,--gc-sections \
   -pie -L$(DEVKITPRO)/libnx/lib
 
-.PHONY: all verify clean preflight host-check host-mock-sanitized
+.PHONY: all verify clean preflight host-check host-mock-sanitized host-triangle-check
 all: $(OUT).nro
 
 preflight:
@@ -59,6 +59,14 @@ $(HOST_MOCK_SAN): tests/test_deko3d_clear_host.c tests/mock_switch_sdk/deko3d.h 
 	  -fsanitize=address,undefined -fno-omit-frame-pointer \
 	  -Itests/mock_switch_sdk -Igpu -Icore \
 	  tests/test_deko3d_clear_host.c gpu/smoke_plan.c -lm -o $@
+
+# Check the real optional triangle source in GCC/Clang C11 syntax mode.
+# This uses lightweight SDK declarations and DOES NOT link or run GPU code.
+host-triangle-check:
+	$(HOSTCC) -std=c11 -Wall -Wextra -Werror -pedantic \
+	  -DFOJ_GPU_DRAW_TRIANGLE=1 -fsyntax-only \
+	  -Itests/mock_switch_sdk -Icore -Igpu \
+	  gpu/deko3d_clear_main.c
 
 host-check: $(HOST_TEST) $(HOST_ABI) $(HOST_MOCK)
 	./$(HOST_TEST)
