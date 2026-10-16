@@ -29,6 +29,13 @@ typedef struct {
     int flip_v; /* manually configured research texture orientation */
 } FojTextureCamera;
 
+/* Sections are contiguous triangle-soup vertex ranges. The native caller
+ * selects one decoded DDS atlas per original BMODEL material/section. */
+typedef struct {
+    size_t first_vertex, vertex_count;
+    unsigned texture_index;
+} FojTextureSection;
+
 typedef enum {
     FOJ_TEX_OK = 0,
     FOJ_TEX_ARGUMENT,
@@ -44,5 +51,16 @@ FojTextureStatus foj_textured_render(
     const FojTexturedVertex *vertices, size_t vertex_count,
     const FojTexture *texture, const FojRenderSurface *surface,
     const FojTextureCamera *camera, size_t *pixels_drawn);
+
+/* Draws *all* ordered shape sections into ONE cleared depth/color surface.
+ * Requires exact continuous section coverage and valid texture indexes.
+ * Preserves depth across different materials, unlike separate render calls.
+ */
+FojTextureStatus foj_textured_render_sections(
+    const FojTexturedVertex *vertices, size_t vertex_count,
+    const FojTexture *textures, size_t texture_count,
+    const FojTextureSection *sections, size_t section_count,
+    const FojRenderSurface *surface, const FojTextureCamera *camera,
+    size_t *pixels_drawn);
 
 #endif
