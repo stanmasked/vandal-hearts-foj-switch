@@ -31,6 +31,9 @@ reverse engineering, new platform code, and clean-room implementations.
 - [x] Compile a separate native Switch COLL heatmap inspector NRO (runtime still to be tested).
 - [x] Validate five original BGRA8/DXT1 textures locally and publish format-only findings.
 - [x] Add portable C DDS decoder, generated regression tests, and native viewer NRO.
+- [x] Recover first-section XYZ/UV/normals/face normals/index data in all 583 original .bmodel files.
+- [x] Export one original 3D model locally as OBJ and create a diagnostic render.
+- [x] Compile a fifth native libnx NRO for a user-provided local OBJ wireframe.
 - [ ] Establish full semantic meanings for proprietary resource formats and original battle rules.
 - [x] Identify BGRA8 and DXT1 DDS texture formats and validate actual images.
 - [x] Identify recurring .bmodel and .banim header fields in bounded real samples.
