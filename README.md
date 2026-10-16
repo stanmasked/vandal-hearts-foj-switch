@@ -248,6 +248,29 @@ This **does not reproduce** the original material shader properties
 (two-sided flags, lighting, blending, filtering), demonstrate Switch GPU
 rendering, or establish the actual console frame rate.
 
+## GPU vertex staging from actual original FoJ Daldren geometry
+
+A standalone [portable vertex stream](core/gpu_vertex_stream.c) converts
+CPU-skinned original-compatible FoJ XYZ/UV vertices into clip-space
+coordinates, and retains ordered per-section DDS binding batches. It was
+**compiled and tested locally** under strict C11 and ASan/UBSan.
+
+Using the actual private `cape_daldren_stone.bmodel` sample, all **9,066
+vertices** were prepared into **217,584 bytes** of GPU-layout data, with
+**six batches across two original DDS atlases**. An aggregate-only report
+was produced in conversation, without publishing original asset values.
+
+Basic [vertex and fragment shader sources](gpu/shaders/) and an
+[optional ahead-of-time UAM build](gpu/Makefile) have been added.
+**They have not yet been compiled into DKSH or run on Switch**: UAM is
+not installed in the current local workspace. Native deko3d commands,
+swapchain, GPU uploads and actual rendered frames remain work to do.
+[GPU staging evidence and next steps](docs/GPU_VERTEX_STAGING.md).
+
+Recent GitHub Actions runs have not exposed even their individual job
+steps or logs, so current GitHub CI failures are **not sufficient
+evidence of code/test failures**; local C tests are verified separately.
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
