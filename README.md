@@ -335,6 +335,26 @@ again failed at job startup with zero steps, as did unrelated Python
 tests. Neither Switch compilation nor actual GPU display is confirmed.
 [Details and acceptance tests](docs/DEKO3D_GPU_CLEAR_SMOKE.md).
 
+## Executable deko3d command-flow verification without hardware
+
+To test the first GPU app while GitHub Actions runner startup remains
+unavailable, [tests/test_deko3d_clear_host.c](tests/test_deko3d_clear_host.c)
+now **executes the real source of our isolated
+[gpu/deko3d_clear_main.c](gpu/deko3d_clear_main.c)** against a small
+stateful, host-only deko3d/libnx API mock. It checks swapchain slot
+selection, four pre-recorded GPU command lists, two color modes,
+present sequencing and cleanup.
+
+**Locally tested: 242 simulated frames, nine injected failure paths,
+zero remaining allocations in all scenarios**, with strict C11 and
+ASan/UBSan. Run `make -f gpu/clear.mk host-check` and
+`make -f gpu/clear.mk host-mock-sanitized` without devkitPro.
+Full [engineering record](docs/DEKO3D_GPU_CLEAR_SMOKE.md).
+
+These are software mock results. **No real deko3d shader compilation,
+native GPU NRO cross-build or frame presented on physical Switch** is
+claimed; GitHub Actions is still failing before creating job steps.
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
