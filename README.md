@@ -4,8 +4,8 @@ Research project for a **native Nintendo Switch homebrew port** of
 *Vandal Hearts: Flames of Judgment* (PlayStation 3 / Xbox 360, 2010).
 
 > **Status: research / native ARM64 smoke-test only — no playable port, PS3
-> code translation, decrypted game assets, or original gameplay.** Two synthetic
-> libnx NROs (text console and CPU-isometric map) build in CI. Neither runs the PS3 game.
+> code translation or original gameplay.** Three independent libnx NROs build
+> in CI, including a diagnostic 50×50 COLL data viewer; none runs the PS3 game.
 
 ## Verified user-provided PS3 package
 
@@ -16,10 +16,10 @@ against the ZIP's internal CRC. The real PKG contains valid PS3 magic,
 established from an internal ZIP checksum. Full SHA-256 and sanitized metadata
 are recorded in [docs/REAL_PKG_NPEB00148.md](docs/REAL_PKG_NPEB00148.md).
 
-**No engine, gameplay files, executable or assets have yet been extracted.**
-A new [local-only file inventory tool](tools/inventory_game_files.py) is ready
-for any already lawfully accessible resources; see
-[docs/ASSET_INVENTORY.md](docs/ASSET_INVENTORY.md).
+**No proprietary assets are stored in this Git repository.** The user's real
+COLL map was inspected locally, but the original executable, 3D assets and
+engine have not been ported. An explicit opt-in, **local-only** COLL exporter
+is available at [tools/export_local_coll.py](tools/export_local_coll.py).
 
 ## Original asset discovery (verified 2026-10-16)
 
@@ -36,6 +36,23 @@ using the user's two split ZIP files **without exporting game assets**.
 
 The original game's 3D engine and logic are not running on Switch yet. The
 existing native NRO builds remain independent synthetic probes.
+
+## Original COLL reader and native Switch viewer
+
+The verified `map1-1.coll` has a 50×50 structure with four raw numeric
+samples and two flags per cell. [core/coll_grid.c](core/coll_grid.c) parses
+this format independently of PS3 using C11; strict validation and
+AddressSanitizer/UBSan host tests have passed.
+
+A third native research build, `foj-coll-map-research.nro`, can load a
+**user-provided local** COLL at `sdmc:/switch/foj/maps/map1-1.coll` and
+display six raw data channels. With no valid file, it displays a conspicuous
+synthetic fallback, not copyrighted map content. See
+[Switch COLL viewer instructions](docs/COLL_SWITCH_VIEWER.md).
+
+This is **diagnostic visualization only**. Numeric values and boolean columns
+do not yet have verified in-game meanings, and the FoJ 3D engine / combat
+systems remain unported.
 
 ## Immediate goal
 
@@ -78,6 +95,9 @@ Never publish the game package, license files, executables, keys or assets.
 - `tools/inspect_split_pkg.py` — stream multipart ZIP + embedded PKG in place.
 - `tools/inspect_debug_pkg_assets.py` — read-only debug PKG / PSARC file index.
 - `tools/inspect_map_coll.py` — structural original-map metadata inspection.
+- `tools/export_local_coll.py` — explicit local-only original COLL export.
+- `core/coll_grid.c` — portable C loader for the real-format 50×50 map data.
+- `core/coll_view.c` — diagnostic six-channel heatmap on large grids.
 - `tests/` — synthetic test fixtures, no proprietary data.
 - `docs/PKG_INPUT.md` — local package preparation and safe validation.
 - `docs/PORTING_PLAN.md` — milestones and technical unknowns.
@@ -94,10 +114,12 @@ Never publish the game package, license files, executables, keys or assets.
 
 ## Native Switch bring-up
 
-Two independently written research binaries compile through devkitA64 and
+Three independently written research binaries compile through devkitA64 and
 pass NRO structure validation in [CI run 38867186153](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/38867186153):
 `foj-switch-research.nro` (ASCII tactics) and `foj-isometric-research.nro`
-(CPU-rendered isometric tactics), packaged as artifact `foj-switch-research-nros`.
+(CPU-rendered isometric tactics), and `foj-coll-map-research.nro`
+(50×50 six-channel COLL inspector), packaged as artifact
+`foj-switch-research-nros` in the updated workflow runs.
 The corresponding pixel renderer is also compiled on Ubuntu to generate a
 **synthetic screenshot** through the [preview workflow](.github/workflows/isometric-preview.yml).
 These are **homebrew graphics/input/logic probes**, not a playable FoJ port.
