@@ -1,0 +1,64 @@
+# Vandal Hearts: Flames of Judgment — Nintendo Switch Research & Port
+
+Research project for a **native Nintendo Switch homebrew port** of
+*Vandal Hearts: Flames of Judgment* (PlayStation 3 / Xbox 360, 2010).
+
+> **Status: research only — no playable port, PS3 code translation, decrypted game
+> assets or Switch NRO is present.** This repository currently documents the
+> investigation and provides tools to inspect *unencrypted PKG headers*.
+
+## Immediate goal
+
+1. Confirm the provenance and structural validity of the user's European PS3
+   package (expected title ID: `NPEB00148`).
+2. Identify its package revision, content ID, metadata ranges, encryption
+   boundaries, and file integrity **without bypassing protections**.
+3. Inventory game assets and engine technology **only after lawful access to
+   accessible game files is established**.
+4. Prototype a portable renderer, controller mapping and tactical gameplay
+   systems based on verified findings.
+5. Bring up Nintendo Switch homebrew builds and automated tests incrementally.
+
+The reference PS3 package is approximately 605 MB. **Do not upload it here.**
+
+## Quick start: local header investigation
+
+Requires Python 3.10+ and no third-party packages.
+
+```sh
+python3 tools/inspect_pkg.py "/path/to/Vandal.Hearts.Flames.of.Judgement_d30n_NPEB00148.pkg" --expected-title-id NPEB00148
+python3 tools/inspect_pkg.py "/path/to/game.pkg" --sha256 --json
+python3 -m unittest discover -s tests -v
+```
+
+To inspect a split *ZIP* named `game.pkg.zip.001`, `game.pkg.zip.002`,
+reconstruct the ZIP **locally** before extracting the PKG. Consult
+[docs/PKG_INPUT.md](docs/PKG_INPUT.md). Never publish the resulting package,
+license files, decrypted executables, console keys or commercial assets.
+
+## Structure
+
+- `tools/inspect_pkg.py` — bounded, read-only PKG header/metadata inspector.
+- `tests/` — synthetic test fixtures, no proprietary data.
+- `docs/PKG_INPUT.md` — local package preparation and safe validation.
+- `docs/PORTING_PLAN.md` — milestones and technical unknowns.
+- `docs/LEGAL.md` — clean-repository rules.
+- `.github/workflows/ci.yml` — automatic host-side tests.
+
+## Relationship to the PS1 project
+
+The separate [Vandal Hearts PS1 Switch repository](https://github.com/stanmasked/vandal-hearts-switch-remaster)
+contains useful devkitPro/libnx, SDL2 and graphics *probes*. Those are not a
+port of the PS3 engine. We will selectively **adapt infrastructure**, not
+mistake compatibility probes for completed game systems.
+
+## Status / limitations
+
+- PKG content may be encrypted, and the container header alone does not reveal
+  models, maps or executable game logic.
+- The game engine and asset formats are **not yet verified**.
+- The goal is homebrew development, not an official Nintendo release.
+- Compatibility, performance, and game completeness are unknown until tested.
+
+This independent project is not affiliated with or endorsed by Konami,
+Sony Interactive Entertainment, Nintendo or the original developers.
