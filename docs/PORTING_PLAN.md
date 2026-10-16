@@ -212,3 +212,11 @@ audio/video codecs; localization; and required work are **unconfirmed**.
 - [ ] Verify actual workflow dispatch/job steps and passing results on GitHub; a committed workflow alone is not evidence of a successful CI run.
 - [ ] Validate genuine UAM shader compilation and ARM64/deko3d linking on a properly provisioned runner.
 - [ ] Confirm first GPU frame on physical Nintendo Switch hardware.
+
+## Stage 73: GPU host CI diagnostics (2026-10-17)
+
+- [x] Make the dedicated GPU-host GitHub workflow retain separate strict-C11 and ASan/UBSan logs, preserving the failure status with Bash pipefail.
+- [x] Emit an always-run GitHub Actions step summary showing each suite outcome and clarifying that SDK-free host checks do not prove Switch hardware compatibility.
+- [x] Upload logs as a short-lived diagnostic artifact, including when a suite fails.
+- [ ] Confirm GitHub Actions actually schedules a push workflow run and that the new steps execute; PR-only workflow-run lookup returned no PR runs, and commit statuses were empty, which do not establish the status of push-triggered runs.
+- [ ] Perform genuine UAM + ARM64 build and physical GPU frame test.
