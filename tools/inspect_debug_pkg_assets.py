@@ -247,7 +247,8 @@ class PSARC:
         return paths
 
 
-def summarize(parts: list[str], member: str | None = None) -> dict:
+def summarize(parts: list[str], member: str | None = None,
+              map_name: str | None = None) -> dict:
     with JoinedParts(parts) as joined:
         begin, size = unpack_stored_zip(joined, member)
         pkg = DebugPKG(joined, begin, size)
@@ -272,6 +273,27 @@ def summarize(parts: list[str], member: str | None = None) -> dict:
                     from tools.inventory_game_files import detect_magic
                     sample_magic[ext] = detect_magic(raw[:16])
                     break
+        selected_map = None
+        if map_name is not None:
+            from tools.inspect_map_coll import (
+                MapFormatError, summarize_collision, summarize_visibility,
+                summarize_placement, validate_map_name,
+            )
+            validate_map_name(map_name)
+            catalog = {path: i + 1 for i, path in enumerate(paths)}
+            base = "data/maps/" + map_name
+            selected_map = {"name": map_name}
+            for ext, key, decoder in (
+                (".coll", "collision", summarize_collision),
+                (".vis", "visibility", summarize_visibility),
+                (".ini", "placements", summarize_placement),
+            ):
+                entry_index = catalog.get(base + ext)
+                if entry_index is not None:
+                    data = psarc.entry_data(entry_index, limit=8_000_000)
+                    selected_map[key] = decoder(data)
+            if len(selected_map) == 1:
+                raise MapFormatError("Selected map has no known COLL/VIS/INI resources")
         return {
             "content_id": pkg.content_id,
             "pkg_item_count": pkg.item_count,
@@ -287,6 +309,7 @@ def summarize(parts: list[str], member: str | None = None) -> dict:
                 "example_signatures": sample_magic,
             },
             "warning": "Only file listings and summary signatures; NO asset bytes exported.",
+            **({"selected_map": selected_map} if selected_map is not None else {}),
         }
 
 
@@ -294,10 +317,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("parts", nargs="+", help="ZIP fragments in correct byte order")
     parser.add_argument("--member", help="Optional exact ZIP member name")
+    parser.add_argument("--map", help="Optional map ID, e.g. map1-1; summary only")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
-        report = summarize(args.parts, args.member)
+        report = summarize(args.parts, args.member, args.map)
     except (FormatError, OSError, ValueError, zipfile.BadZipFile) as exc:
         print(f"PS3 asset inspection error: {exc}", file=sys.stderr)
         return 2
@@ -310,6 +334,8 @@ def main(argv: list[str] | None = None) -> int:
         print("Manifest paths:", report["psarc"]["manifest_paths"])
         print("Extensions:", report["psarc"]["extension_counts"])
         print("Sample signatures:", report["psarc"]["example_signatures"])
+        if "selected_map" in report:
+            print("Map summary:", report["selected_map"])
     return 0
 
 
