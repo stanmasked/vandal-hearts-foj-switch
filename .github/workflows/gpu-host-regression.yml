@@ -36,6 +36,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
+        id: checkout
         uses: actions/checkout@v4
       - name: Print toolchain versions
         run: |
@@ -48,6 +49,7 @@ jobs:
           set -o pipefail
           make -f gpu/clear.mk host-check 2>&1 | tee gpu-host-strict.log
       - name: ASan and UBSan host suite
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         id: sanitized
         shell: bash
         env:
