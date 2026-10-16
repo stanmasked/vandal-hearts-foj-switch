@@ -25,6 +25,7 @@ ELF2NRO := $(DEVKITPRO)/tools/bin/elf2nro
 NACPTOOL := $(DEVKITPRO)/tools/bin/nacptool
 OUT ?= build/foj-deko3d-clear-smoke
 SRC ?= gpu/deko3d_clear_main.c gpu/smoke_plan.c
+GPU_EXTRA_DEPS ?=
 
 CFLAGS := -std=c11 -O2 -Wall -Wextra -Werror -fPIE -ffunction-sections \
   -fdata-sections -I$(DEVKITPRO)/libnx/include -Icore
@@ -133,7 +134,7 @@ host-mock-sanitized: $(HOST_MOCK_SAN) $(HOST_SHADERS_SAN) $(HOST_DKSH_SAN) $(HOS
 	./$(HOST_DKSH_SAN)
 	./$(HOST_DKSH_INTEGRATION_SAN)
 
-$(OUT).elf: $(SRC) gpu/smoke_plan.h gpu/deko3d_api_contract.h core/gpu_vertex_stream.h | build preflight
+$(OUT).elf: $(SRC) gpu/smoke_plan.h gpu/deko3d_api_contract.h core/gpu_vertex_stream.h $(GPU_EXTRA_DEPS) | build preflight
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $@ -l$(GPU_LIB) -lstdc++ -lnx -lm
 
 $(OUT).nacp: | build
