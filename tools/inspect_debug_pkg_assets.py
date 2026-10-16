@@ -248,7 +248,9 @@ class PSARC:
 
 
 def summarize(parts: list[str], member: str | None = None,
-              map_name: str | None = None) -> dict:
+              map_name: str | None = None, header_samples: int = 0) -> dict:
+    if header_samples < 0 or header_samples > 16:
+        raise ValueError("--header-samples must be between 0 and 16")
     with JoinedParts(parts) as joined:
         begin, size = unpack_stored_zip(joined, member)
         pkg = DebugPKG(joined, begin, size)
@@ -273,6 +275,28 @@ def summarize(parts: list[str], member: str | None = None,
                     from tools.inventory_game_files import detect_magic
                     sample_magic[ext] = detect_magic(raw[:16])
                     break
+        model_anim_headers = {}
+        if header_samples:
+            from tools.inspect_bmodel_banim import (
+                UnsupportedHeader, inspect_resource_header,
+            )
+            for ext in (".bmodel", ".banim"):
+                examples = []
+                for i, name in enumerate(paths):
+                    if len(examples) >= header_samples:
+                        break
+                    if not name.lower().endswith(ext):
+                        continue
+                    if psarc.entries[i + 1]["length"] > MAX_FILE_PREVIEW:
+                        continue  # large resources are outside this bounded probe
+                    raw = psarc.entry_data(i + 1)
+                    try:
+                        result = inspect_resource_header(name, raw)
+                    except UnsupportedHeader as exc:
+                        result = {"unrecognized_header": str(exc)}
+                    examples.append({"resource": name, **result})
+                model_anim_headers[ext] = examples
+
         selected_map = None
         if map_name is not None:
             from tools.inspect_map_coll import (
@@ -310,6 +334,7 @@ def summarize(parts: list[str], member: str | None = None,
             },
             "warning": "Only file listings and summary signatures; NO asset bytes exported.",
             **({"selected_map": selected_map} if selected_map is not None else {}),
+            **({"model_anim_headers": model_anim_headers} if header_samples else {}),
         }
 
 
@@ -318,10 +343,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("parts", nargs="+", help="ZIP fragments in correct byte order")
     parser.add_argument("--member", help="Optional exact ZIP member name")
     parser.add_argument("--map", help="Optional map ID, e.g. map1-1; summary only")
+    parser.add_argument("--header-samples", type=int, default=0,
+                        help="Up to 16 examples each of .bmodel/.banim headers")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
-        report = summarize(args.parts, args.member, args.map)
+        report = summarize(args.parts, args.member, args.map, args.header_samples)
     except (FormatError, OSError, ValueError, zipfile.BadZipFile) as exc:
         print(f"PS3 asset inspection error: {exc}", file=sys.stderr)
         return 2
@@ -336,6 +363,8 @@ def main(argv: list[str] | None = None) -> int:
         print("Sample signatures:", report["psarc"]["example_signatures"])
         if "selected_map" in report:
             print("Map summary:", report["selected_map"])
+        if "model_anim_headers" in report:
+            print("3D resource header summaries:", report["model_anim_headers"])
     return 0
 
 
