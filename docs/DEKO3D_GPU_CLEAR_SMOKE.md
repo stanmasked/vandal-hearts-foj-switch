@@ -138,6 +138,52 @@ the above commands were run successfully in the local container.
 The GPU workflow also executes `host-check` before attempting its
 independent ARM64 build.
 
+## SDK API verification and deterministic toolchain preflight
+
+A cross-check against upstream
+[devkitPro/deko3d.h](https://github.com/devkitPro/deko3d/blob/master/include/deko3d.h)
+identified two incorrect values in the former **host-only mock**:
+
+| Enum | Previous mock | Verified real deko3d |
+| --- | ---: | ---: |
+| `DkImageFormat_RGBA8_Unorm` | 37 | **28** |
+| `DkImageFlags_UsageRender` | 64 | **256** |
+
+The real NRO source used the *symbolic constants* and was unaffected
+by these hardcoded mock values. The mock is now corrected and verifies
+that framebuffer images request **both render and present usage**.
+
+[The deko3d ABI contract](../gpu/deko3d_api_contract.h)
+contains nine C11 compile-time assertions for render format, flags,
+color mask and image memory alignment. It is included by the **real
+deko3d source** and, separately, by the host-only test. When the
+actual devkitPro cross-compiler works, it will check the real SDK
+definitions rather than trusting the fake headers.
+
+The contract was locally compiled using a strict C11 test matching the
+verified upstream numerical values. A deliberately wrong RGBA8 value
+was rejected at compilation. This is source-level ABI checking, **not**
+evidence that the full GPU NRO has linked or run on hardware.
+
+A new standard-library-only
+[toolchain checker](../tools/check_switch_gpu_toolchain.py) reports,
+in JSON, required/available toolchain paths: devkitA64 GCC,
+libnx/deko3d headers and archives, `elf2nro`, `nacptool`, and
+optional UAM. It supports `DEVKITPRO`, `DEVKITA64` overrides and
+`--require-shaders`. Tests use synthetic SDK directories, and the
+independent optional GPU workflow calls the checker before compilation.
+
+Usage:
+
+```sh
+python3 -m tools.check_switch_gpu_toolchain
+python3 -m tools.check_switch_gpu_toolchain --require-shaders
+```
+
+For the current local runtime, devkitA64 GCC, deko3d headers/libraries
+and `elf2nro` are absent. Therefore **a real ARM64 NRO build remains
+blocked here**, regardless of the success of host-only tests.
+
 ## GitHub Actions
 
 The separate
