@@ -1,0 +1,37 @@
+# Local original game data — never commit
+*.pkg
+*.PKG
+*.pkg.zip*
+*.iso
+*.ISO
+*.rap
+*.RAP
+*.rif
+*.RIF
+*.edat
+*.EDAT
+EBOOT.BIN
+*.self
+*.sprx
+game-data/
+local-data/
+extracted/
+foj-local/
+foj-rejoined.zip
+
+# Binary builds, temporary analysis and machine state
+build/
+dist/
+*.nro
+*.elf
+*.nso
+*.o
+*.d
+*.log
+.cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
+.env
+.env.*
