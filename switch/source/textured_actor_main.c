@@ -250,7 +250,6 @@ int main(int argc,char **argv) {
         if (keys&HidNpadButton_ZR && camera.zoom<4.f)camera.zoom*=1.25f;
         if (keys&HidNpadButton_ZL && camera.zoom>.25f)camera.zoom/=1.25f;
         if (keys&HidNpadButton_X)camera.flip_v=!camera.flip_v;
-        if (keys&HidNpadButton_Y)camera.bilinear=!camera.bilinear;
         if (camera.pitch>1.5f)camera.pitch=1.5f;
         if (camera.pitch< -1.5f)camera.pitch=-1.5f;
         if (playing && clip.duration>0) {
