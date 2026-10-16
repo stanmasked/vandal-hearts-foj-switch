@@ -17,12 +17,12 @@
 enum {
     FAIL_NONE, FAIL_DEVICE, FAIL_QUEUE, FAIL_IMG_1, FAIL_IMG_2,
     FAIL_SWAP, FAIL_CMDMEM, FAIL_CMDBUF, FAIL_CMDLIST, FAIL_ACQUIRE,
-    FAIL_PLUS
+    FAIL_PLUS, FAIL_VERTEX_MEM, FAIL_VERTEX_CPU, FAIL_VERTEX_GPU
 };
 struct FakeDevice { int tag; };
 struct FakeQueue { int tag; };
 struct FakeSwapchain { int tag; };
-struct FakeMemBlock { int tag; };
+struct FakeMemBlock { int tag; void* cpu; uint32_t size; };
 struct FakeCmdBuf { int tag; };
 
 typedef struct { int slot,palette,valid; float rgba[4]; } MockList;
@@ -31,6 +31,8 @@ static struct {
     int submitted,presented,waited,loop_calls,acquired,cmd_added;
     int bound_slot,list_count;
     int seen_slots[2],seen_palettes[2];
+    DkMemBlock vertex_buffer;
+    int uploaded_vertices_verified;
     MockList lists[4];
 } g;
 
@@ -106,18 +108,43 @@ DkMemBlock dkMemBlockCreate(const DkMemBlockMaker* m) {
         assert(m->flags&DkMemBlockFlags_Image);
         assert(m->size%4096==0);
         ++g.image_creates;
-    } else {
+    } else if(g.block_creates==3) {
         assert(m->flags&DkMemBlockFlags_CpuUncached);
         assert(m->size==0x10000);
+    } else {
+        assert(g.block_creates==4);
+        assert(m->flags&DkMemBlockFlags_CpuUncached);
+        assert(m->flags&DkMemBlockFlags_GpuCached);
+        assert(!(m->flags&DkMemBlockFlags_Image));
+        assert(m->size==4096);
     }
     if ((g.failure==FAIL_IMG_1&&g.block_creates==1)||
         (g.failure==FAIL_IMG_2&&g.block_creates==2)||
-        (g.failure==FAIL_CMDMEM&&g.block_creates==3))
+        (g.failure==FAIL_CMDMEM&&g.block_creates==3)||
+        (g.failure==FAIL_VERTEX_MEM&&g.block_creates==4))
         return NULL;
-    return alloc_obj(sizeof(struct FakeMemBlock));
+    struct FakeMemBlock* mem=alloc_obj(sizeof(struct FakeMemBlock));
+    mem->size=m->size;
+    if(g.block_creates==4) {
+        mem->cpu=calloc(1,m->size);
+        assert(mem->cpu);
+        g.vertex_buffer=mem;
+    }
+    return mem;
 }
 void dkMemBlockDestroy(DkMemBlock m) {
-    assert(g.waited);destroy_obj(m);
+    assert(g.waited);
+    if (m==g.vertex_buffer)g.vertex_buffer=NULL;
+    free(m->cpu);
+    destroy_obj(m);
+}
+void* dkMemBlockGetCpuAddr(DkMemBlock m) {
+    assert(m&&m==g.vertex_buffer);
+    return g.failure==FAIL_VERTEX_CPU?NULL:m->cpu;
+}
+DkGpuAddr dkMemBlockGetGpuAddr(DkMemBlock m) {
+    assert(m&&m==g.vertex_buffer);
+    return g.failure==FAIL_VERTEX_GPU?0u:UINT64_C(0x7f000000);
 }
 void dkImageInitialize(DkImage* im,const DkImageLayout* l,
                        DkMemBlock m,uint32_t off) {
@@ -201,6 +228,10 @@ int dkQueueAcquireImage(DkQueue q,DkSwapchain s) {
 }
 void dkQueueSubmitCommands(DkQueue q,DkCmdList list_id) {
     assert(q&&list_id>=1&&list_id<=4);
+    assert(g.vertex_buffer&&g.vertex_buffer->cpu);
+    assert(!memcmp(g.vertex_buffer->cpu,kResearchTriangle,
+                   sizeof(kResearchTriangle)));
+    g.uploaded_vertices_verified=1;
     MockList* list=&g.lists[list_id-1];
     assert(list->valid);
     const int slot=g.submitted%2;
@@ -225,6 +256,7 @@ static void run_case(int failure,int expected_status,int frames) {
     assert(g.creates==g.frees);
     if(failure==FAIL_NONE) {
         assert(g.list_count==4);
+        assert(g.uploaded_vertices_verified);
         assert(g.presented==242);
         assert(g.seen_slots[0]==121&&g.seen_slots[1]==121);
         assert(g.seen_palettes[0]==122&&g.seen_palettes[1]==120);
@@ -244,6 +276,9 @@ int main(void) {
     run_case(FAIL_CMDLIST,3,0);
     run_case(FAIL_ACQUIRE,4,3);
     run_case(FAIL_PLUS,0,2);
-    puts("Host deko3d lifecycle mock: all 11 scenarios passed");
+    run_case(FAIL_VERTEX_MEM,3,0);
+    run_case(FAIL_VERTEX_CPU,3,0);
+    run_case(FAIL_VERTEX_GPU,3,0);
+    puts("Host deko3d lifecycle mock: all 14 scenarios passed");
     return 0;
 }
