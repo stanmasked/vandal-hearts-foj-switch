@@ -63,7 +63,8 @@ class BModelTriangleMeshTests(unittest.TestCase):
         self.assertEqual(report["vertex_count"], 6)
         self.assertEqual(report["bounds_xyz"]["maximum"], [2.,2.,0.])
         self.assertEqual(report["uv_bounds"]["maximum"], [1.,1.])
-        self.assertLess(report["maximum_normal_length_error"], 1e-6)
+        self.assertLess(report["maximum_nonzero_normal_length_error"], 1e-6)
+        self.assertEqual(report["zero_length_vertex_normals"], 0)
         self.assertEqual(shape.section_end, len(synthetic_mesh()) - 3)
 
     def test_local_obj_no_overwrite_and_uv_flip(self):
@@ -105,6 +106,26 @@ class BModelTriangleMeshTests(unittest.TestCase):
         struct.pack_into(">f", data, vertex_start, math.inf)
         with self.assertRaisesRegex(BModelError, "Non-finite"):
             decode_first_shape(bytes(data))
+
+    def test_zero_normal_allowed_as_seen_in_original_models(self):
+        data = bytearray(synthetic_mesh())
+        n = 6
+        normal_start = (8 + len(b"syntheticShape_0")
+                        + 3 + n*12 + 5 + n*8 + 3)
+        struct.pack_into(">3f", data, normal_start, 0., 0., 0.)
+        shape = decode_first_shape(bytes(data))
+        self.assertEqual(shape.summary()["zero_length_vertex_normals"], 1)
+        self.assertLess(
+            shape.summary()["maximum_nonzero_normal_length_error"], 1e-6
+        )
+
+    def test_opt_in_reverse_winding(self):
+        shape = decode_first_shape(synthetic_mesh())
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "mesh.obj"
+            write_local_obj(shape, path, reverse_winding=True)
+            self.assertIn("f 1/1/1 3/3/3 2/2/2", path.read_text())
+            self.assertIn("f 4/4/4 6/6/6 5/5/5", path.read_text())
 
     def test_reject_nonunit_normal(self):
         data = bytearray(synthetic_mesh())
