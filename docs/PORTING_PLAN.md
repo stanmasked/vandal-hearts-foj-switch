@@ -24,7 +24,10 @@ reverse engineering, new platform code, and clean-room implementations.
 ### Gate 1 — Asset and engine feasibility (in progress)
 - [ ] Establish lawful access to game resources for local research.
 - [x] Prepare local-only, signatures-and-extensions inventory tool with synthetic tests.
-- [ ] Catalog actual game file tree, compression and resource format signatures.
+- [x] Recover names and extents of 21 actual PKG items and the 3,212-entry PSARC manifest.
+- [x] Verify PSARC/zlib layout and discover Lua, models, animations, texture and map filenames.
+- [x] Summarize the first original 50×50 map's collision, visibility and placement structures.
+- [ ] Establish full semantic meanings for proprietary resource formats and original battle rules.
 - [ ] Determine actual renderer, mesh/texture/animation/audio formats.
 - [ ] Identify script/event/battle data formats and code architecture.
 - [ ] Choose source-port, reimplementation, or other viable strategy.
