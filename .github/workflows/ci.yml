@@ -47,6 +47,12 @@ jobs:
             tests/test_coll_grid.c core/coll_grid.c -lm -o /tmp/foj_coll_sanitized
           /tmp/foj_coll_sanitized
 
+      - name: Validate 50x50 COLL heatmap and raw flag channels
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tests/test_coll_view.c core/coll_view.c -lm -o /tmp/foj_coll_view_test
+          /tmp/foj_coll_view_test
+
       - name: Compile and run isometric rendering tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
