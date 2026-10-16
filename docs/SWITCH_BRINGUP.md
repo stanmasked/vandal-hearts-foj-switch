@@ -1,7 +1,7 @@
 # Nintendo Switch homebrew bring-up
 
-This phase verifies **compiler/toolchain integration and a synthetic tactical
-logic demonstrator**, using console text and no game files. The NRO is **not**
+This phase verifies **compiler/toolchain integration and synthetic tactical
+logic plus renderer demonstrators**, using no game files. The NRO is **not**
 the PS3 game.
 
 ## Build
@@ -16,14 +16,18 @@ make -f switch/Makefile verify
 ```
 
 
-Produces `build/foj-switch-research.nro` and checks magic,
-declared file size, and segment bounds.
+Produces two independent, asset-free binaries and checks NRO0 magic,
+declared file size, and segment bounds:
+
+- `build/foj-switch-research.nro` — text-console map, controls, and logic.
+- `build/foj-isometric-research.nro` — 1280×720 CPU-rendered isometric tiles
+  displayed through libnx's linear framebuffer.
 
 GitHub Actions uses `devkitpro/devkita64:latest` to compile the
-research NRO and uploads the result as `foj-switch-research-nro`.
+research NROs and uploads them in artifact `foj-switch-research-nros`.
 See [Switch NRO workflow](../.github/workflows/switch-nro.yml).
 
-## Controls
+## Shared controls
 
 - D-pad: move a cursor across the invented 8×6 battlefield.
 - A: select the hero at H, or attempt a reachable move.
@@ -40,7 +44,13 @@ rules, meshes, renderer, menus, save system, PS3 executable or data.
 Host-side tests in `tests/test_tactical_demo.c` validate reachability, slope
 limits, blocking, selection, rejection, cancellation and cursor clamping.
 They are executed through `.github/workflows/ci.yml` with the system C compiler.
-The same core source is linked into the Switch `NRO` build.
+The same core source is linked into both Switch `NRO` binaries.
+
+The isometric NRO additionally uses `core/isometric_demo.c` to draw
+**synthetic tile diamonds, height extrusions and unit markers** with a portable
+CPU rasterizer. Host tests cover projection and pixel-buffer bounds. This is
+not FoJ's original 3D rendering engine, does not load real game geometry or
+textures, and has not yet been visually validated on real Switch hardware.
 
 ## Evidence ladder
 
