@@ -62,6 +62,8 @@ reverse engineering, new platform code, and clean-room implementations.
 - [x] Add portable GPU-oriented XYZW/UV vertex + texture-batch preparation; test locally with C11, ASan and UBSan.
 - [x] Validate real Daldren private geometry conversion (9066 vertices, six batches, two DDS atlases, all finite).
 - [x] Add separate source-only UAM shader prototypes and optional shader-only Makefile.
+- [x] Correct GPU Z projection to deko3d default [0,1] for single-model render: validate 9066 Daldren vertices; GREATER/clear 0 contract.
+- [x] Add structural DKSH validator and synthetic integrity tests, invoked by optional UAM Makefile.
 - [ ] Verify native UAM shader compilation, implement deko3d GPU draw calls and display actual frames on Switch.
 - [ ] Reproduce PS3-original shader/sampler material parameters, pose and camera conventions.
 - [ ] Validate actual FoJ pose composition, bind conventions, material mapping and skinned movement.
