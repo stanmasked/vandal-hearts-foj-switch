@@ -411,3 +411,13 @@ The simulated shader and stub validator do not prove genuine UAM or GPU compatib
 - [x] Committed the additional assertions and reviewed the saved GitHub file.
 - [ ] Run the exact test and full GPU host suite in GitHub Actions; no CI pass is established by the local reconstruction.
 - [ ] Verify UAM/devkitA64 build and physical Nintendo Switch GPU draw.
+
+## Stage 96: expand UAM failure-cleanup coverage to all shader targets (2026-10-17)
+
+- [x] Expand `tests/test_gpu_shader_failure_cleanup.sh` across `foj_actor.vert.dksh`, `foj_actor.frag.dksh` and `foj_triangle.frag.dksh` (six compiler/validator failure runs in total).
+- [x] For each generated-only target, require failed validation or write-then-fail UAM to remove the output, and check the validator invocation count remains exactly one for the pair.
+- [x] Locally executed the extended test with matching three-target GNU Make shader rules reconstructed in the existing host test workspace: PASS.
+- [ ] Run the exact committed script from full repository checkout and inspect real GitHub Actions jobs. The local workspace's originally reduced Makefile required restoration of both fragment rules.
+- [ ] Generate actual DKSH with UAM; cross-link and run a native GPU NRO on Switch.
+
+These synthetic tests do not validate Maxwell shader code or hardware draw calls.
