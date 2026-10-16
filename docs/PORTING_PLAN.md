@@ -162,3 +162,13 @@ audio/video codecs; localization; and required work are **unconfirmed**.
 - [ ] Only then submit original user-local Daldren mesh and DDS atlases to a tested hardware GPU renderer.
 
 **The draw call exists in source, but no Switch GPU draw execution has been confirmed.**
+
+## GPU triangle source and pixel-reference gate (2026-10-16)
+
+- [x] Define XYZW/UV GPU layout with native `_Static_assert` for 24-byte stride and offsets 0/16; use named deko3d bitfield initializers.
+- [x] Add independent strict C11 local test of vertex-bitfield initializer layout.
+- [x] Add `host-triangle-check` target to syntactically validate the shader-backed source without Switch SDK, wired into research CI and optional GPU workflow.
+- [x] Add theoretical 1280x720 triangle pixel/UV/color reference and four locally passed generated-data tests.
+- [ ] Run the full host triangle mode with a working SDK/runner and compare its first physical frame to pixel probes.
+- [ ] Compile real UAM DKSH modules and both ARM64 GPU test NROs; GitHub Actions still fails before steps execute.
+- [ ] Observe UV-gradient GPU triangle and eventually six material draws of the authentic user-local Daldren model on physical Switch.
