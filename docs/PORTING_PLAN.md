@@ -379,3 +379,12 @@ No real SDK packages were installed, and the fake presence-only toolchain cannot
 - [x] Verify locally with GNU Make in a generated temp fixture: a recipe writes a bad DKSH file, fails, and make emits `Deleting file 'output.dksh'`; the target does not remain on disk.
 - [ ] Run actual UAM / validator failure on a full repository checkout; the local test only confirms GNU Make deletion semantics.
 - [ ] Run complete host CI suite and verify devkitA64 NRO plus on-device GPU frame.
+
+## Stage 92: shader rejection cleanup CI regression (2026-10-17)
+
+- [x] Add `tests/test_gpu_shader_failure_cleanup.sh`. Runs a copy of the *actual* `gpu/Makefile` in an isolated SDK-free directory, simulates a UAM compiler that produces an invalid DKSH file, then has a stub DKSH validator reject it.
+- [x] Assert the build fails, no malformed target remains, and GNU Make reports deleting the target; wire the test into GCC/Clang GPU CI and both workflow path filters.
+- [ ] Confirm this regression executes successfully in a full checkout / GitHub Actions environment.
+- [ ] Compile authentic shader with UAM, ARM64 NRO with devkitA64 and verify hardware GPU output.
+
+The simulated shader and stub validator do not prove genuine UAM or GPU compatibility.
