@@ -67,7 +67,9 @@ void* nwindowGetDefault(void) { return (void*)(uintptr_t)0x1234; }
 
 void dkDeviceMakerDefaults(DkDeviceMaker* m) { m->flags=0; }
 DkDevice dkDeviceCreate(const DkDeviceMaker* m) {
-    assert(m->flags&DkDeviceFlags_DepthZeroToOne);
+    /* deko3d's normal 0..1 depth is selected by *clearing* bit 8.
+     * A truthiness test on the 0-valued enum was always incorrect. */
+    assert((m->flags & DkDeviceFlags_DepthMinusOneToOne)==0u);
     return g.failure==FAIL_DEVICE?NULL:alloc_obj(sizeof(struct FakeDevice));
 }
 void dkDeviceDestroy(DkDevice d) { destroy_obj(d); }
