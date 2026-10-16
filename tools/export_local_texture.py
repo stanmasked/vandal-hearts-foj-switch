@@ -24,10 +24,9 @@ MAX_TEXTURE_BYTES = 8 * 1024 * 1024
 def validate_legacy_dds(data: bytes) -> dict:
     if len(data) < 128 or data[:4] != b"DDS ":
         raise FormatError("Resource is not a complete legacy DDS header")
-    size, height, width = struct.unpack_from("<III", data, 4)
-    # Read width and height from their actual DDS offsets: 16 and 12.
+    size = struct.unpack_from("<I", data, 4)[0]
     height, width = struct.unpack_from("<II", data, 12)
-    pf_size, pf_flags, fourcc, depth = struct.unpack_from("<IIII", data, 76)
+    pf_size, pf_flags, fourcc, bits_per_pixel = struct.unpack_from("<IIII", data, 76)
     if size != 124 or pf_size != 32 or not (1 <= height <= 4096 and 1 <= width <= 4096):
         raise FormatError("Malformed or unsupported DDS header/dimensions")
     if pf_flags & 0x4:
@@ -37,7 +36,7 @@ def validate_legacy_dds(data: bytes) -> dict:
         required = ((width + 3) // 4) * ((height + 3) // 4) * 8
     else:
         red, green, blue, alpha = struct.unpack_from("<IIII", data, 92)
-        if not (pf_flags & 0x41) == 0x41 or depth != 32 or (
+        if not (pf_flags & 0x41) == 0x41 or bits_per_pixel != 32 or (
             red, green, blue, alpha
         ) != (0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000):
             raise FormatError("Only BGRA8 texture export supported")
