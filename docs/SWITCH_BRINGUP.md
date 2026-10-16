@@ -113,3 +113,13 @@ user's own locally exported `preview.obj` from SD, otherwise displaying
 an original **synthetic cube**. The app rotates and zooms a CPU wireframe;
 it does not simulate the original FoJ 3D engine. For controls, file paths
 and legal data separation see [OBJ_SWITCH_VIEWER.md](OBJ_SWITCH_VIEWER.md).
+
+## Sixth build: local original BANIM clip reader
+
+`build/foj-banim-research.nro` links `core/banim_core.c` and displays
+sampled bone-track quaternion/translation values from a user-supplied local
+`sdmc:/switch/foj/anims/preview.banim`. Without it, the NRO displays
+synthetic one-key animation data. See
+[BANIM_SWITCH_VIEWER.md](BANIM_SWITCH_VIEWER.md). It does not yet deform
+original meshes or reproduce PS3 animation blending; hardware launch
+is still unverified.
