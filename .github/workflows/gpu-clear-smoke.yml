@@ -11,6 +11,8 @@ on:
       - 'tests/test_deko3d_clear_host.c'
       - 'tests/test_deko3d_api_contract.c'
       - 'gpu/deko3d_api_contract.h'
+      - 'tools/check_switch_gpu_toolchain.py'
+      - 'tests/test_switch_gpu_toolchain.py'
       - 'tests/mock_switch_sdk/**'
       - '.github/workflows/gpu-clear-smoke.yml'
   workflow_dispatch:
@@ -29,12 +31,11 @@ jobs:
         run: |
           set -euxo pipefail
           make -f gpu/clear.mk host-check
-      - name: Inspect installed Switch GPU toolchain
+      - name: Check Switch GPU compiler, libraries and UAM presence
         shell: bash
         run: |
           set -euxo pipefail
-          ls -l /opt/devkitpro/libnx/include/deko3d.h
-          ls -l /opt/devkitpro/libnx/lib/libdeko3dd.a
+          python3 -m tools.check_switch_gpu_toolchain
           /opt/devkitpro/devkitA64/bin/aarch64-none-elf-gcc --version | head -n1
           command -v uam || true
       - name: Build isolated deko3d clear-and-present NRO
