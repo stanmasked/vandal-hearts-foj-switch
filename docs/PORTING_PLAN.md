@@ -59,6 +59,10 @@ reverse engineering, new platform code, and clean-room implementations.
 - [x] Re-audit all 583 PS3 BMODEL material tables: 120 genuinely multi-atlas models, six with embedded skeletons.
 - [x] Add private FOJMAT01 section-to-DDS mapping and user-local multi-atlas exporter.
 - [x] Add shared-depth multi-texture triangle drawing to ninth native Switch NRO.
+- [x] Add portable GPU-oriented XYZW/UV vertex + texture-batch preparation; test locally with C11, ASan and UBSan.
+- [x] Validate real Daldren private geometry conversion (9066 vertices, six batches, two DDS atlases, all finite).
+- [x] Add separate source-only UAM shader prototypes and optional shader-only Makefile.
+- [ ] Verify native UAM shader compilation, implement deko3d GPU draw calls and display actual frames on Switch.
 - [ ] Reproduce PS3-original shader/sampler material parameters, pose and camera conventions.
 - [ ] Validate actual FoJ pose composition, bind conventions, material mapping and skinned movement.
 - [ ] Establish full semantic meanings for proprietary resource formats and original battle rules.
