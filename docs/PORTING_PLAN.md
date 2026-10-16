@@ -372,3 +372,10 @@ The fake toolchain is suitable for validating diagnostic presence checks only. I
 - [ ] Compile real UAM shaders and ARM64 NRO; test actual GPU output on Nintendo Switch.
 
 No real SDK packages were installed, and the fake presence-only toolchain cannot compile any ARM64 program.
+
+## Stage 91: purge rejected DKSH shader outputs (2026-10-17)
+
+- [x] Add GNU Make `.DELETE_ON_ERROR` to `gpu/Makefile` so a failed UAM compile or a failing `tools.validate_dksh` invocation cannot leave the target DKSH artifact as a valid-looking, up-to-date build output.
+- [x] Verify locally with GNU Make in a generated temp fixture: a recipe writes a bad DKSH file, fails, and make emits `Deleting file 'output.dksh'`; the target does not remain on disk.
+- [ ] Run actual UAM / validator failure on a full repository checkout; the local test only confirms GNU Make deletion semantics.
+- [ ] Run complete host CI suite and verify devkitA64 NRO plus on-device GPU frame.
