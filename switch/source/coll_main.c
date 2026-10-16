@@ -70,9 +70,11 @@ int main(int argc, char **argv) {
     (void)argv;
 
     /* There is no automatic game download or PS3 decryption on the console. */
-    bool mounted = R_SUCCEEDED(fsdevMountSdmc());
-    bool loaded = mounted &&
-        load_local_map("sdmc:/switch/foj/maps/map1-1.coll", &g_map);
+    const char *map_path = "sdmc:/switch/foj/maps/map1-1.coll";
+    /* Some homebrew launchers have already mounted sdmc: before main(). */
+    bool loaded = load_local_map(map_path, &g_map);
+    if (!loaded && R_SUCCEEDED(fsdevMountSdmc()))
+        loaded = load_local_map(map_path, &g_map);
     if (!loaded) make_synthetic_map(&g_map);
 
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);
