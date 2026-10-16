@@ -1,0 +1,41 @@
+name: Synthetic isometric image preview
+
+on:
+  push:
+    paths:
+      - 'core/**'
+      - 'tools/render_isometric_preview.c'
+      - 'tools/ppm_to_png.py'
+      - '.github/workflows/isometric-preview.yml'
+  pull_request:
+    paths:
+      - 'core/**'
+      - 'tools/render_isometric_preview.c'
+      - 'tools/ppm_to_png.py'
+      - '.github/workflows/isometric-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build shared host-side rasterizer
+        run: |
+          mkdir -p build
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tools/render_isometric_preview.c core/isometric_demo.c core/tactical_demo.c \
+            -o build/foj-render-isometric
+      - name: Produce asset-free PNG reference
+        run: |
+          build/foj-render-isometric build/foj-isometric-synthetic.ppm selected
+          python3 tools/ppm_to_png.py build/foj-isometric-synthetic.ppm build/foj-isometric-synthetic.png
+      - name: Upload synthetic visual reference
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-isometric-synthetic-preview
+          path: build/foj-isometric-synthetic.png
+          if-no-files-found: error
