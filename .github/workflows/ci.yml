@@ -114,6 +114,20 @@ jobs:
             tests/test_material_table.c core/material_table.c -o /tmp/foj_material_asan
           /tmp/foj_material_asan
 
+      - name: Validate CPU-to-GPU clip-space and original material draw staging
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tests/test_gpu_vertex_stream.c core/gpu_vertex_stream.c \
+            -lm -o /tmp/foj_gpu_stage
+          /tmp/foj_gpu_stage
+      - name: Sanitize CPU-to-GPU vertex staging
+        run: |
+          cc -std=c11 -O1 -g -fsanitize=address,undefined \
+            -fno-omit-frame-pointer -Icore \
+            tests/test_gpu_vertex_stream.c core/gpu_vertex_stream.c \
+            -lm -o /tmp/foj_gpu_stage_asan
+          /tmp/foj_gpu_stage_asan
+
       - name: Compile and run portable tactical logic tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
