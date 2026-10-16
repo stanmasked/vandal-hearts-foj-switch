@@ -15,6 +15,9 @@
 #include "deko3d_api_contract.h"
 #include "gpu_vertex_stream.h"
 #include <string.h>
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+#include "dksh_module.h"
+#endif
 
 enum { SCREEN_WIDTH=1280, SCREEN_HEIGHT=720, BUFFER_COUNT=2 };
 enum { CMD_MEMORY_SIZE=0x10000 };
@@ -41,6 +44,10 @@ int main(int argc,char **argv) {
     DkMemBlock images_mem[BUFFER_COUNT]={0};
     DkMemBlock cmd_mem=NULL;
     DkMemBlock vertex_mem=NULL;
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+    DkMemBlock shader_mem=NULL;
+    DkShader shader_vertex={0},shader_fragment={0};
+#endif
     DkGpuAddr vertex_gpu_addr=0;
     DkCmdList commands[BUFFER_COUNT][2]={{0}};
     DkImage images[BUFFER_COUNT];
@@ -132,6 +139,43 @@ int main(int argc,char **argv) {
         goto cleanup;
     memcpy(vertex_cpu_addr,kResearchTriangle,sizeof(kResearchTriangle));
 
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+    /* Optional native triangle mode. Load UAM-generated research DKSH
+     * modules from the user's own SD card, NOT from original PS3 files.
+     * This leaves the earlier shader-free GPU clear NRO intact. */
+    (void)fsdevMountSdmc();
+    DkMemBlockMaker shader_maker;
+    dkMemBlockMakerDefaults(&shader_maker,device,0x40000u);
+    shader_maker.flags=DkMemBlockFlags_CpuUncached|
+                       DkMemBlockFlags_GpuCached|
+                       DkMemBlockFlags_Code;
+    shader_mem=dkMemBlockCreate(&shader_maker);
+    if (!shader_mem)goto cleanup;
+    uint8_t *shader_cpu=(uint8_t*)dkMemBlockGetCpuAddr(shader_mem);
+    if (!shader_cpu)goto cleanup;
+
+    size_t vs_bytes=0,fs_bytes=0;
+    if (!foj_dksh_read_file(
+            "sdmc:/switch/foj/gpu/foj_actor.vert.dksh",
+            shader_cpu,FOJ_DKSH_MAX_BYTES,FOJ_DKSH_VERTEX,&vs_bytes))
+        goto cleanup;
+    if (!foj_dksh_read_file(
+            "sdmc:/switch/foj/gpu/foj_triangle.frag.dksh",
+            shader_cpu+0x20000u,FOJ_DKSH_MAX_BYTES,
+            FOJ_DKSH_FRAGMENT,&fs_bytes))
+        goto cleanup;
+    DkShaderMaker shader_init;
+    dkShaderMakerDefaults(&shader_init,shader_mem,0);
+    dkShaderInitialize(&shader_vertex,&shader_init);
+    dkShaderMakerDefaults(&shader_init,shader_mem,0x20000u);
+    dkShaderInitialize(&shader_fragment,&shader_init);
+    if (!dkShaderIsValid(&shader_vertex) ||
+        !dkShaderIsValid(&shader_fragment) ||
+        dkShaderGetStage(&shader_vertex)!=DkStage_Vertex ||
+        dkShaderGetStage(&shader_fragment)!=DkStage_Fragment)
+        goto cleanup;
+#endif
+
     /* Mirror switchbrew's deko_basic/Example01 approach: pre-record
      * persistent framebuffer-binding lists, keep command memory alive,
      * and only submit pre-recorded lists during the presentation loop.
@@ -146,6 +190,41 @@ int main(int argc,char **argv) {
             if (!foj_smoke_color(phase,rgba))goto cleanup;
             dkCmdBufClearColorFloat(cmd,0,DkColorMask_RGBA,
                                     rgba[0],rgba[1],rgba[2],rgba[3]);
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+            /* This is the first actual GPU triangle DRAW command in source.
+             * It requires two valid user-supplied UAM DKSH modules. No FoJ
+             * geometry/materials or proprietary assets enter this mode. */
+            const DkViewport viewport={0.f,0.f,SCREEN_WIDTH,
+                                       SCREEN_HEIGHT,0.f,1.f};
+            DkRasterizerState rasterizer;
+            DkColorState color_state;
+            DkColorWriteState color_write;
+            dkRasterizerStateDefaults(&rasterizer);
+            dkColorStateDefaults(&color_state);
+            dkColorWriteStateDefaults(&color_write);
+            DkShader const* shaders[2]={
+                &shader_vertex,&shader_fragment
+            };
+            const DkVtxAttribState attribs[2]={
+                {0,0,0,DkVtxAttribSize_4x32,DkVtxAttribType_Float,0},
+                {0,0,16,DkVtxAttribSize_2x32,DkVtxAttribType_Float,0}
+            };
+            const DkVtxBufferState vertex_states[1]={
+                {sizeof(FojGpuVertex),0}
+            };
+            const DkBufExtents vertex_data[1]={
+                {vertex_gpu_addr,sizeof(kResearchTriangle)}
+            };
+            dkCmdBufSetViewports(cmd,0,&viewport,1);
+            dkCmdBufBindShaders(cmd,DkStageFlag_GraphicsMask,shaders,2);
+            dkCmdBufBindRasterizerState(cmd,&rasterizer);
+            dkCmdBufBindColorState(cmd,&color_state);
+            dkCmdBufBindColorWriteState(cmd,&color_write);
+            dkCmdBufBindVtxAttribState(cmd,attribs,2);
+            dkCmdBufBindVtxBufferState(cmd,vertex_states,1);
+            dkCmdBufBindVtxBuffers(cmd,0,vertex_data,1);
+            dkCmdBufDraw(cmd,DkPrimitive_Triangles,3,1,0,0);
+#endif
             commands[slot][phase]=dkCmdBufFinishList(cmd);
             if (!commands[slot][phase])goto cleanup;
         }
@@ -180,6 +259,9 @@ cleanup:
     if (queue)dkQueueWaitIdle(queue);
     if (cmd)dkCmdBufDestroy(cmd);
     if (vertex_mem)dkMemBlockDestroy(vertex_mem);
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+    if (shader_mem)dkMemBlockDestroy(shader_mem);
+#endif
     if (cmd_mem)dkMemBlockDestroy(cmd_mem);
     if (swapchain)dkSwapchainDestroy(swapchain);
     for (unsigned i=0;i<BUFFER_COUNT;++i)
