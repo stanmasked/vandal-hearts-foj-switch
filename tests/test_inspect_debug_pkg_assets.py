@@ -19,7 +19,18 @@ from tools.inspect_split_pkg import JoinedParts
 
 def synthetic_psarc(with_map=False):
     filenames = ["data/example.tga", "data/example.lua"]
-    blobs = [("\n".join(filenames) + "\n").encode(), b"DDS " + b"X" * 40,
+    texture = bytearray(128 + 4 * 4 * 4)
+    texture[:4] = b"DDS "
+    struct.pack_into("<I", texture, 4, 124)
+    struct.pack_into("<II", texture, 12, 4, 4)
+    struct.pack_into("<I", texture, 76, 32)
+    struct.pack_into("<II", texture, 80, 0x41, 0)
+    struct.pack_into("<I", texture, 88, 32)
+    struct.pack_into("<4I", texture, 92,
+                     0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000)
+    for j in range(16):
+        texture[128+j*4:132+j*4] = bytes((j*10, 12, 25, 255))
+    blobs = [("\n".join(filenames) + "\n").encode(), bytes(texture),
              b"-- synthetic Lua test\nvalue=1\n"]
     if with_map:
         filenames += [
