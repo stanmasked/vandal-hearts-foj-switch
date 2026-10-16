@@ -106,8 +106,34 @@ The new `foj-obj-wireframe-research.nro` reads a **user-provided**
 displays an invented test cube.
 
 A recognizable 3D model on desktop is **not yet** a complete original
-FoJ scene, textured material pipeline, multi-shape character,
-skinned animation, nor verified Switch-hardware gameplay.
+FoJ scene, textured material pipeline, skinned animation,
+nor verified Switch-hardware gameplay.
+
+## Complete original FoJ geometry and material tables (2026-10-16)
+
+**All 583** original `.bmodel` resources now have their full mesh-section
+tables structurally decoded: **1,380 shapes and 583,431 triangles**, not
+just their first meshes. The optional `0x0F` skin weights have been verified
+in **275 sections** from 87 models. These give bone indices and normalized
+influence weights, but not skeletal poses.
+
+**895 material-to-texture references** were identified. Of these, 143 names
+were ambiguous across directories; each is uniquely resolved by preferring
+the texture in the **same directory as the source model**. See the
+[full BMODEL research report](docs/REAL_BMODEL_COMPLETE.md).
+
+[Complete-model research tool](tools/inspect_complete_bmodel.py) can export
+all original parts into one user-local OBJ with material labels. The
+[aggregate audit](tools/audit_all_bmodels.py) checks complete tables without
+writing proprietary geometry to disk. An original five-section avatar
+(4,722 vertices, 1,574 triangles) has been reconstructed with its local DDS
+texture atlas for diagnostic examination.
+
+The existing fifth
+[Switch OBJ wireframe viewer](docs/OBJ_SWITCH_VIEWER.md) has been updated
+to accept the multi-shape OBJ material labels, but it **still draws only
+wireframes**, does not animate the skeleton, and has not been tested on actual
+Switch hardware. There is still **no playable FoJ port**.
 
 ## Immediate goal
 
@@ -157,6 +183,8 @@ Never publish the game package, license files, executables, keys or assets.
 - `tools/export_local_texture.py` — explicit local-only DDS texture export.
 - `tools/inspect_bmodel_banim.py` — provisional original model and animation header probe.
 - `tools/decode_bmodel_geometry.py` — verified first-shape model decoder and local OBJ export.
+- `tools/inspect_complete_bmodel.py` — full 1–50 shape decoder and local OBJ export.
+- `tools/audit_all_bmodels.py` — aggregate audit of meshes, skinning and texture references.
 - `core/obj_wireframe.c` — native-compatible OBJ diagnostic renderer.
 - `switch/source/dds_main.c` — DDS viewer reading local files.
 - `tests/` — synthetic test fixtures, no proprietary data.
