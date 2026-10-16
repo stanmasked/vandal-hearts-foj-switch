@@ -29,6 +29,8 @@ reverse engineering, new platform code, and clean-room implementations.
 - [x] Summarize the first original 50×50 map's collision, visibility and placement structures.
 - [x] Add portable C grid loader for observed COLL schema, plus generated 50×50 strict/sanitizer tests.
 - [x] Compile a separate native Switch COLL heatmap inspector NRO (runtime still to be tested).
+- [x] Validate five original BGRA8/DXT1 textures locally and publish format-only findings.
+- [x] Add portable C DDS decoder, generated regression tests, and native viewer NRO.
 - [ ] Establish full semantic meanings for proprietary resource formats and original battle rules.
 - [ ] Determine actual renderer, mesh/texture/animation/audio formats.
 - [ ] Identify script/event/battle data formats and code architecture.
