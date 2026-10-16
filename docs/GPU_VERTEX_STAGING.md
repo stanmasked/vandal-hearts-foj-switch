@@ -139,3 +139,13 @@ in this repository.
 
 **This document describes real preparation toward GPU rendering, not a
 completed native GPU implementation or a playable FoJ port.**
+
+### deko3d clip-depth enum semantics correction
+
+The upstream C header defines `DkDeviceFlags_DepthZeroToOne=0`
+and `DkDeviceFlags_DepthMinusOneToOne=256`. The research NRO
+correctly selects the former by leaving bit 8 cleared. Our **old
+mock and static ABI assertion incorrectly required 256 for [0,1]**;
+both are now corrected. This does not change the normalized vertex
+coordinates nor prove that the console depth state has been tested.
+
