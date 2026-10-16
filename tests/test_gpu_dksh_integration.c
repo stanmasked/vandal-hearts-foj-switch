@@ -84,6 +84,13 @@ int main(void) {
     /* Check exact original bytes instead of relying on header patterns. */
     generated_module(module,max,FOJ_DKSH_FRAGMENT);
     assert(memcmp(pool+layout.fragment_offset,module,max)==0);
+    /* Both failed fragment updates must preserve the vertex slot as well. */
+    generated_module(module,max,FOJ_DKSH_VERTEX);
+    assert(memcmp(pool+layout.vertex_offset,module,max)==0);
+    for(size_t i=max;i<layout.fragment_offset;++i)
+        assert(pool[i]==0xCC);
+    for(size_t i=layout.fragment_offset+max;i<layout.block_size;++i)
+        assert(pool[i]==0xCC);
     assert(unlink(path)==0);
     free(module);
     free(pool);
