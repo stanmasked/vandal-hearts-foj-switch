@@ -15,7 +15,7 @@ static void test_uv_and_stride(void) {
     uint32_t pixels[H*S];float z[H*S];
     for(int i=0;i<H*S;++i){pixels[i]=11;z[i]=9;}
     FojRenderSurface target={pixels,z,W,H,S,S};
-    FojTextureCamera camera={0,0,0,2.f,0,0,1,0,0};
+    FojTextureCamera camera={0,0,0,2.f,0,0,1,0};
     FojTexturedVertex tri[3]={
         {-1,-1,0,0,0},{1,-1,0,1,0},{0,1,0,.5f,1}
     };
@@ -39,7 +39,7 @@ static void test_depth_and_alpha(void) {
     uint32_t clear[1]={0};
     FojTexture rt={red,1,1,1},bt={blue,1,1,1},at={clear,1,1,1};
     FojRenderSurface target={pixels,z,W,H,W,W};
-    FojTextureCamera cam={0,0,0,2,0,0,1,0,0};
+    FojTextureCamera cam={0,0,0,2,0,0,1,0};
     FojTexturedVertex overlap[6]={
         {-1,-1,0,0,0},{1,-1,0,1,0},{0,1,0,1,1},
         {-1,-1,1,0,0},{1,-1,1,1,0},{0,1,1,1,1}
@@ -67,7 +67,7 @@ static void test_two_material_sections_and_global_depth(void) {
     const uint32_t green[1]={UINT32_C(0xff00ff00)};
     FojTexture tex[2]={{red,1,1,1},{green,1,1,1}};
     FojRenderSurface surface={pixels,depth,W,H,W,W};
-    FojTextureCamera cam={0,0,0,2,0,0,1,0,0};
+    FojTextureCamera cam={0,0,0,2,0,0,1,0};
     /* First shape closer (z=1), second further (z=0):
      * the second material must not erase previous depth values. */
     FojTexturedVertex tri[6]={
@@ -103,45 +103,12 @@ static void test_two_material_sections_and_global_depth(void) {
         tri,6,tex,2,batches,2,&surface,&cam,&drawn)==FOJ_TEX_BOUNDS);
 }
 
-static void test_bilinear_and_transparent_edge(void) {
-    enum {W=42,H=42};
-    uint32_t pixels[W*H];float depth[W*H];
-    uint32_t color[4]={
-        UINT32_C(0xff0000ff),UINT32_C(0xff00ff00),
-        UINT32_C(0xffff0000),UINT32_C(0xffffffff)
-    };
-    FojTexture tex={color,2,2,2};
-    FojRenderSurface surface={pixels,depth,W,H,W,W};
-    FojTextureCamera cam={0,0,0,2,0,0,1,0,1};
-    FojTexturedVertex triangle[3]={
-        {-1,-1,0,.5f,.5f},{1,-1,0,.5f,.5f},{0,1,0,.5f,.5f}
-    };
-    size_t drawn=0;
-    assert(foj_textured_render(triangle,3,&tex,&surface,&cam,&drawn)==FOJ_TEX_OK);
-    assert(drawn>10);
-    assert(pixels[21*W+21]==UINT32_C(0xff808080));
-    cam.bilinear=0;
-    assert(foj_textured_render(triangle,3,&tex,&surface,&cam,&drawn)==FOJ_TEX_OK);
-    assert(pixels[21*W+21]==UINT32_C(0xffffffff));
-    /* A transparent red neighbor must NOT bleed a red halo into
-     * neighboring opaque blue texels during bilinear interpolation. */
-    color[0]=UINT32_C(0x000000ff);
-    color[1]=color[2]=color[3]=UINT32_C(0xffff0000);
-    cam.bilinear=1;
-    assert(foj_textured_render(triangle,3,&tex,&surface,&cam,&drawn)==FOJ_TEX_OK);
-    assert(pixels[21*W+21]==UINT32_C(0xffff0000));
-    cam.bilinear=2;
-    uint32_t previous=pixels[21*W+21];
-    assert(foj_textured_render(triangle,3,&tex,&surface,&cam,&drawn)==FOJ_TEX_GEOMETRY);
-    assert(pixels[21*W+21]==previous);
-}
-
 static void test_malformed_and_degenerate(void) {
     uint32_t colors[16]={0};float z[16]={0};
     uint32_t white[1]={UINT32_C(0xffffffff)};
     FojTexture tex={white,1,1,1};
     FojRenderSurface dest={colors,z,4,4,4,4};
-    FojTextureCamera cam={0,0,0,1,0,0,1,0,0};
+    FojTextureCamera cam={0,0,0,1,0,0,1,0};
     FojTexturedVertex tri[3]={
         {0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}
     };
@@ -160,7 +127,6 @@ int main(void) {
     test_uv_and_stride();
     test_depth_and_alpha();
     test_two_material_sections_and_global_depth();
-    test_bilinear_and_transparent_edge();
     test_malformed_and_degenerate();
     puts("Textured triangles: UV, depth, alpha, buffer tests passed");
     return 0;
