@@ -42,9 +42,41 @@ jobs:
           cc --version
           make --version
       - name: Strict C11 host suite and triangle syntax
-        run: make -f gpu/clear.mk host-check
+        id: strict
+        shell: bash
+        run: |
+          set -o pipefail
+          make -f gpu/clear.mk host-check 2>&1 | tee gpu-host-strict.log
       - name: ASan and UBSan host suite
+        id: sanitized
+        shell: bash
         env:
           ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
-        run: make -f gpu/clear.mk host-mock-sanitized
+        run: |
+          set -o pipefail
+          make -f gpu/clear.mk host-mock-sanitized 2>&1 | tee gpu-host-sanitized.log
+      - name: Publish host-check summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## SDK-free GPU regression checks'
+            echo ''
+            echo '| Suite | Result |'
+            echo '|---|---|'
+            echo '| Strict C11 / triangle syntax | ${{ steps.strict.outcome }} |'
+            echo '| ASan and UBSan | ${{ steps.sanitized.outcome }} |'
+            echo ''
+            echo 'These jobs do not compile UAM shaders or run on Nintendo Switch hardware.'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload host-check diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gpu-host-check-logs
+          path: |
+            gpu-host-strict.log
+            gpu-host-sanitized.log
+          if-no-files-found: warn
+          retention-days: 7
