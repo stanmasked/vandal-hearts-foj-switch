@@ -1,6 +1,7 @@
 #include "dksh_module.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static uint32_t u32le(const uint8_t *p) {
@@ -31,7 +32,9 @@ int foj_dksh_validate(const void *buffer,size_t length,uint32_t stage) {
 
 int foj_dksh_read_file(const char *path,void *dst,size_t capacity,
                        uint32_t stage,size_t *bytes_written) {
-    if(!path||!dst||!bytes_written || capacity<256)return 0;
+    if(!path||!dst||!bytes_written || capacity<256 ||
+       (stage!=FOJ_DKSH_VERTEX && stage!=FOJ_DKSH_FRAGMENT))
+        return 0;
     if(capacity>FOJ_DKSH_MAX_BYTES)capacity=FOJ_DKSH_MAX_BYTES;
     FILE *file=fopen(path,"rb");
     if(!file)return 0;
@@ -39,11 +42,19 @@ int foj_dksh_read_file(const char *path,void *dst,size_t capacity,
     if(fseek(file,0,SEEK_END)==0) {
         long length=ftell(file);
         if(length>=256 && (size_t)length<=capacity &&
-           fseek(file,0,SEEK_SET)==0 &&
-           fread(dst,1,(size_t)length,file)==(size_t)length &&
-           foj_dksh_validate(dst,(size_t)length,stage)){
-            *bytes_written=(size_t)length;
-            valid=1;
+           fseek(file,0,SEEK_SET)==0) {
+            /* Validate untrusted SD data before touching live GPU memory. */
+            const size_t n=(size_t)length;
+            uint8_t *tmp=(uint8_t*)malloc(n);
+            if(tmp) {
+                if(fread(tmp,1,n,file)==n &&
+                   foj_dksh_validate(tmp,n,stage)) {
+                    memcpy(dst,tmp,n);
+                    *bytes_written=n;
+                    valid=1;
+                }
+                free(tmp);
+            }
         }
     }
     fclose(file);
