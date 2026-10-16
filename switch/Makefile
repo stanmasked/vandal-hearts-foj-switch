@@ -11,6 +11,8 @@ ISO_TARGET := build/foj-isometric-research
 COLL_TARGET := build/foj-coll-map-research
 DDS_TARGET := build/foj-dds-texture-research
 OBJ_TARGET := build/foj-obj-wireframe-research
+BANIM_TARGET := build/foj-banim-research
+BANIM_SRC := switch/source/banim_main.c core/banim_core.c
 OBJ_SRC := switch/source/obj_main.c core/obj_wireframe.c
 DDS_SRC := switch/source/dds_main.c core/dds_texture.c
 COLL_SRC := switch/source/coll_main.c core/coll_grid.c core/coll_view.c
@@ -24,7 +26,7 @@ LDFLAGS := -specs=$(DEVKITPRO)/libnx/switch.specs \
     -Wl,--gc-sections -pie -L$(DEVKITPRO)/libnx/lib
 
 .PHONY: all verify clean
-all: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(OBJ_TARGET).nro
+all: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(OBJ_TARGET).nro $(BANIM_TARGET).nro
 
 build:
 	mkdir -p build
@@ -74,16 +76,27 @@ $(OBJ_TARGET).nacp: | build
 $(OBJ_TARGET).nro: $(OBJ_TARGET).elf $(OBJ_TARGET).nacp
 	$(ELF2NRO) $< $@ --nacp=$(OBJ_TARGET).nacp
 
-verify: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(OBJ_TARGET).nro
+$(BANIM_TARGET).elf: $(BANIM_SRC) core/banim_core.h | build
+	$(CC) $(CFLAGS) $(LDFLAGS) $(BANIM_SRC) -o $@ -lnx -lm
+
+$(BANIM_TARGET).nacp: | build
+	$(NACPTOOL) --create "FoJ Animation Research" "VH FoJ contributors" "0.6.0" $@
+
+$(BANIM_TARGET).nro: $(BANIM_TARGET).elf $(BANIM_TARGET).nacp
+	$(ELF2NRO) $< $@ --nacp=$(BANIM_TARGET).nacp
+
+verify: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(OBJ_TARGET).nro $(BANIM_TARGET).nro
 	python3 tools/validate_nro.py $(TARGET).nro
 	python3 tools/validate_nro.py $(ISO_TARGET).nro
 	python3 tools/validate_nro.py $(COLL_TARGET).nro
 	python3 tools/validate_nro.py $(DDS_TARGET).nro
 	python3 tools/validate_nro.py $(OBJ_TARGET).nro
+	python3 tools/validate_nro.py $(BANIM_TARGET).nro
 
 clean:
 	rm -f $(TARGET).elf $(TARGET).nro $(TARGET).nacp \
 	       $(ISO_TARGET).elf $(ISO_TARGET).nro $(ISO_TARGET).nacp \
 	       $(COLL_TARGET).elf $(COLL_TARGET).nro $(COLL_TARGET).nacp \
 	       $(DDS_TARGET).elf $(DDS_TARGET).nro $(DDS_TARGET).nacp \
-	       $(OBJ_TARGET).elf $(OBJ_TARGET).nro $(OBJ_TARGET).nacp
+	       $(OBJ_TARGET).elf $(OBJ_TARGET).nro $(OBJ_TARGET).nacp \
+	       $(BANIM_TARGET).elf $(BANIM_TARGET).nro $(BANIM_TARGET).nacp
