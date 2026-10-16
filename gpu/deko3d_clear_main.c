@@ -11,15 +11,10 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdio.h>
+#include "smoke_plan.h"
 
 enum { SCREEN_WIDTH=1280, SCREEN_HEIGHT=720, BUFFER_COUNT=2 };
 enum { CMD_MEMORY_SIZE=0x10000 };
-
-static uint32_t round_up(uint64_t bytes, uint32_t alignment) {
-    /* Intended for bounded RGBA8 1280x720 image layouts only. */
-    if (!alignment || bytes > UINT32_MAX-(uint64_t)alignment) return 0;
-    return (uint32_t)((bytes + alignment-1) & ~(uint64_t)(alignment-1));
-}
 
 int main(int argc,char **argv) {
     (void)argc;(void)argv;
@@ -61,12 +56,11 @@ int main(int argc,char **argv) {
     layout_maker.dimensions[1]=SCREEN_HEIGHT;
     layout_maker.dimensions[2]=1;
     dkImageLayoutInitialize(&layout,&layout_maker);
-    uint32_t image_alignment=dkImageLayoutGetAlignment(&layout);
-    if (image_alignment<DK_MEMBLOCK_ALIGNMENT)
-        image_alignment=DK_MEMBLOCK_ALIGNMENT;
-    const uint32_t image_bytes=round_up(dkImageLayoutGetSize(&layout),
-                                        image_alignment);
-    if (!image_bytes) goto cleanup;
+    uint32_t image_bytes=0;
+    if (!foj_smoke_image_allocation(dkImageLayoutGetSize(&layout),
+                                    dkImageLayoutGetAlignment(&layout),
+                                    DK_MEMBLOCK_ALIGNMENT,&image_bytes))
+        goto cleanup;
 
     for (unsigned i=0;i<BUFFER_COUNT;++i) {
         DkMemBlockMaker image_maker;
@@ -110,11 +104,10 @@ int main(int argc,char **argv) {
             DkImageView const* color_targets[]={&views[slot]};
             dkCmdBufBindRenderTargets(cmd,color_targets,1,NULL);
             dkCmdBufSetScissors(cmd,0,&full_screen,1);
-            const float intensity=phase?.35f:.12f;
+            float rgba[4];
+            if (!foj_smoke_color(phase,rgba))goto cleanup;
             dkCmdBufClearColorFloat(cmd,0,DkColorMask_RGBA,
-                                    .09f+intensity,
-                                    .12f+.45f*phase,
-                                    .23f+.20f*phase,1.0f);
+                                    rgba[0],rgba[1],rgba[2],rgba[3]);
             commands[slot][phase]=dkCmdBufFinishList(cmd);
             if (!commands[slot][phase])goto cleanup;
         }
@@ -139,7 +132,7 @@ int main(int argc,char **argv) {
 
         /* Immutable GPU command lists, following the official deko3d
          * simple setup example. The clear color alternates periodically. */
-        const unsigned palette=(frame/120u)%2u;
+        const unsigned palette=foj_smoke_color_for_frame(frame);
         dkQueueSubmitCommands(queue,commands[slot][palette]);
         dkQueuePresentImage(queue,swapchain,slot);
         ++frame;
