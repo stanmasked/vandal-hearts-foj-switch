@@ -30,6 +30,18 @@ jobs:
         run: |
           python tools/inspect_pkg.py --help
           python -m tools.inspect_split_pkg --help
+      - name: Validate DDS BGRA8 and BC1/DXT1 decoders
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tests/test_dds_texture.c core/dds_texture.c -o /tmp/foj_dds
+          /tmp/foj_dds
+      - name: DDS parser sanitizer smoke test
+        run: |
+          cc -std=c11 -O1 -g -fsanitize=address,undefined \
+            -fno-omit-frame-pointer -Icore \
+            tests/test_dds_texture.c core/dds_texture.c -o /tmp/foj_dds_asan
+          /tmp/foj_dds_asan
+
       - name: Compile and run portable tactical logic tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
