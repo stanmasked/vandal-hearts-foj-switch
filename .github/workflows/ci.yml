@@ -88,6 +88,20 @@ jobs:
             -lm -o /tmp/foj_rigmesh_sanitized
           /tmp/foj_rigmesh_sanitized
 
+      - name: Validate CPU UV textured triangles and depth buffer
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tests/test_textured_triangles.c core/textured_triangles.c \
+            -lm -o /tmp/foj_textured_triangles
+          /tmp/foj_textured_triangles
+      - name: Check textured rasterizer with ASan and UBSan
+        run: |
+          cc -std=c11 -O1 -g -fsanitize=address,undefined \
+            -fno-omit-frame-pointer -Icore \
+            tests/test_textured_triangles.c core/textured_triangles.c \
+            -lm -o /tmp/foj_textured_triangles_asan
+          /tmp/foj_textured_triangles_asan
+
       - name: Compile and run portable tactical logic tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
