@@ -146,3 +146,19 @@ audio/video codecs; localization; and required work are **unconfirmed**.
 - [ ] Run the new full 14-scenario mock executable and optional native deko3d build on a working GitHub runner; latest Actions jobs still start with zero steps.
 - [ ] Bind generated triangle vertex attributes/shaders and issue an actual GPU draw call; observe the frame on real Switch hardware.
 - [ ] Upload user-local original Daldren vertex stream and both DDS atlases only after real GPU rendering is validated.
+
+## Shader-backed deko3d first triangle (2026-10-16)
+
+- [x] Obtain and cross-check original `devkitPro/deko3d/source/dksh.h` layout: 24-byte header, complete 64-byte program records.
+- [x] Strengthen `tools/validate_dksh.py` to reject corrupt tables/stage mismatch; update generated-only regression fixtures.
+- [x] Add bounded portable C DKSH loader that validates UAM program stage, offsets and file size before loading from the user's SD card.
+- [x] Run generated DKSH C tests under local strict C11 + ASan/UBSan.
+- [x] Add synthetic UV-gradient fragment shader and optional UAM `triangle-verify` build target.
+- [x] Implement independent `gpu/triangle.mk` NRO variant with `DkMemBlockFlags_Code`, `DkShaderInitialize`, vertex attribute binding and `dkCmdBufDraw` source path.
+- [x] Add `tools/prepare_gpu_triangle_sd.py` with generated DKSH stage checks, file limits and no-overwrite semantics.
+- [ ] Compile both genuine vertex/fragment DKSH modules using an installed UAM compiler; inspect stage metadata.
+- [ ] Compile the separate triangle NRO against the real devkitPro SDK (GitHub Actions currently fails before any steps).
+- [ ] Boot on physical Switch and **observe** the UV-gradient GPU triangle; validate button exit and resource cleanup.
+- [ ] Only then submit original user-local Daldren mesh and DDS atlases to a tested hardware GPU renderer.
+
+**The draw call exists in source, but no Switch GPU draw execution has been confirmed.**
