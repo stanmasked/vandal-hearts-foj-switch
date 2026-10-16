@@ -4,6 +4,8 @@
 DEVKITPRO ?= /opt/devkitpro
 # Debug deko3d includes API validation; select deko3d for final release.
 GPU_LIB ?= deko3dd
+GPU_TITLE ?= FoJ GPU Clear Smoke
+GPU_VERSION ?= 0.10.0
 HOSTCC ?= cc
 HOST_ABI := build/foj-deko3d-contract-host
 HOST_TEST := build/foj-gpu-smoke-plan-host
@@ -13,8 +15,8 @@ DEVKITA64 ?= $(DEVKITPRO)/devkitA64
 CC := $(DEVKITA64)/bin/aarch64-none-elf-gcc
 ELF2NRO := $(DEVKITPRO)/tools/bin/elf2nro
 NACPTOOL := $(DEVKITPRO)/tools/bin/nacptool
-OUT := build/foj-deko3d-clear-smoke
-SRC := gpu/deko3d_clear_main.c gpu/smoke_plan.c
+OUT ?= build/foj-deko3d-clear-smoke
+SRC ?= gpu/deko3d_clear_main.c gpu/smoke_plan.c
 
 CFLAGS := -std=c11 -O2 -Wall -Wextra -Werror -fPIE -ffunction-sections \
   -fdata-sections -I$(DEVKITPRO)/libnx/include -Icore
@@ -70,7 +72,7 @@ $(OUT).elf: $(SRC) gpu/smoke_plan.h gpu/deko3d_api_contract.h core/gpu_vertex_st
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $@ -l$(GPU_LIB) -lstdc++ -lnx -lm
 
 $(OUT).nacp: | build
-	$(NACPTOOL) --create "FoJ GPU Clear Smoke" "VH FoJ contributors" "0.10.0" $@
+	$(NACPTOOL) --create "$(GPU_TITLE)" "VH FoJ contributors" "$(GPU_VERSION)" $@
 
 $(OUT).nro: $(OUT).elf $(OUT).nacp
 	$(ELF2NRO) $< $@ --nacp=$(OUT).nacp
