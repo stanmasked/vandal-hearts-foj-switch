@@ -129,3 +129,9 @@ result, and original-game compatibility.
 Exact original engine; available asset formats; rights and access to
 development materials; technical feasibility of code recovery; performance;
 audio/video codecs; localization; and required work are **unconfirmed**.
+
+- [x] Compare mock deko3d enum values against upstream header, correct RGBA8/UsageRender values and add nine native C11 ABI assertions.
+- [x] Add offline devkitPro cross-build preflight, optional shader UAM detection, and four locally passed synthetic SDK tests.
+- [ ] Restore GitHub Actions jobs, compile actual optional deko3d NRO against the real Switch SDK and inspect linker output.
+- [ ] Verify first GPU-cleared frame on Nintendo Switch hardware.
+
