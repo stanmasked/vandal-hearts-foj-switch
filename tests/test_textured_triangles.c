@@ -60,6 +60,49 @@ static void test_depth_and_alpha(void) {
     assert(pixels[20*W+20]==pattern[1]);
 }
 
+static void test_two_material_sections_and_global_depth(void) {
+    enum {W=48,H=48};
+    uint32_t pixels[W*H];float depth[W*H];
+    const uint32_t red[1]={UINT32_C(0xff0000ff)};
+    const uint32_t green[1]={UINT32_C(0xff00ff00)};
+    FojTexture tex[2]={{red,1,1,1},{green,1,1,1}};
+    FojRenderSurface surface={pixels,depth,W,H,W,W};
+    FojTextureCamera cam={0,0,0,2,0,0,1,0};
+    /* First shape closer (z=1), second further (z=0):
+     * the second material must not erase previous depth values. */
+    FojTexturedVertex tri[6]={
+        {-1,-1,1,0,0},{1,-1,1,1,0},{0,1,1,0,1},
+        {-1,-1,0,0,0},{1,-1,0,1,0},{0,1,0,0,1}
+    };
+    FojTextureSection batches[2]={{0,3,0},{3,3,1}};
+    size_t drawn=0;
+    assert(foj_textured_render_sections(
+        tri,6,tex,2,batches,2,&surface,&cam,&drawn)==FOJ_TEX_OK);
+    assert(pixels[24*W+24]==red[0]);
+    assert(depth[24*W+24]==1.f);
+    assert(drawn>0);
+    batches[0].texture_index=1;
+    batches[1].texture_index=0;
+    assert(foj_textured_render_sections(
+        tri,6,tex,2,batches,2,&surface,&cam,&drawn)==FOJ_TEX_OK);
+    assert(pixels[24*W+24]==green[0]);
+    /* Fail without touching the existing framebuffer. */
+    uint32_t previous=pixels[24*W+24];
+    batches[1].texture_index=10;
+    assert(foj_textured_render_sections(
+        tri,6,tex,2,batches,2,&surface,&cam,&drawn)==FOJ_TEX_BOUNDS);
+    assert(pixels[24*W+24]==previous);
+    batches[1].texture_index=0;
+    tri[5].u=NAN;
+    assert(foj_textured_render_sections(
+        tri,6,tex,2,batches,2,&surface,&cam,&drawn)==FOJ_TEX_GEOMETRY);
+    assert(pixels[24*W+24]==previous);
+    tri[5].u=0;
+    batches[1].first_vertex=2;
+    assert(foj_textured_render_sections(
+        tri,6,tex,2,batches,2,&surface,&cam,&drawn)==FOJ_TEX_BOUNDS);
+}
+
 static void test_malformed_and_degenerate(void) {
     uint32_t colors[16]={0};float z[16]={0};
     uint32_t white[1]={UINT32_C(0xffffffff)};
@@ -83,6 +126,7 @@ static void test_malformed_and_degenerate(void) {
 int main(void) {
     test_uv_and_stride();
     test_depth_and_alpha();
+    test_two_material_sections_and_global_depth();
     test_malformed_and_degenerate();
     puts("Textured triangles: UV, depth, alpha, buffer tests passed");
     return 0;
