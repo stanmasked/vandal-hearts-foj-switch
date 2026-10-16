@@ -123,3 +123,12 @@ synthetic one-key animation data. See
 [BANIM_SWITCH_VIEWER.md](BANIM_SWITCH_VIEWER.md). It does not yet deform
 original meshes or reproduce PS3 animation blending; hardware launch
 is still unverified.
+
+## Seventh build: skeletal deformation mechanics (synthetic)
+
+`build/foj-skinning-research.nro` links the portable native
+`core/skeletal_skin.c` and the existing wireframe renderer. It demonstrates
+joint-driven **moving vertices** on an invented two-bone test strip.
+Original FoJ model geometry/animation is not included or claimed to render
+correctly. The red marker denotes synthetic input. Controls and caveats:
+[SKINNING_SWITCH_VIEWER.md](SKINNING_SWITCH_VIEWER.md).
