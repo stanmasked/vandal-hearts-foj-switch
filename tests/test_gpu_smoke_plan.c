@@ -20,6 +20,19 @@ static void test_image_alignment(void) {
     assert(bytes==8192);
 }
 
+static void test_vertex_buffer_alignment(void) {
+    /* Three invented FojGpuVertex entries, each 6 x float32 = 24 bytes. */
+    uint32_t bytes=0;
+    assert(foj_smoke_image_allocation(3u*24u,4096,4096,&bytes));
+    assert(bytes==4096u);
+
+    /* Same layout for real model uploads; no original vertices included. */
+    assert(foj_smoke_image_allocation(9066u*24u,4096,4096,&bytes));
+    assert(bytes==221184u);
+    assert(foj_smoke_image_allocation(20000u*24u,4096,4096,&bytes));
+    assert(bytes==483328u);
+}
+
 static void test_palette(void) {
     float c[4]={0};
     assert(foj_smoke_color(0,c));
@@ -41,6 +54,7 @@ static void test_palette(void) {
 
 int main(void) {
     test_image_alignment();
+    test_vertex_buffer_alignment();
     test_palette();
     puts("GPU smoke allocation and alternating-color plan: passed");
     return 0;
