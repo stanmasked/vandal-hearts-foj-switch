@@ -2,7 +2,6 @@
 # Verify the actual UAM Makefile deletes rejected shader targets.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-root="$PWD"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/gpu/shaders" "$tmp/tools"
@@ -41,4 +40,18 @@ grep -q "Deleting file" "$tmp/build.log" || {
     cat "$tmp/build.log" >&2
     exit 1
 }
-echo "UAM Makefile failed DKSH cleanup: PASS"
+# Also reject a compiler that writes an output and then fails.
+if FAKE_UAM_FAIL=1 PYTHONPATH="$tmp" make --no-print-directory -f gpu/Makefile "$target" UAM="$tmp/fake-uam" >"$tmp/compiler-failure.log" 2>&1; then
+    echo "FAIL: simulated UAM failure unexpectedly passed" >&2
+    exit 1
+fi
+if [[ -e "$target" ]]; then
+    echo "FAIL: compiler-failed DKSH remains on disk" >&2
+    exit 1
+fi
+grep -q "Deleting file" "$tmp/compiler-failure.log" || {
+    echo "FAIL: make did not remove compiler-failed DKSH" >&2
+    cat "$tmp/compiler-failure.log" >&2
+    exit 1
+}
+echo "UAM Makefile compiler and validator failure cleanup: PASS"
