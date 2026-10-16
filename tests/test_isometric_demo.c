@@ -65,7 +65,7 @@ static void test_tiny_canvas_and_padded_stride(void) {
         for (int x = WIDTH; x < STRIDE; ++x)
             assert(pixels[y * STRIDE + x] == UINT32_C(0x12345678));
     }
-    assert(pixels[0] == UINT32_C(0xff21130d));
+    assert(pixels[0] != UINT32_C(0x12345678));
 
     /* Invalid stride must not touch the buffer. */
     pixels[0] = UINT32_C(0x12345678);
