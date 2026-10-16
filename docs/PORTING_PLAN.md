@@ -52,6 +52,11 @@ reverse engineering, new platform code, and clean-room implementations.
 - [x] Privately pair original avatar_body (28 bones, 4722 vertices) with avatar_idle (28 tracks, 5600 keys).
 - [x] Build eighth native ARM64 NRO that can consume actual user-local BMODEL-derived mesh and BANIM clip.
 - [x] Produce three experimental desktop snapshots of source geometry animated by real BANIM keys.
+- [x] Add portable C CPU rasterizer with interpolated UVs, alpha cutout and per-pixel depth buffer.
+- [x] Decode original avatar_texture DDS 1024×1024 and render authentic original static mesh with it.
+- [x] Produce experimental original-textured avatar_idle poses at 0, 3.317 and 6.603 seconds on desktop.
+- [x] Compile ninth native NRO accepting private rigged mesh, BANIM clip and DDS atlas together.
+- [ ] Reproduce PS3-original shader/sampler, multimat material, pose and camera conventions.
 - [ ] Validate actual FoJ pose composition, bind conventions, material mapping and skinned movement.
 - [ ] Establish full semantic meanings for proprietary resource formats and original battle rules.
 - [x] Identify BGRA8 and DXT1 DDS texture formats and validate actual images.
