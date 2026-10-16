@@ -7,10 +7,11 @@ ELF2NRO := $(DEVKITPRO)/tools/bin/elf2nro
 NACPTOOL := $(DEVKITPRO)/tools/bin/nacptool
 
 TARGET := build/foj-switch-research
-SRC := switch/source/main.c
+SRC := switch/source/main.c core/tactical_demo.c
+HDR := core/tactical_demo.h
 
 CFLAGS := -O2 -g -Wall -Wextra -Werror -fPIE -ffunction-sections -fdata-sections \
-    -I$(DEVKITPRO)/libnx/include
+    -I$(DEVKITPRO)/libnx/include -Icore
 LDFLAGS := -specs=$(DEVKITPRO)/libnx/switch.specs \
     -Wl,--gc-sections -pie -L$(DEVKITPRO)/libnx/lib
 
@@ -20,8 +21,8 @@ all: $(TARGET).nro
 build:
 	mkdir -p build
 
-$(TARGET).elf: $(SRC) | build
-	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@ -lnx
+$(TARGET).elf: $(SRC) $(HDR) | build
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $@ -lnx
 
 $(TARGET).nacp: | build
 	$(NACPTOOL) --create "FoJ Switch Research" "VH FoJ contributors" "0.1.0" $@
