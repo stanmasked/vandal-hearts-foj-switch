@@ -75,4 +75,54 @@ void dkQueueSubmitCommands(DkQueue,DkCmdList);
 void dkQueuePresentImage(DkQueue,DkSwapchain,int);
 int dkQueueAcquireImage(DkQueue,DkSwapchain);
 void dkQueueWaitIdle(DkQueue);
+
+/* Triangle-mode API declarations: compile-time only in host-triangle-check.
+ * No shader instructions or fake GPU frame are produced. These structures
+ * mirror the public field names/initializers required by the NRO source. */
+typedef struct { unsigned char opaque[128]; } DkShader;
+typedef struct {
+    DkMemBlock codeMem;
+    const void *control;
+    uint32_t codeOffset, programId;
+} DkShaderMaker;
+typedef enum { DkStage_Vertex=0, DkStage_Fragment=4 } DkStage;
+enum { DkStageFlag_GraphicsMask=31u };
+typedef struct { float x,y,width,height,near,far; } DkViewport;
+typedef struct { uint32_t dummy; } DkRasterizerState;
+typedef struct { uint32_t dummy; } DkColorState;
+typedef struct { uint32_t masks; } DkColorWriteState;
+typedef enum {
+    DkVtxAttribSize_4x32=1,
+    DkVtxAttribSize_2x32=4
+} DkVtxAttribSize;
+typedef enum { DkVtxAttribType_Float=7 } DkVtxAttribType;
+typedef struct {
+    uint32_t bufferId:5;
+    uint32_t :1;
+    uint32_t isFixed:1;
+    uint32_t offset:14;
+    DkVtxAttribSize size:6;
+    DkVtxAttribType type:3;
+    uint32_t :1;
+    uint32_t isBgra:1;
+} DkVtxAttribState;
+typedef struct { uint32_t stride,divisor; } DkVtxBufferState;
+typedef struct { DkGpuAddr addr; uint32_t size; } DkBufExtents;
+enum { DkPrimitive_Triangles=4, DkMemBlockFlags_Code=16 };
+void dkShaderMakerDefaults(DkShaderMaker*,DkMemBlock,uint32_t);
+void dkShaderInitialize(DkShader*,const DkShaderMaker*);
+int dkShaderIsValid(const DkShader*);
+DkStage dkShaderGetStage(const DkShader*);
+void dkRasterizerStateDefaults(DkRasterizerState*);
+void dkColorStateDefaults(DkColorState*);
+void dkColorWriteStateDefaults(DkColorWriteState*);
+void dkCmdBufSetViewports(DkCmdBuf,uint32_t,const DkViewport*,uint32_t);
+void dkCmdBufBindShaders(DkCmdBuf,uint32_t,const DkShader* const*,uint32_t);
+void dkCmdBufBindRasterizerState(DkCmdBuf,const DkRasterizerState*);
+void dkCmdBufBindColorState(DkCmdBuf,const DkColorState*);
+void dkCmdBufBindColorWriteState(DkCmdBuf,const DkColorWriteState*);
+void dkCmdBufBindVtxAttribState(DkCmdBuf,const DkVtxAttribState*,uint32_t);
+void dkCmdBufBindVtxBufferState(DkCmdBuf,const DkVtxBufferState*,uint32_t);
+void dkCmdBufBindVtxBuffers(DkCmdBuf,uint32_t,const DkBufExtents*,uint32_t);
+void dkCmdBufDraw(DkCmdBuf,uint32_t,uint32_t,uint32_t,uint32_t,uint32_t);
 #endif
