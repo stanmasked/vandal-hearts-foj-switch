@@ -100,8 +100,8 @@ class Reader:
         if self.take(len(data)) != data:
             raise ModelFormatError("Unexpected BMODEL structure tag")
 
-    def text(self) -> str:
-        n = self.u16()
+    def text(self, *, short_length: bool = False) -> str:
+        n = self.u8() if short_length else self.u16()
         if not 1 <= n <= 255:
             raise ModelFormatError("Invalid model string length")
         try:
@@ -139,7 +139,7 @@ def decode_model(data: bytes) -> CompleteModel:
         if i:
             r.expect(b"\x07")  # next shape in sequence
         r.expect(b"\x01\x20\x00")
-        name = r.text()
+        name = r.text(short_length=True)
         n, xyz = r.array(0x02, 3, 12)
         if n % 3:
             raise ModelFormatError("Triangle-soup vertex count must be divisible by 3")
