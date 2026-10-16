@@ -388,3 +388,11 @@ No real SDK packages were installed, and the fake presence-only toolchain cannot
 - [ ] Compile authentic shader with UAM, ARM64 NRO with devkitA64 and verify hardware GPU output.
 
 The simulated shader and stub validator do not prove genuine UAM or GPU compatibility.
+
+## Stage 93: execute DKSH build failure cleanup on host (2026-10-17)
+
+- [x] Reconstruct the actual relevant `gpu/Makefile` target and stage-92 cleanup test locally; confirmed a validator-rejected synthetic DKSH is deleted by GNU Make.
+- [x] Extend committed cleanup test to simulate a UAM process which writes DKSH and exits with error code 17; assert the partial target is also deleted.
+- [x] Re-run both failure-mode scenarios against the locally recreated Makefile target: both PASS.
+- [ ] Run exact expanded test against a full GitHub checkout/Actions; no full CI pass is implied by this isolated local run.
+- [ ] Validate authentic UAM-generated DKSH and devkitA64 NRO on Nintendo Switch hardware.
