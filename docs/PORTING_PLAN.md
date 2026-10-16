@@ -343,3 +343,13 @@ The local dependency reproduction was not a full real SDK build.
 - [x] Confirmed control case: unchanged headers and Makefiles do not cause ELF recompilation. The SDK-free regression passed locally after replacing an older local placeholder rule with the actual compiler-shaped rule.
 - [ ] Execute the exact script within a complete repository checkout/CI environment; this is not an end-to-end Makefile execution on cloned repository files.
 - [ ] Verify GitHub Actions logs, actual UAM DKSH, devkitA64 NRO output, and GPU draw on physical Switch.
+
+## Stage 88: early Switch GPU NRO packaging preflight (2026-10-17)
+
+- [x] Inspected UAM shader Makefile, shader-backed triangle variant and shared GPU NRO build rules.
+- [x] Add early `gpu/clear.mk preflight` checks for executable `elf2nro`, executable `nacptool`, and the libnx `switch.specs` linker spec (in addition to existing devkitA64/deko3d checks). Both GPU variants share these rules.
+- [x] Checked this execution environment: devkitA64 compiler, elf2nro, nacptool, and switch.specs are all absent; `uam` is not installed and command-line cloning from GitHub fails DNS. An ARM64 build and DKSH shader compile are not possible here.
+- [ ] Verify GPU NRO compilation and on-hardware graphics with the real devkitPro/UAM toolchain.
+- [ ] Obtain actual GitHub Actions pass/fail results for the full GPU host regression workflow.
+
+No NRO or DKSH files were produced in this stage.
