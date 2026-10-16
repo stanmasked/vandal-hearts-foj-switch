@@ -142,6 +142,13 @@ jobs:
             -lm -o /tmp/foj_gpu_clear_math_asan
           /tmp/foj_gpu_clear_math_asan
 
+      - name: Execute the actual deko3d NRO source with a stateful host API mock
+        run: |
+          make -f gpu/clear.mk host-check
+      - name: Sanitize fake deko3d resource lifecycle and fault injection
+        run: |
+          make -f gpu/clear.mk host-mock-sanitized
+
       - name: Compile and run portable tactical logic tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
