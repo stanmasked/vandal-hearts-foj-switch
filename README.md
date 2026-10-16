@@ -355,6 +355,25 @@ These are software mock results. **No real deko3d shader compilation,
 native GPU NRO cross-build or frame presented on physical Switch** is
 claimed; GitHub Actions is still failing before creating job steps.
 
+## GPU smoke-test: full host API lifecycle exercised
+
+The optional deko3d program now has a
+[stateful mock driver test](tests/test_deko3d_clear_host.c) that
+**compiles and executes the actual native GPU smoke entrypoint** on
+desktop, with compact [host-only deko3d/libnx headers](tests/mock_switch_sdk/).
+Unlike the original math-only test, it checks **242 acquire/submit/present
+cycles**, four framebuffer/color command lists, nine injected failures,
+and a Plus-button exit after two frames. All eleven paths release their
+mock resources, and local strict C11 and ASan/UBSan runs pass.
+
+Run `make -f gpu/clear.mk host-check` or
+`make -f gpu/clear.mk host-mock-sanitized` without devkitPro.
+[Setup and evidence](docs/DEKO3D_GPU_CLEAR_SMOKE.md).
+
+**A simulated GPU is not a physical GPU.** No cross-compiled deko3d NRO
+or Switch presentation was verified: current GitHub-hosted jobs continue
+to fail before recording any executable steps.
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
