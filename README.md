@@ -4,8 +4,8 @@ Research project for a **native Nintendo Switch homebrew port** of
 *Vandal Hearts: Flames of Judgment* (PlayStation 3 / Xbox 360, 2010).
 
 > **Status: research / native ARM64 smoke-test only — no playable port, PS3
-> code translation or original gameplay.** Four independent libnx NROs now
-> compile in CI, including original-format map and texture diagnostic viewers;
+> code translation or original gameplay.** Five independent libnx NROs now
+> compile in CI, including original-format map, texture and mesh viewers;
 > none runs the original PS3 game.
 
 ## Verified user-provided PS3 package
@@ -88,6 +88,27 @@ to reproduce a bounded model/animation header summary without writing
 the original asset contents to disk. Actual 3D geometry, UVs, skeleton
 hierarchies and original scene rendering remain outstanding.
 
+## First authentic PS3 model geometry recovered
+
+**All 583** original FoJ `.bmodel` files were checked: the opening mesh
+section in each follows the same verified big-endian vertex/UV/normal/triangle
+layout. In total these first sections contain **320,810 triangles**.
+
+A real archery target's first shape (1,167 vertices, 389 triangles) was
+rendered locally from the user's model data and converted to OBJ without
+committing commercial geometry to GitHub.
+
+See [fully verified model format findings](docs/REAL_BMODEL_FIRST_SHAPE.md),
+[local OBJ geometry converter](tools/decode_bmodel_geometry.py) and
+[the fifth native Switch viewer](docs/OBJ_SWITCH_VIEWER.md).
+The new `foj-obj-wireframe-research.nro` reads a **user-provided**
+`sdmc:/switch/foj/models/preview.obj` on Switch, and otherwise
+displays an invented test cube.
+
+A recognizable 3D model on desktop is **not yet** a complete original
+FoJ scene, textured material pipeline, multi-shape character,
+skinned animation, nor verified Switch-hardware gameplay.
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
@@ -135,13 +156,15 @@ Never publish the game package, license files, executables, keys or assets.
 - `core/dds_texture.c` — portable DDS BGRA8 + DXT1 decoder.
 - `tools/export_local_texture.py` — explicit local-only DDS texture export.
 - `tools/inspect_bmodel_banim.py` — provisional original model and animation header probe.
+- `tools/decode_bmodel_geometry.py` — verified first-shape model decoder and local OBJ export.
+- `core/obj_wireframe.c` — native-compatible OBJ diagnostic renderer.
 - `switch/source/dds_main.c` — DDS viewer reading local files.
 - `tests/` — synthetic test fixtures, no proprietary data.
 - `docs/PKG_INPUT.md` — local package preparation and safe validation.
 - `docs/PORTING_PLAN.md` — milestones and technical unknowns.
 - `docs/LEGAL.md` — clean-repository rules.
 - `.github/workflows/ci.yml` — automatic host-side tests.
-- `switch/` — four native, data-free libnx diagnostic NRO builds.
+- `switch/` — five native, data-free libnx diagnostic NRO builds.
 - `core/tactical_demo.c` — portable synthetic movement BFS, heights and obstacles.
 - `core/isometric_demo.c` — portable synthetic CPU rasterizer for isometric tiles.
 - `tools/render_isometric_preview.c` — host preview generator using the same renderer.
@@ -152,11 +175,12 @@ Never publish the game package, license files, executables, keys or assets.
 
 ## Native Switch bring-up
 
-Four independently written research binaries compile through devkitA64 and
-pass NRO structure validation in the [latest four-NRO build](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/38921473035):
+Five independently written research binaries compile through devkitA64 and
+pass NRO structure validation in the [fifth-NRO build](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/38925622328):
 `foj-switch-research.nro` (ASCII tactics), `foj-isometric-research.nro`
 (CPU isometric tactics), `foj-coll-map-research.nro` (COLL viewer), and
-`foj-dds-texture-research.nro` (original-format DDS viewer), in artifact
+`foj-dds-texture-research.nro` (DDS viewer), and
+`foj-obj-wireframe-research.nro` (real user-local mesh wireframe), in artifact
 `foj-switch-research-nros` in the updated workflow runs.
 The corresponding pixel renderer is also compiled on Ubuntu to generate a
 **synthetic screenshot** through the [preview workflow](.github/workflows/isometric-preview.yml).
