@@ -13,6 +13,48 @@ static unsigned texel(float u,unsigned length) {
     unsigned index=(unsigned)(u*(float)(length-1)+.5f);
     return index<length?index:length-1;
 }
+static float clamp01(float value) {
+    return value<0.f?0.f:(value>1.f?1.f:value);
+}
+
+/* Bilinear filtering with premultiplied alpha interpolation. Keeping
+ * transparent RGB from bleeding into opaque neighbors is important for
+ * original FoJ DDS cutout texels. Input/output are 0xAABBGGRR. */
+static uint32_t bilinear_sample(const FojTexture *tex,float u,float v) {
+    float x=clamp01(u)*(float)(tex->width-1);
+    float y=clamp01(v)*(float)(tex->height-1);
+    unsigned x0=(unsigned)x,y0=(unsigned)y;
+    unsigned x1=x0+1<tex->width?x0+1:x0;
+    unsigned y1=y0+1<tex->height?y0+1:y0;
+    float fx=x-x0,fy=y-y0;
+    uint32_t pix[4]={
+        tex->rgba[(size_t)y0*tex->stride+x0],
+        tex->rgba[(size_t)y0*tex->stride+x1],
+        tex->rgba[(size_t)y1*tex->stride+x0],
+        tex->rgba[(size_t)y1*tex->stride+x1]
+    };
+    float weights[4]={(1-fx)*(1-fy),fx*(1-fy),(1-fx)*fy,fx*fy};
+    float a=0.f,r=0.f,g=0.f,b=0.f;
+    for (unsigned i=0;i<4;++i) {
+        float alpha=(float)((pix[i]>>24)&255u);
+        float weighted=alpha*weights[i];
+        a+=weighted;
+        r+=weighted*(float)(pix[i]&255u);
+        g+=weighted*(float)((pix[i]>>8)&255u);
+        b+=weighted*(float)((pix[i]>>16)&255u);
+    }
+    if (a<.5f)return 0u;
+    unsigned outa=(unsigned)(a+.5f);
+    unsigned outr=(unsigned)(r/a+.5f);
+    unsigned outg=(unsigned)(g/a+.5f);
+    unsigned outb=(unsigned)(b/a+.5f);
+    if (outa>255)outa=255;
+    if (outr>255)outr=255;
+    if (outg>255)outg=255;
+    if (outb>255)outb=255;
+    return (uint32_t)(outr|(outg<<8)|(outb<<16)|(outa<<24));
+}
+
 static Projected project(const FojTexturedVertex *v,
                          const FojTextureCamera *c,
                          float cy,float sy,float cp,float sp,
@@ -48,7 +90,8 @@ static FojTextureStatus render_part(
         !isfinite(cam->yaw)||!isfinite(cam->pitch)||
         !isfinite(cam->zoom)||cam->zoom<.05f||cam->zoom>8.f||
         !isfinite(cam->center_x)||!isfinite(cam->center_y)||
-        !isfinite(cam->center_z))
+        !isfinite(cam->center_z) ||
+        (cam->bilinear!=0 && cam->bilinear!=1))
         return FOJ_TEX_GEOMETRY;
 
     /* Fail closed before touching a caller-provided framebuffer. */
@@ -112,8 +155,14 @@ static FojTextureStatus render_part(
                 if (z<=zbuf[x])continue;
                 float u=w0*a.u+w1*b.u+w2*c.u;
                 float v=w0*a.v+w1*b.v+w2*c.v;
-                unsigned tx=texel(u,tex->width),ty=texel(v,tex->height);
-                uint32_t pixel=tex->rgba[(size_t)ty*tex->stride+tx];
+                uint32_t pixel;
+                if (cam->bilinear) {
+                    pixel=bilinear_sample(tex,u,v);
+                } else {
+                    unsigned tx=texel(u,tex->width);
+                    unsigned ty=texel(v,tex->height);
+                    pixel=tex->rgba[(size_t)ty*tex->stride+tx];
+                }
                 if ((pixel>>24)<128u)continue;
                 rgba[x]=pixel|UINT32_C(0xff000000);
                 zbuf[x]=z;
