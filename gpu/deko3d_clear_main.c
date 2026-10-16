@@ -1,6 +1,6 @@
 /*
  * FoJ deko3d FIRST-GPU-FRAME research smoke test.
- * This optional, separate NRO clears and presents a changing solid color
+ * This optional, separate NRO clears and presents alternating solid colors
  * *using the GPU*, no original game or material data, no shader binary.
  *
  * Coded against public devkitPro/deko3d C API; toolchain build and runtime
@@ -31,6 +31,7 @@ int main(int argc,char **argv) {
     DkSwapchain swapchain=NULL;
     DkMemBlock images_mem[BUFFER_COUNT]={0};
     DkMemBlock cmd_mem=NULL;
+    DkCmdList commands[BUFFER_COUNT][2]={{0}};
     DkImage images[BUFFER_COUNT];
     DkImageView views[BUFFER_COUNT];
     DkImageLayout layout;
@@ -47,6 +48,7 @@ int main(int argc,char **argv) {
 
     DkQueueMaker queue_maker;
     dkQueueMakerDefaults(&queue_maker,device);
+    queue_maker.flags=DkQueueFlags_Graphics;
     queue=dkQueueCreate(&queue_maker);
     if (!queue) goto cleanup;
 
@@ -59,15 +61,17 @@ int main(int argc,char **argv) {
     layout_maker.dimensions[1]=SCREEN_HEIGHT;
     layout_maker.dimensions[2]=1;
     dkImageLayoutInitialize(&layout,&layout_maker);
+    uint32_t image_alignment=dkImageLayoutGetAlignment(&layout);
+    if (image_alignment<DK_MEMBLOCK_ALIGNMENT)
+        image_alignment=DK_MEMBLOCK_ALIGNMENT;
     const uint32_t image_bytes=round_up(dkImageLayoutGetSize(&layout),
-                                           DK_MEMBLOCK_ALIGNMENT);
+                                        image_alignment);
     if (!image_bytes) goto cleanup;
 
     for (unsigned i=0;i<BUFFER_COUNT;++i) {
         DkMemBlockMaker image_maker;
         dkMemBlockMakerDefaults(&image_maker,device,image_bytes);
-        image_maker.flags=DkMemBlockFlags_CpuUncached |
-                          DkMemBlockFlags_GpuCached |
+        image_maker.flags=DkMemBlockFlags_GpuCached |
                           DkMemBlockFlags_Image;
         images_mem[i]=dkMemBlockCreate(&image_maker);
         if (!images_mem[i]) goto cleanup;
@@ -96,6 +100,26 @@ int main(int argc,char **argv) {
     if (!cmd) goto cleanup;
     dkCmdBufAddMemory(cmd,cmd_mem,0,CMD_MEMORY_SIZE);
 
+    /* Mirror switchbrew's deko_basic/Example01 approach: pre-record
+     * persistent framebuffer-binding lists, keep command memory alive,
+     * and only submit pre-recorded lists during the presentation loop.
+     * This avoids reusing/freeing in-flight command memory each frame. */
+    DkScissor full_screen={0,0,SCREEN_WIDTH,SCREEN_HEIGHT};
+    for (unsigned slot=0;slot<BUFFER_COUNT;++slot) {
+        for (unsigned phase=0;phase<2;++phase) {
+            DkImageView const* color_targets[]={&views[slot]};
+            dkCmdBufBindRenderTargets(cmd,color_targets,1,NULL);
+            dkCmdBufSetScissors(cmd,0,&full_screen,1);
+            const float intensity=phase?.35f:.12f;
+            dkCmdBufClearColorFloat(cmd,0,DkColorMask_RGBA,
+                                    .09f+intensity,
+                                    .12f+.45f*phase,
+                                    .23f+.20f*phase,1.0f);
+            commands[slot][phase]=dkCmdBufFinishList(cmd);
+            if (!commands[slot][phase])goto cleanup;
+        }
+    }
+
     padConfigureInput(1,HidNpadStyleSet_NpadStandard);
     PadState pad;
     padInitializeDefault(&pad);
@@ -113,19 +137,10 @@ int main(int argc,char **argv) {
             break;
         }
 
-        /* Synchronize after each frame intentionally. This is a
-         * correctness smoke test, NOT a performance benchmark. */
-        dkCmdBufClear(cmd);
-        DkImageView const* color_targets[] = { &views[slot] };
-        dkCmdBufBindRenderTargets(cmd,color_targets,1,NULL);
-        float phase=(float)(frame%240)/239.0f;
-        dkCmdBufClearColorFloat(cmd,0,DkColorMask_RGBA,
-                                .09f+.15f*phase,.12f+.35f*phase,
-                                .23f+.30f*phase,1.0f);
-        DkCmdList commands=dkCmdBufFinishList(cmd);
-        dkQueueSubmitCommands(queue,commands);
-        dkQueueFlush(queue);
-        dkQueueWaitIdle(queue);
+        /* Immutable GPU command lists, following the official deko3d
+         * simple setup example. The clear color alternates periodically. */
+        const unsigned palette=(frame/120u)%2u;
+        dkQueueSubmitCommands(queue,commands[slot][palette]);
         dkQueuePresentImage(queue,swapchain,slot);
         ++frame;
         exit_status=0;
