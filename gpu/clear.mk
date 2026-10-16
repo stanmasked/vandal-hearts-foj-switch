@@ -17,7 +17,7 @@ OUT := build/foj-deko3d-clear-smoke
 SRC := gpu/deko3d_clear_main.c gpu/smoke_plan.c
 
 CFLAGS := -std=c11 -O2 -Wall -Wextra -Werror -fPIE -ffunction-sections \
-  -fdata-sections -I$(DEVKITPRO)/libnx/include
+  -fdata-sections -I$(DEVKITPRO)/libnx/include -Icore
 LDFLAGS := -specs=$(DEVKITPRO)/libnx/switch.specs -Wl,--gc-sections \
   -pie -L$(DEVKITPRO)/libnx/lib
 
@@ -33,29 +33,29 @@ build:
 	mkdir -p build
 
 # Run this independently from devkitPro, UAM or a Nintendo Switch.
-$(HOST_TEST): tests/test_gpu_smoke_plan.c gpu/smoke_plan.c gpu/smoke_plan.h | build
+$(HOST_TEST): tests/test_gpu_smoke_plan.c gpu/smoke_plan.c gpu/smoke_plan.h core/gpu_vertex_stream.h | build
 	$(HOSTCC) -std=c11 -Wall -Wextra -Werror -pedantic -Igpu \
 	  tests/test_gpu_smoke_plan.c gpu/smoke_plan.c -lm -o $@
 
 $(HOST_ABI): tests/test_deko3d_api_contract.c \
             tests/mock_switch_sdk/deko3d.h gpu/deko3d_api_contract.h | build
 	$(HOSTCC) -std=c11 -Wall -Wextra -Werror -pedantic \
-	  -Itests/mock_switch_sdk -Igpu \
+	  -Itests/mock_switch_sdk -Igpu -Icore \
 	  tests/test_deko3d_api_contract.c -o $@
 
 $(HOST_MOCK): tests/test_deko3d_clear_host.c tests/mock_switch_sdk/deko3d.h \
               tests/mock_switch_sdk/switch.h gpu/deko3d_clear_main.c \
-              gpu/smoke_plan.c gpu/smoke_plan.h | build
+              gpu/smoke_plan.c gpu/smoke_plan.h core/gpu_vertex_stream.h | build
 	$(HOSTCC) -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic \
-	  -Itests/mock_switch_sdk -Igpu \
+	  -Itests/mock_switch_sdk -Igpu -Icore \
 	  tests/test_deko3d_clear_host.c gpu/smoke_plan.c -lm -o $@
 
 $(HOST_MOCK_SAN): tests/test_deko3d_clear_host.c tests/mock_switch_sdk/deko3d.h \
                   tests/mock_switch_sdk/switch.h gpu/deko3d_clear_main.c \
-                  gpu/smoke_plan.c gpu/smoke_plan.h | build
+                  gpu/smoke_plan.c gpu/smoke_plan.h core/gpu_vertex_stream.h | build
 	$(HOSTCC) -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic \
 	  -fsanitize=address,undefined -fno-omit-frame-pointer \
-	  -Itests/mock_switch_sdk -Igpu \
+	  -Itests/mock_switch_sdk -Igpu -Icore \
 	  tests/test_deko3d_clear_host.c gpu/smoke_plan.c -lm -o $@
 
 host-check: $(HOST_TEST) $(HOST_ABI) $(HOST_MOCK)
@@ -66,7 +66,7 @@ host-check: $(HOST_TEST) $(HOST_ABI) $(HOST_MOCK)
 host-mock-sanitized: $(HOST_MOCK_SAN)
 	./$(HOST_MOCK_SAN)
 
-$(OUT).elf: $(SRC) gpu/smoke_plan.h gpu/deko3d_api_contract.h | build preflight
+$(OUT).elf: $(SRC) gpu/smoke_plan.h gpu/deko3d_api_contract.h core/gpu_vertex_stream.h | build preflight
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $@ -l$(GPU_LIB) -lstdc++ -lnx -lm
 
 $(OUT).nacp: | build
