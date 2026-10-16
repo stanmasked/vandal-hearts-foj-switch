@@ -3,9 +3,9 @@
 Research project for a **native Nintendo Switch homebrew port** of
 *Vandal Hearts: Flames of Judgment* (PlayStation 3 / Xbox 360, 2010).
 
-> **Status: research only — no playable port, PS3 code translation, decrypted game
-> assets or Switch NRO is present.** This repository currently documents the
-> investigation and provides tools to inspect *unencrypted PKG headers*.
+> **Status: research / native ARM64 smoke-test only — no playable port, PS3
+> code translation, decrypted game assets, or original gameplay.** A synthetic
+> libnx console/input NRO builds in CI; this does not run Flames of Judgment.
 
 ## Immediate goal
 
@@ -51,6 +51,18 @@ Never publish the game package, license files, executables, keys or assets.
 - `docs/PORTING_PLAN.md` — milestones and technical unknowns.
 - `docs/LEGAL.md` — clean-repository rules.
 - `.github/workflows/ci.yml` — automatic host-side tests.
+- `switch/` — minimal, assets-free libnx native NRO smoke test.
+- `tools/validate_nro.py` — structural check for compiled NRO output.
+- `.github/workflows/switch-nro.yml` — CI build with devkitA64.
+- `docs/SWITCH_BRINGUP.md` — build and validation evidence levels.
+
+## Native Switch bring-up
+
+A minimal, independently written Switch console NRO compiles through devkitA64
+and passes NRO container checks in [CI run 38865695651](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/38865695651).
+Download the `foj-switch-research-nro` artifact from that run if desired.
+This is only a **homebrew startup / controller probe**, not a playable port.
+See [docs/SWITCH_BRINGUP.md](docs/SWITCH_BRINGUP.md).
 
 ## Relationship to the PS1 project
 
