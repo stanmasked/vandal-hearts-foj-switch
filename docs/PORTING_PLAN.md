@@ -220,3 +220,11 @@ audio/video codecs; localization; and required work are **unconfirmed**.
 - [x] Upload logs as a short-lived diagnostic artifact, including when a suite fails.
 - [ ] Confirm GitHub Actions actually schedules a push workflow run and that the new steps execute; PR-only workflow-run lookup returned no PR runs, and commit statuses were empty, which do not establish the status of push-triggered runs.
 - [ ] Perform genuine UAM + ARM64 build and physical GPU frame test.
+
+## Stage 74: independent sanitizer diagnostics
+
+- [x] Give the dedicated GPU-host workflow Checkout a step identifier.
+- [x] Use an explicit non-cancelled + successful-checkout condition for ASan/UBSan so an earlier strict C11 failure does not suppress sanitizer diagnostics.
+- [x] Keep per-suite outcomes, saved logs, and existing workflow failure propagation.
+- [ ] Verify an actual GitHub Actions run. Empty combined commit statuses do not establish workflow execution or outcome.
+- [ ] Validate real UAM DKSH and ARM64 GPU NRO compilation with installed Switch toolchain, then observe physical hardware output.
