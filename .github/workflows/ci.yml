@@ -42,6 +42,12 @@ jobs:
             tests/test_dds_texture.c core/dds_texture.c -o /tmp/foj_dds_asan
           /tmp/foj_dds_asan
 
+      - name: Validate OBJ first-shape reader and wireframe view
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tests/test_obj_wireframe.c core/obj_wireframe.c -lm -o /tmp/foj_obj
+          /tmp/foj_obj
+
       - name: Compile and run portable tactical logic tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
