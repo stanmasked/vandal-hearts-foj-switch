@@ -104,3 +104,12 @@ valid file it loads a synthetic gradient. See
 [DDS_SWITCH_VIEWER.md](DDS_SWITCH_VIEWER.md) for exact controls and local
 export steps. This proves ARM64 compilation and asset-loader preparation,
 not operation of the original game's 3D renderer or a hardware test.
+
+## Fifth build: original first-mesh wireframe viewer
+
+`build/foj-obj-wireframe-research.nro` is compiled from
+`core/obj_wireframe.c` and `switch/source/obj_main.c`. It reads the
+user's own locally exported `preview.obj` from SD, otherwise displaying
+an original **synthetic cube**. The app rotates and zooms a CPU wireframe;
+it does not simulate the original FoJ 3D engine. For controls, file paths
+and legal data separation see [OBJ_SWITCH_VIEWER.md](OBJ_SWITCH_VIEWER.md).
