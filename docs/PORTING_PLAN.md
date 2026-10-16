@@ -277,3 +277,13 @@ No claim of a full host suite pass or hardware draw is made for this stage.
 - [x] Commit test to main; the dedicated GPU workflow path filter includes this test source.
 - [ ] Execute the updated test and full GPU host suite on a complete checkout. Local GitHub DNS is unavailable; status/PR workflow queries expose no confirmed pass or fail for push runs.
 - [ ] Confirm genuine UAM DKSH, ARM64 NRO and physical Switch GPU frame independently.
+
+## Stage 81: independent host execution of updated DKSH integration (2026-10-17)
+
+- [x] Reconstruct current standalone DKSH loader, GPU layout and updated integration scenario using source retrieved from GitHub connector.
+- [x] Compile/run synthetic two-slot integration with GCC and Clang under strict C11 and under ASan/UBSan: four passing executions after formatting the local test reconstruction to meet `-Werror`.
+- [x] Verify wrong-stage vertex module cannot replace the loaded fragment stage and damaged DKSH cannot modify its existing content.
+- [ ] Run complete repository `make -f gpu/clear.mk host-check` and `host-mock-sanitized` on a real checkout/CI runner. This container cannot resolve GitHub for cloning.
+- [ ] Compile real UAM shader DKSH, link ARM64 NRO, and validate first physical GPU triangle.
+
+This evidence covers reconstructed host-only modules, not real deko3d GPU execution.
