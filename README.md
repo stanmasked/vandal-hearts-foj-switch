@@ -473,6 +473,24 @@ Native UAM compilation, ARM64 triangle build, and actual GPU display
 remain unverified because the current environment lacks devkitPro
 and GitHub-hosted jobs still fail before running any steps.
 
+## Upstream-confirmed correction: 0..1 deko3d depth has flag value 0
+
+The actual deko3d public header defines
+`DkDeviceFlags_DepthZeroToOne=0` and
+`DkDeviceFlags_DepthMinusOneToOne=256`. Our earlier test header and
+ABI contract mistakenly asserted that **256 meant 0..1**, and the mock
+incorrectly used a truthiness check on the flag. All three have been
+fixed in the GitHub sources, with a new explicit C11 regression test
+covering both modes.
+
+The **retained prior eleven-scenario GPU lifecycle test** was rebuilt
+locally with the corrected mock and passed strict C11 and ASan/UBSan,
+including 242 simulated frames. The current **fourteen-scenario** test
+and real native deko3d binary have **not** been verified yet; the GitHub
+Actions zero-step failure remains a separate blocker. This is a
+correction to SDK/test compatibility rather than a claim of GPU output.
+[Technical evidence](docs/DEKO3D_GPU_CLEAR_SMOKE.md).
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
