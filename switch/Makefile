@@ -12,6 +12,8 @@ COLL_TARGET := build/foj-coll-map-research
 DDS_TARGET := build/foj-dds-texture-research
 OBJ_TARGET := build/foj-obj-wireframe-research
 BANIM_TARGET := build/foj-banim-research
+SKIN_TARGET := build/foj-skinning-research
+SKIN_SRC := switch/source/skinning_main.c core/skeletal_skin.c core/banim_core.c core/obj_wireframe.c
 BANIM_SRC := switch/source/banim_main.c core/banim_core.c
 OBJ_SRC := switch/source/obj_main.c core/obj_wireframe.c
 DDS_SRC := switch/source/dds_main.c core/dds_texture.c
@@ -26,7 +28,7 @@ LDFLAGS := -specs=$(DEVKITPRO)/libnx/switch.specs \
     -Wl,--gc-sections -pie -L$(DEVKITPRO)/libnx/lib
 
 .PHONY: all verify clean
-all: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(OBJ_TARGET).nro $(BANIM_TARGET).nro
+all: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(OBJ_TARGET).nro $(BANIM_TARGET).nro $(SKIN_TARGET).nro
 
 build:
 	mkdir -p build
@@ -85,13 +87,23 @@ $(BANIM_TARGET).nacp: | build
 $(BANIM_TARGET).nro: $(BANIM_TARGET).elf $(BANIM_TARGET).nacp
 	$(ELF2NRO) $< $@ --nacp=$(BANIM_TARGET).nacp
 
-verify: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(OBJ_TARGET).nro $(BANIM_TARGET).nro
+$(SKIN_TARGET).elf: $(SKIN_SRC) core/skeletal_skin.h core/banim_core.h core/obj_wireframe.h | build
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SKIN_SRC) -o $@ -lnx -lm
+
+$(SKIN_TARGET).nacp: | build
+	$(NACPTOOL) --create "FoJ Skinning Research" "VH FoJ contributors" "0.7.0" $@
+
+$(SKIN_TARGET).nro: $(SKIN_TARGET).elf $(SKIN_TARGET).nacp
+	$(ELF2NRO) $< $@ --nacp=$(SKIN_TARGET).nacp
+
+verify: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(OBJ_TARGET).nro $(BANIM_TARGET).nro $(SKIN_TARGET).nro
 	python3 tools/validate_nro.py $(TARGET).nro
 	python3 tools/validate_nro.py $(ISO_TARGET).nro
 	python3 tools/validate_nro.py $(COLL_TARGET).nro
 	python3 tools/validate_nro.py $(DDS_TARGET).nro
 	python3 tools/validate_nro.py $(OBJ_TARGET).nro
 	python3 tools/validate_nro.py $(BANIM_TARGET).nro
+	python3 tools/validate_nro.py $(SKIN_TARGET).nro
 
 clean:
 	rm -f $(TARGET).elf $(TARGET).nro $(TARGET).nacp \
@@ -99,4 +111,5 @@ clean:
 	       $(COLL_TARGET).elf $(COLL_TARGET).nro $(COLL_TARGET).nacp \
 	       $(DDS_TARGET).elf $(DDS_TARGET).nro $(DDS_TARGET).nacp \
 	       $(OBJ_TARGET).elf $(OBJ_TARGET).nro $(OBJ_TARGET).nacp \
-	       $(BANIM_TARGET).elf $(BANIM_TARGET).nro $(BANIM_TARGET).nacp
+	       $(BANIM_TARGET).elf $(BANIM_TARGET).nro $(BANIM_TARGET).nacp \
+	       $(SKIN_TARGET).elf $(SKIN_TARGET).nro $(SKIN_TARGET).nacp
