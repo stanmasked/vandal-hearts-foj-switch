@@ -86,6 +86,55 @@ alignment escalation, overflow failure, palette values, and frames
 UBSan, and combined ASan/UBSan all passed. This confirms only CPU-side
 arithmetic/decision logic, not the GPU driver, swapchain or video output.
 
+## Host-executed deko3d lifecycle test (new gate)
+
+A **stateful fake of the deko3d and libnx C API** now compiles and runs
+the **actual** `gpu/deko3d_clear_main.c` entrypoint on a normal desktop
+compiler. The test only substitutes driver/kernel calls via small headers
+under `tests/mock_switch_sdk/`; the original optional Switch source is
+included unmodified in `tests/test_deko3d_clear_host.c`.
+
+Run without devkitPro or a console:
+
+```sh
+make -f gpu/clear.mk host-check
+make -f gpu/clear.mk host-mock-sanitized
+```
+
+The mock records every allocation, framebuffer binding, scissor region,
+command list, acquired slot, submission, presentation and destruction.
+It asserts command lists are built for **both swapchain images** and
+both generated clear-color modes. Host coverage:
+
+| Test | Expected result |
+| --- | --- |
+| Normal mock run | **242** complete acquired/submitted/presented frames |
+| Buffer slots | Both visited **121** times |
+| Color palette A / B | Selected **122 / 120** times |
+| Recorded GPU lists | **Four** (2 image slots × 2 color modes) |
+| Deliberate setup/acquire faults | **Nine** recovery paths |
+| Live allocations after exit | **Zero** in all ten scenarios |
+| Strict C11 host compile | **Passed locally** |
+| ASan + UBSan host compile/run | **Passed locally** |
+
+The nine simulated faults cover device creation, graphics queue
+creation, each of two image-memory allocations, swapchain creation,
+command memory, command-buffer creation, command-list finalization and
+image acquisition.
+
+The tests exercise resource lifetime and the C call flow without
+emulating actual deko3d command execution. The mock implements only
+the public signatures needed by this NRO, matching the upstream
+`deko3d.h` at the time of implementation, and **is not a substitute for
+compiling against the real SDK**. No hardware/display/color correctness,
+GPU memory residency or native API version compatibility is established.
+
+The repository CI now calls `host-check` and
+`host-mock-sanitized` whenever runner jobs work again. In the meantime,
+the above commands were run successfully in the local container.
+The GPU workflow also executes `host-check` before attempting its
+independent ARM64 build.
+
 ## GitHub Actions
 
 The separate
