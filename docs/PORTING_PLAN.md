@@ -254,3 +254,12 @@ audio/video codecs; localization; and required work are **unconfirmed**.
 - [ ] Compile actual UAM DKSH modules and ARM64 NRO; verify GPU output on physical Switch.
 
 Host test execution does not establish deko3d hardware rendering or proprietary-game compatibility.
+
+## Stage 78: broaden SDK-free sanitizer coverage (2026-10-17)
+
+- [x] Extend `gpu/clear.mk` sanitized host target to include `test_gpu_smoke_plan.c` (allocation and frame/palette scheduling) and `test_deko3d_api_contract.c` (mock API compatibility assertions).
+- [x] Wire both new sanitized executables into the `clean` target and retain GCC/Clang matrix execution in existing CI workflow.
+- [ ] Run the entire strict/sanitized host suite from a full checkout and confirm actual CI results. Direct container checkout still fails DNS resolution for github.com.
+- [ ] Compile DKSH with UAM, cross-link ARM64 NRO against real deko3d and verify on physical hardware.
+
+No claim of a full host suite pass or hardware draw is made for this stage.
