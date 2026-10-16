@@ -17,6 +17,11 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Validate portable GPU allocation and color-plan tests first
+        shell: bash
+        run: |
+          set -euxo pipefail
+          make -f gpu/clear.mk host-check
       - name: Inspect installed Switch GPU toolchain
         shell: bash
         run: |
