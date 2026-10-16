@@ -13,9 +13,22 @@
 #include <stdio.h>
 #include "smoke_plan.h"
 #include "deko3d_api_contract.h"
+#include "gpu_vertex_stream.h"
+#include <string.h>
 
 enum { SCREEN_WIDTH=1280, SCREEN_HEIGHT=720, BUFFER_COUNT=2 };
 enum { CMD_MEMORY_SIZE=0x10000 };
+
+/* 24-byte GPU upload format used by original FoJ vertex staging too.
+ * The vertices are invented and do not encode commercial game assets.
+ */
+_Static_assert(sizeof(FojGpuVertex)==24,
+               "GPU shader vertex format changed unexpectedly");
+static const FojGpuVertex kResearchTriangle[3]={
+    {-0.60f,-0.55f,0.5f,1.0f,0.0f,0.0f},
+    { 0.60f,-0.55f,0.5f,1.0f,1.0f,0.0f},
+    { 0.00f, 0.65f,0.5f,1.0f,0.5f,1.0f}
+};
 
 int main(int argc,char **argv) {
     (void)argc;(void)argv;
@@ -27,6 +40,8 @@ int main(int argc,char **argv) {
     DkSwapchain swapchain=NULL;
     DkMemBlock images_mem[BUFFER_COUNT]={0};
     DkMemBlock cmd_mem=NULL;
+    DkMemBlock vertex_mem=NULL;
+    DkGpuAddr vertex_gpu_addr=0;
     DkCmdList commands[BUFFER_COUNT][2]={{0}};
     DkImage images[BUFFER_COUNT];
     DkImageView views[BUFFER_COUNT];
@@ -95,6 +110,25 @@ int main(int argc,char **argv) {
     if (!cmd) goto cleanup;
     dkCmdBufAddMemory(cmd,cmd_mem,0,CMD_MEMORY_SIZE);
 
+    /* Phase-1 geometry residency (no GPU draw submitted yet).
+     * Upload an invented triangle using exactly the six-float vertex
+     * layout shared with the original-game GPU staging module. */
+    uint32_t vertex_memory_bytes=0;
+    if (!foj_smoke_image_allocation(sizeof(kResearchTriangle),
+                                    DK_MEMBLOCK_ALIGNMENT,
+                                    DK_MEMBLOCK_ALIGNMENT,
+                                    &vertex_memory_bytes))goto cleanup;
+    DkMemBlockMaker vertex_maker;
+    dkMemBlockMakerDefaults(&vertex_maker,device,vertex_memory_bytes);
+    vertex_maker.flags=DkMemBlockFlags_CpuUncached|
+                       DkMemBlockFlags_GpuCached;
+    vertex_mem=dkMemBlockCreate(&vertex_maker);
+    if (!vertex_mem)goto cleanup;
+    void *vertex_cpu_addr=dkMemBlockGetCpuAddr(vertex_mem);
+    vertex_gpu_addr=dkMemBlockGetGpuAddr(vertex_mem);
+    if (!vertex_cpu_addr || !vertex_gpu_addr)goto cleanup;
+    memcpy(vertex_cpu_addr,kResearchTriangle,sizeof(kResearchTriangle));
+
     /* Mirror switchbrew's deko_basic/Example01 approach: pre-record
      * persistent framebuffer-binding lists, keep command memory alive,
      * and only submit pre-recorded lists during the presentation loop.
@@ -142,6 +176,7 @@ int main(int argc,char **argv) {
 cleanup:
     if (queue)dkQueueWaitIdle(queue);
     if (cmd)dkCmdBufDestroy(cmd);
+    if (vertex_mem)dkMemBlockDestroy(vertex_mem);
     if (cmd_mem)dkMemBlockDestroy(cmd_mem);
     if (swapchain)dkSwapchainDestroy(swapchain);
     for (unsigned i=0;i<BUFFER_COUNT;++i)
