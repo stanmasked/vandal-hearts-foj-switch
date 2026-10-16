@@ -182,3 +182,10 @@ audio/video codecs; localization; and required work are **unconfirmed**.
 - [x] Add module to shader-backed native `gpu/triangle.mk`; add CI tests and existing SDK-free `host-check` / `host-mock-sanitized` targets.
 - [ ] Verify the full current GPU host integration suite when executable on a working runner.
 - [ ] Verify real UAM DKSH shader compilation, real ARM64 deko3d native link, then first physical GPU triangle draw.
+
+## GPU DKSH transactional intake (2026-10-16)
+
+- [x] Change `foj_dksh_read_file` to stage SD data in temporary heap memory; copy into GPU-code memory only after complete read and stage/metadata validation.
+- [x] Add generated-fixture regressions asserting rejected wrong-stage, insufficient-capacity and damaged-header DKSH input leaves both output buffer and byte count unchanged.
+- [ ] Execute updated DKSH C11/ASan/UBSan host tests on a runner with repository checkout; this session cannot reach GitHub from its local test container.
+- [ ] Confirm shader binaries with UAM and inspect first frame on physical Nintendo Switch; no runtime success claimed.
