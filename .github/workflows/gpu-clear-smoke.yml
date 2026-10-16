@@ -5,6 +5,12 @@ on:
     paths:
       - 'gpu/deko3d_clear_main.c'
       - 'gpu/clear.mk'
+      - 'gpu/triangle.mk'
+      - 'gpu/dksh_module.c'
+      - 'gpu/dksh_module.h'
+      - 'gpu/shaders/foj_triangle.frag'
+      - 'gpu/Makefile'
+      - 'tools/validate_dksh.py'
       - 'gpu/smoke_plan.c'
       - 'gpu/smoke_plan.h'
       - 'tests/test_gpu_smoke_plan.c'
@@ -43,12 +49,18 @@ jobs:
         run: |
           set -euxo pipefail
           make -f gpu/clear.mk verify
+      - name: Compile shader-backed synthetic triangle NRO
+        shell: bash
+        run: |
+          set -euxo pipefail
+          make -f gpu/triangle.mk verify
       - name: Compile optional first GPU shaders if UAM is present
         shell: bash
         run: |
           set -euxo pipefail
           if command -v uam >/dev/null 2>&1; then
             make -f gpu/Makefile verify
+            make -f gpu/Makefile triangle-verify
           else
             echo "UAM absent: shader build skipped; GPU clear smoke does not require shaders"
           fi
@@ -57,6 +69,12 @@ jobs:
         with:
           name: foj-deko3d-gpu-clear-smoke
           path: build/foj-deko3d-clear-smoke.nro
+          if-no-files-found: error
+      - name: Upload optional shader-backed triangle NRO
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-deko3d-triangle-research
+          path: build/foj-deko3d-triangle-research.nro
           if-no-files-found: error
       - name: Upload optional DKSH modules
         if: always()
