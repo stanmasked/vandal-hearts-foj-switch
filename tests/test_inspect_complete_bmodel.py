@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import math
 import struct
+import tempfile
+from pathlib import Path
 import unittest
 
 from tools.inspect_complete_bmodel import (
-    ModelFormatError, decode_model, resolve_textures,
+    ModelFormatError, decode_model, resolve_textures, write_full_obj,
 )
 
 
@@ -109,6 +111,28 @@ class CompleteBModelTests(unittest.TestCase):
                                             materials, manifest)
         self.assertEqual(wrong_directory["body_mat"][0]["resolution"], "ambiguous")
         self.assertIsNone(wrong_directory["body_mat"][0]["path"])
+
+    def test_full_export_to_local_obj(self):
+        data = synthetic_complete_model()
+        model = decode_model(data)
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "all_shapes.obj"
+            write_full_obj(data, model, output, reverse_winding=True,
+                           flip_v=True)
+            text = output.read_text("utf-8")
+            self.assertEqual(text.count("\\no "), 2)
+            self.assertEqual(text.count("\\nusemtl "), 2)
+            self.assertEqual(text.count("\\nv "), 6)
+            self.assertEqual(text.count("\\nvt "), 6)
+            self.assertEqual(text.count("\\nvn "), 6)
+            self.assertIn("f 1/1/1 3/3/3 2/2/2", text)
+            self.assertIn("f 4/4/4 6/6/6 5/5/5", text)
+            self.assertIn("usemtl body_mat", text)
+            self.assertIn("usemtl arm_mat", text)
+            with self.assertRaises(FileExistsError):
+                write_full_obj(data, model, output)
+            with self.assertRaises(ValueError):
+                write_full_obj(data, model, Path(directory) / "bad.zip")
 
     def test_single_shape_skinless(self):
         data = synthetic_complete_model(skin=False)
