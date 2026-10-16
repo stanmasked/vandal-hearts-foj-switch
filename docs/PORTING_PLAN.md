@@ -196,3 +196,10 @@ audio/video codecs; localization; and required work are **unconfirmed**.
 - [x] Confirm updated Makefile targets are present on GitHub.
 - [ ] Run full targets on a real checkout/CI runner. Current sandbox cannot resolve `github.com` for cloning; this step is not claimed as passed.
 - [ ] Verify UAM and devkitA64 builds, then physical Switch GPU triangle output.
+
+## Stage 71: default GPU host-check coverage
+
+- [x] Make `host-triangle-check` a prerequisite of the default `gpu/clear.mk` `host-check`, ensuring the actual shader-backed source receives a strict C11 syntax check during routine SDK-free GPU verification.
+- [x] Re-run standalone DKSH transactional generated-data tests locally with strict C11 warnings and with ASan/UBSan (both pass).
+- [ ] Confirm the full `host-check` suite in a complete checkout and CI. Existing GitHub workflow runs remain unverified; no CI success is implied by a committed Makefile.
+- [ ] Compile genuine UAM DKSH and ARM64 NRO with devkitPro, followed by hardware frame inspection.
