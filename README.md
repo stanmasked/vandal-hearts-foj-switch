@@ -316,6 +316,25 @@ This is groundwork for the **first hardware-generated color frame**,
 then shader-backed generated triangles, then the user-local original
 two-atlas Daldren actor. GPU fidelity/performance remain unknown.
 
+## GPU command-list safety and local host regression (2026-10-16)
+
+The isolated [deko3d clear/present smoke program](gpu/deko3d_clear_main.c)
+has been revised against switchbrew's official examples to use
+**pre-recorded GPU command lists**, a full-screen scissor and correctly
+allocated GPU image memory. It alternates two generated colors across a
+double-buffered 1280×720 framebuffer, without including game assets.
+
+The allocation/palette logic is factored into
+[gpu/smoke_plan.c](gpu/smoke_plan.c), which passes local strict C11,
+ASan and UBSan tests. Developers can reproduce this without a Switch
+SDK using `make -f gpu/clear.mk host-check`.
+
+The **native deko3d NRO remains unverified**: [optional GitHub Actions
+attempt #38950129942](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/38950129942)
+again failed at job startup with zero steps, as did unrelated Python
+tests. Neither Switch compilation nor actual GPU display is confirmed.
+[Details and acceptance tests](docs/DEKO3D_GPU_CLEAR_SMOKE.md).
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
