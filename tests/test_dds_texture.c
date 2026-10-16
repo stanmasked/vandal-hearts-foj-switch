@@ -52,7 +52,7 @@ static void test_bgra8_decode(void) {
     assert(info.first_level_bytes == 16);
     assert(pixels[0] == UINT32_C(0xff0a141e));
     assert(pixels[1] == UINT32_C(0x400080ff));
-    assert(pixels[3] == UINT32_C(0x800000ff));
+    assert(pixels[3] == UINT32_C(0x80ff0000));
     assert(pixels[4] == UINT32_C(0xff646464));
     assert(pixels[2] == 0 && pixels[5] == 0); /* untouched stride padding */
 }
