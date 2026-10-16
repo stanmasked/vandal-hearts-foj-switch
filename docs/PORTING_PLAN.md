@@ -189,3 +189,10 @@ audio/video codecs; localization; and required work are **unconfirmed**.
 - [x] Add generated-fixture regressions asserting rejected wrong-stage, insufficient-capacity and damaged-header DKSH input leaves both output buffer and byte count unchanged.
 - [ ] Execute updated DKSH C11/ASan/UBSan host tests on a runner with repository checkout; this session cannot reach GitHub from its local test container.
 - [ ] Confirm shader binaries with UAM and inspect first frame on physical Nintendo Switch; no runtime success claimed.
+
+## GPU host DKSH integration (stage 70)
+
+- [x] Include generated-only DKSH intake tests in `gpu/clear.mk` `host-check` and `host-mock-sanitized`; include both outputs in `clean`.
+- [x] Confirm updated Makefile targets are present on GitHub.
+- [ ] Run full targets on a real checkout/CI runner. Current sandbox cannot resolve `github.com` for cloning; this step is not claimed as passed.
+- [ ] Verify UAM and devkitA64 builds, then physical Switch GPU triangle output.
