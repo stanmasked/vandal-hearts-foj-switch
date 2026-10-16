@@ -48,6 +48,18 @@ jobs:
             tests/test_obj_wireframe.c core/obj_wireframe.c -lm -o /tmp/foj_obj
           /tmp/foj_obj
 
+      - name: Validate original BANIM native reader and local animation sampling
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tests/test_banim_core.c core/banim_core.c -lm -o /tmp/foj_banim_core
+          /tmp/foj_banim_core
+      - name: Check BANIM native parser with ASan and UBSan
+        run: |
+          cc -std=c11 -O1 -g -fsanitize=address,undefined \
+            -fno-omit-frame-pointer -Icore \
+            tests/test_banim_core.c core/banim_core.c -lm -o /tmp/foj_banim_asan
+          /tmp/foj_banim_asan
+
       - name: Compile and run portable tactical logic tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
