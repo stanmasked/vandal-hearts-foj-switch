@@ -60,6 +60,19 @@ int main(void) {
     for(size_t i=layout.fragment_offset+max;i<layout.block_size;++i)
         assert(pool[i]==0xCC);
 
+    /* Correct metadata for the wrong stage must also preserve the slot. */
+    generated_module(module,max,FOJ_DKSH_VERTEX);
+    write_module(path,module,max);
+    used=777;
+    assert(!foj_dksh_read_file(path,pool+layout.fragment_offset,
+                               FOJ_GPU_SHADER_SLOT_BYTES,
+                               FOJ_DKSH_FRAGMENT,&used));
+    assert(used==777);
+    generated_module(module,max,FOJ_DKSH_FRAGMENT);
+    assert(memcmp(pool+layout.fragment_offset,module,max)==0);
+    for(size_t i=layout.fragment_offset+max;i<layout.block_size;++i)
+        assert(pool[i]==0xCC);
+
     /* Invalid replacement must not change the already loaded fragment. */
     module[0]=0;
     write_module(path,module,max);
