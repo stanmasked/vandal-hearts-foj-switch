@@ -227,6 +227,27 @@ recreate the FoJ game engine**. It has passed ARM64 compilation, but
 real-console performance and exact original character animation are not
 yet verified. This is not a finished HD remake or playable game.
 
+## Original multi-material DDS support (2026-10-16)
+
+Direct re-audit of all **583 original PS3 BMODEL** resources shows **189**
+models with multiple material records, but only **120** with multiple
+*distinct* DDS texture basenames. **463** use a single DDS atlas even when
+their material flags may differ. Six skeleton-bearing models need at least
+two distinct atlases. The maximum observed unique texture count is eight.
+
+The [private material exporter](tools/export_local_material_pack.py)
+resolves texture references back to original PSARC paths and writes a local
+`FOJMAT01` table plus the exact required DDS files. The [portable
+multi-material rasterizer](core/textured_triangles.c) draws all shape
+sections into one persistent depth buffer. The **existing ninth Switch
+NRO** now optionally loads `preview.fojmat` + `texture_00.tga` etc.,
+or continues to use `preview.tga` for one-atlas models.
+
+[Local setup, grounded counts, and remaining limitations](docs/MULTI_MATERIAL_SWITCH.md).
+This **does not reproduce** the original material shader properties
+(two-sided flags, lighting, blending, filtering), demonstrate Switch GPU
+rendering, or establish the actual console frame rate.
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
@@ -285,7 +306,9 @@ Never publish the game package, license files, executables, keys or assets.
 - `core/rigmesh_io.c` — bounded private FOJRM001 native mesh/bone/weight reader.
 - `tools/export_local_rigmesh.py` — local original BMODEL to FOJRM001 conversion.
 - `tools/check_local_rig_pair.py` — local rigged mesh and animation compatibility audit.
-- `core/textured_triangles.c` — portable per-pixel textured triangle rasterizer with z-buffer.
+- `core/textured_triangles.c` — portable multi-atlas textured triangles sharing one z-buffer.
+- `core/material_table.c` — bounded FOJMAT01 per-shape material slot reader.
+- `tools/export_local_material_pack.py` — opt-in per-model original DDS mapping and private local export.
 - `switch/source/textured_actor_main.c` — ninth real-data-capable CPU textured character viewer.
 - `tools/audit_rig_clip_pairs.py` — original-game bone-hierarchy pairing audit.
 - `core/obj_wireframe.c` — native-compatible OBJ diagnostic renderer.
