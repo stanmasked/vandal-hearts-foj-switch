@@ -13,6 +13,8 @@ DDS_TARGET := build/foj-dds-texture-research
 OBJ_TARGET := build/foj-obj-wireframe-research
 BANIM_TARGET := build/foj-banim-research
 SKIN_TARGET := build/foj-skinning-research
+ACTOR_TARGET := build/foj-rigged-actor-research
+ACTOR_SRC := switch/source/rigged_actor_main.c core/rigmesh_io.c core/skeletal_skin.c core/banim_core.c core/obj_wireframe.c
 SKIN_SRC := switch/source/skinning_main.c core/skeletal_skin.c core/banim_core.c core/obj_wireframe.c
 BANIM_SRC := switch/source/banim_main.c core/banim_core.c
 OBJ_SRC := switch/source/obj_main.c core/obj_wireframe.c
@@ -28,7 +30,7 @@ LDFLAGS := -specs=$(DEVKITPRO)/libnx/switch.specs \
     -Wl,--gc-sections -pie -L$(DEVKITPRO)/libnx/lib
 
 .PHONY: all verify clean
-all: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(OBJ_TARGET).nro $(BANIM_TARGET).nro $(SKIN_TARGET).nro
+all: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(OBJ_TARGET).nro $(BANIM_TARGET).nro $(SKIN_TARGET).nro $(ACTOR_TARGET).nro
 
 build:
 	mkdir -p build
@@ -96,7 +98,16 @@ $(SKIN_TARGET).nacp: | build
 $(SKIN_TARGET).nro: $(SKIN_TARGET).elf $(SKIN_TARGET).nacp
 	$(ELF2NRO) $< $@ --nacp=$(SKIN_TARGET).nacp
 
-verify: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(OBJ_TARGET).nro $(BANIM_TARGET).nro $(SKIN_TARGET).nro
+$(ACTOR_TARGET).elf: $(ACTOR_SRC) core/rigmesh_io.h core/skeletal_skin.h core/banim_core.h core/obj_wireframe.h | build
+	$(CC) $(CFLAGS) $(LDFLAGS) $(ACTOR_SRC) -o $@ -lnx -lm
+
+$(ACTOR_TARGET).nacp: | build
+	$(NACPTOOL) --create "FoJ Original Rig Research" "VH FoJ contributors" "0.8.0" $@
+
+$(ACTOR_TARGET).nro: $(ACTOR_TARGET).elf $(ACTOR_TARGET).nacp
+	$(ELF2NRO) $< $@ --nacp=$(ACTOR_TARGET).nacp
+
+verify: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(OBJ_TARGET).nro $(BANIM_TARGET).nro $(SKIN_TARGET).nro $(ACTOR_TARGET).nro
 	python3 tools/validate_nro.py $(TARGET).nro
 	python3 tools/validate_nro.py $(ISO_TARGET).nro
 	python3 tools/validate_nro.py $(COLL_TARGET).nro
@@ -104,6 +115,7 @@ verify: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(O
 	python3 tools/validate_nro.py $(OBJ_TARGET).nro
 	python3 tools/validate_nro.py $(BANIM_TARGET).nro
 	python3 tools/validate_nro.py $(SKIN_TARGET).nro
+	python3 tools/validate_nro.py $(ACTOR_TARGET).nro
 
 clean:
 	rm -f $(TARGET).elf $(TARGET).nro $(TARGET).nacp \
@@ -112,4 +124,5 @@ clean:
 	       $(DDS_TARGET).elf $(DDS_TARGET).nro $(DDS_TARGET).nacp \
 	       $(OBJ_TARGET).elf $(OBJ_TARGET).nro $(OBJ_TARGET).nacp \
 	       $(BANIM_TARGET).elf $(BANIM_TARGET).nro $(BANIM_TARGET).nacp \
-	       $(SKIN_TARGET).elf $(SKIN_TARGET).nro $(SKIN_TARGET).nacp
+	       $(SKIN_TARGET).elf $(SKIN_TARGET).nro $(SKIN_TARGET).nacp \
+	       $(ACTOR_TARGET).elf $(ACTOR_TARGET).nro $(ACTOR_TARGET).nacp
