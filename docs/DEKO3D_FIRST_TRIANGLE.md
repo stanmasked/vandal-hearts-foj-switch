@@ -153,6 +153,48 @@ An independent local strict-C11 compilation of the attribute and
 bitfield layout succeeded. The complete source-only syntax target
 is wired into CI but **has not been confirmed executing on GitHub**.
 
+## Validated GPU executable memory layout (2026-10-16)
+
+The triangle mode now calls
+[`gpu/shader_layout.c`](../gpu/shader_layout.c) after loading **both**
+generated DKSH modules and **before** `dkShaderInitialize`. Its result
+provides the vertex/fragment code offsets to `DkShaderMakerDefaults`
+instead of duplicating magic numeric offsets in native code.
+
+| Pool property | Validated layout |
+| --- | ---: |
+| Total deko3d GPU code allocation | 262,144 bytes (256 KiB) |
+| Vertex shader slot begins | offset 0 |
+| Fragment shader slot begins | offset 131,072 |
+| Maximum DKSH file in each slot | 126,976 bytes |
+| Shader slot / DKSH alignment | 256 bytes |
+| End of final unusable GPU-code tail | 262,144 |
+| Beginning of last 1 KiB forbidden tail | 261,120 |
+| Last possible fragment byte at current size cap | 258,047 |
+
+The validator rejects files smaller than two minimum 256-byte
+sections, non-256-aligned module sizes, oversize files and overlapping
+or unusable tail ranges. A rejected layout leaves its caller-provided
+result unchanged. This guards code-memory bookkeeping but **does not
+validate GPU shader instructions or prove that the Switch GPU ran**.
+
+**Independent local execution:** strict C11
+[`tests/test_shader_layout.c`](../tests/test_shader_layout.c) passed;
+the same test passed with ASan + UBSan. The tests include maximum
+per-slot sizes, overflow, alignment, tail guard and no-partial-write
+failure. GitHub CI includes these tests for when hosted runners become
+available.
+
+### Default clip-depth flag correction
+
+A prior mock/API-contract mismatch was fixed: public deko3d defines
+`DkDeviceFlags_DepthZeroToOne == 0`, whereas selecting a clip range
+of `[-1,1]` requires bit 8 (`DepthMinusOneToOne == 256`).
+The GPU research uses the default `[0,1]` convention. This fix was
+tested using the retained older 11-case host fixture; the complete
+current 14-case fixture and native GPU execution remain separate,
+unconfirmed gates.
+
 ## Verification and limitations
 
 - **Verified locally:** standalone
