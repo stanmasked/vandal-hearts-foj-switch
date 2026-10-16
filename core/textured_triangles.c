@@ -28,10 +28,10 @@ static Projected project(const FojTexturedVertex *v,
     };
     return p;
 }
-FojTextureStatus foj_textured_render(
+static FojTextureStatus render_part(
     const FojTexturedVertex *vertices,size_t count,
     const FojTexture *tex,const FojRenderSurface *target,
-    const FojTextureCamera *cam,size_t *drawn) {
+    const FojTextureCamera *cam,size_t *drawn,int clear_buffers) {
     if (!vertices||!tex||!target||!cam||!drawn||
         !tex->rgba||!target->rgba||!target->depth)
         return FOJ_TEX_ARGUMENT;
@@ -60,7 +60,7 @@ FojTextureStatus foj_textured_render(
             fabsf(v->z)>1.e6f||fabsf(v->u)>1.e6f||
             fabsf(v->v)>1.e6f) return FOJ_TEX_GEOMETRY;
     }
-    for (unsigned y=0;y<target->height;++y) {
+    if (clear_buffers) for (unsigned y=0;y<target->height;++y) {
         uint32_t *rgba=target->rgba+(size_t)y*target->color_stride;
         float *z=target->depth+(size_t)y*target->depth_stride;
         for (unsigned x=0;x<target->width;++x) {
@@ -120,6 +120,66 @@ FojTextureStatus foj_textured_render(
                 ++*drawn;
             }
         }
+    }
+    return FOJ_TEX_OK;
+}
+
+
+FojTextureStatus foj_textured_render(
+    const FojTexturedVertex *vertices,size_t count,
+    const FojTexture *tex,const FojRenderSurface *target,
+    const FojTextureCamera *cam,size_t *drawn) {
+    return render_part(vertices,count,tex,target,cam,drawn,1);
+}
+
+FojTextureStatus foj_textured_render_sections(
+    const FojTexturedVertex *vertices,size_t count,
+    const FojTexture *textures,size_t texture_count,
+    const FojTextureSection *sections,size_t section_count,
+    const FojRenderSurface *target,const FojTextureCamera *cam,
+    size_t *drawn) {
+    if (!vertices || !textures || !sections || !target || !cam || !drawn)
+        return FOJ_TEX_ARGUMENT;
+    *drawn=0;
+    if (!count || count>20000 || count%3 || !texture_count ||
+        texture_count>8 || !section_count || section_count>64)
+        return FOJ_TEX_BOUNDS;
+    /* Validate *all* ranges and pixels before any draw call, keeping the
+     * original single-surface z-buffer shared across material boundaries. */
+    size_t covered=0;
+    for (size_t i=0;i<section_count;++i) {
+        FojTextureSection sec=sections[i];
+        if (sec.first_vertex!=covered || !sec.vertex_count ||
+            sec.vertex_count%3 || sec.vertex_count>count-covered ||
+            sec.texture_index>=texture_count)
+            return FOJ_TEX_BOUNDS;
+        covered+=sec.vertex_count;
+    }
+    if (covered!=count)return FOJ_TEX_BOUNDS;
+    for (size_t i=0;i<texture_count;++i) {
+        const FojTexture *tex=&textures[i];
+        if (!tex->rgba || !tex->width || !tex->height ||
+            tex->width>4096 || tex->height>4096 ||
+            tex->stride<tex->width)
+            return FOJ_TEX_BOUNDS;
+    }
+    for (size_t i=0;i<count;++i) {
+        const FojTexturedVertex *v=&vertices[i];
+        if (!isfinite(v->x)||!isfinite(v->y)||!isfinite(v->z)||
+            !isfinite(v->u)||!isfinite(v->v)||
+            fabsf(v->x)>1.e6f||fabsf(v->y)>1.e6f||
+            fabsf(v->z)>1.e6f||fabsf(v->u)>1.e6f||
+            fabsf(v->v)>1.e6f)
+            return FOJ_TEX_GEOMETRY;
+    }
+    for (size_t i=0;i<section_count;++i) {
+        const FojTextureSection sec=sections[i];
+        size_t part_pixels=0;
+        FojTextureStatus status=render_part(
+            vertices+sec.first_vertex,sec.vertex_count,
+            &textures[sec.texture_index],target,cam,&part_pixels,i==0);
+        if (status!=FOJ_TEX_OK)return status;
+        *drawn+=part_pixels;
     }
     return FOJ_TEX_OK;
 }
