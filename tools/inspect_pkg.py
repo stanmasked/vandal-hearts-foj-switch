@@ -113,7 +113,9 @@ def inspect_pkg_stream(
             if kind == 2 and payload_size == 4:
                 record["content_type"] = struct.unpack(">I", payload)[0]
             elif kind == 6 and payload_size <= 128:
-                record["title_id"] = _safe_ascii(payload.split(b"\x00", 1)[0])
+                raw_id = payload.split(b"\x00", 1)[0]
+                if raw_id and all(0x20 <= b <= 0x7E for b in raw_id):
+                    record["title_id"] = raw_id.decode("ascii")
             # Do not include arbitrary payloads (which may contain sensitive data).
             metadata.append(record)
             position += payload_size
