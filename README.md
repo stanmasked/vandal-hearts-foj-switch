@@ -294,6 +294,28 @@ are the reliable confirmation for this specific change. See
 [GPU staging details](docs/GPU_VERTEX_STAGING.md) and
 [the CI infrastructure issue](https://github.com/stanmasked/vandal-hearts-foj-switch/issues/15).
 
+## Optional native deko3d GPU clear-and-present probe
+
+The next hardware validation gate now has a **separate, shader-free
+deko3d NRO source** at
+[gpu/deko3d_clear_main.c](gpu/deko3d_clear_main.c).
+It allocates two 1280×720 RGBA8 presentation images, a deko3d command
+buffer and graphics queue, submits a color-clear command to the GPU and
+presents the result. It contains **only generated colors** and is
+isolated from the nine existing CPU/diagnostic NROs.
+
+Build instructions: [gpu/clear.mk](gpu/clear.mk) and
+[DEKO3D_GPU_CLEAR_SMOKE.md](docs/DEKO3D_GPU_CLEAR_SMOKE.md).
+The independent GitHub Actions
+[GPU smoke workflow](.github/workflows/gpu-clear-smoke.yml) was
+triggered, but its first run **failed without any job steps or logs**,
+like unrelated existing workflows. No GPU NRO build success or actual
+Switch frame has yet been established.
+
+This is groundwork for the **first hardware-generated color frame**,
+then shader-backed generated triangles, then the user-local original
+two-atlas Daldren actor. GPU fidelity/performance remain unknown.
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
