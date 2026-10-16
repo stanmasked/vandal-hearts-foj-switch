@@ -403,3 +403,11 @@ The simulated shader and stub validator do not prove genuine UAM or GPU compatib
 - [x] Fix fake UAM to write a malformed DKSH and then exit with status 17 when requested. Assert its failure is visible in Make diagnostics, and confirm GNU Make removes the partial output.
 - [x] Execute corrected isolated test locally, using the shader Makefile and script restored under `/mnt/data/vh93`: both validator-rejection and UAM write-then-fail cases passed.
 - [ ] Execute whole CI host matrix and compile real UAM/ARM64 NRO on real SDK; local fake UAM does not prove GPU runtime compatibility.
+
+## Stage 95: ensure validator is skipped after UAM failure (2026-10-17)
+
+- [x] Extended `tests/test_gpu_shader_failure_cleanup.sh` with a validator-call log. Require one invocation when fake UAM writes DKSH successfully (then validation fails), and no additional invocation when fake UAM writes DKSH but exits with code 17.
+- [x] Executed the same two scenarios and validator-call assertions in a local reconstructed GPU Makefile test directory: both passed.
+- [x] Committed the additional assertions and reviewed the saved GitHub file.
+- [ ] Run the exact test and full GPU host suite in GitHub Actions; no CI pass is established by the local reconstruction.
+- [ ] Verify UAM/devkitA64 build and physical Nintendo Switch GPU draw.
