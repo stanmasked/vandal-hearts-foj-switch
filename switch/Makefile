@@ -15,7 +15,7 @@ BANIM_TARGET := build/foj-banim-research
 SKIN_TARGET := build/foj-skinning-research
 ACTOR_TARGET := build/foj-rigged-actor-research
 TEX_ACTOR_TARGET := build/foj-textured-actor-research
-TEX_ACTOR_SRC := switch/source/textured_actor_main.c core/rigmesh_io.c core/skeletal_skin.c core/banim_core.c core/dds_texture.c core/textured_triangles.c
+TEX_ACTOR_SRC := switch/source/textured_actor_main.c core/rigmesh_io.c core/skeletal_skin.c core/banim_core.c core/dds_texture.c core/textured_triangles.c core/material_table.c
 ACTOR_SRC := switch/source/rigged_actor_main.c core/rigmesh_io.c core/skeletal_skin.c core/banim_core.c core/obj_wireframe.c
 SKIN_SRC := switch/source/skinning_main.c core/skeletal_skin.c core/banim_core.c core/obj_wireframe.c
 BANIM_SRC := switch/source/banim_main.c core/banim_core.c
@@ -109,7 +109,7 @@ $(ACTOR_TARGET).nacp: | build
 $(ACTOR_TARGET).nro: $(ACTOR_TARGET).elf $(ACTOR_TARGET).nacp
 	$(ELF2NRO) $< $@ --nacp=$(ACTOR_TARGET).nacp
 
-$(TEX_ACTOR_TARGET).elf: $(TEX_ACTOR_SRC) core/rigmesh_io.h core/skeletal_skin.h core/banim_core.h core/dds_texture.h core/textured_triangles.h | build
+$(TEX_ACTOR_TARGET).elf: $(TEX_ACTOR_SRC) core/rigmesh_io.h core/skeletal_skin.h core/banim_core.h core/dds_texture.h core/textured_triangles.h core/material_table.h | build
 	$(CC) $(CFLAGS) $(LDFLAGS) $(TEX_ACTOR_SRC) -o $@ -lnx -lm
 
 $(TEX_ACTOR_TARGET).nacp: | build
