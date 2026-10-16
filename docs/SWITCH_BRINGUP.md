@@ -95,3 +95,12 @@ the synthetic fallback. These are *not* original collision gameplay rules.
 
 For extraction to a local (gitignored) directory and Switch SD card
 placement, see [COLL_SWITCH_VIEWER.md](COLL_SWITCH_VIEWER.md).
+
+## Fourth independent build: DDS texture inspector
+
+`build/foj-dds-texture-research.nro` decodes a user-supplied DDS-in-TGA
+image in the local SD folder and displays it against a checkerboard; with no
+valid file it loads a synthetic gradient. See
+[DDS_SWITCH_VIEWER.md](DDS_SWITCH_VIEWER.md) for exact controls and local
+export steps. This proves ARM64 compilation and asset-loader preparation,
+not operation of the original game's 3D renderer or a hardware test.
