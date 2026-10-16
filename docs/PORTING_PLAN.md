@@ -263,3 +263,10 @@ Host test execution does not establish deko3d hardware rendering or proprietary-
 - [ ] Compile DKSH with UAM, cross-link ARM64 NRO against real deko3d and verify on physical hardware.
 
 No claim of a full host suite pass or hardware draw is made for this stage.
+
+## Stage 79: GPU integration test CI trigger audit (2026-10-17)
+
+- [x] Found missing GitHub Actions path-filter entry for `tests/test_gpu_dksh_integration.c` despite the source being a dependency of host-check and sanitized targets.
+- [x] Add the test path to both main push and pull-request workflow triggers, so edits to the integration test itself schedule the dedicated SDK-free GPU jobs.
+- [ ] Observe actual workflow execution and run the complete GPU host suite. No CI success is claimed from the trigger change alone.
+- [ ] Validate UAM shader compilation, Switch ARM64 cross-build and physical GPU rendering separately.
