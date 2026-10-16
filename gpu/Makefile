@@ -11,6 +11,8 @@ VERT := gpu/shaders/foj_actor.vert
 FRAG := gpu/shaders/foj_actor.frag
 TRI_FRAG := gpu/shaders/foj_triangle.frag
 
+# Never retain a partially generated or validator-rejected DKSH target.
+.DELETE_ON_ERROR:
 .PHONY: all clean check-tool verify triangle triangle-verify
 all: $(GPU_OUT)/foj_actor.vert.dksh $(GPU_OUT)/foj_actor.frag.dksh
 
