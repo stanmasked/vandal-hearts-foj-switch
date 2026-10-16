@@ -4,8 +4,8 @@ Research project for a **native Nintendo Switch homebrew port** of
 *Vandal Hearts: Flames of Judgment* (PlayStation 3 / Xbox 360, 2010).
 
 > **Status: research / native ARM64 smoke-test only — no playable port, PS3
-> code translation or original gameplay.** Five independent libnx NROs now
-> compile in CI, including original-format map, texture and mesh viewers;
+> code translation or original gameplay.** Six independent libnx NROs now
+> compile in CI, including original-format map, texture, mesh and animation viewers;
 > none runs the original PS3 game.
 
 ## Verified user-provided PS3 package
@@ -135,6 +135,24 @@ to accept the multi-shape OBJ material labels, but it **still draws only
 wireframes**, does not animate the skeleton, and has not been tested on actual
 Switch hardware. There is still **no playable FoJ port**.
 
+## Original skeletons and all BANIM motion tracks recovered
+
+In the user-provided PS3 data, **89 BMODEL files** have embedded bone trees
+(2,512 bone records). All **450 BANIM animation clips** have been structurally
+decoded into **16,631 bone tracks / 1,274,805 keyframes** — including
+unit quaternions and translations. Three original environment clips have
+zero duration and one key, and are correctly accepted.
+
+See [complete rig/animation evidence](docs/REAL_RIG_BANIM_FORMAT.md),
+[Python format decoder](tools/decode_rig_banim.py) and
+[native ARM64-compatible C animation core](core/banim_core.c).
+
+A **sixth research NRO**, `foj-banim-research.nro`, can inspect a selected
+user-owned BANIM file from Switch SD card, including per-track sampled pose
+values. See [BANIM Switch instructions](docs/BANIM_SWITCH_VIEWER.md).
+This is still **local-pose inspection**, not bone-matrix skinning, rendered
+character animations, original gameplay or verified physical-console operation.
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
@@ -147,7 +165,7 @@ Switch hardware. There is still **no playable FoJ port**.
    systems based on verified findings.
 5. Bring up Nintendo Switch homebrew builds and automated tests incrementally.
 
-The reference PS3 package is approximately 605 MB. **Do not upload it here.**
+The source PS3 package is approximately 605 MB; keep game assets out of GitHub.
 
 ## Quick start: local header investigation
 
@@ -185,6 +203,10 @@ Never publish the game package, license files, executables, keys or assets.
 - `tools/decode_bmodel_geometry.py` — verified first-shape model decoder and local OBJ export.
 - `tools/inspect_complete_bmodel.py` — full 1–50 shape decoder and local OBJ export.
 - `tools/audit_all_bmodels.py` — aggregate audit of meshes, skinning and texture references.
+- `tools/decode_rig_banim.py` — original BMODEL bone records and BANIM tracks.
+- `tools/audit_rig_anims.py` — local-only aggregate 583-model / 450-clip validation.
+- `tools/export_local_banim.py` — one explicit user-owned BANIM export.
+- `core/banim_core.c` — portable native BANIM parser and pose sampler.
 - `core/obj_wireframe.c` — native-compatible OBJ diagnostic renderer.
 - `switch/source/dds_main.c` — DDS viewer reading local files.
 - `tests/` — synthetic test fixtures, no proprietary data.
@@ -192,7 +214,7 @@ Never publish the game package, license files, executables, keys or assets.
 - `docs/PORTING_PLAN.md` — milestones and technical unknowns.
 - `docs/LEGAL.md` — clean-repository rules.
 - `.github/workflows/ci.yml` — automatic host-side tests.
-- `switch/` — five native, data-free libnx diagnostic NRO builds.
+- `switch/` — six native, data-free libnx diagnostic NRO builds.
 - `core/tactical_demo.c` — portable synthetic movement BFS, heights and obstacles.
 - `core/isometric_demo.c` — portable synthetic CPU rasterizer for isometric tiles.
 - `tools/render_isometric_preview.c` — host preview generator using the same renderer.
@@ -203,12 +225,13 @@ Never publish the game package, license files, executables, keys or assets.
 
 ## Native Switch bring-up
 
-Five independently written research binaries compile through devkitA64 and
-pass NRO structure validation in the [fifth-NRO build](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/38925622328):
+Six independently written research binaries compile through devkitA64 and
+pass NRO structure validation in the [sixth-NRO build](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/38931750704):
 `foj-switch-research.nro` (ASCII tactics), `foj-isometric-research.nro`
 (CPU isometric tactics), `foj-coll-map-research.nro` (COLL viewer), and
 `foj-dds-texture-research.nro` (DDS viewer), and
-`foj-obj-wireframe-research.nro` (real user-local mesh wireframe), in artifact
+`foj-obj-wireframe-research.nro` (user-local mesh wireframe), and
+`foj-banim-research.nro` (user-local bone-track timeline), in artifact
 `foj-switch-research-nros` in the updated workflow runs.
 The corresponding pixel renderer is also compiled on Ubuntu to generate a
 **synthetic screenshot** through the [preview workflow](.github/workflows/isometric-preview.yml).
@@ -226,8 +249,9 @@ mistake compatibility probes for completed game systems.
 
 - PKG content may be encrypted, and the container header alone does not reveal
   models, maps or executable game logic.
-- Map COLL and sampled DDS formats are verified; 3D meshes, animations,
-  engine implementation and authentic gameplay remain unknown.
+- COLL, DDS, BMODEL mesh/rig and BANIM keyframe formats are structurally
+  identified. The original game's skinning/blending, engine and gameplay
+  remain unimplemented.
 - The goal is homebrew development, not an official Nintendo release.
 - Compatibility, performance, and game completeness are unknown until tested.
 
