@@ -142,6 +142,23 @@ class DebugPKGResearchTests(unittest.TestCase):
         self.assertEqual(selected["placements"]["section_count"], 1)
         self.assertNotIn("base=tree", json.dumps(report))
 
+    def test_explicit_export_only_one_local_coll_and_never_overwrites(self):
+        from tools.export_local_coll import local_export
+        from tools.inspect_map_coll import MapFormatError
+        parts = make_parts(self.temp.name, synthetic_pkg(with_map=True))
+        dest = Path(self.temp.name) / "map1-1.coll"
+        self.assertFalse(dest.exists())
+        report = local_export(parts, "map1-1", dest)
+        self.assertEqual(report["grid_width"], 2)
+        self.assertEqual(report["grid_height"], 2)
+        self.assertEqual(report["bytes_written"], len(dest.read_bytes()))
+        self.assertEqual(dest.read_bytes()[:6], b"2,2,-1")
+        with self.assertRaises(FileExistsError):
+            local_export(parts, "map1-1", dest)
+        with self.assertRaises(MapFormatError):
+            local_export(parts, "../wrong", Path(self.temp.name) / "wrong.coll")
+        self.assertEqual(len(list(Path(self.temp.name).glob("*.coll"))), 1)
+
     def test_wrong_revision_fails_without_fallback(self):
         paths = make_parts(self.temp.name, synthetic_pkg(revision=0x8000))
         with self.assertRaisesRegex(FormatError, "non-finalized"):
