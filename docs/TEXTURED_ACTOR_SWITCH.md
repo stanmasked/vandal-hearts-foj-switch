@@ -19,22 +19,29 @@ or repository source.
    hierarchies instead of choosing a random animation.
 3. Recalculate interpolated local poses and deform original vertex positions
    using experimental CPU linear blend skinning.
-4. Load a **single original DDS-in-TGA atlas** (BGRA8 or DXT1/BC1) from SD.
+4. Load either **one** or **up to eight** original DDS-in-TGA atlases (BGRA8
+   or DXT1/BC1) from SD, selected per model section via FOJMAT01.
 5. Render real mesh triangle fills with **interpolated UV coordinates**,
    nearest-neighbor texture sampling, an orthographic camera, alpha cutout
    and a per-pixel floating-point depth buffer.
 
-The pipeline supports only **one atlas for the whole model** in this
-research stage. Models with multiple unrelated texture materials will not
-be displayed correctly until the material/texture binding table is
-passed to the native renderer.
+The renderer now supports **multiple atlas files assigned per geometric
+section**, with one depth buffer for all sections. A material table does
+not yet encode the original FoJ shader flags, two-sided blending, or
+lighting. See [MULTI_MATERIAL_SWITCH.md](MULTI_MATERIAL_SWITCH.md).
 
 ### Private files on Nintendo Switch SD card
 
 ```text
 /switch/foj/rig/preview.fojrm
 /switch/foj/anims/preview.banim
-/switch/foj/textures/preview.tga
+/switch/foj/textures/preview.tga       (single atlas)
+
+# Or, when multiple atlas files are needed:
+/switch/foj/textures/preview.fojmat
+/switch/foj/textures/texture_00.tga
+/switch/foj/textures/texture_01.tga
+...
 ```
 
 The file may be called `.tga` but must contain the actual **DDS**
@@ -74,7 +81,10 @@ python3 -m tools.check_local_rig_pair \
 ```
 
 These are user-initiated exports, and the tools refuse to overwrite files.
-Copy the three previews to their matching SD paths. Never commit them to
+Copy the three previews to their matching SD paths. For a multi-atlas model,
+run `python3 -m tools.export_local_material_pack` with the **same BMODEL**
+and copy its `preview.fojmat` and `texture_XX.tga` files instead
+(see [full instructions](MULTI_MATERIAL_SWITCH.md)). Never commit them to
 GitHub, even when the repository is private.
 
 ### Controls
