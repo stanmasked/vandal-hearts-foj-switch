@@ -1,0 +1,48 @@
+name: Optional FoJ deko3d GPU smoke
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gpu-clear:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkita64:latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect installed Switch GPU toolchain
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ls -l /opt/devkitpro/libnx/include/deko3d.h
+          ls -l /opt/devkitpro/libnx/lib/libdeko3dd.a
+          /opt/devkitpro/devkitA64/bin/aarch64-none-elf-gcc --version | head -n1
+          command -v uam || true
+      - name: Build isolated deko3d clear-and-present NRO
+        shell: bash
+        run: |
+          set -euxo pipefail
+          make -f gpu/clear.mk verify
+      - name: Compile optional first GPU shaders if UAM is present
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if command -v uam >/dev/null 2>&1; then
+            make -f gpu/Makefile verify
+          else
+            echo "UAM absent: shader build skipped; GPU clear smoke does not require shaders"
+          fi
+      - name: Upload optional GPU smoke NRO
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-deko3d-gpu-clear-smoke
+          path: build/foj-deko3d-clear-smoke.nro
+          if-no-files-found: error
+      - name: Upload optional DKSH modules
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-deko3d-dksh
+          path: gpu/build/*.dksh
+          if-no-files-found: ignore
