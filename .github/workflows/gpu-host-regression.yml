@@ -34,13 +34,19 @@ jobs:
     name: SDK-free GPU C11 and sanitizer tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    env:
+      HOSTCC: ${{ matrix.compiler }}
     steps:
       - name: Checkout
         id: checkout
         uses: actions/checkout@v4
       - name: Print toolchain versions
         run: |
-          cc --version
+          "${HOSTCC}" --version
           make --version
       - name: Strict C11 host suite and triangle syntax
         id: strict
@@ -63,7 +69,7 @@ jobs:
         shell: bash
         run: |
           {
-            echo '## SDK-free GPU regression checks'
+            echo '## SDK-free GPU regression checks (${{ matrix.compiler }})'
             echo ''
             echo '| Suite | Result |'
             echo '|---|---|'
@@ -76,7 +82,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gpu-host-check-logs
+          name: gpu-host-check-logs-${{ matrix.compiler }}
           path: |
             gpu-host-strict.log
             gpu-host-sanitized.log
