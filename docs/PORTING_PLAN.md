@@ -244,3 +244,13 @@ audio/video codecs; localization; and required work are **unconfirmed**.
 - [x] Wire test into strict host-check, sanitizer host suite, and clean targets via `gpu/clear.mk`.
 - [ ] Run the new integration test on a full checkout / CI runner; GitHub connector writes and source review do not prove successful C compilation or test execution.
 - [ ] Validate actual UAM DKSH modules, ARM64 NRO and first physical Switch GPU frame.
+
+## Stage 77: local two-slot DKSH execution (2026-10-17)
+
+- [x] Locally reconstructed the standalone loader, layout planner and generated two-slot integration test from the GitHub source, using system GCC and Clang.
+- [x] Passed the synthetic DKSH two-slot test with GCC strict C11 and GCC ASan/UBSan.
+- [x] Passed the same test with Clang strict C11 and Clang ASan/UBSan.
+- [ ] Execute the entire repository host suite and confirm GitHub Actions results; direct GitHub clone from the test container remains DNS-inaccessible.
+- [ ] Compile actual UAM DKSH modules and ARM64 NRO; verify GPU output on physical Switch.
+
+Host test execution does not establish deko3d hardware rendering or proprietary-game compatibility.
