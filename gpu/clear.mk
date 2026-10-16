@@ -134,7 +134,7 @@ host-mock-sanitized: $(HOST_MOCK_SAN) $(HOST_SHADERS_SAN) $(HOST_DKSH_SAN) $(HOS
 	./$(HOST_DKSH_SAN)
 	./$(HOST_DKSH_INTEGRATION_SAN)
 
-$(OUT).elf: $(SRC) gpu/smoke_plan.h gpu/deko3d_api_contract.h core/gpu_vertex_stream.h $(GPU_EXTRA_DEPS) | build preflight
+$(OUT).elf: $(SRC) gpu/smoke_plan.h gpu/deko3d_api_contract.h core/gpu_vertex_stream.h gpu/clear.mk $(GPU_EXTRA_DEPS) | build preflight
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $@ -l$(GPU_LIB) -lstdc++ -lnx -lm
 
 $(OUT).nacp: | build
