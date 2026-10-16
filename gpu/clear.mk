@@ -4,6 +4,8 @@
 DEVKITPRO ?= /opt/devkitpro
 # Debug deko3d includes API validation; select deko3d for final release.
 GPU_LIB ?= deko3dd
+HOSTCC ?= cc
+HOST_TEST := build/foj-gpu-smoke-plan-host
 DEVKITA64 ?= $(DEVKITPRO)/devkitA64
 CC := $(DEVKITA64)/bin/aarch64-none-elf-gcc
 ELF2NRO := $(DEVKITPRO)/tools/bin/elf2nro
@@ -16,7 +18,7 @@ CFLAGS := -std=c11 -O2 -Wall -Wextra -Werror -fPIE -ffunction-sections \
 LDFLAGS := -specs=$(DEVKITPRO)/libnx/switch.specs -Wl,--gc-sections \
   -pie -L$(DEVKITPRO)/libnx/lib
 
-.PHONY: all verify clean preflight
+.PHONY: all verify clean preflight host-check
 all: $(OUT).nro
 
 preflight:
@@ -26,6 +28,14 @@ preflight:
 
 build:
 	mkdir -p build
+
+# Run this independently from devkitPro, UAM or a Nintendo Switch.
+$(HOST_TEST): tests/test_gpu_smoke_plan.c gpu/smoke_plan.c gpu/smoke_plan.h | build
+	$(HOSTCC) -std=c11 -Wall -Wextra -Werror -pedantic -Igpu \
+	  tests/test_gpu_smoke_plan.c gpu/smoke_plan.c -lm -o $@
+
+host-check: $(HOST_TEST)
+	./$(HOST_TEST)
 
 $(OUT).elf: $(SRC) gpu/smoke_plan.h | build preflight
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $@ -l$(GPU_LIB) -lstdc++ -lnx -lm
@@ -40,4 +50,4 @@ verify: $(OUT).nro
 	python3 tools/validate_nro.py $(OUT).nro
 
 clean:
-	rm -f $(OUT).elf $(OUT).nacp $(OUT).nro
+	rm -f $(OUT).elf $(OUT).nacp $(OUT).nro $(HOST_TEST)
