@@ -23,6 +23,8 @@ static uint32_t round_up(uint64_t bytes, uint32_t alignment) {
 
 int main(int argc,char **argv) {
     (void)argc;(void)argv;
+    /* Nonzero exit if setup fails or no frame was presented. */
+    int exit_status=3;
     DkDevice device=NULL;
     DkQueue queue=NULL;
     DkCmdBuf cmd=NULL;
@@ -100,10 +102,16 @@ int main(int argc,char **argv) {
     unsigned frame=0;
     while (appletMainLoop()) {
         padUpdate(&pad);
-        if (padGetButtonsDown(&pad)&HidNpadButton_Plus) break;
+        if (padGetButtonsDown(&pad)&HidNpadButton_Plus) {
+            exit_status=0;
+            break;
+        }
 
         const int slot=dkQueueAcquireImage(queue,swapchain);
-        if (slot<0 || slot>=BUFFER_COUNT)break;
+        if (slot<0 || slot>=BUFFER_COUNT) {
+            exit_status=4;
+            break;
+        }
 
         /* Synchronize after each frame intentionally. This is a
          * correctness smoke test, NOT a performance benchmark. */
@@ -120,6 +128,7 @@ int main(int argc,char **argv) {
         dkQueueWaitIdle(queue);
         dkQueuePresentImage(queue,swapchain,slot);
         ++frame;
+        exit_status=0;
     }
 cleanup:
     if (queue)dkQueueWaitIdle(queue);
@@ -130,5 +139,5 @@ cleanup:
         if (images_mem[i])dkMemBlockDestroy(images_mem[i]);
     if (queue)dkQueueDestroy(queue);
     dkDeviceDestroy(device);
-    return 0;
+    return exit_status;
 }
