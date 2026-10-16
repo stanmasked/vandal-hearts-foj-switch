@@ -7,6 +7,20 @@ Research project for a **native Nintendo Switch homebrew port** of
 > code translation, decrypted game assets, or original gameplay.** Two synthetic
 > libnx NROs (text console and CPU-isometric map) build in CI. Neither runs the PS3 game.
 
+## Verified user-provided PS3 package
+
+For the first time, the uploaded 605 MB split archive was read and verified
+against the ZIP's internal CRC. The real PKG contains valid PS3 magic,
+`NPEB00148` content ID and 21 declared items. Its header is **non-finalized
+(0x0000)** rather than retail/finalized; publisher authenticity cannot be
+established from an internal ZIP checksum. Full SHA-256 and sanitized metadata
+are recorded in [docs/REAL_PKG_NPEB00148.md](docs/REAL_PKG_NPEB00148.md).
+
+**No engine, gameplay files, executable or assets have yet been extracted.**
+A new [local-only file inventory tool](tools/inventory_game_files.py) is ready
+for any already lawfully accessible resources; see
+[docs/ASSET_INVENTORY.md](docs/ASSET_INVENTORY.md).
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
