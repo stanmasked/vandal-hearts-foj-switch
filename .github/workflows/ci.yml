@@ -60,6 +60,20 @@ jobs:
             tests/test_banim_core.c core/banim_core.c -lm -o /tmp/foj_banim_asan
           /tmp/foj_banim_asan
 
+      - name: Validate inverse bind matrices and CPU weighted skinning
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tests/test_skeletal_skin.c core/skeletal_skin.c core/banim_core.c \
+            -lm -o /tmp/foj_skeletal_skin_tests
+          /tmp/foj_skeletal_skin_tests
+      - name: Check CPU skinning with address and undefined-behavior sanitizers
+        run: |
+          cc -std=c11 -O1 -g -fsanitize=address,undefined \
+            -fno-omit-frame-pointer -Icore \
+            tests/test_skeletal_skin.c core/skeletal_skin.c core/banim_core.c \
+            -lm -o /tmp/foj_skinning_asan
+          /tmp/foj_skinning_asan
+
       - name: Compile and run portable tactical logic tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
