@@ -31,14 +31,21 @@ python3 tools/inspect_pkg.py "/path/to/game.pkg" --sha256 --json
 python3 -m unittest discover -s tests -v
 ```
 
-To inspect a split *ZIP* named `game.pkg.zip.001`, `game.pkg.zip.002`,
-reconstruct the ZIP **locally** before extracting the PKG. Consult
-[docs/PKG_INPUT.md](docs/PKG_INPUT.md). Never publish the resulting package,
-license files, decrypted executables, console keys or commercial assets.
+To inspect consecutive byte chunks of one ZIP (e.g. `game.pkg.zip.001`,
+`game.pkg.zip.002`) **without rejoining or extracting the 605 MB archive**:
+
+```sh
+python3 -m tools.inspect_split_pkg "game.pkg.zip.001" "game.pkg.zip.002" \
+  --expected-title-id NPEB00148 --sha256 --verify-crc --json > pkg-report.json
+```
+
+Read [docs/PKG_INPUT.md](docs/PKG_INPUT.md) for archive-type limitations.
+Never publish the game package, license files, executables, keys or assets.
 
 ## Structure
 
 - `tools/inspect_pkg.py` — bounded, read-only PKG header/metadata inspector.
+- `tools/inspect_split_pkg.py` — stream multipart ZIP + embedded PKG in place.
 - `tests/` — synthetic test fixtures, no proprietary data.
 - `docs/PKG_INPUT.md` — local package preparation and safe validation.
 - `docs/PORTING_PLAN.md` — milestones and technical unknowns.
