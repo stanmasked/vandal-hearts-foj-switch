@@ -10,7 +10,7 @@ GPU_OUT ?= gpu/build
 VERT := gpu/shaders/foj_actor.vert
 FRAG := gpu/shaders/foj_actor.frag
 
-.PHONY: all clean check-tool
+.PHONY: all clean check-tool verify
 all: $(GPU_OUT)/foj_actor.vert.dksh $(GPU_OUT)/foj_actor.frag.dksh
 
 check-tool:
@@ -21,9 +21,14 @@ $(GPU_OUT):
 
 $(GPU_OUT)/foj_actor.vert.dksh: $(VERT) | $(GPU_OUT) check-tool
 	$(UAM) -s vert -o $@ $<
+	python3 -m tools.validate_dksh $@
 
 $(GPU_OUT)/foj_actor.frag.dksh: $(FRAG) | $(GPU_OUT) check-tool
 	$(UAM) -s frag -o $@ $<
+	python3 -m tools.validate_dksh $@
+
+verify: all
+	python3 -m tools.validate_dksh $(GPU_OUT)/foj_actor.vert.dksh $(GPU_OUT)/foj_actor.frag.dksh
 
 clean:
 	rm -f $(GPU_OUT)/foj_actor.vert.dksh $(GPU_OUT)/foj_actor.frag.dksh
