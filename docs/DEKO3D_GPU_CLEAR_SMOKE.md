@@ -17,9 +17,12 @@ to:
 2. Create a graphics queue and a double-buffered **1280×720 RGBA8**
    swapchain backed by deko3d image memory blocks.
 3. Allocate a GPU-visible command-memory block and command buffer.
-4. Acquire a presentation image, bind it as a render target and record a
-   GPU color-clear command for a changing, generated solid color.
-5. Submit, flush and wait for completion, then present the image.
+4. Pre-record **four immutable GPU clear command lists**: two RGBA8
+   framebuffer slots × two generated color palettes. Each list explicitly
+   binds a render target and sets a full-screen scissor region.
+5. Acquire one presentation image, submit its matching pre-recorded list,
+   then present it. Colors alternate every 120 frames. The program waits
+   for the graphics queue to become idle before releasing any resources.
 6. Handle Plus to exit and release allocated GPU objects.
 
 This program uses **no shaders**, textures, original FoJ resources,
@@ -28,9 +31,13 @@ native **GPU-cleared/presented frame** in isolation. The existing nine
 research NROs still use their prior paths and are not modified by this
 new target.
 
-The code intentionally waits for GPU completion every frame to keep
-this bring-up easy to diagnose. The result is **not** a performance
-benchmark or an HD remake.
+The command-list and swapchain sequence was revised against upstream
+[switchbrew's deko_basic example](https://github.com/switchbrew/switch-examples/blob/master/graphics/deko3d/deko_basic/source/main.c)
+and [Example01_SimpleSetup](https://github.com/switchbrew/switch-examples/blob/master/graphics/deko3d/deko_examples/source/Example01_SimpleSetup.cpp).
+Persistent lists remain valid until shutdown. No per-frame list-memory reset
+or GPU idle wait is required; shutdown waits for queue idle before freeing
+buffers. This is still an unverified GPU application, **not** a benchmark
+or HD remake.
 
 ## Separate build command
 
@@ -38,8 +45,9 @@ With a correctly installed devkitPro `switch-dev` toolchain and
 `DEVKITPRO=/opt/devkitpro`:
 
 ```sh
-make -f gpu/clear.mk preflight
-make -f gpu/clear.mk verify
+make -f gpu/clear.mk host-check  # C11 host test, no devkitPro necessary
+make -f gpu/clear.mk preflight   # requires devkitPro
+make -f gpu/clear.mk verify      # optional native NRO build
 ```
 
 Expected output if compilation succeeds:
@@ -62,6 +70,21 @@ The upstream
 installs headers and libraries in the **libnx** prefix, so the
 independent build checks `/opt/devkitpro/libnx/include/deko3d.h`
 and `/opt/devkitpro/libnx/lib/libdeko3dd.a`.
+
+## Locally verified portable GPU smoke math
+
+`gpu/smoke_plan.c` provides the exact allocation rounding and color-mode
+selection used by the GPU smoke program. It rejects null outputs,
+invalid/non-power-of-two image alignment, overflowing allocation sizes
+and unsupported palette indices **without modifying caller outputs**.
+
+`tests/test_gpu_smoke_plan.c` checks 1280×720 RGBA8 allocation sizes,
+alignment escalation, overflow failure, palette values, and frames
+119/120/239/240 where the clear color changes.
+
+**Executed locally on 2026-10-16:** strict host C11 compile and run,
+UBSan, and combined ASan/UBSan all passed. This confirms only CPU-side
+arithmetic/decision logic, not the GPU driver, swapchain or video output.
 
 ## GitHub Actions
 
