@@ -2,7 +2,6 @@
 # SDK-free native GPU Makefile dependency regression.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-root="$PWD"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/gpu" "$tmp/core" "$tmp/build"
@@ -23,7 +22,7 @@ if make -f gpu/triangle.mk -n build/foj-deko3d-triangle-research.elf | grep -Fq 
     echo "FAIL: current triangle ELF should not rebuild" >&2
     exit 1
 fi
-for header in gpu/dksh_module.h gpu/shader_layout.h; do
+for header in gpu/dksh_module.h gpu/shader_layout.h gpu/triangle.mk gpu/clear.mk; do
     touch -t 202401010000 "$header"
     if ! make -f gpu/triangle.mk -n build/foj-deko3d-triangle-research.elf | grep -Fq -- "$build_command"; then
         echo "FAIL: editing $header did not trigger the triangle ELF compiler" >&2
@@ -31,4 +30,4 @@ for header in gpu/dksh_module.h gpu/shader_layout.h; do
     fi
     touch -t 202001010000 "$header"
 done
-echo "GPU triangle Makefile header dependencies: PASS"
+echo "GPU triangle Makefile source and build-config dependencies: PASS"
