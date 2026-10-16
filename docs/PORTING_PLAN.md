@@ -43,6 +43,11 @@ reverse engineering, new platform code, and clean-room implementations.
 - [x] Parse all 450 BANIM clips into 16631 tracks / 1274805 validated keyframes.
 - [x] Add portable C BANIM parser and shortest-path quaternion interpolation tests.
 - [x] Compile sixth Switch NRO that reads user-local BANIM and samples track poses.
+- [x] Match full parent hierarchy of 89 original BMODEL rigs against 449/450 BANIM clips.
+- [x] Verify original skin weights reference in-range bones in all 87 weighted models.
+- [x] Implement clean-room inverse bind palettes and 1–5 influence linear-blend skinning.
+- [x] Compile a seventh ARM64 Switch NRO showing synthetic deforming two-bone mesh.
+- [ ] Validate actual FoJ pose composition, bind conventions, material mapping and skinned movement.
 - [ ] Establish full semantic meanings for proprietary resource formats and original battle rules.
 - [x] Identify BGRA8 and DXT1 DDS texture formats and validate actual images.
 - [x] Identify recurring .bmodel and .banim header fields in bounded real samples.
