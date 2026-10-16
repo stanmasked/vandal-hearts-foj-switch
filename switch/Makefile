@@ -9,6 +9,8 @@ NACPTOOL := $(DEVKITPRO)/tools/bin/nacptool
 TARGET := build/foj-switch-research
 ISO_TARGET := build/foj-isometric-research
 COLL_TARGET := build/foj-coll-map-research
+DDS_TARGET := build/foj-dds-texture-research
+DDS_SRC := switch/source/dds_main.c core/dds_texture.c
 COLL_SRC := switch/source/coll_main.c core/coll_grid.c core/coll_view.c
 ISO_SRC := switch/source/iso_main.c core/tactical_demo.c core/isometric_demo.c
 SRC := switch/source/main.c core/tactical_demo.c
@@ -20,7 +22,7 @@ LDFLAGS := -specs=$(DEVKITPRO)/libnx/switch.specs \
     -Wl,--gc-sections -pie -L$(DEVKITPRO)/libnx/lib
 
 .PHONY: all verify clean
-all: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro
+all: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro
 
 build:
 	mkdir -p build
@@ -52,12 +54,23 @@ $(COLL_TARGET).nacp: | build
 $(COLL_TARGET).nro: $(COLL_TARGET).elf $(COLL_TARGET).nacp
 	$(ELF2NRO) $< $@ --nacp=$(COLL_TARGET).nacp
 
-verify: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro
+$(DDS_TARGET).elf: $(DDS_SRC) core/dds_texture.h | build
+	$(CC) $(CFLAGS) $(LDFLAGS) $(DDS_SRC) -o $@ -lnx
+
+$(DDS_TARGET).nacp: | build
+	$(NACPTOOL) --create "FoJ DDS Research" "VH FoJ contributors" "0.4.0" $@
+
+$(DDS_TARGET).nro: $(DDS_TARGET).elf $(DDS_TARGET).nacp
+	$(ELF2NRO) $< $@ --nacp=$(DDS_TARGET).nacp
+
+verify: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro
 	python3 tools/validate_nro.py $(TARGET).nro
 	python3 tools/validate_nro.py $(ISO_TARGET).nro
 	python3 tools/validate_nro.py $(COLL_TARGET).nro
+	python3 tools/validate_nro.py $(DDS_TARGET).nro
 
 clean:
 	rm -f $(TARGET).elf $(TARGET).nro $(TARGET).nacp \
 	       $(ISO_TARGET).elf $(ISO_TARGET).nro $(ISO_TARGET).nacp \
-	       $(COLL_TARGET).elf $(COLL_TARGET).nro $(COLL_TARGET).nacp
+	       $(COLL_TARGET).elf $(COLL_TARGET).nro $(COLL_TARGET).nacp \
+	       $(DDS_TARGET).elf $(DDS_TARGET).nro $(DDS_TARGET).nacp
