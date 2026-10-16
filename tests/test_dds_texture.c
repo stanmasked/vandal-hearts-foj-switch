@@ -119,7 +119,6 @@ static void test_dxt1_npot_and_capacity(void) {
 
 static void test_malformed_headers_and_truncation(void) {
     uint8_t file[512];
-    uint32_t pixels[16] = {0};
     FojDdsInfo info;
     make_header(file, 4, 4, 1);
     assert(foj_dds_inspect(NULL, 512, &info) == FOJ_DDS_ARGUMENT);
