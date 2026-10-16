@@ -9,6 +9,8 @@ on:
       - 'gpu/smoke_plan.h'
       - 'tests/test_gpu_smoke_plan.c'
       - 'tests/test_deko3d_clear_host.c'
+      - 'tests/test_deko3d_api_contract.c'
+      - 'gpu/deko3d_api_contract.h'
       - 'tests/mock_switch_sdk/**'
       - '.github/workflows/gpu-clear-smoke.yml'
   workflow_dispatch:
