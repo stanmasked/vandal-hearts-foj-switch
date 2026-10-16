@@ -203,3 +203,12 @@ audio/video codecs; localization; and required work are **unconfirmed**.
 - [x] Re-run standalone DKSH transactional generated-data tests locally with strict C11 warnings and with ASan/UBSan (both pass).
 - [ ] Confirm the full `host-check` suite in a complete checkout and CI. Existing GitHub workflow runs remain unverified; no CI success is implied by a committed Makefile.
 - [ ] Compile genuine UAM DKSH and ARM64 NRO with devkitPro, followed by hardware frame inspection.
+
+## Stage 72: dedicated GitHub GPU host regression workflow
+
+- [x] Add `.github/workflows/gpu-host-regression.yml` with pull request, main-branch path-filtered push, and manual triggers.
+- [x] Run existing `make -f gpu/clear.mk host-check` followed by `host-mock-sanitized` on a GitHub-hosted Ubuntu runner when workflow execution is available.
+- [x] Grant workflow only `contents: read` and set a 15-minute job timeout.
+- [ ] Verify actual workflow dispatch/job steps and passing results on GitHub; a committed workflow alone is not evidence of a successful CI run.
+- [ ] Validate genuine UAM shader compilation and ARM64/deko3d linking on a properly provisioned runner.
+- [ ] Confirm first GPU frame on physical Nintendo Switch hardware.
