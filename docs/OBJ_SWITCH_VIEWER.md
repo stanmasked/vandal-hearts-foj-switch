@@ -1,12 +1,13 @@
-# Original FoJ first-shape wireframe viewer for Nintendo Switch
+# Original FoJ multi-shape wireframe viewer for Nintendo Switch
 
 A fifth native `devkitA64/libnx` research NRO has been added:
 
 **`foj-obj-wireframe-research.nro`**
 
-It accepts the user's **locally exported first-shape OBJ** generated from
+It accepts the user's **locally exported multi-shape OBJ** generated from
 their own PS3 `NPEB00148` package with
-[decode_bmodel_geometry.py](../tools/decode_bmodel_geometry.py). It is
+[inspect_complete_bmodel.py](../tools/inspect_complete_bmodel.py).
+The original first-shape-only converter is also still supported. It is
 a simple 3D wireframe renderer: no original game shaders, textures, PS3
 executable, battle UI, animation or gameplay.
 
@@ -18,16 +19,17 @@ held original two ZIP parts:
 ```sh
 mkdir -p local-data/models
 
-python3 -m tools.decode_bmodel_geometry \
+python3 -m tools.inspect_complete_bmodel \
   "/path/to/NPEB00148.pkg.zip.001" \
   "/path/to/NPEB00148.pkg.zip.002" \
-  --asset "data/actors/npc/archery_target_character.bmodel" \
-  --reverse-winding \
+  --asset "data/actors/npc/avatar_body.bmodel" \
+  --reverse-winding --flip-v \
   --output "local-data/models/preview.obj"
 ```
 
-This writes **only the first geometric section** as an OBJ using big-endian
-PS3-derived XYZ, UV and normal data. The output will never be created unless
+This writes **all geometric sections** as one OBJ using big-endian
+PS3-derived XYZ, UV and normal data. The OBJ includes original material
+labels, but no texture pixels or bone pose data. The output will never be created unless
 the user supplies `--output`, and existing files are not overwritten.
 
 Copy `preview.obj` into this directory on your own Switch SD card:
@@ -45,7 +47,8 @@ establishes authenticity or compatibility with the original game.
 adjusts elevation. ZR/ZL zoom in/out; Plus exits the viewer.
 
 The visualizer ignores OBJ `vt` and `vn` records for now, drawing only
-triangular edges with simple orthographic projection. It has no z-buffer,
+triangular edges with simple orthographic projection. `usemtl` and
+`mtllib` directives are ignored safely by the wireframe-only loader. It has no z-buffer,
 occlusion, texture mapping, mesh transforms or skeletal deformation. Users
 may rotate a correct mesh and verify the object is recognizable, but this is
 not equivalent to restoring an original PS3 scene.
@@ -72,6 +75,6 @@ the user-controlled Switch SD card.
 
 ## What still must be reverse-engineered
 
-All model sections beyond the first, the `0x0F` record family, bone
-weights, material assignments, original shader passes, vertex morphs,
+Full skeleton/rig transforms and `0x0A`/`0x0C` footer records,
+original shader passes, vertex morphs,
 `.banim` pose tracks, model placement in actual FoJ map scenes, and gameplay.
