@@ -28,7 +28,7 @@ build:
 	mkdir -p build
 
 $(OUT).elf: $(SRC) | build preflight
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $@ -l$(GPU_LIB) -lnx -lm
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $@ -l$(GPU_LIB) -lstdc++ -lnx -lm
 
 $(OUT).nacp: | build
 	$(NACPTOOL) --create "FoJ GPU Clear Smoke" "VH FoJ contributors" "0.10.0" $@
