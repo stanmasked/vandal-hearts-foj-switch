@@ -35,6 +35,18 @@ jobs:
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
             tests/test_tactical_demo.c core/tactical_demo.c -o /tmp/foj_tactics_tests
           /tmp/foj_tactics_tests
+      - name: Compile portable FoJ COLL parser under strict C11 flags
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tests/test_coll_grid.c core/coll_grid.c -lm -o /tmp/foj_coll_tests
+          /tmp/foj_coll_tests
+      - name: Check COLL parser with address and undefined-behavior sanitizers
+        run: |
+          cc -std=c11 -O1 -g -fsanitize=address,undefined \
+            -fno-omit-frame-pointer -Icore \
+            tests/test_coll_grid.c core/coll_grid.c -lm -o /tmp/foj_coll_sanitized
+          /tmp/foj_coll_sanitized
+
       - name: Compile and run isometric rendering tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
