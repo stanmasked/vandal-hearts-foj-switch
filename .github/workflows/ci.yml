@@ -74,6 +74,20 @@ jobs:
             -lm -o /tmp/foj_skinning_asan
           /tmp/foj_skinning_asan
 
+      - name: Validate private FOJRM001 rigged mesh import
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tests/test_rigmesh_io.c core/rigmesh_io.c core/skeletal_skin.c core/banim_core.c \
+            -lm -o /tmp/foj_rigmesh_io
+          /tmp/foj_rigmesh_io
+      - name: Check FOJRM001 binary reader with ASan and UBSan
+        run: |
+          cc -std=c11 -O1 -g -fsanitize=address,undefined \
+            -fno-omit-frame-pointer -Icore \
+            tests/test_rigmesh_io.c core/rigmesh_io.c core/skeletal_skin.c core/banim_core.c \
+            -lm -o /tmp/foj_rigmesh_sanitized
+          /tmp/foj_rigmesh_sanitized
+
       - name: Compile and run portable tactical logic tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
