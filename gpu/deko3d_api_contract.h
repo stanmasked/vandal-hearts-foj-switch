@@ -28,6 +28,10 @@ _Static_assert(DkColorMask_RGBA == 15u,
                "wrong color channel clear mask");
 _Static_assert(DK_MEMBLOCK_ALIGNMENT == 4096u,
                "unexpected GPU memory alignment");
+_Static_assert(DK_GPU_ADDR_INVALID == UINT64_MAX,
+               "deko3d invalid GPU address sentinel must be UINT64_MAX");
+_Static_assert(sizeof(DkGpuAddr) == sizeof(uint64_t),
+               "deko3d GPU address requires a 64-bit type");
 
 /* Verify the GPU smoke clear color is actually visible and returned with
  * the right alpha; using these constants does NOT establish GPU output. */
