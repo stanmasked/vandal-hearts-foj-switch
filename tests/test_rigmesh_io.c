@@ -37,8 +37,8 @@ static size_t make_mesh(uint8_t *data) {
         f32(data+p+20,0);f32(data+p+24,0);f32(data+p+28,1);
         u32(data+p+32,i==0?2:1);
         p+=36;
-        u32(data+p,0);f32(data+p+4,i==0?.5f:0.f);p+=8;
-        u32(data+p,1);f32(data+p+4,i==0?.5f:1.f);p+=8;
+        u32(data+p,i==0?0u:1u);f32(data+p+4,i==0?.5f:1.f);p+=8;
+        u32(data+p,i==0?1u:0u);f32(data+p+4,i==0?.5f:0.f);p+=8;
         for (int j=2;j<5;++j) {u32(data+p,0);f32(data+p+4,0);p+=8;}
     }
     return p;
@@ -77,7 +77,7 @@ static void test_synthetic_rigmesh_roundtrip(void) {
         assert(fabsf(xyz[3*i+1]-mesh.vertices[i].xyz[1])<0.001f);
     }
     foj_rigmesh_free(&mesh);
-    assert(!mesh.bones && !mesh.vertices);
+    assert(!mesh.bind_bones && !mesh.vertices);
 }
 
 static void test_header_corruption_rejected_without_leaks(void) {
