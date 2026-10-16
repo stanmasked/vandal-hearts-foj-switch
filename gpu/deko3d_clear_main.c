@@ -17,6 +17,9 @@
 #include <string.h>
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
 #include "dksh_module.h"
+#include "shader_layout.h"
+_Static_assert(FOJ_GPU_SHADER_MAX_DKSH == FOJ_DKSH_MAX_BYTES,
+               "DKSH intake and GPU shader slot capacities differ");
 #endif
 
 enum { SCREEN_WIDTH=1280, SCREEN_HEIGHT=720, BUFFER_COUNT=2 };
@@ -149,7 +152,8 @@ int main(int argc,char **argv) {
      * This leaves the earlier shader-free GPU clear NRO intact. */
     (void)fsdevMountSdmc();
     DkMemBlockMaker shader_maker;
-    dkMemBlockMakerDefaults(&shader_maker,device,0x40000u);
+    dkMemBlockMakerDefaults(&shader_maker,device,
+                           FOJ_GPU_SHADER_CODE_POOL);
     shader_maker.flags=DkMemBlockFlags_CpuUncached|
                        DkMemBlockFlags_GpuCached|
                        DkMemBlockFlags_Code;
@@ -165,13 +169,18 @@ int main(int argc,char **argv) {
         goto cleanup;
     if (!foj_dksh_read_file(
             "sdmc:/switch/foj/gpu/foj_triangle.frag.dksh",
-            shader_cpu+0x20000u,FOJ_DKSH_MAX_BYTES,
+            shader_cpu+FOJ_GPU_SHADER_SLOT_BYTES,FOJ_DKSH_MAX_BYTES,
             FOJ_DKSH_FRAGMENT,&fs_bytes))
         goto cleanup;
+    FojGpuShaderLayout shader_plan;
+    if (!foj_gpu_shader_layout(vs_bytes,fs_bytes,&shader_plan))
+        goto cleanup;
     DkShaderMaker shader_init;
-    dkShaderMakerDefaults(&shader_init,shader_mem,0);
+    dkShaderMakerDefaults(&shader_init,shader_mem,
+                          shader_plan.vertex_offset);
     dkShaderInitialize(&shader_vertex,&shader_init);
-    dkShaderMakerDefaults(&shader_init,shader_mem,0x20000u);
+    dkShaderMakerDefaults(&shader_init,shader_mem,
+                          shader_plan.fragment_offset);
     dkShaderInitialize(&shader_fragment,&shader_init);
     if (!dkShaderIsValid(&shader_vertex) ||
         !dkShaderIsValid(&shader_fragment) ||
