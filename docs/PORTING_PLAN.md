@@ -47,6 +47,11 @@ reverse engineering, new platform code, and clean-room implementations.
 - [x] Verify original skin weights reference in-range bones in all 87 weighted models.
 - [x] Implement clean-room inverse bind palettes and 1–5 influence linear-blend skinning.
 - [x] Compile a seventh ARM64 Switch NRO showing synthetic deforming two-bone mesh.
+- [x] Add user-local original rigged mesh export (FOJRM001) with all sections, UV and bone weights.
+- [x] Add strict portable C FOJRM001 loader, generated regression tests and sanitizer checks.
+- [x] Privately pair original avatar_body (28 bones, 4722 vertices) with avatar_idle (28 tracks, 5600 keys).
+- [x] Build eighth native ARM64 NRO that can consume actual user-local BMODEL-derived mesh and BANIM clip.
+- [x] Produce three experimental desktop snapshots of source geometry animated by real BANIM keys.
 - [ ] Validate actual FoJ pose composition, bind conventions, material mapping and skinned movement.
 - [ ] Establish full semantic meanings for proprietary resource formats and original battle rules.
 - [x] Identify BGRA8 and DXT1 DDS texture formats and validate actual images.
