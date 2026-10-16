@@ -6,6 +6,9 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/gpu" "$tmp/core" "$tmp/build"
 cp gpu/clear.mk gpu/triangle.mk "$tmp/gpu/"
+# Copying Makefiles gives them the current time; normalize timestamps so
+# the control case truly has an ELF newer than every dependency.
+touch -t 202001010000 "$tmp/gpu/clear.mk" "$tmp/gpu/triangle.mk"
 for path in gpu/deko3d_clear_main.c gpu/smoke_plan.c gpu/dksh_module.c \
             gpu/shader_layout.c gpu/dksh_module.h gpu/shader_layout.h \
             gpu/smoke_plan.h gpu/deko3d_api_contract.h core/gpu_vertex_stream.h; do
