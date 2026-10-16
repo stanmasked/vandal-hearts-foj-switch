@@ -362,3 +362,13 @@ No NRO or DKSH files were produced in this stage.
 - [ ] Build with real UAM / devkitA64 and test hardware GPU output.
 
 The fake toolchain is suitable for validating diagnostic presence checks only. It cannot produce ARM64 binaries or verify SDK compatibility.
+
+## Stage 90: executed SDK-free GPU preflight test (2026-10-17)
+
+- [x] Reconstructed the current `gpu/clear.mk` preflight rules and `tests/test_gpu_preflight.sh` inside a temporary local host workspace, then executed the six missing-component and complete-presence fixtures: PASS.
+- [x] Strengthen the committed preflight regression with three distinct non-executable tool cases (devkitA64 gcc, elf2nro, nacptool).
+- [x] Executed the strengthened nine-failure-case regression and complete-presence control using the same exact preflight rules: PASS.
+- [ ] Repeat from a full repository checkout and obtain actual GitHub Actions logs. Local reconstructed preflight-rule testing does not prove end-to-end host-suite success.
+- [ ] Compile real UAM shaders and ARM64 NRO; test actual GPU output on Nintendo Switch.
+
+No real SDK packages were installed, and the fake presence-only toolchain cannot compile any ARM64 program.
