@@ -24,6 +24,8 @@ exit 2
 EOF
 chmod +x "$tmp/fake-uam"
 cat > "$tmp/tools/validate_dksh.py" <<'EOF'
+from pathlib import Path
+Path('validator-invocations.log').open('a').write('called\n')
 raise SystemExit(1)
 EOF
 touch "$tmp/tools/__init__.py"
@@ -42,6 +44,10 @@ grep -q "Deleting file" "$tmp/build.log" || {
     cat "$tmp/build.log" >&2
     exit 1
 }
+if [[ ! -f validator-invocations.log ]] || [[ $(wc -l < validator-invocations.log) -ne 1 ]]; then
+    echo "FAIL: validator was not invoked exactly once" >&2
+    exit 1
+fi
 # Also reject a compiler that writes an output and then fails.
 if FAKE_UAM_FAIL=1 PYTHONPATH="$tmp" make --no-print-directory -f gpu/Makefile "$target" UAM="$tmp/fake-uam" >"$tmp/compiler-failure.log" 2>&1; then
     echo "FAIL: simulated UAM failure unexpectedly passed" >&2
@@ -61,4 +67,8 @@ grep -q "Deleting file" "$tmp/compiler-failure.log" || {
     cat "$tmp/compiler-failure.log" >&2
     exit 1
 }
+if [[ $(wc -l < validator-invocations.log) -ne 1 ]]; then
+    echo "FAIL: validator incorrectly ran after UAM compiler failure" >&2
+    exit 1
+fi
 echo "UAM Makefile compiler and validator failure cleanup: PASS"
