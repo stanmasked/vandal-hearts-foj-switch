@@ -35,5 +35,11 @@ jobs:
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
             tests/test_tactical_demo.c core/tactical_demo.c -o /tmp/foj_tactics_tests
           /tmp/foj_tactics_tests
+      - name: Compile and run isometric rendering tests
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tests/test_isometric_demo.c core/isometric_demo.c core/tactical_demo.c \
+            -o /tmp/foj_iso_tests
+          /tmp/foj_iso_tests
 
 # No game packages, console keys, third-party assets, or decryption used in CI.
