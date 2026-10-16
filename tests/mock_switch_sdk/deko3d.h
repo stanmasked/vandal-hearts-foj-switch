@@ -13,6 +13,7 @@ typedef struct FakeCmdBuf* DkCmdBuf;
 typedef struct FakeSwapchain* DkSwapchain;
 typedef struct FakeMemBlock* DkMemBlock;
 typedef uintptr_t DkCmdList;
+typedef uint64_t DkGpuAddr;
 typedef struct { unsigned index; DkMemBlock memory; } DkImage;
 typedef struct { const DkImage* pImage; } DkImageView;
 typedef struct { uint32_t x,y,width,height; } DkScissor;
@@ -51,6 +52,8 @@ uint32_t dkImageLayoutGetAlignment(const DkImageLayout*);
 void dkMemBlockMakerDefaults(DkMemBlockMaker*,DkDevice,uint32_t);
 DkMemBlock dkMemBlockCreate(const DkMemBlockMaker*);
 void dkMemBlockDestroy(DkMemBlock);
+void* dkMemBlockGetCpuAddr(DkMemBlock);
+DkGpuAddr dkMemBlockGetGpuAddr(DkMemBlock);
 void dkImageInitialize(DkImage*,const DkImageLayout*,DkMemBlock,uint32_t);
 void dkImageViewDefaults(DkImageView*,const DkImage*);
 void dkSwapchainMakerDefaults(
