@@ -37,6 +37,9 @@ all: $(OUT).nro
 
 preflight:
 	@test -x "$(CC)" || { echo "Missing devkitA64 cross-compiler" >&2; exit 2; }
+	@test -x "$(ELF2NRO)" || { echo "Missing elf2nro from devkitPro tools" >&2; exit 2; }
+	@test -x "$(NACPTOOL)" || { echo "Missing nacptool from devkitPro tools" >&2; exit 2; }
+	@test -f "$(DEVKITPRO)/libnx/switch.specs" || { echo "Missing libnx switch.specs" >&2; exit 2; }
 	@test -f "$(DEVKITPRO)/libnx/include/deko3d.h" || { echo "Missing deko3d.h from switch-dev" >&2; exit 2; }
 	@test -f "$(DEVKITPRO)/libnx/lib/lib$(GPU_LIB).a" || { echo "Missing lib$(GPU_LIB).a" >&2; exit 2; }
 
