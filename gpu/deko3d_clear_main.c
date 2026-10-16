@@ -27,6 +27,10 @@ enum { CMD_MEMORY_SIZE=0x10000 };
  */
 _Static_assert(sizeof(FojGpuVertex)==24,
                "GPU shader vertex format changed unexpectedly");
+_Static_assert(offsetof(FojGpuVertex,x)==0,
+               "shader position must start at byte zero");
+_Static_assert(offsetof(FojGpuVertex,u)==16,
+               "shader UV must start at byte sixteen");
 static const FojGpuVertex kResearchTriangle[3]={
     {-0.60f,-0.55f,0.5f,1.0f,0.0f,0.0f},
     { 0.60f,-0.55f,0.5f,1.0f,1.0f,0.0f},
@@ -205,15 +209,27 @@ int main(int argc,char **argv) {
             DkShader const* shaders[2]={
                 &shader_vertex,&shader_fragment
             };
+            /* Named bitfields avoid accidental association of an
+             * unnamed padding bit with the shader's vertex layout. */
             const DkVtxAttribState attribs[2]={
-                {0,0,0,DkVtxAttribSize_4x32,DkVtxAttribType_Float,0},
-                {0,0,16,DkVtxAttribSize_2x32,DkVtxAttribType_Float,0}
+                {
+                    .bufferId=0, .isFixed=0, .offset=0,
+                    .size=DkVtxAttribSize_4x32,
+                    .type=DkVtxAttribType_Float, .isBgra=0
+                },
+                {
+                    .bufferId=0, .isFixed=0,
+                    .offset=offsetof(FojGpuVertex,u),
+                    .size=DkVtxAttribSize_2x32,
+                    .type=DkVtxAttribType_Float, .isBgra=0
+                }
             };
             const DkVtxBufferState vertex_states[1]={
-                {sizeof(FojGpuVertex),0}
+                { .stride=sizeof(FojGpuVertex), .divisor=0 }
             };
             const DkBufExtents vertex_data[1]={
-                {vertex_gpu_addr,sizeof(kResearchTriangle)}
+                { .addr=vertex_gpu_addr,
+                  .size=sizeof(kResearchTriangle) }
             };
             dkCmdBufSetViewports(cmd,0,&viewport,1);
             dkCmdBufBindShaders(cmd,DkStageFlag_GraphicsMask,shaders,2);
