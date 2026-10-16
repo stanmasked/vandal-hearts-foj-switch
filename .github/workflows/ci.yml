@@ -163,6 +163,10 @@ jobs:
             -o /tmp/foj_dksh_module_asan
           /tmp/foj_dksh_module_asan
 
+      - name: Type-check shader-backed deko3d XYZW UV draw branch without SDK
+        run: |
+          make -f gpu/clear.mk host-triangle-check
+
       - name: Compile and run portable tactical logic tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
