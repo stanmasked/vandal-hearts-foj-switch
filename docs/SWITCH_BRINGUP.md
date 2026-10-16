@@ -1,8 +1,8 @@
 # Nintendo Switch homebrew bring-up
 
-This phase verifies **compiler/toolchain integration and synthetic tactical
-logic plus renderer demonstrators**, using no game files. The NRO is **not**
-the PS3 game.
+This phase verifies **compiler/toolchain integration, synthetic tactical
+logic and user-provided original-data research input**. No commercial game
+assets are bundled. None of these NROs is the playable original PS3 game.
 
 ## Build
 
@@ -16,8 +16,8 @@ make -f switch/Makefile verify
 ```
 
 
-Produces two independent, asset-free binaries and checks NRO0 magic,
-declared file size, and segment bounds:
+Produces eight independently built research executables, without bundled
+commercial game assets, and validates NRO0 magic, file size and segments:
 
 - `build/foj-switch-research.nro` — text-console map, controls, and logic.
 - `build/foj-isometric-research.nro` — 1280×720 CPU-rendered isometric tiles
@@ -132,3 +132,19 @@ joint-driven **moving vertices** on an invented two-bone test strip.
 Original FoJ model geometry/animation is not included or claimed to render
 correctly. The red marker denotes synthetic input. Controls and caveats:
 [SKINNING_SWITCH_VIEWER.md](SKINNING_SWITCH_VIEWER.md).
+
+## Eighth build: original local mesh + BANIM animation
+
+`build/foj-rigged-actor-research.nro` accepts a user-owned original
+`FOJRM001` rigged model at `sdmc:/switch/foj/rig/preview.fojrm` and its
+parent-compatible `BANIM` clip at
+`sdmc:/switch/foj/anims/preview.banim`. It then runs experimental
+bone-world/inverse-bind/weight deformation and displays a wireframe, not
+the original PS3 shader/material scene.
+
+On absent, corrupt or incompatible user files, the app displays an
+explanatory diagnostic instead of claiming original graphics are present.
+The exact procedure for local original asset preparation and the limitations
+of experimental skinning are in
+[ORIGINAL_RIGGED_ACTOR_SWITCH.md](ORIGINAL_RIGGED_ACTOR_SWITCH.md).
+Physical Switch execution and matching the PS3 engine are still unverified.
