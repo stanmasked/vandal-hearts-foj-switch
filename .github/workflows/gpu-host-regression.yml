@@ -9,6 +9,7 @@ on:
       - "core/gpu_vertex_stream.h"
       - "tests/test_dksh_module.c"
       - "tests/test_gpu_dksh_integration.c"
+      - "tests/test_gpu_make_dependencies.sh"
       - "tests/test_shader_layout.c"
       - "tests/test_gpu_smoke_plan.c"
       - "tests/test_deko3d_api_contract.c"
@@ -21,6 +22,7 @@ on:
       - "core/gpu_vertex_stream.h"
       - "tests/test_dksh_module.c"
       - "tests/test_gpu_dksh_integration.c"
+      - "tests/test_gpu_make_dependencies.sh"
       - "tests/test_shader_layout.c"
       - "tests/test_gpu_smoke_plan.c"
       - "tests/test_deko3d_api_contract.c"
@@ -55,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          make -f gpu/clear.mk host-check 2>&1 | tee gpu-host-strict.log
+          { bash tests/test_gpu_make_dependencies.sh && make -f gpu/clear.mk host-check; } 2>&1 | tee gpu-host-strict.log
       - name: ASan and UBSan host suite
         if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         id: sanitized
