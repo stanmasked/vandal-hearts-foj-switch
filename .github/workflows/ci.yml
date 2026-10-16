@@ -27,6 +27,13 @@ jobs:
       - name: Run standard-library unit tests
         run: python -m unittest discover -s tests -v
       - name: Verify CLI help
-        run: python tools/inspect_pkg.py --help
+        run: |
+          python tools/inspect_pkg.py --help
+          python -m tools.inspect_split_pkg --help
+      - name: Compile and run portable tactical logic tests
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tests/test_tactical_demo.c core/tactical_demo.c -o /tmp/foj_tactics_tests
+          /tmp/foj_tactics_tests
 
 # No game packages, console keys, third-party assets, or decryption used in CI.
