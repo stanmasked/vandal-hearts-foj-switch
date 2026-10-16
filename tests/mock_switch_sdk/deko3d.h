@@ -31,7 +31,8 @@ typedef struct {
     const DkImage* const* pImages; uint32_t numImages;
 } DkSwapchainMaker;
 enum {
-    DkDeviceFlags_DepthZeroToOne=256,
+    DkDeviceFlags_DepthZeroToOne=0,
+    DkDeviceFlags_DepthMinusOneToOne=256,
     DkDeviceFlags_OriginUpperLeft=0, DkDeviceFlags_YAxisPointsUp=0,
     DkQueueFlags_Graphics=1, DkImageType_2D=2,
     DkImageFormat_RGBA8_Unorm=28,
