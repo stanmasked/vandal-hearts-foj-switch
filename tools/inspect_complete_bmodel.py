@@ -238,7 +238,56 @@ def resolve_textures(model_path: str, materials: tuple[MaterialLink, ...],
     return result
 
 
-def inspect_local_pkg(parts: list[Path], asset: str) -> dict:
+def write_full_obj(data: bytes, model: CompleteModel, destination: Path,
+                   *, reverse_winding: bool = False, flip_v: bool = False) -> None:
+    """Write all original model sections into one user-owned local OBJ.
+
+    This exports protected game geometry only upon explicit user opt-in.
+    It uses OBJ object names, material labels and one-to-one vertex/UV/normal
+    tuples, but does not embed DDS textures or reconstruct bones.
+    """
+    if destination.suffix.lower() != ".obj" or not destination.parent.is_dir():
+        raise ValueError("Output must be a new local .obj in an existing directory")
+    if destination.is_symlink():
+        raise ValueError("Output cannot be a symlink")
+    with destination.open("x", encoding="utf-8", newline="\n") as out:
+        out.write("# FoJ user-owned first-to-last mesh sections; materials are names only.\n")
+        out.write("# Original texture resources and skeleton are not included.\n")
+        base = 0
+        for section in model.shapes:
+            name = section.name.replace(" ", "_").replace("#", "_")
+            mat = section.material.replace(" ", "_").replace("#", "_")
+            out.write(f"o {name}\nusemtl {mat}\n")
+            n = section.vertex_count
+            for (x,y,z) in struct.iter_unpack(
+                ">fff", memoryview(data)[section.xyz_offset:
+                                           section.xyz_offset + n * 12]
+            ):
+                out.write(f"v {x:.9g} {y:.9g} {z:.9g}\n")
+            for (u,v) in struct.iter_unpack(
+                ">ff", memoryview(data)[section.uv_offset:
+                                         section.uv_offset + n * 8]
+            ):
+                out.write(f"vt {u:.9g} {1-v if flip_v else v:.9g}\n")
+            for (x,y,z) in struct.iter_unpack(
+                ">fff", memoryview(data)[section.normal_offset:
+                                           section.normal_offset + n * 12]
+            ):
+                out.write(f"vn {x:.9g} {y:.9g} {z:.9g}\n")
+            # The verified first 1380 shape index buffers are 0..n-1.
+            # Each OBJ shape shares a growing global 1-based element array.
+            for j in range(0, n, 3):
+                ids = [base + j + k + 1 for k in (0,1,2)]
+                if reverse_winding:
+                    ids[1], ids[2] = ids[2], ids[1]
+                out.write("f " + " ".join(f"{i}/{i}/{i}" for i in ids) + "\n")
+            base += n
+
+
+def inspect_local_pkg(parts: list[Path], asset: str,
+                      destination: Path | None = None,
+                      *, reverse_winding: bool = False,
+                      flip_v: bool = False) -> dict:
     if (not asset.startswith("data/") or
         not asset.lower().endswith(".bmodel") or
         "\\" in asset or ".." in asset.split("/")):
@@ -260,9 +309,13 @@ def inspect_local_pkg(parts: list[Path], asset: str) -> dict:
             raise FormatError("Missing/duplicate model path")
         payload = archive.entry_data(names.index(asset) + 1, limit=MAX_MODEL_BYTES)
         model = decode_model(payload)
+        if destination is not None:
+            write_full_obj(payload, model, destination,
+                           reverse_winding=reverse_winding, flip_v=flip_v)
         report = model.report()
         report["asset"] = asset
         report["texture_bindings"] = resolve_textures(asset, model.materials, names)
+        report["local_obj_export"] = destination.name if destination else None
         return report
 
 
@@ -270,10 +323,19 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("parts", nargs="+", type=Path)
     ap.add_argument("--asset", required=True, help="data/.../example.bmodel")
+    ap.add_argument("--output", type=Path,
+                    help="Optional new local OBJ; export all mesh sections")
+    ap.add_argument("--reverse-winding", action="store_true",
+                    help="Reverse face winding in exported OBJ")
+    ap.add_argument("--flip-v", action="store_true",
+                    help="Flip UV vertical coordinate in OBJ only")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
     try:
-        report = inspect_local_pkg(args.parts, args.asset)
+        report = inspect_local_pkg(
+            args.parts, args.asset, args.output,
+            reverse_winding=args.reverse_winding, flip_v=args.flip_v
+        )
     except (OSError, ValueError) as exc:
         print(f"Model inspection error: {exc}", file=sys.stderr)
         return 2
