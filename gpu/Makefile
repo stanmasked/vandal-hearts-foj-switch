@@ -12,7 +12,7 @@ FRAG := gpu/shaders/foj_actor.frag
 TRI_FRAG := gpu/shaders/foj_triangle.frag
 
 .PHONY: all clean check-tool verify triangle triangle-verify
-all: $(GPU_OUT)/foj_actor.vert.dksh $(GPU_OUT)/foj_actor.frag.dksh $(GPU_OUT)/foj_triangle.frag.dksh
+all: $(GPU_OUT)/foj_actor.vert.dksh $(GPU_OUT)/foj_actor.frag.dksh
 
 check-tool:
 	@command -v $(UAM) >/dev/null || { echo "ERROR: UAM shader compiler not installed; GPU shader build not verified" >&2; exit 2; }
@@ -45,4 +45,4 @@ verify: all
 	python3 -m tools.validate_dksh --expect-stage fragment $(GPU_OUT)/foj_actor.frag.dksh
 
 clean:
-	rm -f $(GPU_OUT)/foj_actor.vert.dksh $(GPU_OUT)/foj_actor.frag.dksh
+	rm -f $(GPU_OUT)/foj_actor.vert.dksh $(GPU_OUT)/foj_actor.frag.dksh $(GPU_OUT)/foj_triangle.frag.dksh
