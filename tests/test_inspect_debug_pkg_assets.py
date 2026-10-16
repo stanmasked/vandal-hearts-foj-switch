@@ -17,7 +17,7 @@ from tools.inspect_debug_pkg_assets import (
 from tools.inspect_split_pkg import JoinedParts
 
 
-def synthetic_psarc(with_map=False):
+def synthetic_psarc(with_map=False, with_headers=False):
     filenames = ["data/example.tga", "data/example.lua"]
     texture = bytearray(128 + 4 * 4 * 4)
     texture[:4] = b"DDS "
@@ -51,6 +51,17 @@ def synthetic_psarc(with_map=False):
                b"0,1,false,true\n1,1,false,true\n")
         ini = b"[tree0]\nbase=tree\nlocation=1,2,3\n"
         blobs.extend([coll, vis, ini])
+    if with_headers:
+        filenames.extend(["data/models/example.bmodel", "data/anims/example.banim"])
+        shape = b"exampleShape_0"
+        model = (b"\x0b\x09\x00\x02\x01\x20\x00"
+                 + bytes([len(shape)]) + shape + b"\x02\x00"
+                 + bytes(64))
+        anim = b"\x0d" + struct.pack("<f", 1.5) + b"\x25\x00\x00\x00\x00"
+        blobs.extend([model, anim])
+    if with_map or with_headers:
+        blobs[0] = ("\n".join(filenames) + "\n").encode()
+
     compressed = [zlib.compress(blob) for blob in blobs]
     block_size = 65536
     toc_len = 32 + len(blobs) * 30 + len(blobs) * 2
@@ -73,8 +84,8 @@ def synthetic_psarc(with_map=False):
     return bytes(out)
 
 
-def synthetic_pkg(*, revision=0, with_map=False):
-    psarc = synthetic_psarc(with_map=with_map)
+def synthetic_pkg(*, revision=0, with_map=False, with_headers=False):
+    psarc = synthetic_psarc(with_map=with_map, with_headers=with_headers)
     names = [b"PARAM.SFO", b"USRDIR/cdata.psarc"]
     body_start = 2 * 32 + sum(len(x) for x in names)
     body_start = (body_start + 15) & ~15
@@ -169,6 +180,19 @@ class DebugPKGResearchTests(unittest.TestCase):
         with self.assertRaises(MapFormatError):
             local_export(parts, "../wrong", Path(self.temp.name) / "wrong.coll")
         self.assertEqual(len(list(Path(self.temp.name).glob("*.coll"))), 1)
+
+    def test_nested_bmodel_banim_header_samples(self):
+        parts = make_parts(self.temp.name, synthetic_pkg(with_headers=True))
+        report = summarize([str(path) for path in parts], header_samples=1)
+        model = report["model_anim_headers"][".bmodel"][0]
+        animation = report["model_anim_headers"][".banim"][0]
+        self.assertEqual(model["first_shape_name"], "exampleShape_0")
+        self.assertEqual(model["candidate_part_count"], 2)
+        self.assertEqual(animation["candidate_duration_seconds"], 1.5)
+        self.assertEqual(animation["header_variant"], 0x25)
+        self.assertNotIn("DDS ", json.dumps(report))
+        with self.assertRaises(ValueError):
+            summarize([str(path) for path in parts], header_samples=17)
 
     def test_wrong_revision_fails_without_fallback(self):
         paths = make_parts(self.temp.name, synthetic_pkg(revision=0x8000))
