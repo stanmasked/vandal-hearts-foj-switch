@@ -4,8 +4,8 @@ Research project for a **native Nintendo Switch homebrew port** of
 *Vandal Hearts: Flames of Judgment* (PlayStation 3 / Xbox 360, 2010).
 
 > **Status: research / native ARM64 smoke-test only — no playable port, PS3
-> code translation or original gameplay.** Six independent libnx NROs now
-> compile in CI, including original-format map, texture, mesh and animation viewers;
+> code translation or original gameplay.** Seven independent libnx NROs now
+> compile in CI, including map, texture, mesh, animation and skinning research viewers;
 > none runs the original PS3 game.
 
 ## Verified user-provided PS3 package
@@ -153,6 +153,25 @@ values. See [BANIM Switch instructions](docs/BANIM_SWITCH_VIEWER.md).
 This is still **local-pose inspection**, not bone-matrix skinning, rendered
 character animations, original gameplay or verified physical-console operation.
 
+## Skeletal matching and experimental animated-vertex rendering
+
+Every original rig-bearing BMODEL now has at least one BANIM clip with an
+identical **full parent hierarchy**: **89/89 models**. Among 450 original
+clips, **449** match one or more original model hierarchies. The remaining
+`brawler_hammer_smash.banim` has 74 tracks and no exact match.
+There are 24 shared hierarchy patterns and 4,011 structural candidate
+model/clip pairs. This is an **eligibility filter**, not proof every pairing
+is intended by the game. See
+[original asset-compatibility audit](docs/REAL_SKINNING_COMPATIBILITY.md).
+
+[core/skeletal_skin.c](core/skeletal_skin.c) now calculates hierarchical
+world matrices, rigid inverse-bind palettes and up to five weighted bone
+influences per vertex. The resulting **seventh independent Switch NRO**,
+`foj-skinning-research.nro`, displays an *invented moving two-bone
+wireframe*, reusing exactly that C math. It does not yet draw any authentic
+FoJ actor, and physical Switch runtime remains unverified. See
+[SKINNING_SWITCH_VIEWER.md](docs/SKINNING_SWITCH_VIEWER.md).
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
@@ -207,6 +226,8 @@ Never publish the game package, license files, executables, keys or assets.
 - `tools/audit_rig_anims.py` — local-only aggregate 583-model / 450-clip validation.
 - `tools/export_local_banim.py` — one explicit user-owned BANIM export.
 - `core/banim_core.c` — portable native BANIM parser and pose sampler.
+- `core/skeletal_skin.c` — inverse-bind hierarchy, experimental CPU weighted skinning.
+- `tools/audit_rig_clip_pairs.py` — original-game bone-hierarchy pairing audit.
 - `core/obj_wireframe.c` — native-compatible OBJ diagnostic renderer.
 - `switch/source/dds_main.c` — DDS viewer reading local files.
 - `tests/` — synthetic test fixtures, no proprietary data.
@@ -214,7 +235,7 @@ Never publish the game package, license files, executables, keys or assets.
 - `docs/PORTING_PLAN.md` — milestones and technical unknowns.
 - `docs/LEGAL.md` — clean-repository rules.
 - `.github/workflows/ci.yml` — automatic host-side tests.
-- `switch/` — six native, data-free libnx diagnostic NRO builds.
+- `switch/` — seven native, data-free libnx diagnostic NRO builds.
 - `core/tactical_demo.c` — portable synthetic movement BFS, heights and obstacles.
 - `core/isometric_demo.c` — portable synthetic CPU rasterizer for isometric tiles.
 - `tools/render_isometric_preview.c` — host preview generator using the same renderer.
@@ -225,13 +246,14 @@ Never publish the game package, license files, executables, keys or assets.
 
 ## Native Switch bring-up
 
-Six independently written research binaries compile through devkitA64 and
-pass NRO structure validation in the [sixth-NRO build](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/38931750704):
+Seven independent research binaries compile through devkitA64 and
+pass NRO structure validation in the [seventh-NRO build](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/38933822956):
 `foj-switch-research.nro` (ASCII tactics), `foj-isometric-research.nro`
 (CPU isometric tactics), `foj-coll-map-research.nro` (COLL viewer), and
 `foj-dds-texture-research.nro` (DDS viewer), and
 `foj-obj-wireframe-research.nro` (user-local mesh wireframe), and
-`foj-banim-research.nro` (user-local bone-track timeline), in artifact
+`foj-banim-research.nro` (user-local bone-track timeline), and
+`foj-skinning-research.nro` (generated two-bone deforming wireframe), in artifact
 `foj-switch-research-nros` in the updated workflow runs.
 The corresponding pixel renderer is also compiled on Ubuntu to generate a
 **synthetic screenshot** through the [preview workflow](.github/workflows/isometric-preview.yml).
@@ -250,8 +272,8 @@ mistake compatibility probes for completed game systems.
 - PKG content may be encrypted, and the container header alone does not reveal
   models, maps or executable game logic.
 - COLL, DDS, BMODEL mesh/rig and BANIM keyframe formats are structurally
-  identified. The original game's skinning/blending, engine and gameplay
-  remain unimplemented.
+  identified. Experimental CPU skinning math is implemented, but original
+  engine skinning/blending, gameplay and campaign remain unimplemented.
 - The goal is homebrew development, not an official Nintendo release.
 - Compatibility, performance, and game completeness are unknown until tested.
 
