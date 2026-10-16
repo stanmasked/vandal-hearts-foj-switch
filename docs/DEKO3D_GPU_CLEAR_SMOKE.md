@@ -236,6 +236,42 @@ For the current local runtime, devkitA64 GCC, deko3d headers/libraries
 and `elf2nro` are absent. Therefore **a real ARM64 NRO build remains
 blocked here**, regardless of the success of host-only tests.
 
+## Verified deko3d depth-flag correction (2026-10-16)
+
+Rechecking the **actual upstream**
+[devkitPro/deko3d include/deko3d.h](https://github.com/devkitPro/deko3d/blob/master/include/deko3d.h)
+revealed a regression in our earlier ABI test declarations:
+
+| Device creation selection | Actual numeric flag |
+| --- | ---: |
+| `DkDeviceFlags_DepthZeroToOne` | **0** |
+| `DkDeviceFlags_DepthMinusOneToOne` | **256** |
+| `DkDeviceFlags_OriginUpperLeft` | **0** |
+| `DkDeviceFlags_YAxisPointsUp` | **0** |
+
+The old mock set `DepthZeroToOne=256` and incorrectly used
+`assert(flags & DkDeviceFlags_DepthZeroToOne)`. This *could not*
+test the actual deko3d default correctly. The native prototype's use
+of the symbolic constant is appropriate: zero means it selects
+0-to-1 clip-space depth by **not setting bit 8**.
+
+The mock header, `gpu/deko3d_api_contract.h` and the mock device
+validation are now corrected. The ABI regression test checks **both
+0 and 256** rather than testing truthiness of a zero-valued flag.
+
+**Independent local reproduction:** patched the retained host-source
+11-scenario test fixture to match the upstream enum values, compiled
+under strict C11, and ran all 11 scenarios under
+AddressSanitizer and UndefinedBehaviorSanitizer. All passed, including
+242 simulated acquire/submit/present cycles and failure cleanup.
+This establishes the corrected **older host fixture** only. The
+repository's newer 14-scenario mock, native devkitPro build and physical
+GPU frames still require their own completed execution.
+
+There is **no change** to the previously correct GPU vertex
+normalization into [0.01,0.99]. This fix addresses enum semantics and
+test fidelity, not a verified GPU image.
+
 ## GitHub Actions
 
 The separate
