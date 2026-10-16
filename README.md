@@ -4,8 +4,8 @@ Research project for a **native Nintendo Switch homebrew port** of
 *Vandal Hearts: Flames of Judgment* (PlayStation 3 / Xbox 360, 2010).
 
 > **Status: research / native ARM64 smoke-test only — no playable port, PS3
-> code translation or original gameplay.** Seven independent libnx NROs now
-> compile in CI, including map, texture, mesh, animation and skinning research viewers;
+> code translation or original gameplay.** Eight independent libnx NROs now
+> compile in CI, including a user-local original-actor wireframe animation research viewer;
 > none runs the original PS3 game.
 
 ## Verified user-provided PS3 package
@@ -172,6 +172,35 @@ wireframe*, reusing exactly that C math. It does not yet draw any authentic
 FoJ actor, and physical Switch runtime remains unverified. See
 [SKINNING_SWITCH_VIEWER.md](docs/SKINNING_SWITCH_VIEWER.md).
 
+## Original rigged avatar + native animated wireframe input (2026-10-16)
+
+A **private local user-data pair** has now been assembled directly from the
+original NPEB00148 PS3 archive: `avatar_body.bmodel` and
+`avatar_idle.banim`. The full five-section mesh contains 4,722 vertices
+(1,574 triangles), 28 original bones and 14,166 weight influences. The
+matching idle clip has 28 parent-compatible tracks and 5,600 keys over
+approximately 6.633 seconds.
+
+[tools/export_local_rigmesh.py](tools/export_local_rigmesh.py) converts the
+user-owned BMODEL to the new endian-stable `FOJRM001` format; the
+[portable C decoder](core/rigmesh_io.c) reads it with strict limits.
+[tools/check_local_rig_pair.py](tools/check_local_rig_pair.py) independently
+checks bone parents, attribute arrays, weights and animation samples.
+
+The **eighth native NRO**, `foj-rigged-actor-research.nro`, can load
+a user-provided `preview.fojrm` plus `preview.banim` from SD and run
+experimental weighted CPU skinning on **original** game geometry, showing
+a wireframe without any bundled PS3 assets. Compilation and synthetic
+regression tests are confirmed; physical Switch launch is not.
+[Installation and source file guide](docs/ORIGINAL_RIGGED_ACTOR_SWITCH.md).
+
+An independent local desktop diagnostic calculated original-geometry
+poses at 0.0, 3.317 and 6.603 seconds. The vertices remain finite and
+change positions, but the mean displacement from static source geometry
+was ~6.8 source units; **the original game's exact bind/pose conventions
+are not yet confirmed**. This is a milestone toward graphical animation,
+not a playable or visually faithful PS3 engine port.
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
@@ -227,6 +256,9 @@ Never publish the game package, license files, executables, keys or assets.
 - `tools/export_local_banim.py` — one explicit user-owned BANIM export.
 - `core/banim_core.c` — portable native BANIM parser and pose sampler.
 - `core/skeletal_skin.c` — inverse-bind hierarchy, experimental CPU weighted skinning.
+- `core/rigmesh_io.c` — bounded private FOJRM001 native mesh/bone/weight reader.
+- `tools/export_local_rigmesh.py` — local original BMODEL to FOJRM001 conversion.
+- `tools/check_local_rig_pair.py` — local rigged mesh and animation compatibility audit.
 - `tools/audit_rig_clip_pairs.py` — original-game bone-hierarchy pairing audit.
 - `core/obj_wireframe.c` — native-compatible OBJ diagnostic renderer.
 - `switch/source/dds_main.c` — DDS viewer reading local files.
@@ -235,7 +267,7 @@ Never publish the game package, license files, executables, keys or assets.
 - `docs/PORTING_PLAN.md` — milestones and technical unknowns.
 - `docs/LEGAL.md` — clean-repository rules.
 - `.github/workflows/ci.yml` — automatic host-side tests.
-- `switch/` — seven native, data-free libnx diagnostic NRO builds.
+- `switch/` — eight native libnx research NROs; original-data-capable builds contain no bundled game assets.
 - `core/tactical_demo.c` — portable synthetic movement BFS, heights and obstacles.
 - `core/isometric_demo.c` — portable synthetic CPU rasterizer for isometric tiles.
 - `tools/render_isometric_preview.c` — host preview generator using the same renderer.
@@ -246,14 +278,15 @@ Never publish the game package, license files, executables, keys or assets.
 
 ## Native Switch bring-up
 
-Seven independent research binaries compile through devkitA64 and
-pass NRO structure validation in the [seventh-NRO build](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/38933822956):
+Eight independent research binaries compile through devkitA64 and
+pass NRO structure validation in the [eighth-NRO build](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/38935584944):
 `foj-switch-research.nro` (ASCII tactics), `foj-isometric-research.nro`
 (CPU isometric tactics), `foj-coll-map-research.nro` (COLL viewer), and
 `foj-dds-texture-research.nro` (DDS viewer), and
 `foj-obj-wireframe-research.nro` (user-local mesh wireframe), and
 `foj-banim-research.nro` (user-local bone-track timeline), and
-`foj-skinning-research.nro` (generated two-bone deforming wireframe), in artifact
+`foj-skinning-research.nro` (generated two-bone wireframe), and
+`foj-rigged-actor-research.nro` (private original-avatar/clip wireframe), in artifact
 `foj-switch-research-nros` in the updated workflow runs.
 The corresponding pixel renderer is also compiled on Ubuntu to generate a
 **synthetic screenshot** through the [preview workflow](.github/workflows/isometric-preview.yml).
