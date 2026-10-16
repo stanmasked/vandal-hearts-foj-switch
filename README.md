@@ -418,6 +418,38 @@ and actual Switch GPU frames remain unverified** while GitHub Actions
 fails before running any job steps. See
 [GPU clear smoke technical guide](docs/DEKO3D_GPU_CLEAR_SMOKE.md).
 
+## Separate shader-backed GPU triangle research target (2026-10-16)
+
+A NEW optional native target,
+[`gpu/triangle.mk`](gpu/triangle.mk), prepares
+`foj-deko3d-triangle-research.nro` to draw an **invented triangle**
+through deko3d, using generated UVs and two user-provided UAM
+DKSH shaders. This target is isolated from the existing GPU clear
+prototype and all **nine** original-format CPU research NROs.
+
+Unlike the clear-only prototype, the triangle mode now includes
+shader loading, native vertex/fragment stage checks, XYZW/UV vertex
+attributes, a GPU vertex buffer and an actual
+`dkCmdBufDraw(DkPrimitive_Triangles,...)` call. Its fragment shader
+uses a generated UV-color gradient — no original FoJ DDS atlas yet.
+
+The new [bounded DKSH C loader](gpu/dksh_module.c) has passed
+local strict C11 and ASan/UBSan tests. The
+[Python DKSH validator](tools/validate_dksh.py) now checks **24-byte
+headers + complete 64-byte program records**, bounds and shader types,
+matching upstream `deko3d/source/dksh.h`. The
+[SD preparation tool](tools/prepare_gpu_triangle_sd.py) verifies
+compiled DKSH pairs without overwriting files.
+
+Full input paths, build commands and limitations:
+[DEKO3D_FIRST_TRIANGLE.md](docs/DEKO3D_FIRST_TRIANGLE.md).
+
+**There is not yet a compiled or physically verified GPU triangle NRO**:
+UAM/devkitPro are absent in the current local environment, and the
+GitHub-hosted Actions workflows still fail before executing steps.
+The new renderer is a source implementation pending native execution,
+not a working game or finished HD remake.
+
 ## Immediate goal
 
 1. Confirm the provenance and structural validity of the user's European PS3
