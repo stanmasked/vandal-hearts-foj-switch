@@ -172,3 +172,13 @@ audio/video codecs; localization; and required work are **unconfirmed**.
 - [ ] Run the full host triangle mode with a working SDK/runner and compare its first physical frame to pixel probes.
 - [ ] Compile real UAM DKSH modules and both ARM64 GPU test NROs; GitHub Actions still fails before steps execute.
 - [ ] Observe UV-gradient GPU triangle and eventually six material draws of the authentic user-local Daldren model on physical Switch.
+
+
+## GPU shader memory validation (2026-10-16)
+
+- [x] Extract dedicated two-stage DKSH code-memory plan into `gpu/shader_layout.c`; 256 KiB pool, two 128 KiB slots, 126,976 B stage payload limit, 256 B alignment and 1 KiB forbidden tail.
+- [x] Validate DKSH stage sizes before `dkShaderInitialize`; select offsets from checked plan, not duplicated constants.
+- [x] Compile/run strict C11 and ASan/UBSan local tests for maximum sizes, alignment, overflow, protected tail and no-write-on-error.
+- [x] Add module to shader-backed native `gpu/triangle.mk`; add CI tests and existing SDK-free `host-check` / `host-mock-sanitized` targets.
+- [ ] Verify the full current GPU host integration suite when executable on a working runner.
+- [ ] Verify real UAM DKSH shader compilation, real ARM64 deko3d native link, then first physical GPU triangle draw.
