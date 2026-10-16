@@ -95,7 +95,7 @@ host-triangle-check:
 	  -Itests/mock_switch_sdk -Icore -Igpu \
 	  gpu/deko3d_clear_main.c
 
-host-check: $(HOST_TEST) $(HOST_ABI) $(HOST_SHADERS) $(HOST_DKSH) $(HOST_MOCK)
+host-check: host-triangle-check $(HOST_TEST) $(HOST_ABI) $(HOST_SHADERS) $(HOST_DKSH) $(HOST_MOCK)
 	./$(HOST_TEST)
 	./$(HOST_ABI)
 	./$(HOST_SHADERS)
