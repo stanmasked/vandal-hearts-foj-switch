@@ -44,3 +44,27 @@ decoding or correct material rendering.
    shader binaries directly into the ARM64 executable.
 
 Nothing from this sample was added to the GitHub source tree.
+
+## Direct real-texture decode verification
+
+All five sample resources above were read again from the user's two local
+split ZIP parts through the PKG → PSARC reader. The original DDS bytes were
+successfully decoded independently with Pillow's DDS implementation, and
+all images were rendered locally for visual examination:
+
+- BGRA8 256×256: `archery_target.tga`, `avatar_flame_texture.tga`.
+- DXT1 1024×1024: `avatar_texture.tga`.
+- DXT1 256×256: `balastradian_trooper_texture.tga`, `bandit_lt_texture.tga`.
+
+The decoded images visibly contain sprite/texture atlases for objects,
+characters and fiery effects. Their dimensions and lengths match the source
+DDS headers. This is direct verification of **real asset accessibility**;
+there is still no decoded 3D mesh, skeleton, UV mapping or rendered level.
+
+The C11 DDS decoder and texture NRO are located in
+[core/dds_texture.c](../core/dds_texture.c) and
+[switch/source/dds_main.c](../switch/source/dds_main.c). The C decoder is
+regression-tested using synthetic fixtures in GitHub CI; real sample decoding
+was separately checked with Pillow in a local-only environment.
+
+**No decoded texture bytes or previews have been committed to GitHub.**
