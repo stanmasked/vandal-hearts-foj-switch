@@ -71,4 +71,19 @@ if ! make -f gpu/triangle.mk -n "$nro" | grep -Fq -- "$nro_command"; then
     echo "FAIL: changed ELF does not repackage triangle NRO" >&2
     exit 1
 fi
+# A packaging-only version/title change must regenerate metadata and NRO.
+# Since both common and triangle Makefiles also feed the ELF target, a
+# configuration change can legitimately rebuild ELF as well; assert that
+# both packaging steps remain scheduled, without assuming ELF is unchanged.
+touch -t 202201010000 "$target" "$nacp"
+touch -t 202301010000 "$nro"
+for config in gpu/triangle.mk gpu/clear.mk; do
+    touch -t 202401010000 "$config"
+    plan="$(make -f gpu/triangle.mk -n "$nro")"
+    if [[ "$plan" != *'--create'* || "$plan" != *"$nro_command"* ]]; then
+        echo "FAIL: editing $config did not regenerate NACP and repackage NRO" >&2
+        exit 1
+    fi
+    touch -t 202001010000 "$config"
+done
 echo "GPU triangle ELF, NACP and NRO configuration dependencies: PASS"
