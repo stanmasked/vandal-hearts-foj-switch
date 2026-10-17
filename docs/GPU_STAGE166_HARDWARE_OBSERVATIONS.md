@@ -32,6 +32,21 @@ worksheet. The tool **refuses to overwrite** a worksheet, does not
 transfer anything to Switch, and does not fill the device information
 or any visual observation.
 
+## Stage 167 — shader failures can now be visible before DDS status
+
+The latest shader-backed research NRO includes an early, shaderless
+GPU failure screen when the vertex/fragment DKSH cannot be read, or
+shader code allocation, layout or stage validation fails *after*
+the device, swapchain and command buffer are initialized. Violet is
+vertex DKSH unavailable/rejected; amber is fragment DKSH
+unavailable/rejected; orange indicates code-memory setup, red
+layout rejection and dark red deko3d stage rejection. This path
+retains nonzero exit status 6. See
+`docs/GPU_STAGE167_DKSH_BOOT_SCREENS.md` for safe synthetic
+missing-shader tests and limitations. **Do not infer that any colors
+were actually displayed just because native CI compiled the NRO.**
+Earlier device/queue/swapchain failures can still show no screen.
+
 ## Record actual observations, not expected ones
 
 Edit your **local private** JSON and enter the tested Git commit,
