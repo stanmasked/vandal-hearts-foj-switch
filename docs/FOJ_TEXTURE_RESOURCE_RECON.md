@@ -1,6 +1,6 @@
 # Flames of Judgment PS3 texture reconnaissance — evidence-first workflow
 
-**Status (stage 146, October 17, 2026): no original FoJ PS3 texture
+**Status (stage 147, October 17, 2026): no original FoJ PS3 texture
 container, swizzling scheme or texture-format distribution has been
 confirmed by an actual resource dump.** The existing Switch renderer supports
 a deliberately narrow classic DDS subset and small private texture atlases;
@@ -247,6 +247,41 @@ renderer can import the PS3 assets.
 Use **different privately owned original-resource subsets** when
 available, rather than copied synthetic fixtures. No original
 Flames of Judgment PS3 resource dump was available at implementation.
+
+## Stage 147: deterministic synthetic stability and false-positive matrix
+
+Run a self-contained regression stress test with **invented** DDS buffers
+and two temporary local synthetic cohorts:
+
+```sh
+python3 -m tools.foj_stability_matrix \
+  --output local-data/foj-synthetic-stability.json
+```
+
+The tool runs the entire existing metadata pipeline in memory and temporary
+directories: DDS header probe → candidate spans → possible pointer tables →
+adjacent index/control checks → reason-coded triage → holdout comparison.
+
+Seven fixed scenarios perturb table sizes (3–8 records), strides
+(8 vs 16 bytes), little-/big-endian offsets, index permutations, repeated
+numeric fields and a separate false-positive control window. It compares
+**observed heuristic labels** to explicitly authored regression expectations.
+If a label changes unexpectedly, the CLI writes a metadata-only report and
+returns a nonzero exit code, suitable for GitHub Actions.
+
+This is a **test of the tools, not a test of the original game**.
+An expected label such as `repeated-unverified-pattern` means that
+synthetic test data produced a predictable observation. The program does
+not inspect a FoJ disc, decrypt PS3 content, validate asset provenance or
+establish any original model/material mapping. Its JSON contains only
+synthetic scenario descriptions and aggregate observations; generated
+binary fixtures are discarded automatically.
+
+This test also documents a deliberate detection boundary: a three-entry
+table can be recognized as a numeric pointer-table candidate while
+stage-144 index analysis (minimum four entries) marks the evidence
+insufficient. Changes in heuristic thresholds may reasonably require
+revising these authored expectations with new tests and justification.
 
 ## How to interpret results
 
