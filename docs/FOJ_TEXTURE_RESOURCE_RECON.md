@@ -555,6 +555,44 @@ timestamps and inode checks remain necessary. The actual private
 Flames of Judgment container format, game renderer and Nintendo Switch
 hardware execution are not verified by these synthetic tests.
 
+## Stage 155: global DDS candidate and JSON metadata budgets
+
+The stage-154 scanner already restricted each file to at most 4,096
+header hits, but thousands of separate files could still accumulate an
+unbounded total number of candidate dicts. Stage 155 adds two **global,
+fail-closed** limits for the stage-141 inventory:
+
+- At most **8,192 validated DDS header candidates** per inventory by
+  default (configurable maximum: 65,536).
+- At most **8 MiB of candidate JSON metadata** by default (hard maximum:
+  64 MiB), conservatively charged when each candidate is appended. This
+  includes UTF-8 filename lengths and per-record pretty-print overhead.
+  An exact full-manifest JSON-size check is also performed before return.
+
+Use `--max-candidates N` and `--max-metadata-mib N`
+on both `python3 -m tools.foj_texture_probe` and
+`python3 -m tools.foj_source_coherence_gate`. The Python
+API accepts a byte-exact `max_metadata_bytes` argument
+(useful for tests). Unlike the separate source-file count limit, these
+are total **metadata** restrictions and cannot be bypassed by splitting
+DDS candidates across files or nested directories.
+
+When either limit is exceeded the tool raises a generic error rather
+than publishing a truncated report marked as complete. The stage-150
+publication process stops before creating its new output directory.
+The old JSON report schema is unchanged, and no raw asset bytes or
+fingerprints are exported by these budgets. All earlier read-only,
+descriptor-bound, two-pass SHA-256, and privacy checks remain intact.
+
+The generated-only test matrix covers multi-file DDS floods,
+UTF-8 metadata-size accounting, exact count boundaries, invalid
+bool/negative/excessive limits, zero-candidate files, both command-line
+paths, and no-partial-publication guarantees. Synthetic success says
+nothing about the original game's resource layout or playable Switch
+runtime. The estimated budget is deliberately conservative; a report
+below the hard emitted JSON limit can still be rejected earlier due to
+reserved bookkeeping overhead.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ

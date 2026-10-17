@@ -25,6 +25,10 @@ from tools.foj_fd_bound_reader import (
 HEADER_SIZE = 128
 CHUNK_SIZE = 1024 * 1024
 DEFAULT_MAX_FILE_BYTES = 512 * 1024 * 1024
+DEFAULT_MAX_CANDIDATES = 8192
+HARD_MAX_CANDIDATES = 65536
+DEFAULT_MAX_METADATA_BYTES = 8 * 1024 * 1024
+HARD_MAX_METADATA_BYTES = 64 * 1024 * 1024
 FORMATS = {
     b"DXT1": ("BC1/DXT1", 8),
     b"DXT3": ("BC2/DXT3", 16),
@@ -212,7 +216,9 @@ def iter_candidate_headers(path: Path, *, max_hits: int = 128) -> Iterator[tuple
 def inventory(root: Path, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
               max_files: int = 20000, max_hits_per_file: int = 128,
               max_dir_entries: int = DEFAULT_MAX_DIR_ENTRIES,
-              max_dir_name_bytes: int = DEFAULT_MAX_DIR_NAME_BYTES) -> dict:
+              max_dir_name_bytes: int = DEFAULT_MAX_DIR_NAME_BYTES,
+              max_candidates: int = DEFAULT_MAX_CANDIDATES,
+              max_metadata_bytes: int = DEFAULT_MAX_METADATA_BYTES) -> dict:
     """Enumerate with anchored descriptors, not pathname-based os.walk.
 
     Known symlinks and special entries are skipped (and counted), preserving
@@ -230,6 +236,11 @@ def inventory(root: Path, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
             type(max_dir_name_bytes) is not int or
             not 1 <= max_dir_name_bytes <= 64 * 1024 * 1024):
         raise ValueError("Invalid source directory listing limits")
+    if (type(max_candidates) is not int or
+            not 1 <= max_candidates <= HARD_MAX_CANDIDATES or
+            type(max_metadata_bytes) is not int or
+            not 1024 <= max_metadata_bytes <= HARD_MAX_METADATA_BYTES):
+        raise ValueError("Invalid total DDS candidate or metadata byte limits")
     result: dict = {
         "schema": "foj-texture-candidates-v1",
         "source": "local-extracted-files",
@@ -238,6 +249,22 @@ def inventory(root: Path, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
         "candidates": [], "scan_truncated_at_file_limit": False,
     }
     visited = 0
+    # Per-record JSON accounting is conservative relative to the existing
+    # pretty-printed output. Never store the complete candidate list after
+    # its requested memory budget has been exhausted.
+    metadata_bytes_used = 1024
+
+    def append_candidate(metadata: dict) -> None:
+        nonlocal metadata_bytes_used
+        if len(result["candidates"]) >= max_candidates:
+            raise ValueError("Total DDS candidate limit exceeded")
+        encoded = json.dumps(
+            metadata, indent=2, sort_keys=True, ensure_ascii=False).encode("utf-8")
+        projected = (len(encoded) + 8 * encoded.count(b"\n") + 24)
+        if projected > max_metadata_bytes - metadata_bytes_used:
+            raise ValueError("Total DDS metadata byte budget exceeded")
+        metadata_bytes_used += projected
+        result["candidates"].append(metadata)
     # Opening the final root component without following a symlink keeps
     # directory identity fixed for the full traversal.
     try:
@@ -296,7 +323,7 @@ def inventory(root: Path, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
                         head, offset=offset, file_bytes=opened.st_size)
                     if metadata is not None:
                         metadata["relative_path"] = relative + name
-                        result["candidates"].append(metadata)
+                        append_candidate(metadata)
             if _identity(initial) != _identity(_stat_child(directory_fd, name)):
                 raise ValueError("DDS source file replaced during scan")
         for name, initial in children:
@@ -337,6 +364,10 @@ def inventory(root: Path, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
             raise ValueError("Source root path replaced during enumeration")
     finally:
         os.close(root_fd)
+    actual_bytes = len(json.dumps(
+        result, indent=2, sort_keys=True, ensure_ascii=False).encode("utf-8")) + 1
+    if actual_bytes > max_metadata_bytes:
+        raise ValueError("Total DDS JSON output byte budget exceeded")
     return result
 
 
@@ -347,6 +378,9 @@ def main() -> int:
                         help="Local JSON report; never automatically uploaded")
     parser.add_argument("--max-file-mib", type=int, default=512)
     parser.add_argument("--max-files", type=int, default=20000)
+    parser.add_argument("--max-candidates", type=int,
+                        default=DEFAULT_MAX_CANDIDATES)
+    parser.add_argument("--max-metadata-mib", type=int, default=8)
     parser.add_argument("--max-dir-entries", type=int,
                         default=DEFAULT_MAX_DIR_ENTRIES)
     parser.add_argument("--max-dir-name-bytes", type=int,
@@ -358,6 +392,8 @@ def main() -> int:
         report = inventory(args.directory,
                            max_file_bytes=args.max_file_mib * 1024 * 1024,
                            max_files=args.max_files,
+                           max_candidates=args.max_candidates,
+                           max_metadata_bytes=args.max_metadata_mib * 1024 * 1024,
                            max_dir_entries=args.max_dir_entries,
                            max_dir_name_bytes=args.max_dir_name_bytes)
     except ValueError as exc:
