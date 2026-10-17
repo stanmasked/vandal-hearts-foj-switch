@@ -128,4 +128,23 @@ for shader in foj_actor.vert foj_actor.frag foj_triangle.frag; do
     [[ $(wc -l < compiler-invocations.log) -eq 1 ]] || { echo "FAIL: validator edit did not regenerate $target" >&2; exit 1; }
     [[ $(wc -l < validator-invocations.log) -eq 1 ]] || { echo "FAIL: validator edit did not recheck $target" >&2; exit 1; }
 done
+# A stricter replacement validator may reject a previously accepted DKSH.
+# Make must discard that stale output rather than leave it on disk.
+for shader in foj_actor.vert foj_actor.frag foj_triangle.frag; do
+    target="gpu/build/$shader.dksh"
+    touch -t 202001010000 "$target" "gpu/shaders/$shader"
+    rm -f validator-invocations.log
+    if PYTHONPATH="$tmp" make --no-print-directory -f gpu/Makefile "$target" UAM="$tmp/fake-uam" >"$tmp/validator-rejection.log" 2>&1; then
+        echo "FAIL: replacement validator unexpectedly accepted $target" >&2
+        exit 1
+    fi
+    if [[ -e "$target" ]]; then
+        echo "FAIL: replacement validator retained rejected DKSH $target" >&2
+        exit 1
+    fi
+    [[ $(wc -l < validator-invocations.log) -eq 1 ]] || {
+        echo "FAIL: replacement validator was not invoked exactly once" >&2
+        exit 1
+    }
+done
 echo "UAM Makefile all three shader targets: compiler and validator cleanup, reuse and source-triggered rebuild PASS"
