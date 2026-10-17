@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/texture-probe-tests.yml"
+      - "tools/foj_fd_bound_reader.py"
       - "tools/foj_texture_probe.py"
       - "tools/foj_texture_relations.py"
       - "tools/foj_resource_table_hypotheses.py"
@@ -15,6 +16,7 @@ on:
       - "tools/foj_corrupt_container_matrix.py"
       - "tools/foj_report_replay_audit.py"
       - "tools/foj_source_coherence_gate.py"
+      - "tests/test_foj_fd_bound_reader.py"
       - "tests/test_foj_texture_probe.py"
       - "tests/test_foj_texture_relations.py"
       - "tests/test_foj_resource_table_hypotheses.py"
@@ -28,6 +30,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/texture-probe-tests.yml"
+      - "tools/foj_fd_bound_reader.py"
       - "tools/foj_texture_probe.py"
       - "tools/foj_texture_relations.py"
       - "tools/foj_resource_table_hypotheses.py"
@@ -38,6 +41,7 @@ on:
       - "tools/foj_corrupt_container_matrix.py"
       - "tools/foj_report_replay_audit.py"
       - "tools/foj_source_coherence_gate.py"
+      - "tests/test_foj_fd_bound_reader.py"
       - "tests/test_foj_texture_probe.py"
       - "tests/test_foj_texture_relations.py"
       - "tests/test_foj_resource_table_hypotheses.py"
@@ -67,6 +71,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Reject fd-open path substitution and symlink swaps
+        run: python -m unittest discover -s tests -p 'test_foj_fd_bound_reader.py' -v
       - name: Run synthetic DDS metadata scan regressions
         run: python -m unittest discover -s tests -p 'test_foj_texture_probe.py' -v
       - name: Test candidate layout and local pointer hints
@@ -89,7 +95,7 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_foj_source_coherence_gate.py' -v
       - name: Check Python parser and command-line usage
         run: |
-          python -m py_compile tools/foj_texture_probe.py tools/foj_texture_relations.py tools/foj_resource_table_hypotheses.py tools/foj_index_column_controls.py tools/foj_evidence_triage.py tools/foj_holdout_replication.py tools/foj_stability_matrix.py tools/foj_corrupt_container_matrix.py tools/foj_report_replay_audit.py tools/foj_source_coherence_gate.py tests/test_foj_texture_probe.py tests/test_foj_texture_relations.py tests/test_foj_resource_table_hypotheses.py tests/test_foj_index_column_controls.py tests/test_foj_evidence_triage.py tests/test_foj_holdout_replication.py tests/test_foj_stability_matrix.py tests/test_foj_corrupt_container_matrix.py tests/test_foj_report_replay_audit.py tests/test_foj_source_coherence_gate.py
+          python -m py_compile tools/foj_fd_bound_reader.py tools/foj_texture_probe.py tools/foj_texture_relations.py tools/foj_resource_table_hypotheses.py tools/foj_index_column_controls.py tools/foj_evidence_triage.py tools/foj_holdout_replication.py tools/foj_stability_matrix.py tools/foj_corrupt_container_matrix.py tools/foj_report_replay_audit.py tools/foj_source_coherence_gate.py tests/test_foj_fd_bound_reader.py tests/test_foj_texture_probe.py tests/test_foj_texture_relations.py tests/test_foj_resource_table_hypotheses.py tests/test_foj_index_column_controls.py tests/test_foj_evidence_triage.py tests/test_foj_holdout_replication.py tests/test_foj_stability_matrix.py tests/test_foj_corrupt_container_matrix.py tests/test_foj_report_replay_audit.py tests/test_foj_source_coherence_gate.py
           python -m tools.foj_texture_probe --help
           python -m tools.foj_texture_relations --help
           python -m tools.foj_resource_table_hypotheses --help

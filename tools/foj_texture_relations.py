@@ -11,8 +11,9 @@ import argparse
 from collections import Counter, defaultdict
 import json
 from pathlib import Path, PurePosixPath
-import stat
 from typing import Any
+
+from tools.foj_fd_bound_reader import read_bounded_prefix
 
 HEADER_BYTES = 128
 DEFAULT_PREFIX_BYTES = 65536
@@ -32,20 +33,8 @@ def _safe_relative_path(raw: str) -> PurePosixPath:
 
 
 def _read_prefix(root: Path, relative: PurePosixPath, limit: int) -> bytes:
-    """Reject symlinks in any path component and non-regular files."""
-    cursor = root
-    for part in relative.parts:
-        cursor = cursor / part
-        if cursor.is_symlink():
-            raise ValueError("Candidate path traverses a symlink")
-    try:
-        st = cursor.lstat()
-    except OSError as exc:
-        raise ValueError("Candidate file is unavailable") from exc
-    if not stat.S_ISREG(st.st_mode):
-        raise ValueError("Candidate path is not a regular file")
-    with cursor.open("rb") as fp:
-        return fp.read(limit)
+    """Read through a root-anchored fd; never follow symlinks in any component."""
+    return read_bounded_prefix(root, relative, limit)
 
 
 def build_relations(manifest: dict[str, Any], *, root: Path | None = None,
