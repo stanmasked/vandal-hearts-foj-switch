@@ -120,7 +120,7 @@ class HoldoutReplicationTests(unittest.TestCase):
                                      holdout_root=b, min_consistent_per_cohort=2)
             self.assertEqual(result["summary"]["repeated_unverified_patterns"], 0)
             self.assertEqual(result["patterns"][0]["replication_observation"],
-                             "not-reproduced-in-holdout")
+                             "insufficient-consistent-occurrences")
             second = fake_report(tables=(
                 (8, "little", "insufficient-or-ambiguous"),))
             result = compare_cohorts(second, second, baseline_root=a,
@@ -197,6 +197,27 @@ class HoldoutReplicationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 compare_cohorts(x, x, baseline_root=a, holdout_root=b,
                                 min_consistent_per_cohort=33)
+
+    def test_end_to_end_two_different_synthetic_asset_sets(self):
+        # The existing stage-145 fixture exercises *every* earlier analyzer;
+        # the two fixture contents differ in their adjacent index ordering.
+        from test_foj_evidence_triage import fixture
+        from tools.foj_evidence_triage import triage_reports
+        with tempfile.TemporaryDirectory() as d:
+            baseline_root, holdout_root = roots(Path(d))
+            baseline = triage_reports(*fixture(
+                baseline_root, indices=(0, 1, 2, 3)))
+            heldout = triage_reports(*fixture(
+                holdout_root, indices=(2, 0, 3, 1)))
+            result = compare_cohorts(
+                baseline, heldout, baseline_root=baseline_root,
+                holdout_root=holdout_root)
+            self.assertEqual(result["baseline"]["source_files"], 1)
+            self.assertEqual(result["holdout"]["source_files"], 1)
+            self.assertEqual(result["summary"]["repeated_unverified_patterns"], 1)
+            self.assertEqual(result["patterns"][0]["replication_observation"],
+                             "repeated-unverified-pattern")
+            self.assertFalse(result["summary"]["sample_independence_proven"])
 
     def test_cli_outputs_only_aggregate_metadata(self):
         with tempfile.TemporaryDirectory() as d:
