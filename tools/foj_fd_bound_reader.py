@@ -127,3 +127,51 @@ def open_regular_at(directory_fd: int, name: str) -> Iterator[tuple[object, os.s
                     raise ValueError("Source file changed while being read")
     finally:
         os.close(fd)
+
+
+DEFAULT_MAX_DIR_ENTRIES = 20000
+DEFAULT_MAX_DIR_NAME_BYTES = 4 * 1024 * 1024
+HARD_MAX_DIR_ENTRIES = 100000
+HARD_MAX_DIR_NAME_BYTES = 64 * 1024 * 1024
+
+
+def bounded_directory_names(
+    directory_fd: int, *, max_entries: int = DEFAULT_MAX_DIR_ENTRIES,
+    max_name_bytes: int = DEFAULT_MAX_DIR_NAME_BYTES,
+) -> list[str]:
+    """Bound readdir materialization BEFORE sorting, without pathname opens.
+
+    Count all entries, including symlinks/special entries, rather than just
+    regular files eligible for DDS scanning. Private filenames never appear
+    in error messages. Two calls can compare directory membership, but do
+    not constitute an atomic filesystem snapshot.
+    """
+    if (type(max_entries) is not int or
+            not 1 <= max_entries <= HARD_MAX_DIR_ENTRIES or
+            type(max_name_bytes) is not int or
+            not 1 <= max_name_bytes <= HARD_MAX_DIR_NAME_BYTES):
+        raise ValueError("Invalid source directory listing limits")
+    names: list[str] = []
+    seen: set[str] = set()
+    name_bytes = 0
+    try:
+        with os.scandir(directory_fd) as entries:
+            for entry in entries:
+                name = entry.name
+                if (not isinstance(name, str) or
+                        not name or name in (".", "..") or
+                        "/" in name or "\\" in name or "\x00" in name):
+                    raise ValueError("Unsafe source directory entry")
+                if name in seen:
+                    raise ValueError("Unstable duplicate directory entry")
+                if len(names) >= max_entries:
+                    raise ValueError("Source directory entry limit exceeded")
+                name_bytes += len(os.fsencode(name))
+                if name_bytes > max_name_bytes:
+                    raise ValueError("Source directory name budget exceeded")
+                names.append(name)
+                seen.add(name)
+    except OSError:
+        raise ValueError("Unable to enumerate source directory") from None
+    names.sort()
+    return names
