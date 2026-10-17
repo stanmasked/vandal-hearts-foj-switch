@@ -855,3 +855,16 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] PR #26 merged into `main` as squash commit `ebb41d833763a49d036eb4e338135d2e46ad3da9`.
 - [ ] No real FoJ PS3 resource dump has been examined: repeated aligned values are only **numeric coincidences**, not an established texture/material/model relationship or a confirmed original container format.
 - [ ] No new GPU NRO or hardware-side functionality was added this stage; physical Switch GPU rendering remains unverified.
+
+## Stage 144: DDS index-like columns and negative-control sampling — CI SUCCESS (2026-10-17)
+
+- [x] Added `tools/foj_index_column_controls.py`, a bounded **read-only** follow-up to stage-143 fixed-stride DDS pointer-table hypotheses. It inspects aligned 32-bit words adjacent to a pointer position in each candidate row, using the same little-/big-endian convention as the hypothesized table.
+- [x] Requires four or more candidate rows and a record stride of at least eight bytes by default; labels exact `0..N-1` ascending patterns or zero-based permutations. Repeated fields, arbitrary increasing values and pointer-only (four-byte) rows are **not** treated as evidence of a material or model index.
+- [x] Compares candidate index-like columns to up to 256 bounded, same-stride **independent windows** sampled from the file prefix, excluding windows that overlap the suspected table. Reports a `index-like-with-control-matches` warning if similar dense patterns occur elsewhere. This is a descriptive negative control and not a probability, statistical confidence score or proof of actual FoJ formats.
+- [x] Validates JSON schema, candidate table bounds, byte order, target counts, numeric limits, relative paths, and symlink restrictions. Reads at most 64 KiB of local binary input per file by default (maximum 1 MiB); output includes only numeric summaries and relative filenames, never proprietary image/model bytes.
+- [x] Added eight synthetic tests `tests/test_foj_index_column_controls.py`: complete invented DDS probe→relations→table→column pipeline, LE/BE and permuted indexes, repeated/out-of-range numbers, independent decoy windows, pointer-only rows, untrusted/invalid table input, symlinks/capacity and CLI output privacy.
+- [x] **Actual GitHub Actions private texture CI run 39048074873 SUCCESS** for Python 3.10 and 3.12: previous 7 + 6 + 7 and new 8 tests = **28 passing tests per version**.
+- [x] **Actual Research tools CI run 39048074863 SUCCESS** for Python 3.11 and 3.13, **145 passing tests per version**.
+- [x] Documented offline use and evidence limitations in `docs/FOJ_TEXTURE_RESOURCE_RECON.md`; PR #27 merged to `main` as squash commit `6d49dce8c4ddfd41fc92c13beab28abdea0d5566`.
+- [ ] Original FoJ PS3 files were not available in this stage; no candidate table/index or texture→material→model association has been confirmed from actual game data.
+- [ ] This stage does not change NRO builds or verify hardware. Physical Switch presentation and real game rendering remain untested.
