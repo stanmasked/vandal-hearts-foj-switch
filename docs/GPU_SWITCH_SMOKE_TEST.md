@@ -1,4 +1,4 @@
-# Experimental Switch GPU smoke tests — stage 138
+# Experimental Switch GPU smoke tests — stage 139
 
 These are **homebrew research binaries**, not a playable port or a patch for
 *Vandal Hearts: Flames of Judgment*. No original PS3 content is embedded.
@@ -59,7 +59,7 @@ regressions), Research tools tests and native GPU NRO/DKSH CI all passed.
 **This does NOT prove GPU sampling, orientation, copy synchronization or
 presentation on real Switch hardware.**
 
-## Stage 138 — optional user-local DDS material atlases
+## Stage 138 — original uncompressed DDS-only build (historical)
 
 GitHub Actions native build run **39036526057** (PR #21) compiled and
 validated two real devkitA64 ARM64 NRO files plus three UAM DKSH modules.
@@ -68,7 +68,7 @@ while keeping the original two synthetic RGBA8 images when no files exist.
 The cross-compiled GPU NRO is **290872 bytes**, same aligned NRO size as
 stage 137; the independent clear NRO remains **262200 bytes**.
 
-Current artifact:
+Stage 138 artifact:
 https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39036526057/artifacts/12102068939
 
 Optional paths, local to the user's own SD card:
@@ -78,7 +78,7 @@ sdmc:/switch/foj/gpu/material0.dds
 sdmc:/switch/foj/gpu/material1.dds
 ```
 
-**Strict supported subset** (deliberately narrow and independently tested):
+**Stage 138 supported subset** (superseded by stage 139):
 - Classic 128-byte `DDS ` header (`dwSize=124` and `DDS_PIXELFORMAT.dwSize=32`)
 - Uncompressed 32-bit pixels in **RGBA byte order** (`R=0x000000ff`,
   `G=0x0000ff00`, `B=0x00ff0000`, `A=0xff000000`)
@@ -103,6 +103,50 @@ Host checks: run **39036526010**, GCC/Clang ordinary, NDEBUG, ASan/UBSan
 all successful. Research tests run **39036526025** successful.
 
 **Physical Nintendo Switch read/copy/sample/display is NOT verified.**
+
+## Stage 139 — BC1/DXT1 and BC3/DXT5 classic DDS decoding
+
+The newest research NRO also accepts **classic DDS with DXT1 (BC1) or
+DXT5 (BC3)** FourCC compression. The input blocks are decoded entirely
+in host/CPU memory into tightly packed RGBA8 before the existing deko3d
+image-upload path. GPU texture binding and material IDs 0/1 are unchanged.
+
+Latest verified native build: GitHub Actions run **39037261317**, PR #22.
+- `foj-deko3d-triangle-research.nro`: **294968 bytes**
+- `foj-deko3d-clear-smoke.nro`: **262200 bytes** (unchanged)
+- Three UAM-compiled and stage-validated DKSH files included
+
+Latest artifact:
+https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39037261317/artifacts/12102557872
+
+Accepted private atlas formats:
+- Classic DDS without DX10, extended headers, mip chains or cubemaps
+- Existing **uncompressed RGBA8**: width 8–256 (multiple of 8), height 1–256,
+  exact 32-bit RGBA channel masks, pitch = width×4
+- **DXT1 / BC1**: FourCC `DXT1`, 8-byte blocks per 4×4 pixels, including
+  three-color transparency when BC1 color endpoint 0 ≤ endpoint 1
+- **DXT5 / BC3**: FourCC `DXT5`, 16-byte blocks per 4×4 pixels, with
+  interpolated alpha (both endpoint orderings supported)
+- For compressed files: width 8–256 and multiple of 8; height 4–256 and
+  multiple of 4; `dwPitchOrLinearSize` is the **total compressed data size**
+- Exact file length, one image, at most one mip level; max decoded output
+  **256 KiB per material**, with the same SD filenames as stage 138
+
+Still NOT supported: BC2/DXT3, BC4/BC5/BC6/BC7, DX10/DXGI variants,
+mipmaps, swizzled/tiled PS3 GPU textures, nonmatching channel masks,
+odd block dimensions and DDS files with trailing proprietary data. Some
+real game assets will require additional analysis or local conversion.
+
+Independent **GPU host regression run 39037261332 SUCCESS** for GCC and
+Clang, normal/NDEBUG and ASan/UBSan. Tests verify BC1 palette and one-bit
+transparency; BC3 color palette and two alpha modes; invalid FourCC,
+truncated/padded data, malformed headers and local BC3 test file intake.
+**Research tools tests run 39037261302 SUCCESS**.
+
+As in all previous stages, these CI results confirm CPU decoding and
+native compilation but **do NOT prove correct sampling, compositing or
+presentation on a physical Nintendo Switch**. Do not distribute private
+PS3 data with the build.
 
 ## SD card layout for a user-authorized homebrew Switch
 
