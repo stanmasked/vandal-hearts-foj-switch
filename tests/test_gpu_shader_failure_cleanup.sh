@@ -101,7 +101,7 @@ for shader in foj_actor.vert foj_actor.frag foj_triangle.frag; do
     [[ -s "$target" ]] || exit 1
     [[ $(wc -l < compiler-invocations.log) -eq 1 ]] || { echo "FAIL: unchanged shader was recompiled" >&2; exit 1; }
     # Advancing the source timestamp must rebuild the previously valid DKSH.
-    touch -t 203001010000 "gpu/shaders/$shader"
+    touch -r "$target" -d "+2 seconds" "gpu/shaders/$shader"
     FAKE_VALIDATE_PASS=1 PYTHONPATH="$tmp" make --no-print-directory -f gpu/Makefile "$target" UAM="$tmp/fake-uam" >"$tmp/rebuild.log" 2>&1 || {
         cat "$tmp/rebuild.log" >&2
         exit 1
