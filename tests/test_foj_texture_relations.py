@@ -93,7 +93,7 @@ class TextureRelationTests(unittest.TestCase):
             self.assertEqual(b["possible_32bit_offset_references"], [{
                 "word_offset": 8, "byte_order": "big",
                 "interpretation": "possible-file-relative-offset"}])
-            capped = build_relations(manifest, root=root, prefix_bytes=7)
+            capped = build_relations(manifest, root=root, prefix_bytes=8)
             self.assertEqual(capped["summary"]["possible_pointer_matches"], 1)
             self.assertEqual(capped["containers"][0]["candidates"][1][
                 "possible_32bit_offset_references"], [])
