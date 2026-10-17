@@ -457,3 +457,10 @@ The locally executed Makefile was a reconstruction of the relevant shader rules;
 - [ ] Build authentic UAM shaders and devkitA64 NRO, then verify a rendered frame on Nintendo Switch.
 
 The local test sources come from the previous reconstructed stage-83 workspace, amended with the same new cases; this is not a verified full repository build.
+
+## Stage 101: transactional DKSH loader invalid-input regression (2026-10-17)
+
+- [x] Extend `tests/test_gpu_dksh_integration.c` with NULL file path, NULL destination, invalid shader stage, insufficient capacity and a missing file after unlink; confirm rejected attempts keep output byte count and both loaded shader slots unchanged.
+- [x] Locally reconstruct this expanded regression including prior truncated/capacity negative cases from GitHub; compile with strict C11 GCC and Clang, each using ASan and UBSan. Both runs PASS.
+- [ ] Execute exact file from full checkout in GitHub Actions and validate the whole GPU host suite; local source is a reconstruction based on the stage-83 files with equivalent new cases.
+- [ ] Build authentic DKSH using UAM, native ARM64 NRO with devkitA64, and physically verify deko3d draw.
