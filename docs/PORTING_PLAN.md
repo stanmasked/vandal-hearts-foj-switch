@@ -475,3 +475,10 @@ The local test sources come from the previous reconstructed stage-83 workspace, 
 - [ ] Compile actual DKSH with UAM and run native GPU NRO on Switch hardware.
 
 This test verifies host-side validation/integration, not real Switch GPU execution.
+
+## Stage 103: shader GPU code-memory layout regression with NDEBUG (2026-10-17)
+
+- [x] Fix `tests/test_shader_layout.c` so `-DNDEBUG` cannot suppress side-effecting calls to `foj_gpu_shader_layout` inside assertions.
+- [x] Add `HOST_SHADERS_NDEBUG` executable to `gpu/clear.mk host-check` and its clean rule, so both GCC/Clang CI host jobs exercise shader slot invariants with this build flag.
+- [x] Locally rebuild a matching shader-layout C/header/test subset and execute `-DNDEBUG` GCC and Clang, strict C11, AddressSanitizer and UndefinedBehaviorSanitizer: PASS for both.
+- [ ] Run whole repo host-check/CI and real devkitPro/UAM build, physical Switch draw. The isolated test is not proof of full SDK/hardware compatibility.
