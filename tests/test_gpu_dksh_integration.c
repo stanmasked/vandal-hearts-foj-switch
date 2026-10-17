@@ -91,6 +91,29 @@ int main(void) {
         assert(pool[i]==0xCC);
     for(size_t i=layout.fragment_offset+max;i<layout.block_size;++i)
         assert(pool[i]==0xCC);
+    /* Truncated file must preserve both loaded stages and output count. */
+    generated_module(module,max,FOJ_DKSH_FRAGMENT);
+    write_module(path,module,128);
+    used=456;
+    assert(!foj_dksh_read_file(path,pool+layout.fragment_offset,
+                               FOJ_GPU_SHADER_SLOT_BYTES,
+                               FOJ_DKSH_FRAGMENT,&used));
+    assert(used==456);
+    generated_module(module,max,FOJ_DKSH_FRAGMENT);
+    assert(memcmp(pool+layout.fragment_offset,module,max)==0);
+    generated_module(module,max,FOJ_DKSH_VERTEX);
+    assert(memcmp(pool+layout.vertex_offset,module,max)==0);
+
+    /* A valid maximum-size module cannot fit into a smaller input slot. */
+    generated_module(module,max,FOJ_DKSH_FRAGMENT);
+    write_module(path,module,max);
+    used=789;
+    assert(!foj_dksh_read_file(path,pool+layout.fragment_offset,
+                               max-256,FOJ_DKSH_FRAGMENT,&used));
+    assert(used==789);
+    assert(memcmp(pool+layout.fragment_offset,module,max)==0);
+    generated_module(module,max,FOJ_DKSH_VERTEX);
+    assert(memcmp(pool+layout.vertex_offset,module,max)==0);
     assert(unlink(path)==0);
     free(module);
     free(pool);
