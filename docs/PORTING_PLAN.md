@@ -447,3 +447,13 @@ The locally executed Makefile was a reconstruction of the relevant shader rules;
 - [x] Use source timestamps relative to the created DKSH (+2 seconds) to avoid fixed far-future timestamps. The updated local test passed all three shader targets.
 - [ ] Execute exact new committed test from a full GitHub checkout and obtain CI host matrix results; GitHub DNS unavailable in this local container.
 - [ ] Validate UAM-generated actual shader programs, native ARM64 NRO build and Switch hardware frame. devkitA64 is not installed in this local container.
+
+## Stage 100: additional real C GPU DKSH integration boundaries (2026-10-17)
+
+- [x] Review current native GPU draw setup and DKSH two-slot loader in the GitHub repository.
+- [x] Extend the committed `tests/test_gpu_dksh_integration.c` with two negative cases: truncated (128-byte) replacement and a valid maximum-size DKSH rejected due to insufficient destination capacity. Both must preserve the previous fragment and vertex slots and leave `bytes_written` unchanged.
+- [x] Compile and run a locally reconstructed form of the updated two-slot test against local copies of `gpu/dksh_module.c` and `gpu/shader_layout.c` using GCC and Clang with ASan/UBSan: both PASS.
+- [ ] Verify exact current repository checkout / full host suite and confirm GitHub Actions jobs; direct GitHub clone failed DNS in this environment.
+- [ ] Build authentic UAM shaders and devkitA64 NRO, then verify a rendered frame on Nintendo Switch.
+
+The local test sources come from the previous reconstructed stage-83 workspace, amended with the same new cases; this is not a verified full repository build.
