@@ -101,10 +101,17 @@ def blank_template() -> dict[str, Any]:
     }
 
 
-def write_template(path: Path) -> None:
+def write_template(path: Path, *, bundle_sha256: str | None = None) -> None:
+    if bundle_sha256 is not None and not SHA.fullmatch(bundle_sha256):
+        raise ValueError("Invalid local research bundle digest")
+    document = blank_template()
+    if bundle_sha256 is not None:
+        # Only the verified archive digest is pre-populated. No screen,
+        # initialization, device, or operator observation is invented.
+        document["build"]["sd_bundle_sha256"] = bundle_sha256
     try:
         with path.open("x", encoding="utf-8") as stream:
-            json.dump(blank_template(), stream, indent=2, ensure_ascii=False)
+            json.dump(document, stream, indent=2, ensure_ascii=False)
             stream.write("\n")
     except FileExistsError:
         raise ValueError("Observation template must be a NEW file") from None
@@ -318,9 +325,8 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.init:
-            if args.bundle is not None:
-                parser.error("--bundle only applies with --audit")
-            write_template(args.init)
+            digest = inspect_bundle(args.bundle) if args.bundle else None
+            write_template(args.init, bundle_sha256=digest)
             print("Created BLANK, unverified local hardware observation template")
         else:
             digest = inspect_bundle(args.bundle) if args.bundle else None
