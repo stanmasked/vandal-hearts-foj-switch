@@ -50,4 +50,25 @@ for config in gpu/triangle.mk gpu/clear.mk; do
     fi
     touch -t 202001010000 "$config"
 done
-echo "GPU triangle ELF and NACP configuration dependencies: PASS"
+# The packaged NRO depends on both ELF and NACP. Verify changing only
+# metadata triggers elf2nro without needing to rerun the ELF compiler.
+nro=build/foj-deko3d-triangle-research.nro
+touch "$nro"
+touch -t 202301010000 "$nro"
+nro_command='--nacp=build/foj-deko3d-triangle-research.nacp'
+if make -f gpu/triangle.mk -n "$nro" | grep -Fq -- "$nro_command"; then
+    echo "FAIL: unchanged triangle NRO should not be repackaged" >&2
+    exit 1
+fi
+touch -t 202401010000 "$nacp"
+if ! make -f gpu/triangle.mk -n "$nro" | grep -Fq -- "$nro_command"; then
+    echo "FAIL: changed NACP does not repackage triangle NRO" >&2
+    exit 1
+fi
+touch -t 202201010000 "$nacp"
+touch -t 202401010000 "$target"
+if ! make -f gpu/triangle.mk -n "$nro" | grep -Fq -- "$nro_command"; then
+    echo "FAIL: changed ELF does not repackage triangle NRO" >&2
+    exit 1
+fi
+echo "GPU triangle ELF, NACP and NRO configuration dependencies: PASS"
