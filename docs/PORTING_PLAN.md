@@ -764,3 +764,17 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Updated `docs/GPU_SWITCH_SMOKE_TEST.md` with the stage 136 artifact and expected two-quads visual.
 - [ ] Physical Nintendo Switch execution, GPU frame presentation and framebuffer capture are **not verified**.
 - [ ] Actual FoJ model/material bindings, atlas textures, PS3 asset import and gameplay integration are still outstanding.
+
+## Stage 137: deko3d per-material RGBA8 research images — native CI SUCCESS (2026-10-17)
+
+- [x] Added `gpu/research_texture.{c,h}`, creating two deterministic distinct 8x8 RGBA8 research textures without proprietary game assets. Strict `tests/test_gpu_research_texture.c` covers invalid inputs with no destination mutation, repeatability, alpha and expected RGB separation.
+- [x] Connected the shader-backed native research mode to actual deko3d image memory blocks and an independent CPU-visible staging/descriptor pool; command buffer copies pixels into each image, waits for upload to finish, records persistent image and sampler descriptor bindings, and binds a different `dkMakeTextureHandle(material_index,0)` before each validated ordered draw.
+- [x] Changed synthetic `gpu/shaders/foj_triangle.frag` from UV debug gradient to `sampler2D` lookup of the bound research image. Original actor shader, clear-only GPU NRO, nine legacy CPU viewers, and any PS3 game assets remain unaffected.
+- [x] Updated `gpu/triangle.mk` sources/dependencies, bumped experimental GPU triangle metadata to `0.14.0`, added mock deko3d C declaration checks and normal/`-DNDEBUG`/ASan+UBSan texture-generator test targets.
+- [x] First PR #20 CI exposed missing `<stdbool.h>` for `false` in the C11 host SDK mock. Fixed and reran.
+- [x] **Actual GPU host CI run 39035732164: SUCCESS** under GCC and Clang; the new `GPU synthetic two-material RGBA8 textures: PASS` appears in normal, NDEBUG and sanitizer logs for both.
+- [x] **Actual native devkitA64/UAM CI run 39035732156: SUCCESS** with NRO0 validation and DKSH stage checks: shader-backed NRO **290872 bytes**, shader-free clear NRO **262200 bytes**. Generated artifact `foj-gpu-native-research` ID **12102067683**: https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39035732156/artifacts/12102067683
+- [x] **Research tools tests run 39035732221: SUCCESS**. PR #20 merged to `main` as squash commit `8b819d233d8e40e7b30bea19f1556c29a6709178`.
+- [x] Updated `docs/GPU_SWITCH_SMOKE_TEST.md` with exact latest artifact and the expected two different synthetic textures.
+- [ ] **Unverified on real Switch hardware:** image copy/synchronization, descriptor programming, texture sampling and GPU frame presentation. CI confirms compilable native code, not actual console output.
+- [ ] Real FoJ textures, material parsing, DDS atlas uploads, user-owned local game assets and gameplay renderer integration remain future work.
