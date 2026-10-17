@@ -202,6 +202,10 @@ for binary in \
     build/foj-deko3d-contract-ndebug; do
     touch "$binary"
 done
+# Guard against overly broad clean rules (for example rm -f build/*).
+# Unrelated build assets and a neighboring variant must remain untouched.
+sentinel=build/keep-unrelated-gpu-data.bin
+printf 'KEEP_GPU_SENTINEL\\n' > "$sentinel"
 # Execute the real clean recipes in this disposable fixture as well:
 # text-matching a dry-run alone cannot prove that outputs are removed.
 make -f gpu/clear.mk clean >/dev/null
@@ -229,6 +233,10 @@ for binary in \
         exit 1
     fi
 done
+if [[ "$(cat "$sentinel")" != 'KEEP_GPU_SENTINEL' ]]; then
+    echo "FAIL: clear clean removed or corrupted unrelated build asset" >&2
+    exit 1
+fi
 make -f gpu/triangle.mk clean >/dev/null
 for extension in elf nacp nro; do
     if [[ -e "build/foj-deko3d-triangle-research.$extension" ]]; then
@@ -236,4 +244,8 @@ for extension in elf nacp nro; do
         exit 1
     fi
 done
+if [[ "$(cat "$sentinel")" != 'KEEP_GPU_SENTINEL' ]]; then
+    echo "FAIL: triangle clean removed or corrupted unrelated build asset" >&2
+    exit 1
+fi
 echo "GPU triangle and clear-smoke ELF, NACP and NRO dependencies: PASS"
