@@ -689,3 +689,10 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Extend `tests/test_gpu_shader_failure_cleanup.sh` to bump the validator timestamp and assert all three targets are recompiled and revalidated exactly once.
 - [ ] Run the exact updated shell test from the current checkout and obtain verified CI results; no such full run was completed here.
 - [ ] Cross-compile native GPU NRO with devkitA64/UAM and verify on Switch hardware.
+
+## Stage 130: validator policy change must reject stale DKSH (2026-10-17)
+
+- [x] Extend `tests/test_gpu_shader_failure_cleanup.sh` with a regression for previously accepted DKSH files: after validator source becomes newer, simulate a stricter validator rejecting each of the three shaders, and require Make's `.DELETE_ON_ERROR` to remove the formerly accepted output.
+- [x] Assert replacement validator runs exactly once per stage and that no rejected DKSH remains on disk.
+- [ ] Execute the exact full shader-failure regression and the 18-scenario deko3d lifecycle suite in a complete checkout / CI; neither has been verified in this environment.
+- [ ] Compile real UAM DKSH and devkitA64 GPU NRO, then test on Switch hardware.
