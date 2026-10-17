@@ -115,6 +115,13 @@ $(HOST_MOCK): tests/test_deko3d_clear_host.c tests/mock_switch_sdk/deko3d.h \
 	  -Itests/mock_switch_sdk -Igpu -Icore \
 	  tests/test_deko3d_clear_host.c gpu/smoke_plan.c -lm -o $@
 
+# Exercise all deko3d lifecycle scenarios with release-style NDEBUG too.
+HOST_MOCK_NDEBUG := build/foj-deko3d-lifecycle-ndebug
+$(HOST_MOCK_NDEBUG): tests/test_deko3d_clear_host.c tests/mock_switch_sdk/deko3d.h tests/mock_switch_sdk/switch.h gpu/deko3d_clear_main.c gpu/smoke_plan.c gpu/smoke_plan.h core/gpu_vertex_stream.h | build
+	$(HOSTCC) -DNDEBUG -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic \
+	  -Itests/mock_switch_sdk -Igpu -Icore \
+	  tests/test_deko3d_clear_host.c gpu/smoke_plan.c -lm -o $@
+
 $(HOST_MOCK_SAN): tests/test_deko3d_clear_host.c tests/mock_switch_sdk/deko3d.h \
                   tests/mock_switch_sdk/switch.h gpu/deko3d_clear_main.c \
                   gpu/smoke_plan.c gpu/smoke_plan.h core/gpu_vertex_stream.h | build
@@ -131,7 +138,7 @@ host-triangle-check:
 	  -Itests/mock_switch_sdk -Icore -Igpu \
 	  gpu/deko3d_clear_main.c
 
-host-check: host-triangle-check $(HOST_TEST) $(HOST_ABI) $(HOST_SHADERS) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_MOCK)
+host-check: host-triangle-check $(HOST_TEST) $(HOST_ABI) $(HOST_SHADERS) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_MOCK) $(HOST_MOCK_NDEBUG)
 	./$(HOST_TEST)
 	./$(HOST_ABI)
 	./$(HOST_SHADERS)
@@ -140,6 +147,7 @@ host-check: host-triangle-check $(HOST_TEST) $(HOST_ABI) $(HOST_SHADERS) $(HOST_
 	./$(HOST_DKSH_INTEGRATION)
 	./$(HOST_DKSH_INTEGRATION_NDEBUG)
 	./$(HOST_MOCK)
+	./$(HOST_MOCK_NDEBUG)
 
 host-mock-sanitized: $(HOST_MOCK_SAN) $(HOST_SHADERS_SAN) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_TEST_SAN) $(HOST_ABI_SAN)
 	./$(HOST_MOCK_SAN)
@@ -162,4 +170,4 @@ verify: $(OUT).nro
 	python3 tools/validate_nro.py $(OUT).nro
 
 clean:
-	rm -f $(OUT).elf $(OUT).nacp $(OUT).nro $(HOST_TEST) $(HOST_ABI) $(HOST_MOCK) $(HOST_MOCK_SAN) $(HOST_SHADERS) $(HOST_SHADERS_SAN) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_TEST_SAN) $(HOST_ABI_SAN)
+	rm -f $(OUT).elf $(OUT).nacp $(OUT).nro $(HOST_TEST) $(HOST_ABI) $(HOST_MOCK) $(HOST_MOCK_SAN) $(HOST_MOCK_NDEBUG) $(HOST_SHADERS) $(HOST_SHADERS_SAN) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_TEST_SAN) $(HOST_ABI_SAN)
