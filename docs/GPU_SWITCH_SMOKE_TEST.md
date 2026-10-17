@@ -227,6 +227,17 @@ A–E manual test matrix and the expanded legend in
 `docs/GPU_STAGE162_SD_SMOKE.md`. Physical Switch presentation of these
 status colors is **not verified**.
 
+## Stage 165 — reproducible research SD archive
+
+Native devkitA64/UAM GitHub Actions now publish
+`foj-stage165-gpu-sd-smoke.zip` within the GPU research artifact.
+Its fixed-layout contents are two NROs, two UAM shaders, two invented
+checkerboard DDS files and metadata-only README/SHA-256 manifest.
+This package is not a full game and does not contain PS3 assets.
+A pure C GPU command-selection model checks frame order, framebuffer
+selection and failure holds without physical GPU execution. Instructions:
+`docs/GPU_STAGE165_SD_RELEASE.md`.
+
 ## SD card layout for a user-authorized homebrew Switch
 
 The NROs may be placed in a homebrew-launcher-readable folder, for example:
