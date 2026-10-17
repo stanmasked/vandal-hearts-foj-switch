@@ -97,3 +97,33 @@ def read_bounded_prefix(root: Path, relative: str | PurePosixPath,
         raise ValueError("Invalid bounded prefix length")
     with open_regular_beneath(root, relative) as (stream, _):
         return stream.read(limit)
+
+
+@contextmanager
+def open_regular_at(directory_fd: int, name: str) -> Iterator[tuple[object, os.stat_result]]:
+    """Open one regular child of an already anchored directory descriptor.
+
+    The caller owns directory_fd. Reject names that could escape the parent,
+    symlinks and special files. Detect ordinary in-place modifications
+    during use; no path name or private bytes are included in errors.
+    """
+    if not NOFOLLOW:
+        raise ValueError("Platform lacks no-follow file descriptor support")
+    if not isinstance(name, str) or _relative_parts(name) != (name,):
+        raise ValueError("Expected a single safe filename")
+    try:
+        fd = os.open(name, READ | NOFOLLOW | NONBLOCK, dir_fd=directory_fd)
+    except OSError:
+        raise ValueError("Unable to safely open regular source file") from None
+    try:
+        start = os.fstat(fd)
+        if not stat.S_ISREG(start.st_mode):
+            raise ValueError("Source entry is not a regular file")
+        with os.fdopen(fd, "rb", closefd=False) as stream:
+            try:
+                yield stream, start
+            finally:
+                if _identity(start) != _identity(os.fstat(fd)):
+                    raise ValueError("Source file changed while being read")
+    finally:
+        os.close(fd)

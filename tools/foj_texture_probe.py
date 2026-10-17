@@ -15,7 +15,10 @@ import stat
 import struct
 from typing import Iterator
 
-from tools.foj_fd_bound_reader import open_regular_beneath
+from tools.foj_fd_bound_reader import (
+    DIRECTORY, NOFOLLOW, READ, _identity, open_regular_at,
+    open_regular_beneath,
+)
 
 HEADER_SIZE = 128
 CHUNK_SIZE = 1024 * 1024
@@ -144,9 +147,18 @@ def iter_candidate_headers(path: Path, *, max_hits: int = 128) -> Iterator[tuple
 
 def inventory(root: Path, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
               max_files: int = 20000, max_hits_per_file: int = 128) -> dict:
-    if not root.is_dir() or root.is_symlink():
-        raise ValueError("Input must be an existing non-symlink directory")
-    root = root.resolve()
+    """Enumerate with anchored descriptors, not pathname-based os.walk.
+
+    Known symlinks and special entries are skipped (and counted), preserving
+    standalone exploratory inventory behavior. The stage-150 gate rejects
+    any such skip. Changes at an open or during a directory visit fail closed.
+    """
+    if (type(max_file_bytes) is not int or max_file_bytes < 0 or
+            type(max_files) is not int or max_files < 1 or
+            type(max_hits_per_file) is not int or max_hits_per_file < 1):
+        raise ValueError("Invalid source inventory bounds")
+    if not isinstance(root, Path) or not NOFOLLOW or not DIRECTORY:
+        raise ValueError("Anchored inventory requires local no-follow directories")
     result: dict = {
         "schema": "foj-texture-candidates-v1",
         "source": "local-extracted-files",
@@ -154,44 +166,102 @@ def inventory(root: Path, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
         "files_scanned": 0, "skipped_large": 0, "skipped_links": 0,
         "candidates": [], "scan_truncated_at_file_limit": False,
     }
-    for current, dirs, filenames in os.walk(root, followlinks=False):
-        dirs[:] = sorted(d for d in dirs if not (Path(current) / d).is_symlink())
-        for filename in sorted(filenames):
-            path = Path(current) / filename
-            try:
-                file_stat = path.lstat()
-            except OSError:
+    visited = 0
+    # Opening the final root component without following a symlink keeps
+    # directory identity fixed for the full traversal.
+    try:
+        root_fd = os.open(root, READ | NOFOLLOW | DIRECTORY)
+    except OSError:
+        raise ValueError("Unable to open source root safely") from None
+
+    def _stat_child(directory_fd: int, name: str):
+        try:
+            return os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        except OSError:
+            raise ValueError("Source entry changed during enumeration") from None
+
+    def visit(directory_fd: int, relative: str, depth: int) -> None:
+        nonlocal visited
+        if depth > 128:
+            raise ValueError("Source directory nesting exceeds safe limit")
+        start = os.fstat(directory_fd)
+        if not stat.S_ISDIR(start.st_mode):
+            raise ValueError("Non-directory encountered during source walk")
+        visited += 1
+        if visited > max_files + 1:
+            raise ValueError("Too many directories for bounded DDS inventory")
+        try:
+            with os.scandir(directory_fd) as scanner:
+                names = sorted(entry.name for entry in scanner)
+        except OSError:
+            raise ValueError("Unable to enumerate source directory") from None
+        # Process the files in this directory before descending into the
+        # sorted children, preserving the former os.walk ordering.
+        children = []
+        for name in names:
+            # Validate path components before touching source data.
+            if not name or "/" in name or "\\" in name or name in (".", ".."):
+                raise ValueError("Unsafe source directory entry")
+            initial = _stat_child(directory_fd, name)
+            if stat.S_ISDIR(initial.st_mode):
+                children.append((name, initial))
                 continue
-            if not stat.S_ISREG(file_stat.st_mode):
+            if not stat.S_ISREG(initial.st_mode):
                 result["skipped_links"] += 1
                 continue
             if result["files_scanned"] >= max_files:
                 result["scan_truncated_at_file_limit"] = True
-                return result
-            if file_stat.st_size > max_file_bytes:
+                return
+            if initial.st_size > max_file_bytes:
                 result["skipped_large"] += 1
                 continue
             result["files_scanned"] += 1
+            with open_regular_at(directory_fd, name) as (stream, opened):
+                if _identity(initial) != _identity(opened):
+                    raise ValueError("DDS source changed between stat and open")
+                for offset, head in _iter_headers_stream(
+                        stream, max_hits=max_hits_per_file):
+                    metadata = parse_dds_candidate(
+                        head, offset=offset, file_bytes=opened.st_size)
+                    if metadata is not None:
+                        metadata["relative_path"] = relative + name
+                        result["candidates"].append(metadata)
+            if _identity(initial) != _identity(_stat_child(directory_fd, name)):
+                raise ValueError("DDS source file replaced during scan")
+        for name, initial in children:
             try:
-                rel = path.relative_to(root).as_posix()
-                with open_regular_beneath(root, rel) as (stream, opened):
-                    # A path may have been swapped between lstat and open.
-                    identity = lambda st: (
-                        st.st_dev, st.st_ino, st.st_mode, st.st_size,
-                        st.st_mtime_ns, st.st_ctime_ns)
-                    if identity(file_stat) != identity(opened):
-                        raise ValueError("DDS source changed between stat and open")
-                    for offset, head in _iter_headers_stream(
-                            stream, max_hits=max_hits_per_file):
-                        metadata = parse_dds_candidate(
-                            head, offset=offset, file_bytes=opened.st_size)
-                        if metadata is not None:
-                            metadata["relative_path"] = rel
-                            result["candidates"].append(metadata)
+                child_fd = os.open(name, READ | NOFOLLOW | DIRECTORY,
+                                   dir_fd=directory_fd)
             except OSError:
-                # Cannot prove the contents of a file we failed to read.
-                result.setdefault("read_errors", 0)
-                result["read_errors"] += 1
+                raise ValueError("Unable to safely enter source directory") from None
+            try:
+                if _identity(initial) != _identity(os.fstat(child_fd)):
+                    raise ValueError("Source directory replaced before open")
+                visit(child_fd, relative + name + "/", depth + 1)
+                if _identity(initial) != _identity(os.fstat(child_fd)):
+                    raise ValueError("Source directory changed during scan")
+            finally:
+                os.close(child_fd)
+            if _identity(initial) != _identity(_stat_child(directory_fd, name)):
+                raise ValueError("Source directory path replaced during scan")
+            if result["scan_truncated_at_file_limit"]:
+                return
+        if _identity(start) != _identity(os.fstat(directory_fd)):
+            raise ValueError("Source directory changed during enumeration")
+
+    try:
+        root_start = os.fstat(root_fd)
+        visit(root_fd, "", 0)
+        if _identity(root_start) != _identity(os.fstat(root_fd)):
+            raise ValueError("Source root changed during enumeration")
+        try:
+            root_path_now = root.lstat()
+        except OSError:
+            raise ValueError("Source root unavailable after enumeration") from None
+        if _identity(root_start) != _identity(root_path_now):
+            raise ValueError("Source root path replaced during enumeration")
+    finally:
+        os.close(root_fd)
     return result
 
 

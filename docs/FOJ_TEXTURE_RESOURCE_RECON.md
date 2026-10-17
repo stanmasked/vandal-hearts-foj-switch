@@ -452,6 +452,39 @@ remains necessary for detecting ordinary tree changes and incomplete
 inventory. Neither tool establishes source authenticity, actual FoJ
 resource semantics or Nintendo Switch rendering.
 
+## Stage 152: descriptor-relative DDS directory enumeration
+
+The stage-141 DDS candidate inventory now enumerates its input directories
+using anchored directory file descriptors and `os.scandir(directory_fd)`,
+rather than `os.walk` and subsequent path reopening. The
+root is opened with `O_DIRECTORY | O_NOFOLLOW`; every child
+directory is opened relative to the parent descriptor under the same
+no-follow contract. Files are opened with the stage-152
+`open_regular_at(parent_fd, name)` routine. Directory
+and file identity, type, size and timestamps are compared before opening,
+after reading and, where appropriate, after exiting the child directory.
+
+Sorted filenames are processed before sorted subdirectories, retaining the
+previous inventory order and JSON schema. Known symlinks and special files
+are counted as skipped rather than followed, including symlink directories.
+The stricter stage-150 coherence gate rejects any skipped entries. File and
+directory count bounds, a 128-level directory depth bound, bounded DDS
+header scanning and existing `max_file_bytes` behavior remain.
+
+Deterministic generated-only tests inject symlink and regular-file
+substitutions **at the child directory open operation**, inode replacements
+after file reads and directory changes during scanning. A separate test
+checks that the stage-150 gate does not silently accept symlink skips.
+
+**Limits:** this is a read-only directory enumeration improvement, not a
+filesystem snapshot or a proof of immutability. Concurrent writers may
+still modify an opened file between reads, or change entries and restore
+them before comparison. The user-selected root's ancestor components
+are not all individually anchored, and only Linux/POSIX-style systems
+providing the necessary `dir_fd` and `O_NOFOLLOW`
+capabilities are supported. The tool does not verify FoJ asset provenance
+or execute original PS3 gameplay or a Nintendo Switch GPU frame.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ
