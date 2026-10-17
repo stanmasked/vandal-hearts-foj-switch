@@ -322,6 +322,51 @@ report contains scenario names and aggregate counts only. As with
 all prior stages, these tests cannot establish an actual FoJ texture,
 material/model link, and they do not test Nintendo Switch GPU rendering.
 
+## Stage 149: deterministic four-report replay gate
+
+Before interpreting an existing local stage-145 triage report or comparing
+cohorts, independently **replay the saved JSON chain**:
+
+```sh
+python3 -m tools.foj_report_replay_audit \
+  --relations local-data/foj-texture-relations.json \
+  --tables local-data/foj-table-hypotheses.json \
+  --indices local-data/foj-index-observations.json \
+  --triage local-data/foj-evidence-triage.json \
+  --output local-data/foj-report-replay.json
+```
+
+The stage-149 command performs these checks **without opening original
+PS3 files**:
+
+- Re-derives all stage-143 hypothetical tables from stage-142 JSON with
+  the saved minimum-distinct-target setting and compares the *complete*
+  derived result, including summaries, against the saved stage-143 report.
+- Requires exactly one stage-144 observation for each table, rejecting
+  missing/duplicated rows, unsupported prefix bounds, impossible field
+  deltas, inconsistent index labels or control-window counts.
+- Re-runs stage-145 triage and checks the entire saved outcome, including
+  its reason codes and aggregate counts; changed/stale triage is rejected.
+- Uses bounded input files, refuses symlink report paths and duplicate
+  JSON object members, and emits **aggregate-only** replay counts rather
+  than filenames, raw bytes or private report content.
+
+A replay **passes even for internally contradicted DDS hypotheses**, provided
+the saved contradiction can be reproduced. It is not a quality score.
+
+**Important limitation:** deterministic agreement is not provenance.
+Someone can consistently edit all four JSON reports; the underlying private
+files may also change between the stage-141 scan and stage-144 prefix read.
+The command does not independently validate original PS3 resource identity,
+material bindings, container semantics, successful DDS decoding, or Switch
+hardware output. Store local reports together and never upload proprietary
+game resources. Any failure requires regenerating and rechecking reports
+from the user's local source data instead of silently accepting mixed runs.
+
+Python 3.10/3.12 CI executes generated-only replay, corruption, malformed
+metadata, stale-report and CLI privacy tests. This is an offline research
+integrity gate, not progress on the playable game's engine.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ
