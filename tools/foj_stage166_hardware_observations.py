@@ -85,6 +85,12 @@ def blank_template() -> dict[str, Any]:
             "homebrew_mode": None,
             "local_test_date": None,
         },
+        "startup": {
+            "clear_smoke_visual": None,
+            "triangle_launch_visual": None,
+            "triangle_exit_observed": None,
+            "failure_phase_observed": None,
+        },
         "scenarios": [
             {"id": sid, "observations": [
                 {"stage": stage, "seen": None, "capture_sha256": None}
@@ -158,10 +164,31 @@ def _check_build_hardware(ledger: dict[str, Any]) -> bool:
 
 def audit(ledger: dict[str, Any], *, bundle_sha256: str | None = None) -> dict[str, Any]:
     """Compare declarations against expected screens; NEVER attest to hardware."""
-    _exact_keys(ledger, {"schema", "build", "hardware", "scenarios"})
+    _exact_keys(ledger, {"schema", "build", "hardware", "startup", "scenarios"})
     if ledger["schema"] != SCHEMA:
         raise _bad()
     metadata_complete = _check_build_hardware(ledger)
+    startup = ledger["startup"]
+    _exact_keys(startup, {
+        "clear_smoke_visual", "triangle_launch_visual",
+        "triangle_exit_observed", "failure_phase_observed"})
+    choices = {
+        "clear_smoke_visual": {"alternating_colors", "black_screen", "unexpected_output"},
+        "triangle_launch_visual": {"dds_status_screen", "black_screen", "unexpected_output"},
+        "triangle_exit_observed": {
+            "plus_clean", "plus_nonzero_reported", "freeze_or_crash",
+            "not_visible_in_homebrew"},
+        "failure_phase_observed": {
+            "before_first_frame", "during_dds_status",
+            "during_textured_scene", "no_failure_observed", "unknown"},
+    }
+    for name, value in startup.items():
+        if value is not None and (
+                type(value) is not str or value not in choices[name]):
+            raise _bad()
+    # Startup statuses are descriptions of visible effects, not assertions
+    # about the device driver, libnx error source, or SDK correctness.
+    startup_count = sum(v is not None for v in startup.values())
     scenarios = ledger["scenarios"]
     if not isinstance(scenarios, list) or len(scenarios) != len(SCENARIOS):
         raise _bad()
@@ -209,6 +236,7 @@ def audit(ledger: dict[str, Any], *, bundle_sha256: str | None = None) -> dict[s
         "original_foj_assets_verified": False,
         "environment_metadata_complete": metadata_complete,
         "locally_supplied_bundle_hash_matched": bundle_sha256 is not None,
+        "declared_startup_fields": startup_count,
         "declared_screen_stages": total_observed,
         "declared_capture_hashes": capture_count,
         "scenarios": results,
