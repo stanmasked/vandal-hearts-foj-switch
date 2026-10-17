@@ -22,7 +22,9 @@ on:
       - "tools/foj_stage169_two_attempt_recovery.py"
       - "tools/foj_stage170_cpu_visual_alignment.py"
       - "tools/foj_stage171_build_identity.py"
+      - "tools/foj_stage173_private_json_snapshot.py"
       - "tests/test_foj_stage171_build_identity.py"
+      - "tests/test_foj_stage173_private_json_snapshot.py"
       - "tests/test_foj_stage170_cpu_visual_alignment.py"
       - "tests/test_foj_stage169_two_attempt_recovery.py"
       - "tests/foj_stage169_native_boot_fixture.c"
@@ -47,7 +49,9 @@ on:
       - "tools/foj_stage169_two_attempt_recovery.py"
       - "tools/foj_stage170_cpu_visual_alignment.py"
       - "tools/foj_stage171_build_identity.py"
+      - "tools/foj_stage173_private_json_snapshot.py"
       - "tests/test_foj_stage171_build_identity.py"
+      - "tests/test_foj_stage173_private_json_snapshot.py"
       - "tests/test_foj_stage170_cpu_visual_alignment.py"
       - "tests/test_foj_stage169_two_attempt_recovery.py"
       - "tests/foj_stage169_native_boot_fixture.c"
@@ -129,6 +133,11 @@ jobs:
             --bundle build/foj-stage165-gpu-sd-smoke.zip \
             --verify-receipt build/foj-stage171-ci-build-receipt.json
           python3 -m unittest discover -s tests -p 'test_foj_stage171_build_identity.py' -v
+      - name: Reject swapped private GPU operator ledger and CPU/visual link files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_foj_stage173_private_json_snapshot.py' -v
       - name: Upload SDK-built research binaries
         if: success()
         uses: actions/upload-artifact@v4

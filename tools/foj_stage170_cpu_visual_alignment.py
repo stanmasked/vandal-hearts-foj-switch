@@ -16,6 +16,7 @@ from typing import Any
 from tools.foj_stage166_hardware_observations import (
     SCENARIOS, audit, read_ledger,
 )
+from tools.foj_stage173_private_json_snapshot import read_private_json_bytes
 from tools.foj_stage169_two_attempt_recovery import (
     compare_attempts, read_strict,
 )
@@ -62,19 +63,13 @@ def _no_duplicate_pairs(pairs):
 
 def read_link(path: Path) -> dict[str, Any]:
     try:
-        meta = path.lstat()
-        if path.is_symlink() or not path.is_file() or not 2 <= meta.st_size <= MAX_BYTES:
-            raise _invalid()
-        with path.open("rb") as stream:
-            data = stream.read(MAX_BYTES + 1)
-        if len(data) != meta.st_size:
-            raise _invalid()
+        data = read_private_json_bytes(path, MAX_BYTES)
         result = json.loads(
             data.decode("utf-8"),
             object_pairs_hook=_no_duplicate_pairs,
             parse_constant=lambda _: (_ for _ in ()).throw(_invalid()),
         )
-    except (OSError, UnicodeError, json.JSONDecodeError, RecursionError):
+    except (ValueError, OSError, UnicodeError, json.JSONDecodeError, RecursionError):
         raise _invalid() from None
     validate_link(result)
     return result
