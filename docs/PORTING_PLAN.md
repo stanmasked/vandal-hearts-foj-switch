@@ -482,3 +482,10 @@ This test verifies host-side validation/integration, not real Switch GPU executi
 - [x] Add `HOST_SHADERS_NDEBUG` executable to `gpu/clear.mk host-check` and its clean rule, so both GCC/Clang CI host jobs exercise shader slot invariants with this build flag.
 - [x] Locally rebuild a matching shader-layout C/header/test subset and execute `-DNDEBUG` GCC and Clang, strict C11, AddressSanitizer and UndefinedBehaviorSanitizer: PASS for both.
 - [ ] Run whole repo host-check/CI and real devkitPro/UAM build, physical Switch draw. The isolated test is not proof of full SDK/hardware compatibility.
+
+## Stage 104: GPU smoke must present at least one frame (2026-10-17)
+
+- [x] Fix the optional deko3d clear/triangle application's Plus exit path: only report success if at least one frame was actually submitted and presented. An immediate Plus exit retains setup/no-frame status 3.
+- [x] Extend `tests/test_deko3d_clear_host.c` with an immediate-Plus scenario expecting zero presented frames, status 3 and complete resource cleanup; update expected scenario count to 15.
+- [ ] Execute the full stateful deko3d mock from an up-to-date checkout and inspect GitHub CI logs. The local reconstructed `deko3d_clear_main.c` was empty, and no claim of test pass is made.
+- [ ] Build with real devkitA64/UAM and verify GPU output on Switch hardware.
