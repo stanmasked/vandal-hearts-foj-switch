@@ -830,3 +830,16 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Added `docs/FOJ_TEXTURE_RESOURCE_RECON.md` with private local workflow, explicit interpretation limits and requirements for validating actual PS3-specific formats. PR #24 merged to `main`, squash commit `078bb0e5378a0978c07bc498839b90186fdc54ab`.
 - [ ] Run metadata inventory against user-owned, locally extracted **actual FoJ PS3** resource files and independently verify candidate formats; no such input was available to test this stage. No original game data has been uploaded to GitHub.
 - [ ] Physical Switch testing of texture uploads, presentation and the actual FoJ game renderer remains outstanding.
+
+## Stage 142: offline DDS candidate container spans and possible pointer hints — CI SUCCESS (2026-10-17)
+
+- [x] Added `tools/foj_texture_relations.py`, a **metadata-only follow-up** to `tools/foj_texture_probe.py`. It reads the stage-141 local candidate JSON and groups entries by relative container filename; produces tentative DDS end offsets, adjacent/separated/overlapping ranges, next header offsets and explicit unknown-size entries.
+- [x] Added an **optional** bounded read-only scan of each candidate-bearing file's first 64 KiB (configurable, maximum 1 MiB), looking for **4-byte aligned LE/BE 32-bit words** that coincide with same-file embedded DDS candidate offsets. Matches within candidate image spans are excluded, and only 16 hints per candidate are emitted by default. These are numerical coincidences, **not** established material/model links.
+- [x] Paths taken from input JSON must be safe relative filenames; path traversal, symlink targets and unexpected non-regular files are rejected. Private source bytes and absolute root paths are never emitted. Input assets remain outside GitHub; JSON reports are written only to user-designated local files.
+- [x] Added `tests/test_foj_texture_relations.py` with six SDK-free synthetic tests: range grouping/overlap, unknown-size handling, explicit LE/BE pointers at embedded offsets and skipped DDS payload words, hard caps, unsafe filenames/symlinks, and CLI metadata-only mode.
+- [x] Expanded `.github/workflows/texture-probe-tests.yml` for both old and new probe test sets. First CI run exposed a test fixture window too short to hold a complete 32-bit pointer; changed the test prefix to 8 bytes.
+- [x] **Actual private texture CI run 39039589895: SUCCESS** under Python 3.10 and 3.12; each passed the seven stage-141 tests and six new stage-142 tests (**13 per Python version**).
+- [x] **Actual Research tools tests run 39039589884: SUCCESS** under Python 3.11 and 3.13, **130 tests per interpreter**. PR #25 merged to `main` as `388a734839d906e179dc6be84fb63c17a85075fa`.
+- [x] Updated `docs/FOJ_TEXTURE_RESOURCE_RECON.md` with the two-stage offline commands, pointer-prefix options and interpretation limits.
+- [ ] No original FoJ PS3 resource dump was available, so no true FoJ DDS header, container pointer structure or texture/material/model association has been confirmed.
+- [ ] Switch hardware rendering and correct texture sampling are not verified.
