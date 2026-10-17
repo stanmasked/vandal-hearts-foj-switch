@@ -899,6 +899,20 @@ progress; physical console frames and FoJ game resource import
 remain **unverified**. Instructions:
 `docs/GPU_STAGE169_TWO_ATTEMPT_RECOVERY.md`.
 
+## Stage 170: manually bound CPU/visual evidence comparison
+
+Stage 170 adds a third, blank-first operator link to join the two
+private stage-168/169 CPU boot logs to exactly one chosen A–E
+scenario in a private stage-166 visual observation sheet.
+Without an explicit link, the result stays `not_linked`.
+The analyzer distinguishes incomplete declarations, expected
+synthetic colors that conflict with operator statements, early
+CPU checkpoint failures and internally consistent-but-unverified
+claims. No generated test case, CPU `present` count or
+operator linkage is promoted to verified Nintendo Switch GPU
+scanout, original FoJ resource provenance, or gameplay.
+See `docs/GPU_STAGE170_CPU_VISUAL_ALIGNMENT.md`.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ
