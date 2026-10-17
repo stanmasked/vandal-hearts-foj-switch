@@ -881,3 +881,16 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] PR #28 merged to `main` via squash as `7c7b23c1fd138e1a2c5f21d26836ddfd7346f485`. Documented local stage-145 CLI usage and evidence limitations in `docs/FOJ_TEXTURE_RESOURCE_RECON.md`.
 - [ ] No privately extracted real FoJ PS3 files available for analysis; original material/model mappings, native resource formats and container structures remain unknown.
 - [ ] No new GPU NRO features or on-console Switch testing this stage; hardware frame presentation remains unverified.
+
+## Stage 146: private split-cohort DDS hypothesis repeatability — CI SUCCESS (2026-10-17)
+
+- [x] Added `tools/foj_holdout_replication.py`, a **read-only, aggregate-only** comparer of **two stage-145 reports from separate local cohort roots**. It compares candidate fixed-stride pointer-table shapes by stride and byte order, ignoring absolute file offsets and row counts, and labels patterns as repeated-but-unverified, not reproduced, ambiguous, contradicted, holdout-only or insufficient.
+- [x] Strengthened accidental data reuse protection: roots must exist, must differ and must not be nested; source files must be ordinary regular files reached without symlink traversal; shared hardlink device/inode identities across cohorts are rejected. Source bytes and file contents are **never published or included in JSON output**. Distinct inodes do not prove content independence; copied files and genuine PS3 provenance remain unverified.
+- [x] Validates metadata-only input schemas, triage/summary invariants, reason codes, endian/stride, row counts, file paths and size/count bounds. Accepts `--min-consistent` to require more internally consistent table occurrences before labeling repeated patterns. No original PS3 assets or copyrighted bytes are included.
+- [x] Added ten generated tests in `tests/test_foj_holdout_replication.py`, including repeated patterns in separate roots, different offsets, non-reproduction, holdout contradictions, ambiguity, minimum repeat thresholds, nested/symlink/hardlink reuse rejection, corrupted report claims, empty reports, metadata-only CLI and full end-to-end DDS→relations→table→index→triage→holdout using **different synthetic source files**.
+- [x] Initial CI exposed an overly strict expected label: one holdout hit below the two-occurrence threshold is **insufficient reproducibility**, not complete non-observation. Fixed the test, added end-to-end integration, then reran all CI.
+- [x] **Actual GitHub Actions dedicated run 39050122009 SUCCESS**: Python 3.10 and 3.12, **47 tests per interpreter** (7+6+7+8+9+10).
+- [x] **Actual Research tools run 39050121941 SUCCESS**: Python 3.11 and 3.13, **164 tests per interpreter**.
+- [x] Added the local split-cohort workflow and limitations to `docs/FOJ_TEXTURE_RESOURCE_RECON.md`; **PR #29 merged** to `main` as squash commit `031166ebb4977f208f420436e6568290c05c2afc`.
+- [ ] Real user-owned original FoJ PS3 resource archives and their extracted data were **not** available in this session. No actual game DDS container, material index or model binding has been verified from original content.
+- [ ] No GPU NRO changes were made this stage, and framebuffer presentation / texture sampling on physical Nintendo Switch remain unverified.
