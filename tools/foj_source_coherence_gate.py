@@ -32,9 +32,11 @@ from tools.foj_resource_table_hypotheses import infer_tables
 from tools.foj_index_column_controls import analyze_index_columns
 from tools.foj_evidence_triage import triage_reports
 from tools.foj_report_replay_audit import audit_replay
+from tools.foj_report_transit_budget import measure_report
 
 DEFAULT_MAX_TOTAL_BYTES = 1024 * 1024 * 1024
 DEFAULT_MAX_FILES = 20000
+DEFAULT_MAX_BUNDLE_BYTES = 128 * 1024 * 1024
 CHUNK = 1024 * 1024
 FILE_NAMES = (
     "foj-texture-candidates.json",
@@ -168,7 +170,8 @@ def examine(root: Path, *, max_files: int = DEFAULT_MAX_FILES,
             max_dir_entries: int = DEFAULT_MAX_DIR_ENTRIES,
             max_dir_name_bytes: int = DEFAULT_MAX_DIR_NAME_BYTES,
             max_candidates: int = DEFAULT_MAX_CANDIDATES,
-            max_metadata_bytes: int = DEFAULT_MAX_METADATA_BYTES) -> tuple[dict[str, Any], ...]:
+            max_metadata_bytes: int = DEFAULT_MAX_METADATA_BYTES,
+            max_bundle_bytes: int = DEFAULT_MAX_BUNDLE_BYTES) -> tuple[dict[str, Any], ...]:
     """Produce reports only from a source tree stable across two snapshots."""
     before, stats = snapshot(
         root, max_files=max_files, max_file_bytes=max_file_bytes,
@@ -213,7 +216,16 @@ def examine(root: Path, *, max_files: int = DEFAULT_MAX_FILES,
             "switch_hardware_verified": False,
         },
     }
-    return scan, relations, tables, indices, triage, replay, final
+    if (type(max_bundle_bytes) is not int or
+            not 1024 <= max_bundle_bytes <= 256 * 1024 * 1024):
+        raise ValueError("Invalid local report bundle byte budget")
+    reports = (scan, relations, tables, indices, triage, replay, final)
+    total = 0
+    for report in reports:
+        total += measure_report(report)
+        if total > max_bundle_bytes:
+            raise ValueError("Private report bundle byte budget exceeded")
+    return reports
 
 
 def publish(root: Path, output_dir: Path, **limits: Any) -> dict[str, Any]:
@@ -255,6 +267,7 @@ def main() -> int:
                         help="Maximum source bytes per snapshot, default 1024 MiB")
     parser.add_argument("--max-files", type=int, default=DEFAULT_MAX_FILES)
     parser.add_argument("--file-mib", type=int, default=512)
+    parser.add_argument("--bundle-mib", type=int, default=128)
     parser.add_argument("--max-candidates", type=int,
                         default=DEFAULT_MAX_CANDIDATES)
     parser.add_argument("--max-metadata-mib", type=int, default=8)
@@ -268,6 +281,7 @@ def main() -> int:
             args.root, args.output_dir,
             max_files=args.max_files,
             max_candidates=args.max_candidates,
+            max_bundle_bytes=args.bundle_mib * 1024 * 1024,
             max_metadata_bytes=args.max_metadata_mib * 1024 * 1024,
             max_file_bytes=args.file_mib * 1024 * 1024,
             max_total_bytes=args.total_mib * 1024 * 1024,
