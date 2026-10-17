@@ -33,4 +33,21 @@ for header in gpu/dksh_module.h gpu/shader_layout.h gpu/triangle.mk gpu/clear.mk
     fi
     touch -t 202001010000 "$header"
 done
-echo "GPU triangle Makefile source and build-config dependencies: PASS"
+# NACP metadata must be regenerated when title/version build configuration
+# changes. Use make -n: no actual devkitPro tool is needed here.
+nacp=build/foj-deko3d-triangle-research.nacp
+touch "$nacp"
+touch -t 202201010000 "$nacp"
+if make -f gpu/triangle.mk -n "$nacp" | grep -Fq -- '--create'; then
+    echo "FAIL: current triangle NACP should not rebuild" >&2
+    exit 1
+fi
+for config in gpu/triangle.mk gpu/clear.mk; do
+    touch -t 202401010000 "$config"
+    if ! make -f gpu/triangle.mk -n "$nacp" | grep -Fq -- '--create'; then
+        echo "FAIL: editing $config did not trigger NACP metadata regeneration" >&2
+        exit 1
+    fi
+    touch -t 202001010000 "$config"
+done
+echo "GPU triangle ELF and NACP configuration dependencies: PASS"
