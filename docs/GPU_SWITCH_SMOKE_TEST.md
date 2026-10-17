@@ -1,4 +1,4 @@
-# Experimental Switch GPU smoke tests — stage 135
+# Experimental Switch GPU smoke tests — stage 136
 
 These are **homebrew research binaries**, not a playable port or a patch for
 *Vandal Hearts: Flames of Judgment*. No original PS3 content is embedded.
@@ -22,6 +22,21 @@ that older triangle-mode binary draws just one fixed triangle.
 
 GitHub Actions retains the artifact for seven days. Its absence later does
 not invalidate the CI logs or change the fact that a new build is required.
+
+## Stage 136 — newest multi-batch research build
+
+GitHub Actions run **39034956773** (PR #19) built and validated both
+real AArch64 NROs and all three DKSH modules with devkitA64/UAM.
+The shader-backed experiment now uploads **12 vertices** forming four
+triangles in **two separate draw batches**. Both use the same research
+UV-gradient shader; the material indexes are not yet real texture binds.
+The clear-only NRO is unchanged. GPU host checks and research tests also
+passed.
+
+Newest artifact `foj-gpu-native-research`:
+https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39034956773/artifacts/12101922180
+
+Do not interpret successful compilation as verified on-console rendering.
 
 ## SD card layout for a user-authorized homebrew Switch
 
@@ -50,9 +65,10 @@ require DKSH files.
 3. Press **+** only after at least one frame has been displayed. Note whether
    the program closes cleanly or throws an error.
 4. Launch the **triangle-research** NRO with both DKSH files in the exact
-   paths above. Expect one synthetic two-triangle UV-gradient surface (six
-   uploaded vertices) over the alternating clear colors; it does **not**
-   load FoJ PS3 assets.
+   paths above. Expect **two separated research quads** (four triangles,
+   12 uploaded vertices) over the alternating clear colors. Both quads use
+   one UV-gradient shader with different UV ranges; they do **not** load
+   FoJ PS3 assets or bind separate game textures.
 5. Note whether an exception, missing shader, black screen, freeze, or
    rendering corruption occurred. Preserve any screenshots/error text
    and a brief description of which test failed.
