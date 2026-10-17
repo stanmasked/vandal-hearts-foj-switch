@@ -175,7 +175,7 @@ host-mock-sanitized: $(HOST_MOCK_SAN) $(HOST_SHADERS_SAN) $(HOST_DKSH_SAN) $(HOS
 $(OUT).elf: $(SRC) gpu/smoke_plan.h gpu/deko3d_api_contract.h core/gpu_vertex_stream.h gpu/clear.mk $(GPU_EXTRA_DEPS) | build preflight
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $@ -l$(GPU_LIB) -lstdc++ -lnx -lm
 
-$(OUT).nacp: | build
+$(OUT).nacp: gpu/clear.mk $(GPU_EXTRA_DEPS) | build
 	$(NACPTOOL) --create "$(GPU_TITLE)" "VH FoJ contributors" "$(GPU_VERSION)" $@
 
 $(OUT).nro: $(OUT).elf $(OUT).nacp
