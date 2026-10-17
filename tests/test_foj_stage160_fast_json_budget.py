@@ -81,8 +81,13 @@ class FastJsonByteAccountingTests(unittest.TestCase):
         limit = canonical_size(report)
         self.assertGreaterEqual(limit, 1024)
         self.assertEqual(transit.measure_report(report, limit=limit), limit)
-        with self.assertRaisesRegex(ValueError, "byte budget"):
-            transit.measure_report(report, limit=limit - 1)
+        # The configured minimum is 1,024 bytes, so test a one-byte
+        # oversized report against it without triggering limit validation.
+        overflow = {"payload": "a" * 1005}
+        self.assertEqual(canonical_size(overflow), limit + 1)
+        with self.assertRaisesRegex(
+                ValueError, "Local research report byte budget exceeded"):
+            transit.measure_report(overflow, limit=limit)
 
     def test_exact_unicode_boundary_rejects_one_byte_short(self):
         report = {"multi": "😀" * 250, "padding": "xx"}
