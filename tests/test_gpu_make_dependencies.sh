@@ -189,4 +189,24 @@ for extension in elf nacp nro; do
         exit 1
     fi
 done
+# Execute the real clean recipes in this disposable fixture as well:
+# text-matching a dry-run alone cannot prove that outputs are removed.
+make -f gpu/clear.mk clean >/dev/null
+for extension in elf nacp nro; do
+    if [[ -e "build/foj-deko3d-clear-smoke.$extension" ]]; then
+        echo "FAIL: clear clean retained .$extension" >&2
+        exit 1
+    fi
+    if [[ ! -f "build/foj-deko3d-triangle-research.$extension" ]]; then
+        echo "FAIL: clear clean deleted triangle .$extension" >&2
+        exit 1
+    fi
+done
+make -f gpu/triangle.mk clean >/dev/null
+for extension in elf nacp nro; do
+    if [[ -e "build/foj-deko3d-triangle-research.$extension" ]]; then
+        echo "FAIL: triangle clean retained .$extension" >&2
+        exit 1
+    fi
+done
 echo "GPU triangle and clear-smoke ELF, NACP and NRO dependencies: PASS"
