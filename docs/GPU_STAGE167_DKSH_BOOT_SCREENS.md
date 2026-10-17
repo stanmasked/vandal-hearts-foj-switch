@@ -44,6 +44,17 @@ draw-command failures **after** shader initialization are outside this
 specific diagnostic route. If shader initialization succeeds, the
 previous stage-164 DDS status colors appear normally.
 
+## Stage 168 — diagnostic codes before a GPU screen can appear
+
+A new best-effort, *private SD-only* CPU boot journal identifies the last
+entered or completed startup phase even when device/queue/swapchain
+initialization fails before shaderless color screens exist. Each attempt
+creates a new fixed-name `foj-boot-XX.txt` file and never overwrites older
+files; it contains no user paths or game assets. The journal is only a
+CPU checkpoint trace, **not evidence of a visible frame**.
+See `docs/GPU_STAGE168_EARLY_BOOT_JOURNAL.md` for exact stages, audit,
+storage limits and safe relaunch checks.
+
 ## Suggested safe manual scenarios
 
 Start from a freshly downloaded successful stage-167
