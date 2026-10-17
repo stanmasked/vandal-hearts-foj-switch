@@ -35,7 +35,7 @@ def fake_nro(marker):
 def fake_dksh(kind, marker):
     payload = bytearray(512)
     struct.pack_into("<6I", payload, 0, 0x48534B44, 24, 256, 256, 24, 1)
-    struct.pack_into("<6I", payload, 24, 0 if kind == "vertex" else 1, 0, 0, 0, 0)
+    struct.pack_into("<6I", payload, 24, 0 if kind == "vertex" else 1, 0, 0, 0, 0, 0)
     payload[-1] = marker
     return bytes(payload)
 
