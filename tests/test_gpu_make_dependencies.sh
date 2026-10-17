@@ -176,4 +176,17 @@ for binary in \
         exit 1
     fi
 done
+# The two native GPU variants must clean their respective NRO outputs
+# without deleting the other variant's build products.
+triangle_clean="$(make -f gpu/triangle.mk -n clean)"
+for extension in elf nacp nro; do
+    if [[ "$triangle_clean" != *"build/foj-deko3d-triangle-research.$extension"* ]]; then
+        echo "FAIL: triangle clean leaves stale .$extension output" >&2
+        exit 1
+    fi
+    if [[ "$clean_plan" != *"build/foj-deko3d-clear-smoke.$extension"* ]]; then
+        echo "FAIL: clear clean leaves stale .$extension output" >&2
+        exit 1
+    fi
+done
 echo "GPU triangle and clear-smoke ELF, NACP and NRO dependencies: PASS"
