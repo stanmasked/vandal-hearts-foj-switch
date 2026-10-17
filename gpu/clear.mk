@@ -21,6 +21,9 @@ HOST_RESEARCH_SAN := build/foj-gpu-research-mesh-asan
 HOST_TEXTURE := build/foj-gpu-research-texture-host
 HOST_TEXTURE_NDEBUG := build/foj-gpu-research-texture-ndebug
 HOST_TEXTURE_SAN := build/foj-gpu-research-texture-asan
+HOST_ATLAS := build/foj-gpu-dds-atlas-host
+HOST_ATLAS_NDEBUG := build/foj-gpu-dds-atlas-ndebug
+HOST_ATLAS_SAN := build/foj-gpu-dds-atlas-asan
 HOST_DKSH := build/foj-dksh-intake-host
 HOST_DKSH_SAN := build/foj-dksh-intake-asan
 HOST_DKSH_INTEGRATION := build/foj-dksh-layout-integration
@@ -178,6 +181,20 @@ $(HOST_TEXTURE_SAN): tests/test_gpu_research_texture.c gpu/research_texture.c gp
 	  -fsanitize=address,undefined -fno-omit-frame-pointer -Igpu \
 	  tests/test_gpu_research_texture.c gpu/research_texture.c -o $@
 
+# Validate strict private DDS RGBA8 parsing in all host configurations.
+$(HOST_ATLAS): tests/test_gpu_atlas_dds.c gpu/atlas_dds.c gpu/atlas_dds.h | build
+	$(HOSTCC) -std=c11 -Wall -Wextra -Werror -pedantic -Igpu \
+	  tests/test_gpu_atlas_dds.c gpu/atlas_dds.c -o $@
+
+$(HOST_ATLAS_NDEBUG): tests/test_gpu_atlas_dds.c gpu/atlas_dds.c gpu/atlas_dds.h | build
+	$(HOSTCC) -DNDEBUG -std=c11 -Wall -Wextra -Werror -pedantic -Igpu \
+	  tests/test_gpu_atlas_dds.c gpu/atlas_dds.c -o $@
+
+$(HOST_ATLAS_SAN): tests/test_gpu_atlas_dds.c gpu/atlas_dds.c gpu/atlas_dds.h | build
+	$(HOSTCC) -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic \
+	  -fsanitize=address,undefined -fno-omit-frame-pointer -Igpu \
+	  tests/test_gpu_atlas_dds.c gpu/atlas_dds.c -o $@
+
 # Check the real optional triangle source in GCC/Clang C11 syntax mode.
 # This uses lightweight SDK declarations and DOES NOT link or run GPU code.
 host-triangle-check:
@@ -186,7 +203,9 @@ host-triangle-check:
 	  -Itests/mock_switch_sdk -Icore -Igpu \
 	  gpu/deko3d_clear_main.c
 
-host-check: host-triangle-check $(HOST_TEST) $(HOST_TEST_NDEBUG) $(HOST_ABI) $(HOST_ABI_NDEBUG) $(HOST_SHADERS) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_NDEBUG) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_MOCK) $(HOST_MOCK_NDEBUG) $(HOST_RESEARCH) $(HOST_RESEARCH_NDEBUG) $(HOST_TEXTURE) $(HOST_TEXTURE_NDEBUG)
+host-check: host-triangle-check $(HOST_TEST) $(HOST_TEST_NDEBUG) $(HOST_ABI) $(HOST_ABI_NDEBUG) $(HOST_SHADERS) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_NDEBUG) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_MOCK) $(HOST_MOCK_NDEBUG) $(HOST_RESEARCH) $(HOST_RESEARCH_NDEBUG) $(HOST_TEXTURE) $(HOST_TEXTURE_NDEBUG) $(HOST_ATLAS) $(HOST_ATLAS_NDEBUG)
+	./$(HOST_ATLAS)
+	./$(HOST_ATLAS_NDEBUG)
 	./$(HOST_TEXTURE)
 	./$(HOST_TEXTURE_NDEBUG)
 	./$(HOST_RESEARCH)
@@ -204,7 +223,8 @@ host-check: host-triangle-check $(HOST_TEST) $(HOST_TEST_NDEBUG) $(HOST_ABI) $(H
 	./$(HOST_MOCK)
 	./$(HOST_MOCK_NDEBUG)
 
-host-mock-sanitized: $(HOST_MOCK_SAN) $(HOST_SHADERS_SAN) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_TEST_SAN) $(HOST_ABI_SAN) $(HOST_RESEARCH_SAN) $(HOST_TEXTURE_SAN)
+host-mock-sanitized: $(HOST_MOCK_SAN) $(HOST_SHADERS_SAN) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_TEST_SAN) $(HOST_ABI_SAN) $(HOST_RESEARCH_SAN) $(HOST_TEXTURE_SAN) $(HOST_ATLAS_SAN)
+	./$(HOST_ATLAS_SAN)
 	./$(HOST_TEXTURE_SAN)
 	./$(HOST_RESEARCH_SAN)
 	./$(HOST_MOCK_SAN)
@@ -227,4 +247,4 @@ verify: $(OUT).nro
 	python3 tools/validate_nro.py $(OUT).nro
 
 clean:
-	rm -f $(OUT).elf $(OUT).nacp $(OUT).nro $(HOST_TEST) $(HOST_TEST_NDEBUG) $(HOST_ABI) $(HOST_ABI_NDEBUG) $(HOST_MOCK) $(HOST_MOCK_SAN) $(HOST_MOCK_NDEBUG) $(HOST_SHADERS) $(HOST_SHADERS_SAN) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_NDEBUG) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_TEST_SAN) $(HOST_ABI_SAN) $(HOST_RESEARCH) $(HOST_RESEARCH_NDEBUG) $(HOST_RESEARCH_SAN) $(HOST_TEXTURE) $(HOST_TEXTURE_NDEBUG) $(HOST_TEXTURE_SAN)
+	rm -f $(OUT).elf $(OUT).nacp $(OUT).nro $(HOST_TEST) $(HOST_TEST_NDEBUG) $(HOST_ABI) $(HOST_ABI_NDEBUG) $(HOST_MOCK) $(HOST_MOCK_SAN) $(HOST_MOCK_NDEBUG) $(HOST_SHADERS) $(HOST_SHADERS_SAN) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_NDEBUG) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_TEST_SAN) $(HOST_ABI_SAN) $(HOST_RESEARCH) $(HOST_RESEARCH_NDEBUG) $(HOST_RESEARCH_SAN) $(HOST_TEXTURE) $(HOST_TEXTURE_NDEBUG) $(HOST_TEXTURE_SAN) $(HOST_ATLAS) $(HOST_ATLAS_NDEBUG) $(HOST_ATLAS_SAN)
