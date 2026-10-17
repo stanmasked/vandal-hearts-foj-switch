@@ -285,6 +285,22 @@ class Stage171ReceiptTests(unittest.TestCase):
             self.assertEqual(info["operator_declared_build_fields"], 3)
             self.assertNotIn(str(root), result.stdout)
 
+    def test_cli_standalone_ci_receipt_recheck(self):
+        tmp, root, z, r, sheet, link, a, b = self.prepare()
+        with tmp:
+            receipt = root / "receipt.json"
+            write_receipt(z, receipt, COMMIT, RUN)
+            cmd = [sys.executable, "-m", "tools.foj_stage171_build_identity",
+                   "--bundle", str(z), "--verify-receipt", str(receipt)]
+            success = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+            self.assertEqual(success.returncode, 0, success.stderr)
+            self.assertIn("no console hardware verified", success.stdout)
+            receipt.write_text(json.dumps(dict(r, bundle_sha256="f" * 64)),
+                               encoding="utf-8")
+            failure = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+            self.assertNotEqual(failure.returncode, 0)
+            self.assertNotIn(str(root), failure.stderr)
+
     def test_cli_invalid_data_never_prints_private_location(self):
         tmp, root, z, r, sheet, link, a, b = self.prepare()
         with tmp:
