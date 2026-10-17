@@ -805,3 +805,15 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] **Research tools tests run 39037261302: SUCCESS**. PR #22 merged into `main` as squash commit `02fbf3528ec0d5c993c4614f65db4daca8b75f9f`.
 - [x] Updated `docs/GPU_SWITCH_SMOKE_TEST.md` with stage 139 compressed format constraints, behavior, current artifact and explicit runtime verification limitations.
 - [ ] No physical Switch verification, no actual FoJ PS3 texture ingest, and no validation of PS3-specific swizzle/tiling/mip data yet. Native toolchain success is **not** proof of correct GPU output.
+
+## Stage 140: classic DDS BGRA8 + validated mipmap tails — native CI SUCCESS (2026-10-17)
+
+- [x] Extended `gpu/atlas_dds.c` to accept the classic 32-bit BGRA8 channel mask layout (R=0x00ff0000, G=0x0000ff00, B=0x000000ff, A=0xff000000) and normalize loaded base-level pixels to tightly packed RGBA8.
+- [x] Added complete classic DDS mip-chain validation for existing RGBA8, BGRA8, BC1/DXT1 and BC3/DXT5 paths: exact DDSD_MIPMAPCOUNT/DDSCAPS flags for multiple levels, valid count 1..9, exact total file bytes, block-rounded BC tail sizes and base-level pitch/linear compressed size. No writes to output until all headers/bounds validate.
+- [x] The renderer continues to upload only top-level pixels to the same GPU deko3d image and sampler; it does **not** allocate additional mip levels, enable GPU mip filtering or load proprietary PS3 formats. Source DDS file size is now bounded at 384 KiB to accept complete 256×256 chains; decoded RGBA8 remains at most 256 KiB.
+- [x] Expanded `tests/test_gpu_atlas_dds.c`: BGRA channel swizzle, missing/extra bytes, invalid masks/count/flags/caps, full uncompressed 8×8 four-level mip chain, BC1/BC3 multi-level compressed tails and a complete 256×256 nine-level DDS loaded from a synthetic local test file.
+- [x] **Actual GPU host regression run 39037930668 SUCCESS** with GCC and Clang. All three variants (ordinary, NDEBUG, ASan/UBSan) print `Private RGBA8/BGRA8/BC1/BC3 DDS + complete mip-chain intake: PASS` for each compiler.
+- [x] **Actual native devkitA64/UAM run 39037930630 SUCCESS**: research GPU NRO **294968 bytes**, independent clear NRO **262200 bytes**, all three UAM DKSH modules compiled and validated; artifact `foj-gpu-native-research` **12103085997**: https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39037930630/artifacts/12103085997.
+- [x] **Research tools tests 39037930657 SUCCESS**. PR #23 merged to `main` as `150db82e2ddc5e5a7c77a067b9abc20dcf5801ab`.
+- [x] Updated `docs/GPU_SWITCH_SMOKE_TEST.md` with current supported DDS variants, level-0-only restriction and latest native artifact.
+- [ ] No physical Switch verification of pixel sampling/presentation, and no original FoJ PS3 atlas has been checked. PS3-specific layout/swizzle and unsupported DDS variants remain future work.
