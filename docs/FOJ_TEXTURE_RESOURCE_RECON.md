@@ -413,6 +413,45 @@ in-place byte changes, timestamp changes, added/deleted files,
 symlinks, resource limits and fail-closed publication. No original PS3
 resources or fingerprints are included in the repository.
 
+## Stage 151: descriptor-bound DDS reads and path-swap regressions
+
+Stages 141, 142 and 144 no longer read game data through an
+"inspect pathname, then reopen pathname" sequence. The shared
+`tools/foj_fd_bound_reader.py` helper instead opens the root
+directory and each intermediate directory with descriptor-relative
+`os.open(..., dir_fd=..., O_NOFOLLOW | O_DIRECTORY)`, then
+opens the final regular file with `O_NOFOLLOW | O_NONBLOCK`.
+
+The opened file descriptor is checked using `fstat` for file
+type, inode, device, size and modification/change timestamps. The same
+metadata is checked again after the caller finishes reading it. Stage 141
+also compares the descriptor identity with its pre-open `lstat`
+and aborts when a file was substituted. Stages 142 and 144 use the same
+fd-bound prefix reader, so symlink replacement at open time cannot redirect
+those tools outside the requested local input root.
+
+The scanner still finds embedded DDS headers in 1 MiB chunks and
+preserves the existing metadata schema; no texture pixels are copied into
+the reports. The stage-150 complete-tree SHA-256 pre/post snapshots,
+stage-149 deterministic JSON replay, and metadata-only output requirements
+remain unchanged.
+
+The synthetic stage-151 tests cover valid nested files, traversal
+rejection, symlinked roots/parents/files, directory/FIFO rejection,
+same-inode edits during reads, file/parent-directory substitution
+**at the exact open call**, and full DDS candidate-to-index pipeline
+compatibility. They contain no original PS3 files.
+
+**Security boundary:** fd anchoring prevents symlink path redirection
+at actual source opens, but it does not provide a cryptographically
+immutable byte stream: another process can modify the already opened
+regular file while it is being read, or restore contents between
+snapshots. The stage-141 pathname discovery still uses `os.walk`
+and is not a fully descriptor-relative directory enumeration. Stage 150
+remains necessary for detecting ordinary tree changes and incomplete
+inventory. Neither tool establishes source authenticity, actual FoJ
+resource semantics or Nintendo Switch rendering.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ
