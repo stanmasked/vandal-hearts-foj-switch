@@ -620,3 +620,10 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Add a dry-run `make -f gpu/clear.mk -n clean` regression to `tests/test_gpu_make_dependencies.sh` to assert that all eight important lifecycle, NDEBUG and sanitizer host binaries are removed; protects against stale test executables.
 - [ ] Run the exact updated GPU dependency regression and complete 18-case deko3d host mock in a current checkout or GitHub Actions and inspect CI logs.
 - [ ] Build real ARM64 NRO and UAM DKSH with devkitPro and confirm on Nintendo Switch hardware.
+
+## Stage 121: variant-specific GPU build cleanup (2026-10-17)
+
+- [x] Add checks in `tests/test_gpu_make_dependencies.sh` that `make -f gpu/triangle.mk -n clean` includes triangle ELF/NACP/NRO and `make -f gpu/clear.mk -n clean` includes clear-smoke ELF/NACP/NRO.
+- [x] Execute an isolated GNU Make fixture representing the shared clear Makefile and triangle override: all six output-path checks passed. The entire exact GitHub regression was not executed locally.
+- [ ] Run the exact host regression and the 18-scenario deko3d mock suite from a full current checkout; GitHub Actions run outcome remains unverified.
+- [ ] Produce ARM64 GPU NRO with devkitA64/UAM and verify real display output on Switch hardware.
