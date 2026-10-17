@@ -15,6 +15,8 @@ import stat
 import struct
 from typing import Iterator
 
+from tools.foj_fd_bound_reader import open_regular_beneath
+
 HEADER_SIZE = 128
 CHUNK_SIZE = 1024 * 1024
 DEFAULT_MAX_FILE_BYTES = 512 * 1024 * 1024
@@ -103,36 +105,41 @@ def parse_dds_candidate(header: bytes, *, offset: int, file_bytes: int) -> dict 
     }
 
 
-def iter_candidate_headers(path: Path, *, max_hits: int = 128) -> Iterator[tuple[int, bytes]]:
-    """Scan a file in bounded chunks; retain header-sized overlap."""
+def _iter_headers_stream(stream, *, max_hits: int = 128) -> Iterator[tuple[int, bytes]]:
+    """Stream candidate headers from an already opened regular-file descriptor."""
     last_offset = -1
     hits = 0
-    with path.open("rb") as stream:
-        carry = b""
-        read_pos = 0
-        while True:
-            chunk = stream.read(CHUNK_SIZE)
-            if not chunk:
+    carry = b""
+    read_pos = 0
+    while True:
+        chunk = stream.read(CHUNK_SIZE)
+        if not chunk:
+            break
+        window = carry + chunk
+        base = read_pos - len(carry)
+        start = 0
+        while hits < max_hits:
+            at = window.find(b"DDS ", start)
+            if at < 0:
                 break
-            window = carry + chunk
-            base = read_pos - len(carry)
-            start = 0
-            while hits < max_hits:
-                at = window.find(b"DDS ", start)
-                if at < 0:
-                    break
-                if at + HEADER_SIZE > len(window):
-                    break  # The next chunk contains the complete candidate.
-                absolute = base + at
-                if absolute > last_offset:
-                    last_offset = absolute
-                    hits += 1
-                    yield absolute, window[at:at + HEADER_SIZE]
-                start = at + 4
-            if hits >= max_hits:
-                return
-            carry = window[-(HEADER_SIZE - 1):]
-            read_pos += len(chunk)
+            if at + HEADER_SIZE > len(window):
+                break  # The next chunk contains the complete candidate.
+            absolute = base + at
+            if absolute > last_offset:
+                last_offset = absolute
+                hits += 1
+                yield absolute, window[at:at + HEADER_SIZE]
+            start = at + 4
+        if hits >= max_hits:
+            return
+        carry = window[-(HEADER_SIZE - 1):]
+        read_pos += len(chunk)
+
+
+def iter_candidate_headers(path: Path, *, max_hits: int = 128) -> Iterator[tuple[int, bytes]]:
+    """Backward-compatible scanner with no-follow final file access."""
+    with open_regular_beneath(path.parent, path.name) as (stream, _):
+        yield from _iter_headers_stream(stream, max_hits=max_hits)
 
 
 def inventory(root: Path, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
@@ -166,13 +173,21 @@ def inventory(root: Path, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
                 continue
             result["files_scanned"] += 1
             try:
-                for offset, head in iter_candidate_headers(
-                        path, max_hits=max_hits_per_file):
-                    metadata = parse_dds_candidate(
-                        head, offset=offset, file_bytes=file_stat.st_size)
-                    if metadata is not None:
-                        metadata["relative_path"] = path.relative_to(root).as_posix()
-                        result["candidates"].append(metadata)
+                rel = path.relative_to(root).as_posix()
+                with open_regular_beneath(root, rel) as (stream, opened):
+                    # A path may have been swapped between lstat and open.
+                    identity = lambda st: (
+                        st.st_dev, st.st_ino, st.st_mode, st.st_size,
+                        st.st_mtime_ns, st.st_ctime_ns)
+                    if identity(file_stat) != identity(opened):
+                        raise ValueError("DDS source changed between stat and open")
+                    for offset, head in _iter_headers_stream(
+                            stream, max_hits=max_hits_per_file):
+                        metadata = parse_dds_candidate(
+                            head, offset=offset, file_bytes=opened.st_size)
+                        if metadata is not None:
+                            metadata["relative_path"] = rel
+                            result["candidates"].append(metadata)
             except OSError:
                 # Cannot prove the contents of a file we failed to read.
                 result.setdefault("read_errors", 0)
