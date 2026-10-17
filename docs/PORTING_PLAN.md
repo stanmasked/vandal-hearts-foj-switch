@@ -549,3 +549,11 @@ The local host test uses a reconstructed subset, not the exact full repository c
 - [ ] Run all 18 deko3d lifecycle mock scenarios and build native NRO with real devkitA64/UAM before claiming hardware GPU compatibility.
 
 - [x] Follow-up local execution: stage-110 reconstructed two-slot C test with the new oversize case compiled and passed under strict C11, `-DNDEBUG`, UBSan using GCC and Clang. This confirms the isolated loader behavior, not the full GitHub checkout.
+
+## Stage 112: NACP metadata dependency invalidation (2026-10-17)
+
+- [x] Fix `gpu/clear.mk` so `$(OUT).nacp` depends on shared `gpu/clear.mk` and `$(GPU_EXTRA_DEPS)` (includes `gpu/triangle.mk` for triangle variant). Title/version changes in these files must now regenerate metadata.
+- [x] Extend `tests/test_gpu_make_dependencies.sh` to check a current synthetic triangle NACP remains up-to-date, but touching either GPU Makefile triggers `nacptool --create` in dry-run output.
+- [x] Validate the same NACP Make dependency mechanism with a local minimal GNU Make fixture: current NACP no-op; touched triangle Makefile triggers build recipe.
+- [ ] Run complete repository test and inspect CI results; local GitHub cloning is blocked by DNS and no full repository run is confirmed.
+- [ ] Verify actual SDK UAM/ARM64/NRO compilation and Nintendo Switch GPU output.
