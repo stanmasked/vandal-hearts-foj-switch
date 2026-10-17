@@ -119,6 +119,22 @@ int main(void) {
     assert(memcmp(pool+layout.fragment_offset,module,max)==0);
     generated_module(module,max,FOJ_DKSH_VERTEX);
     assert(memcmp(pool+layout.vertex_offset,module,max)==0);
+    /* Oversized file must be rejected before allocating/copying GPU data. */
+    uint8_t *oversize=(uint8_t*)malloc(max+256);
+    assert(oversize);
+    generated_module(oversize,max,FOJ_DKSH_FRAGMENT);
+    memset(oversize+max,0x5A,256);
+    write_module(path,oversize,max+256);
+    free(oversize);
+    used=890;
+    assert(!foj_dksh_read_file(path,pool+layout.fragment_offset,
+                               FOJ_GPU_SHADER_SLOT_BYTES,
+                               FOJ_DKSH_FRAGMENT,&used));
+    assert(used==890);
+    generated_module(module,max,FOJ_DKSH_FRAGMENT);
+    assert(memcmp(pool+layout.fragment_offset,module,max)==0);
+    generated_module(module,max,FOJ_DKSH_VERTEX);
+    assert(memcmp(pool+layout.vertex_offset,module,max)==0);
     /* Invalid input pointers/stages must be rejected without touching slots. */
     generated_module(module,max,FOJ_DKSH_FRAGMENT);
     used=901;
