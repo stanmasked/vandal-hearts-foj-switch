@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import struct
 import subprocess
@@ -319,6 +320,112 @@ class Stage171ReceiptTests(unittest.TestCase):
             self.assertNotEqual(proc.returncode, 0)
             self.assertNotIn(str(root), proc.stderr)
             self.assertNotIn("asset.bin", proc.stderr)
+
+
+    def test_stage172_receipt_symlink_substitution_between_stat_and_open(self):
+        tmp, root, z, r, sheet, link, a, b = self.prepare()
+        with tmp:
+            receipt = root / "ci-receipt.json"
+            target = root / "outside.json"
+            receipt.write_text(json.dumps(r), encoding="utf-8")
+            target.write_text(json.dumps(r), encoding="utf-8")
+            actual_open = os.open
+
+            def substitute(path, flags, *args, **kwargs):
+                if Path(path) == receipt:
+                    receipt.unlink()
+                    receipt.symlink_to(target)
+                return actual_open(path, flags, *args, **kwargs)
+
+            with patch("tools.foj_stage171_build_identity.os.open",
+                       side_effect=substitute):
+                with self.assertRaises(ValueError):
+                    read_receipt(receipt)
+
+    def test_stage172_receipt_regular_inode_substitution_before_open(self):
+        tmp, root, z, r, sheet, link, a, b = self.prepare()
+        with tmp:
+            receipt = root / "ci-receipt.json"
+            replacement = root / "replacement.json"
+            receipt.write_text(json.dumps(r), encoding="utf-8")
+            replacement.write_text(json.dumps(r), encoding="utf-8")
+            actual_open = os.open
+
+            def substitute(path, flags, *args, **kwargs):
+                if Path(path) == receipt:
+                    os.replace(replacement, receipt)
+                return actual_open(path, flags, *args, **kwargs)
+
+            with patch("tools.foj_stage171_build_identity.os.open",
+                       side_effect=substitute):
+                with self.assertRaises(ValueError):
+                    read_receipt(receipt)
+
+    def test_stage172_receipt_regular_inode_substitution_after_open(self):
+        tmp, root, z, r, sheet, link, a, b = self.prepare()
+        with tmp:
+            receipt = root / "ci-receipt.json"
+            replacement = root / "replacement.json"
+            receipt.write_text(json.dumps(r), encoding="utf-8")
+            replacement.write_text(json.dumps(r), encoding="utf-8")
+            actual_fdopen = os.fdopen
+
+            def substitute(fd, mode):
+                os.replace(replacement, receipt)
+                return actual_fdopen(fd, mode)
+
+            with patch("tools.foj_stage171_build_identity.os.fdopen",
+                       side_effect=substitute):
+                with self.assertRaises(ValueError):
+                    read_receipt(receipt)
+
+    def test_stage172_receipt_same_inode_mutation_between_passes(self):
+        tmp, root, z, r, sheet, link, a, b = self.prepare()
+        with tmp:
+            receipt = root / "ci-receipt.json"
+            receipt.write_text(json.dumps(r), encoding="utf-8")
+            alternate = dict(r, bundle_sha256="f" * 64)
+            mutated = json.dumps(alternate).encode("utf-8")
+            self.assertEqual(len(mutated), receipt.stat().st_size)
+            actual_fdopen = os.fdopen
+
+            class MutateOnRewind:
+                def __init__(self, inner):
+                    self.inner = inner
+
+                def __enter__(self):
+                    self.inner.__enter__()
+                    return self
+
+                def __exit__(self, *args):
+                    return self.inner.__exit__(*args)
+
+                def fileno(self):
+                    return self.inner.fileno()
+
+                def read(self, length):
+                    return self.inner.read(length)
+
+                def seek(self, offset, whence=0):
+                    if offset == 0 and whence == 0:
+                        with receipt.open("r+b") as writer:
+                            writer.write(mutated)
+                            writer.flush()
+                    return self.inner.seek(offset, whence)
+
+            with patch("tools.foj_stage171_build_identity.os.fdopen",
+                       side_effect=lambda fd, mode: MutateOnRewind(
+                           actual_fdopen(fd, mode))):
+                with self.assertRaises(ValueError):
+                    read_receipt(receipt)
+
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "POSIX FIFO required")
+    def test_stage172_receipt_fifo_rejected_without_blocking(self):
+        with tempfile.TemporaryDirectory() as temp:
+            fifo = Path(temp) / "receipt.json"
+            os.mkfifo(fifo)
+            with self.assertRaises(ValueError):
+                read_receipt(fifo)
 
 
 if __name__ == "__main__":
