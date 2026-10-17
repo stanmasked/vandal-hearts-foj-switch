@@ -48,6 +48,7 @@ class MetadataTransitBudgetTests(unittest.TestCase):
         manifest = {
             "schema": "invented-stage",
             "nested": [{"имя": "файл-😀", "offset": 128}, {}, 1],
+            "padding": "x" * 1024,
         }
         canonical = (json.dumps(manifest, indent=2, sort_keys=True,
                                 ensure_ascii=False) + "\n").encode("utf-8")
