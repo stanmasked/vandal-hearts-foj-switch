@@ -262,7 +262,8 @@ int main(int argc,char **argv) {
     while (appletMainLoop()) {
         padUpdate(&pad);
         if (padGetButtonsDown(&pad)&HidNpadButton_Plus) {
-            exit_status=0;
+            /* Exiting before presenting a frame is not a successful smoke test. */
+            if (frame>0) exit_status=0;
             break;
         }
 
