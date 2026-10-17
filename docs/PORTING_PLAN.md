@@ -703,3 +703,14 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Re-invoking Make without changes must then leave the successful DKSH untouched, without a second compiler or validator invocation.
 - [x] Run a minimal isolated GNU Make `.DELETE_ON_ERROR` scenario with validator rejection, cleanup, successful rebuild and incremental reuse: PASS. This is not the exact full repo shell test.
 - [ ] Run current shader regression and deko3d mock from a complete checkout; CI results and physical Switch NRO are still unverified.
+
+## Stage 132: execute exact DKSH host test and isolate CI result (2026-10-17)
+
+- [x] Retrieved `gpu/Makefile` and `tests/test_gpu_shader_failure_cleanup.sh` from current GitHub repository into an isolated local workspace and verified their **Git blob hashes** against GitHub:
+  - `gpu/Makefile`: `d5955d6a6e02bce5a74b6bebefb1859ab5668119`
+  - `tests/test_gpu_shader_failure_cleanup.sh`: `14591f0125190a9f0ff168338605623e695a3418`
+- [x] Executed `bash tests/test_gpu_shader_failure_cleanup.sh` on those exact files: **PASS**, covering all three synthetic shader targets through compiler/validator rejection, `.DELETE_ON_ERROR`, successful compile, incremental reuse, input edits, validator edits, rejected-output recovery and reuse. This is a **host-only test** with intentionally fake UAM and DKSH payloads.
+- [x] Performed local negative mutation checks: removing `.DELETE_ON_ERROR:` caused the test to FAIL on retained rejected DKSH; removing the `tools/validate_dksh.py` prerequisite caused it to FAIL on skipped rebuild. Both important regressions are detected.
+- [x] Split shader failure/recovery regression into its own GitHub Actions step `shaders`; logs are saved as `gpu-host-shaders.log` and its result is shown in job summary (GCC/Clang matrix unchanged).
+- [ ] Confirm GitHub Actions runs and the separate full GPU mock C11 suite: no actual CI logs inspected here.
+- [ ] Compile real DKSH with UAM, build ARM64 GPU NRO using devkitA64 and test presentation on physical Switch.
