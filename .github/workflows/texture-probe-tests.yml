@@ -1,0 +1,39 @@
+name: Private PS3 Texture Probe Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/texture-probe-tests.yml"
+      - "tools/foj_texture_probe.py"
+      - "tests/test_foj_texture_probe.py"
+  pull_request:
+    paths:
+      - ".github/workflows/texture-probe-tests.yml"
+      - "tools/foj_texture_probe.py"
+      - "tests/test_foj_texture_probe.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe-unit-tests:
+    name: Texture probe (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run synthetic DDS metadata scan regressions
+        run: python -m unittest discover -s tests -p 'test_foj_texture_probe.py' -v
+      - name: Check Python parser and command-line usage
+        run: |
+          python -m py_compile tools/foj_texture_probe.py tests/test_foj_texture_probe.py
+          python -m tools.foj_texture_probe --help
