@@ -627,3 +627,11 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Execute an isolated GNU Make fixture representing the shared clear Makefile and triangle override: all six output-path checks passed. The entire exact GitHub regression was not executed locally.
 - [ ] Run the exact host regression and the 18-scenario deko3d mock suite from a full current checkout; GitHub Actions run outcome remains unverified.
 - [ ] Produce ARM64 GPU NRO with devkitA64/UAM and verify real display output on Switch hardware.
+
+## Stage 122: execute clean and verify cross-variant isolation (2026-10-17)
+
+- [x] Strengthen `tests/test_gpu_make_dependencies.sh`: after the pre-existing `make -n clean` checks, actually execute `make -f gpu/clear.mk clean` in the disposable copied-Makefile fixture; confirm it deletes all three clear-smoke ELF/NACP/NRO files but preserves all three triangle outputs.
+- [x] Execute `make -f gpu/triangle.mk clean` in the same disposable fixture and require the three triangle artifacts to be removed.
+- [x] Commit the added executable assertions. These do not invoke devkitPro and never clean a user's real build directory, because the test changes directory into its own mktemp fixture.
+- [ ] Verify the *exact updated* test script and full host suite in a current checkout or GitHub Actions; neither successful CI run nor all 18 lifecycle scenarios has been observed here.
+- [ ] Build actual GPU NRO with devkitA64/UAM and test presentation on physical hardware.
