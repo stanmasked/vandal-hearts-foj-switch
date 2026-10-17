@@ -653,6 +653,42 @@ not a measured general-purpose speedup guarantee. Source provenance,
 actual FoJ resource formats and Nintendo Switch playback remain
 unverified.
 
+## Stage 158: reproducible, generated-only performance diagnostics
+
+The standalone `python -m tools.foj_stage158_benchmark` command measures
+two stage-157 metadata processing workloads: scanning DDS candidate spans
+against a generated pointer prefix (stage 142), and discovering disjoint
+three-entry hypothetical table runs (stage 143). These experiments do
+**not** use commercial PS3 files, unpack user assets, or claim any
+verified FoJ material/model associations.
+
+The harness generates a fresh synthetic file and manifest inside a
+temporary directory for each fixed-size case. Stable offsets, invented
+DDS headers and invented pointer words ensure reproducible *inputs*.
+Temporary source file paths and bytes are never included in the output.
+
+There are three workloads/profiles:
+
+| Profile | DDS candidates / table groups per case | Use |
+| --- | --- | --- |
+| `smoke` | 32, 128 | Short CI diagnostic |
+| `standard` | 128, 512 | More representative local sweep |
+| `stress` | 512, 2048 | Bounded upper-end local probe |
+
+Sample command: `python -m tools.foj_stage158_benchmark --profile standard --repeats 3 --output local-stage158.json`.
+The output file must not already exist. Each record contains the
+case size, exact observed record count, **median elapsed milliseconds**
+and **maximum tracemalloc-traced peak KiB**. The latter measures only
+traced Python allocations, not total RSS, native allocator use, GPU
+memory or Nintendo Switch hardware. Elapsed times vary by Python,
+host load, filesystem and runner, even with identical inputs.
+
+CI on Python 3.10 and 3.12 executes the small profile and verifies
+that counts and source-private output rules are preserved. CI deliberately
+does not require a particular elapsed time or benchmark speedup.
+Benchmark reports are not treated as evidence of real FoJ decoding or
+runtime performance and are not uploaded automatically.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ
