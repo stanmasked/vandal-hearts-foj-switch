@@ -22,17 +22,17 @@ check-tool:
 $(GPU_OUT):
 	mkdir -p $@
 
-$(GPU_OUT)/foj_actor.vert.dksh: $(VERT) | $(GPU_OUT) check-tool
+$(GPU_OUT)/foj_actor.vert.dksh: $(VERT) tools/validate_dksh.py | $(GPU_OUT) check-tool
 	$(UAM) -s vert -o $@ $<
 	python3 -m tools.validate_dksh --expect-stage vertex $@
 
-$(GPU_OUT)/foj_actor.frag.dksh: $(FRAG) | $(GPU_OUT) check-tool
+$(GPU_OUT)/foj_actor.frag.dksh: $(FRAG) tools/validate_dksh.py | $(GPU_OUT) check-tool
 	$(UAM) -s frag -o $@ $<
 	python3 -m tools.validate_dksh --expect-stage fragment $@
 
 # The plain UV-gradient fragment shader needs no atlas and pairs with
 # the same XYZW/UV vertex shader as the original-actor research pipeline.
-$(GPU_OUT)/foj_triangle.frag.dksh: $(TRI_FRAG) | $(GPU_OUT) check-tool
+$(GPU_OUT)/foj_triangle.frag.dksh: $(TRI_FRAG) tools/validate_dksh.py | $(GPU_OUT) check-tool
 	$(UAM) -s frag -o $@ $<
 	python3 -m tools.validate_dksh --expect-stage fragment $@
 
