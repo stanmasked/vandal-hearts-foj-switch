@@ -31,6 +31,18 @@ strictly ordered enter/outcome/exit events. Direct symlinks, FIFO
 entries, malformed records, forged duplicate outcomes, decreasing
 frame counts and reversed slot order are rejected.
 
+### Stage 170 — link to manually observed screens only when justified
+
+A new offline tool, `tools/foj_stage170_cpu_visual_alignment.py`,
+compares the CPU recovery report to **one explicitly operator-linked**
+scenario from the private stage-166 screen observation sheet. A
+separately created JSON link form begins entirely blank; no CPU log
+or expected color is automatically treated as an actual Switch
+observation. Even a consistent declared association is unverified,
+and the report never asserts GPU scanout or playable gameplay.
+See `docs/GPU_STAGE170_CPU_VISUAL_ALIGNMENT.md` for examples and
+privacy limits.
+
 ### What the comparison means
 
 - `later_attempt_reached_clean_cpu_exit` — the first log contains
