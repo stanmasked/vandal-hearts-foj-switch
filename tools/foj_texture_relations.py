@@ -21,6 +21,21 @@ HEADER_BYTES = 128
 DEFAULT_PREFIX_BYTES = 65536
 MAX_PREFIX_BYTES = 1048576
 DEFAULT_MAX_POINTERS_PER_CANDIDATE = 16
+MAX_RELATION_CANDIDATES = 65536
+
+
+def _merged_candidate_spans(entries: list[dict[str, Any]]) -> list[tuple[int, int]]:
+    """Merge sorted DDS ranges; end bounds are exclusive."""
+    merged: list[tuple[int, int]] = []
+    for entry in entries:
+        start = entry["offset"]
+        end = entry["candidate_span_end"] or (start + HEADER_BYTES)
+        if merged and start <= merged[-1][1]:
+            previous_start, previous_end = merged[-1]
+            merged[-1] = (previous_start, max(previous_end, end))
+        else:
+            merged.append((start, end))
+    return merged
 
 
 def _safe_relative_path(raw: str) -> PurePosixPath:
@@ -53,6 +68,8 @@ def build_relations(manifest: dict[str, Any], *, root: Path | None = None,
     candidates = manifest.get("candidates")
     if not isinstance(candidates, list):
         raise ValueError("Manifest candidates must be a list")
+    if len(candidates) > MAX_RELATION_CANDIDATES:
+        raise ValueError("Too many DDS candidates for bounded relation search")
     if not 4 <= prefix_bytes <= MAX_PREFIX_BYTES:
         raise ValueError("Pointer prefix size must be from 4 B to 1 MiB")
     if not 1 <= max_pointers_per_candidate <= 128:
@@ -105,10 +122,7 @@ def build_relations(manifest: dict[str, Any], *, root: Path | None = None,
     for relative in sorted(grouped):
         entries = sorted(grouped[relative], key=lambda c: c["offset"])
         total_candidates += len(entries)
-        spans = [
-            (e["offset"], e["candidate_span_end"] or (e["offset"] + HEADER_BYTES))
-            for e in entries
-        ]
+        spans = _merged_candidate_spans(entries)
         for i, entry in enumerate(entries[:-1]):
             following = entries[i + 1]["offset"]
             entry["next_candidate_offset"] = following
@@ -130,8 +144,15 @@ def build_relations(manifest: dict[str, Any], *, root: Path | None = None,
                 if HEADER_BYTES <= entry["offset"] <= 0xffffffff:
                     targets[entry["offset"]].append(entry)
             if targets:
+                span_index = 0
                 for word_pos in range(0, len(prefix) - 3, 4):
-                    if any(a <= word_pos < b for a, b in spans):
+                    # Cursor movement is monotone: O(prefix_words + spans),
+                    # instead of O(prefix_words * candidate_spans).
+                    while (span_index < len(spans) and
+                           spans[span_index][1] <= word_pos):
+                        span_index += 1
+                    if (span_index < len(spans) and
+                            spans[span_index][0] <= word_pos):
                         continue
                     raw = prefix[word_pos:word_pos + 4]
                     for order in ("little", "big"):
