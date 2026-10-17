@@ -78,6 +78,21 @@ class Stage166ObservationLedgerTests(unittest.TestCase):
                          ["not_observed"] * 5)
         self.assertNotIn("matches_expected", json.dumps(res))
 
+    def test_startup_failure_observations_are_private_and_not_diagnoses(self):
+        doc = blank_template()
+        doc["startup"]["clear_smoke_visual"] = "alternating_colors"
+        doc["startup"]["triangle_launch_visual"] = "black_screen"
+        doc["startup"]["triangle_exit_observed"] = "freeze_or_crash"
+        doc["startup"]["failure_phase_observed"] = "before_first_frame"
+        report = audit(doc)
+        self.assertEqual(report["declared_startup_fields"], 4)
+        self.assertEqual(report["declared_screen_stages"], 0)
+        self.assertFalse(report["hardware_execution_verified"])
+        self.assertNotIn("freeze_or_crash", json.dumps(report))
+        doc["startup"]["failure_phase_observed"] = "/tmp/private/file"
+        with self.assertRaises(ValueError):
+            audit(doc)
+
     def test_complete_synthetic_filled_fixture_never_claims_hardware_verified(self):
         doc = blank_template()
         fill_metadata(doc)
