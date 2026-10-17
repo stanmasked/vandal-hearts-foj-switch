@@ -47,6 +47,16 @@ missing-shader tests and limitations. **Do not infer that any colors
 were actually displayed just because native CI compiled the NRO.**
 Earlier device/queue/swapchain failures can still show no screen.
 
+## Stage 168 — pre-GPU failure breadcrumbs
+
+If a test exits before any shader or DDS status screen, the latest
+triangle-research NRO can optionally create a numbered, fixed-code,
+private text log in `sdmc:/switch/foj/gpu/`. Compare its CPU-stage codes
+with the actual startup observation; do not fill in visual evidence
+from the log alone. Records are never uploaded by CI and may be absent
+if the SD card cannot be mounted. Instructions:
+`docs/GPU_STAGE168_EARLY_BOOT_JOURNAL.md`.
+
 ## Record actual observations, not expected ones
 
 Edit your **local private** JSON and enter the tested Git commit,
