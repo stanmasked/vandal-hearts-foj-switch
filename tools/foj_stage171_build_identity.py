@@ -131,24 +131,46 @@ def write_receipt(bundle: Path, path: Path, commit: str, run: int) -> None:
 
 
 def read_receipt(path: Path) -> dict[str, Any]:
+    """Read an unsigned receipt from one stable, bounded file descriptor.
+
+    Check the named inode before/open/after, reject final symlinks and
+    special files, and compare two complete reads on the *same* fd.
+    This does not guarantee safety against hostile ancestor swaps or
+    a malicious file system; it is not a CI-signature verification.
+    """
     try:
-        meta = path.lstat()
-        if not stat.S_ISREG(meta.st_mode) or not 2 <= meta.st_size <= MAX_RECEIPT:
+        initial = path.lstat()
+        if not stat.S_ISREG(initial.st_mode) or not 2 <= initial.st_size <= MAX_RECEIPT:
             raise _bad()
-        with path.open("rb") as stream:
-            raw = stream.read(MAX_RECEIPT + 1)
-        if len(raw) != meta.st_size:
+        flags = (os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) |
+                 getattr(os, "O_NONBLOCK", 0))
+        fd = os.open(path, flags)
+        with os.fdopen(fd, "rb") as stream:
+            opened = os.fstat(stream.fileno())
+            first = stream.read(MAX_RECEIPT + 1)
+            stream.seek(0)
+            second = stream.read(MAX_RECEIPT + 1)
+            final = os.fstat(stream.fileno())
+        named = path.lstat()
+
+        def identity(meta):
+            return (meta.st_dev, meta.st_ino, meta.st_mode, meta.st_size,
+                    meta.st_mtime_ns, meta.st_ctime_ns)
+
+        if (identity(initial) != identity(opened) or
+                identity(opened) != identity(final) or
+                identity(final) != identity(named) or
+                len(first) != initial.st_size or first != second):
             raise _bad()
         result = json.loads(
-            raw.decode("utf-8"),
+            first.decode("utf-8"),
             object_pairs_hook=_pairs,
             parse_constant=lambda _: (_ for _ in ()).throw(_bad()),
         )
-    except (OSError, UnicodeError, json.JSONDecodeError, RecursionError):
+    except (OSError, UnicodeError, json.JSONDecodeError, RecursionError, ValueError):
         raise _bad() from None
     validate_receipt(result)
     return result
-
 
 def validate_receipt(result: Any) -> None:
     if not isinstance(result, dict) or set(result) != {
