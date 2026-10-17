@@ -189,6 +189,19 @@ for extension in elf nacp nro; do
         exit 1
     fi
 done
+# Materialize representative host outputs: a dry-run listing alone cannot
+# prove clean actually removes the NDEBUG and sanitizer executables.
+for binary in \
+    build/foj-deko3d-lifecycle-host \
+    build/foj-deko3d-lifecycle-ndebug \
+    build/foj-deko3d-lifecycle-asan \
+    build/foj-dksh-layout-integration-ndebug \
+    build/foj-dksh-intake-ndebug \
+    build/foj-deko3d-shader-layout-ndebug \
+    build/foj-gpu-smoke-plan-ndebug \
+    build/foj-deko3d-contract-ndebug; do
+    touch "$binary"
+done
 # Execute the real clean recipes in this disposable fixture as well:
 # text-matching a dry-run alone cannot prove that outputs are removed.
 make -f gpu/clear.mk clean >/dev/null
@@ -199,6 +212,20 @@ for extension in elf nacp nro; do
     fi
     if [[ ! -f "build/foj-deko3d-triangle-research.$extension" ]]; then
         echo "FAIL: clear clean deleted triangle .$extension" >&2
+        exit 1
+    fi
+done
+for binary in \
+    build/foj-deko3d-lifecycle-host \
+    build/foj-deko3d-lifecycle-ndebug \
+    build/foj-deko3d-lifecycle-asan \
+    build/foj-dksh-layout-integration-ndebug \
+    build/foj-dksh-intake-ndebug \
+    build/foj-deko3d-shader-layout-ndebug \
+    build/foj-gpu-smoke-plan-ndebug \
+    build/foj-deko3d-contract-ndebug; do
+    if [[ -e "$binary" ]]; then
+        echo "FAIL: clear clean retained host binary $binary" >&2
         exit 1
     fi
 done
