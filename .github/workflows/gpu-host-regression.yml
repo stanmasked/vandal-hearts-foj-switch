@@ -76,6 +76,17 @@ jobs:
         run: |
           set -o pipefail
           { bash tests/test_gpu_preflight.sh && make -f gpu/clear.mk host-check; } 2>&1 | tee gpu-host-strict.log
+      - name: Stateful deko3d lifecycle (normal and NDEBUG)
+        id: lifecycle
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -o pipefail
+          {
+            make -f gpu/clear.mk build/foj-deko3d-lifecycle-host build/foj-deko3d-lifecycle-ndebug
+            ./build/foj-deko3d-lifecycle-host
+            ./build/foj-deko3d-lifecycle-ndebug
+          } 2>&1 | tee gpu-host-lifecycle.log
       - name: ASan and UBSan host suite
         if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         id: sanitized
@@ -98,6 +109,7 @@ jobs:
             echo '| GPU Make dependency regression | ${{ steps.dependencies.outcome }} |'
             echo '| Synthetic DKSH shader regressions | ${{ steps.shaders.outcome }} |'
             echo '| Strict C11 / triangle syntax | ${{ steps.strict.outcome }} |'
+            echo '| deko3d lifecycle (normal/NDEBUG) | ${{ steps.lifecycle.outcome }} |'
             echo '| ASan and UBSan | ${{ steps.sanitized.outcome }} |'
             echo ''
             echo 'These jobs do not compile UAM shaders or run on Nintendo Switch hardware.'
@@ -111,6 +123,7 @@ jobs:
             gpu-host-dependencies.log
             gpu-host-shaders.log
             gpu-host-strict.log
+            gpu-host-lifecycle.log
             gpu-host-sanitized.log
           if-no-files-found: warn
           retention-days: 7
