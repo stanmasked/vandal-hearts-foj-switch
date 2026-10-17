@@ -19,7 +19,10 @@ import stat
 import tempfile
 from typing import Any
 
-from tools.foj_texture_probe import DEFAULT_MAX_FILE_BYTES, inventory
+from tools.foj_texture_probe import (
+    DEFAULT_MAX_FILE_BYTES, DEFAULT_MAX_CANDIDATES,
+    DEFAULT_MAX_METADATA_BYTES, inventory,
+)
 from tools.foj_fd_bound_reader import (
     bounded_directory_names, DEFAULT_MAX_DIR_ENTRIES,
     DEFAULT_MAX_DIR_NAME_BYTES,
@@ -163,7 +166,9 @@ def examine(root: Path, *, max_files: int = DEFAULT_MAX_FILES,
             pointer_prefix_bytes: int = 65536,
             control_windows: int = 256,
             max_dir_entries: int = DEFAULT_MAX_DIR_ENTRIES,
-            max_dir_name_bytes: int = DEFAULT_MAX_DIR_NAME_BYTES) -> tuple[dict[str, Any], ...]:
+            max_dir_name_bytes: int = DEFAULT_MAX_DIR_NAME_BYTES,
+            max_candidates: int = DEFAULT_MAX_CANDIDATES,
+            max_metadata_bytes: int = DEFAULT_MAX_METADATA_BYTES) -> tuple[dict[str, Any], ...]:
     """Produce reports only from a source tree stable across two snapshots."""
     before, stats = snapshot(
         root, max_files=max_files, max_file_bytes=max_file_bytes,
@@ -171,7 +176,9 @@ def examine(root: Path, *, max_files: int = DEFAULT_MAX_FILES,
         max_dir_name_bytes=max_dir_name_bytes)
     scan = inventory(root, max_file_bytes=max_file_bytes, max_files=max_files,
                      max_dir_entries=max_dir_entries,
-                     max_dir_name_bytes=max_dir_name_bytes)
+                     max_dir_name_bytes=max_dir_name_bytes,
+                     max_candidates=max_candidates,
+                     max_metadata_bytes=max_metadata_bytes)
     if (scan["files_scanned"] != stats["regular_files"] or
             scan["skipped_large"] or scan["skipped_links"] or
             scan["scan_truncated_at_file_limit"] or scan.get("read_errors", 0)):
@@ -248,6 +255,9 @@ def main() -> int:
                         help="Maximum source bytes per snapshot, default 1024 MiB")
     parser.add_argument("--max-files", type=int, default=DEFAULT_MAX_FILES)
     parser.add_argument("--file-mib", type=int, default=512)
+    parser.add_argument("--max-candidates", type=int,
+                        default=DEFAULT_MAX_CANDIDATES)
+    parser.add_argument("--max-metadata-mib", type=int, default=8)
     parser.add_argument("--max-dir-entries", type=int,
                         default=DEFAULT_MAX_DIR_ENTRIES)
     parser.add_argument("--max-dir-name-bytes", type=int,
@@ -257,6 +267,8 @@ def main() -> int:
         result = publish(
             args.root, args.output_dir,
             max_files=args.max_files,
+            max_candidates=args.max_candidates,
+            max_metadata_bytes=args.max_metadata_mib * 1024 * 1024,
             max_file_bytes=args.file_mib * 1024 * 1024,
             max_total_bytes=args.total_mib * 1024 * 1024,
             max_dir_entries=args.max_dir_entries,
