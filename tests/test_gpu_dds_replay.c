@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 /* Stage-162 generated-only replay verification tests.
  * Include the implementation in this isolated translation unit so the
  * exact internal replay routine is exercised without exporting test APIs.
