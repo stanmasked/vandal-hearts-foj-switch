@@ -9,6 +9,7 @@
 #include <switch.h>
 #include <deko3d.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include "smoke_plan.h"
@@ -20,9 +21,13 @@
 #include "shader_layout.h"
 #include "research_mesh.h"
 #include "gpu_draw_plan.h"
+#include "research_texture.h"
 _Static_assert((size_t)FOJ_GPU_SHADER_MAX_DKSH ==
                (size_t)FOJ_DKSH_MAX_BYTES,
                "DKSH intake and GPU shader slot capacities differ");
+_Static_assert((size_t)FOJ_RESEARCH_MATERIAL_COUNT ==
+               (size_t)FOJ_RESEARCH_TEXTURE_COUNT,
+               "Synthetic material and texture counts must agree");
 #endif
 
 enum { SCREEN_WIDTH=1280, SCREEN_HEIGHT=720, BUFFER_COUNT=2 };
@@ -58,6 +63,11 @@ int main(int argc,char **argv) {
     DkMemBlock vertex_mem=NULL;
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
     DkMemBlock shader_mem=NULL;
+    DkMemBlock texture_data_mem=NULL;
+    DkMemBlock texture_images_mem[FOJ_RESEARCH_TEXTURE_COUNT]={0};
+    DkImage texture_images[FOJ_RESEARCH_TEXTURE_COUNT];
+    DkImageView texture_views[FOJ_RESEARCH_TEXTURE_COUNT];
+    DkGpuAddr texture_data_addr=DK_GPU_ADDR_INVALID;
     DkShader shader_vertex={0},shader_fragment={0};
 #endif
     DkGpuAddr vertex_gpu_addr=0;
@@ -216,6 +226,92 @@ int main(int argc,char **argv) {
         dkShaderGetStage(&shader_vertex)!=DkStage_Vertex ||
         dkShaderGetStage(&shader_fragment)!=DkStage_Fragment)
         goto cleanup;
+
+    /* Two invented 8x8 RGBA8 textures. Staging and descriptors live in a
+     * persistent CPU-visible GPU block; sampled images are GPU image blocks.
+     * DMA completes and queue idles before render lists are recorded. */
+    enum {
+        TEXTURE_DATA_BYTES=0x1000,
+        IMAGE_DESCRIPTORS_OFFSET=0,
+        SAMPLER_DESCRIPTORS_OFFSET=0x100,
+        PIXEL_STAGING_OFFSET=0x200,
+        PIXEL_STAGING_STRIDE=0x200
+    };
+    _Static_assert(PIXEL_STAGING_OFFSET +
+                   FOJ_RESEARCH_TEXTURE_COUNT*PIXEL_STAGING_STRIDE
+                   <=TEXTURE_DATA_BYTES, "Texture staging pool too small");
+    _Static_assert((size_t)FOJ_RESEARCH_TEXTURE_BYTES<=
+                   (size_t)PIXEL_STAGING_STRIDE,
+                   "Texture row data exceeds staging stride");
+
+    DkMemBlockMaker texture_data_maker;
+    dkMemBlockMakerDefaults(&texture_data_maker,device,TEXTURE_DATA_BYTES);
+    texture_data_maker.flags=DkMemBlockFlags_CpuUncached|
+                             DkMemBlockFlags_GpuCached;
+    texture_data_mem=dkMemBlockCreate(&texture_data_maker);
+    if (!texture_data_mem)goto cleanup;
+    uint8_t *texture_data_cpu=(uint8_t*)dkMemBlockGetCpuAddr(texture_data_mem);
+    texture_data_addr=dkMemBlockGetGpuAddr(texture_data_mem);
+    if (!texture_data_cpu || texture_data_addr==DK_GPU_ADDR_INVALID)
+        goto cleanup;
+
+    DkImageLayout texture_layout;
+    DkImageLayoutMaker texture_layout_maker;
+    dkImageLayoutMakerDefaults(&texture_layout_maker,device);
+    texture_layout_maker.type=DkImageType_2D;
+    texture_layout_maker.format=DkImageFormat_RGBA8_Unorm;
+    texture_layout_maker.dimensions[0]=FOJ_RESEARCH_TEXTURE_WIDTH;
+    texture_layout_maker.dimensions[1]=FOJ_RESEARCH_TEXTURE_HEIGHT;
+    texture_layout_maker.dimensions[2]=1;
+    dkImageLayoutInitialize(&texture_layout,&texture_layout_maker);
+    uint32_t texture_image_bytes=0;
+    if (!foj_smoke_image_allocation(dkImageLayoutGetSize(&texture_layout),
+                                    dkImageLayoutGetAlignment(&texture_layout),
+                                    DK_MEMBLOCK_ALIGNMENT,&texture_image_bytes))
+        goto cleanup;
+
+    for (unsigned i=0;i<FOJ_RESEARCH_TEXTURE_COUNT;++i) {
+        DkMemBlockMaker image_maker;
+        dkMemBlockMakerDefaults(&image_maker,device,texture_image_bytes);
+        image_maker.flags=DkMemBlockFlags_GpuCached|DkMemBlockFlags_Image;
+        texture_images_mem[i]=dkMemBlockCreate(&image_maker);
+        if (!texture_images_mem[i])goto cleanup;
+        dkImageInitialize(&texture_images[i],&texture_layout,
+                          texture_images_mem[i],0);
+        dkImageViewDefaults(&texture_views[i],&texture_images[i]);
+
+        DkImageDescriptor image_desc;
+        dkImageDescriptorInitialize(&image_desc,&texture_views[i],false,false);
+        memcpy(texture_data_cpu+IMAGE_DESCRIPTORS_OFFSET+
+               i*sizeof(image_desc),&image_desc,sizeof(image_desc));
+        if (!foj_research_texture_rgba8(i,
+               texture_data_cpu+PIXEL_STAGING_OFFSET+
+               i*PIXEL_STAGING_STRIDE,FOJ_RESEARCH_TEXTURE_BYTES))
+            goto cleanup;
+
+        DkCopyBuf source={
+            texture_data_addr+PIXEL_STAGING_OFFSET+i*PIXEL_STAGING_STRIDE,
+            FOJ_RESEARCH_TEXTURE_WIDTH,FOJ_RESEARCH_TEXTURE_HEIGHT
+        };
+        const DkImageRect rect={0,0,0,FOJ_RESEARCH_TEXTURE_WIDTH,
+                               FOJ_RESEARCH_TEXTURE_HEIGHT,1};
+        dkCmdBufCopyBufferToImage(cmd,&source,&texture_views[i],&rect,0);
+    }
+
+    DkSampler sampler;
+    dkSamplerDefaults(&sampler);
+    sampler.wrapMode[0]=DkWrapMode_ClampToEdge;
+    sampler.wrapMode[1]=DkWrapMode_ClampToEdge;
+    DkSamplerDescriptor sampler_desc;
+    dkSamplerDescriptorInitialize(&sampler_desc,&sampler);
+    memcpy(texture_data_cpu+SAMPLER_DESCRIPTORS_OFFSET,
+           &sampler_desc,sizeof(sampler_desc));
+
+    const DkCmdList upload_list=dkCmdBufFinishList(cmd);
+    if (!upload_list)goto cleanup;
+    dkQueueSubmitCommands(queue,upload_list);
+    dkQueueWaitIdle(queue);
+    dkCmdBufClear(cmd);
 #endif
 
     /* Mirror switchbrew's deko_basic/Example01 approach: pre-record
@@ -277,9 +373,16 @@ int main(int argc,char **argv) {
             dkCmdBufBindVtxAttribState(cmd,attribs,2);
             dkCmdBufBindVtxBufferState(cmd,vertex_states,1);
             dkCmdBufBindVtxBuffers(cmd,0,vertex_data,1);
+            dkCmdBufBindImageDescriptorSet(cmd,
+                  texture_data_addr+IMAGE_DESCRIPTORS_OFFSET,
+                  FOJ_RESEARCH_TEXTURE_COUNT);
+            dkCmdBufBindSamplerDescriptorSet(cmd,
+                  texture_data_addr+SAMPLER_DESCRIPTORS_OFFSET,1);
             for (size_t batch=0;batch<research_info.batches_written;
                  ++batch) {
                 const FojGpuDrawRange *range=&draw_ranges[batch];
+                DkResHandle handle=dkMakeTextureHandle(range->material_index,0);
+                dkCmdBufBindTextures(cmd,DkStage_Fragment,0,&handle,1);
                 dkCmdBufDraw(cmd,DkPrimitive_Triangles,
                              range->vertex_count,1,range->first_vertex,0);
             }
@@ -321,6 +424,9 @@ cleanup:
     if (vertex_mem)dkMemBlockDestroy(vertex_mem);
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
     if (shader_mem)dkMemBlockDestroy(shader_mem);
+    for (unsigned i=0;i<FOJ_RESEARCH_TEXTURE_COUNT;++i)
+        if (texture_images_mem[i])dkMemBlockDestroy(texture_images_mem[i]);
+    if (texture_data_mem)dkMemBlockDestroy(texture_data_mem);
 #endif
     if (cmd_mem)dkMemBlockDestroy(cmd_mem);
     if (swapchain)dkSwapchainDestroy(swapchain);

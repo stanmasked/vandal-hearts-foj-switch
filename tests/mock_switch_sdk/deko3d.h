@@ -126,4 +126,26 @@ void dkCmdBufBindVtxAttribState(DkCmdBuf,const DkVtxAttribState*,uint32_t);
 void dkCmdBufBindVtxBufferState(DkCmdBuf,const DkVtxBufferState*,uint32_t);
 void dkCmdBufBindVtxBuffers(DkCmdBuf,uint32_t,const DkBufExtents*,uint32_t);
 void dkCmdBufDraw(DkCmdBuf,uint32_t,uint32_t,uint32_t,uint32_t,uint32_t);
+/* Texture-only research path, for syntax checking without Nintendo SDK.
+ * Linked GPU implementations are tested by real devkitA64 CI separately. */
+typedef uint32_t DkResHandle;
+typedef struct { unsigned char data[32]; } DkImageDescriptor;
+typedef struct { unsigned char data[32]; } DkSamplerDescriptor;
+typedef struct { unsigned wrapMode[3]; } DkSampler;
+typedef struct { uint32_t x,y,z,width,height,depth; } DkImageRect;
+typedef struct { DkGpuAddr addr; uint32_t rowLength,imageHeight; } DkCopyBuf;
+enum { DkWrapMode_ClampToEdge=3 };
+void dkCmdBufClear(DkCmdBuf);
+void dkCmdBufCopyBufferToImage(DkCmdBuf,const DkCopyBuf*,
+                              const DkImageView*,const DkImageRect*,uint32_t);
+void dkCmdBufBindImageDescriptorSet(DkCmdBuf,DkGpuAddr,uint32_t);
+void dkCmdBufBindSamplerDescriptorSet(DkCmdBuf,DkGpuAddr,uint32_t);
+void dkCmdBufBindTextures(DkCmdBuf,DkStage,uint32_t,
+                          const DkResHandle[],uint32_t);
+void dkImageDescriptorInitialize(DkImageDescriptor*,
+                                 const DkImageView*,_Bool,_Bool);
+void dkSamplerDefaults(DkSampler*);
+void dkSamplerDescriptorInitialize(DkSamplerDescriptor*,const DkSampler*);
+static inline DkResHandle dkMakeTextureHandle(uint32_t image,uint32_t sampler)
+    { return (image & 0xfffffu) | (sampler<<20); }
 #endif
