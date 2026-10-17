@@ -147,4 +147,21 @@ for shader in foj_actor.vert foj_actor.frag foj_triangle.frag; do
         exit 1
     }
 done
+# Once the policy is corrected, the rejected output should be recoverable.
+# Rebuilding the same target must invoke UAM and validation once, then reuse it.
+for shader in foj_actor.vert foj_actor.frag foj_triangle.frag; do
+    target="gpu/build/$shader.dksh"
+    rm -f compiler-invocations.log validator-invocations.log
+    FAKE_VALIDATE_PASS=1 PYTHONPATH="$tmp" make --no-print-directory -f gpu/Makefile "$target" UAM="$tmp/fake-uam" >"$tmp/recovery.log" 2>&1 || {
+        cat "$tmp/recovery.log" >&2
+        echo "FAIL: rejected shader could not recover: $target" >&2
+        exit 1
+    }
+    [[ -s "$target" ]] || { echo "FAIL: recovered output absent: $target" >&2; exit 1; }
+    [[ $(wc -l < compiler-invocations.log) -eq 1 ]] || { echo "FAIL: recovery compiler count for $target" >&2; exit 1; }
+    [[ $(wc -l < validator-invocations.log) -eq 1 ]] || { echo "FAIL: recovery validator count for $target" >&2; exit 1; }
+    FAKE_VALIDATE_PASS=1 PYTHONPATH="$tmp" make --no-print-directory -f gpu/Makefile "$target" UAM="$tmp/fake-uam" >"$tmp/reuse-after-recovery.log" 2>&1
+    [[ $(wc -l < compiler-invocations.log) -eq 1 ]] || { echo "FAIL: unnecessary recompile after recovery" >&2; exit 1; }
+    [[ $(wc -l < validator-invocations.log) -eq 1 ]] || { echo "FAIL: unnecessary revalidation after recovery" >&2; exit 1; }
+done
 echo "UAM Makefile all three shader targets: compiler and validator cleanup, reuse and source-triggered rebuild PASS"
