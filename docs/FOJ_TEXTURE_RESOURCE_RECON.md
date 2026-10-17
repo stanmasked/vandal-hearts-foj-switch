@@ -485,6 +485,40 @@ providing the necessary `dir_fd` and `O_NOFOLLOW`
 capabilities are supported. The tool does not verify FoJ asset provenance
 or execute original PS3 gameplay or a Nintendo Switch GPU frame.
 
+## Stage 153: bounded directory membership and stable readdir observations
+
+Stage-152 fd-relative enumeration previously built and sorted a complete
+unbounded list of names in each directory, even when the DDS file-count
+limit was low. Stage 153 now uses a shared, read-only
+`bounded_directory_names(dir_fd, ...)` routine. Both stage-141
+DDS inventory and both stage-150 SHA-256 source-tree snapshots enforce
+limits **as names are received**, before sorting/allocating more entries.
+
+Defaults: **20,000 entries per directory**, and **4 MiB of encoded
+filenames per directory**; absolute configurable ceilings are 100,000
+entries and 64 MiB. All entries count, including symlinks, special
+files and subdirectories, not just scanned DDS-containing files. Use
+`--max-dir-entries` and `--max-dir-name-bytes` on
+`python -m tools.foj_texture_probe` or
+`python -m tools.foj_source_coherence_gate` to override
+within the hard bounds. A limit breach raises a generic error without
+revealing source names; neither a truncated list nor a partial pipeline
+may be accepted as a complete evidence report.
+
+The inventory and source snapshots now enumerate each directory again
+after processing it and reject different sets of names; existing fd
+identity, timestamp and SHA-256 comparisons remain in place. Repeated
+enumeration is an **integrity check, not an atomic filesystem snapshot**.
+An attacker can still change and restore entries between observations.
+The same filename appearing twice in one enumeration is rejected.
+
+New standard-library regressions use temporary invented directory floods,
+synthetic extremely long scandir streams, duplicate names, byte-budget
+violations, symlink floods and deliberate first-vs-second-list changes.
+A stable nested DDS fixture must still pass the complete metadata/replay
+pipeline. Tests neither process original PS3 data nor prove FoJ
+container semantics or Nintendo Switch GPU operation.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ
