@@ -16,6 +16,7 @@ for path in gpu/deko3d_clear_main.c gpu/smoke_plan.c gpu/dksh_module.c \
             gpu/dds_screen_status.c gpu/dds_screen_status.h \
             gpu/dds_command_plan.c gpu/dds_command_plan.h \
             gpu/gpu_boot_diagnostics.c gpu/gpu_boot_diagnostics.h \
+            gpu/gpu_boot_journal.c gpu/gpu_boot_journal.h \
             core/gpu_vertex_stream.c \
             core/textured_triangles.h core/gpu_draw_plan.c core/gpu_draw_plan.h \
             gpu/smoke_plan.h gpu/deko3d_api_contract.h core/gpu_vertex_stream.h; do
@@ -35,7 +36,7 @@ if make -f gpu/triangle.mk -n build/foj-deko3d-triangle-research.elf | grep -F -
     echo "FAIL: current triangle ELF should not rebuild" >&2
     exit 1
 fi
-for header in gpu/dksh_module.h gpu/shader_layout.h gpu/dds_screen_status.h gpu/dds_command_plan.h gpu/gpu_boot_diagnostics.h gpu/triangle.mk gpu/clear.mk; do
+for header in gpu/dksh_module.h gpu/shader_layout.h gpu/dds_screen_status.h gpu/dds_command_plan.h gpu/gpu_boot_diagnostics.h gpu/gpu_boot_journal.h gpu/triangle.mk gpu/clear.mk; do
     touch -t 202401010000 "$header"
     if ! make -f gpu/triangle.mk -n build/foj-deko3d-triangle-research.elf | grep -F -- "$build_command" >/dev/null; then
         echo "FAIL: editing $header did not trigger the triangle ELF compiler" >&2
