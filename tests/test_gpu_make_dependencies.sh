@@ -148,4 +148,15 @@ if [[ "$plan" != *'-o build/foj-deko3d-clear-smoke.elf'* ||
     exit 1
 fi
 touch -t 202001010000 gpu/smoke_plan.c
+# A common C header edit must invalidate the clear-smoke binary, but
+# must not change the user-facing NACP metadata.
+touch -t 202401010000 gpu/smoke_plan.h
+plan="$(make -f gpu/clear.mk -n "$clear_nro")"
+if [[ "$plan" != *'-o build/foj-deko3d-clear-smoke.elf'* ||
+      "$plan" != *"$clear_recipe"* ||
+      "$plan" == *'--create'* ]]; then
+    echo "FAIL: clear-smoke header edit must rebuild ELF/NRO without NACP" >&2
+    exit 1
+fi
+touch -t 202001010000 gpu/smoke_plan.h
 echo "GPU triangle and clear-smoke ELF, NACP and NRO dependencies: PASS"
