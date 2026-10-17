@@ -28,7 +28,8 @@ chmod +x "$tmp/fake-uam"
 cat > "$tmp/tools/validate_dksh.py" <<'EOF'
 from pathlib import Path
 Path('validator-invocations.log').open('a').write('called\n')
-raise SystemExit(1)
+import os
+raise SystemExit(0 if os.getenv('FAKE_VALIDATE_PASS') == '1' else 1)
 EOF
 touch "$tmp/tools/__init__.py"
 cd "$tmp"
@@ -76,4 +77,25 @@ for shader in foj_actor.vert foj_actor.frag foj_triangle.frag; do
         exit 1
     fi
 done
-echo "UAM Makefile all three shader targets: compiler and validator cleanup PASS"
+# Successful compile and validation must preserve a usable output.
+for shader in foj_actor.vert foj_actor.frag foj_triangle.frag; do
+    rm -f validator-invocations.log
+    target="gpu/build/$shader.dksh"
+    FAKE_VALIDATE_PASS=1 PYTHONPATH="$tmp" make --no-print-directory -f gpu/Makefile "$target" UAM="$tmp/fake-uam" >"$tmp/success.log" 2>&1 || {
+        cat "$tmp/success.log" >&2
+        echo "FAIL: successful synthetic shader build was rejected" >&2
+        exit 1
+    }
+    [[ -s "$target" ]] || { echo "FAIL: successful DKSH was deleted" >&2; exit 1; }
+    [[ $(wc -l < validator-invocations.log) -eq 1 ]] || {
+        echo "FAIL: validator did not accept shader exactly once" >&2
+        exit 1
+    }
+    FAKE_VALIDATE_PASS=1 PYTHONPATH="$tmp" make --no-print-directory -f gpu/Makefile "$target" UAM="$tmp/fake-uam" >"$tmp/incremental.log" 2>&1 || exit 1
+    [[ $(wc -l < validator-invocations.log) -eq 1 ]] || {
+        echo "FAIL: already-built shader unexpectedly revalidated" >&2
+        exit 1
+    }
+    [[ -s "$target" ]] || exit 1
+done
+echo "UAM Makefile all three shader targets: compiler and validator cleanup and successful reuse PASS"
