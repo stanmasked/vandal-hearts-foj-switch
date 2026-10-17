@@ -17,7 +17,8 @@ from typing import Iterator
 
 from tools.foj_fd_bound_reader import (
     DIRECTORY, NOFOLLOW, READ, _identity, open_regular_at,
-    open_regular_beneath,
+    open_regular_beneath, bounded_directory_names,
+    DEFAULT_MAX_DIR_ENTRIES, DEFAULT_MAX_DIR_NAME_BYTES,
 )
 
 HEADER_SIZE = 128
@@ -146,7 +147,9 @@ def iter_candidate_headers(path: Path, *, max_hits: int = 128) -> Iterator[tuple
 
 
 def inventory(root: Path, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
-              max_files: int = 20000, max_hits_per_file: int = 128) -> dict:
+              max_files: int = 20000, max_hits_per_file: int = 128,
+              max_dir_entries: int = DEFAULT_MAX_DIR_ENTRIES,
+              max_dir_name_bytes: int = DEFAULT_MAX_DIR_NAME_BYTES) -> dict:
     """Enumerate with anchored descriptors, not pathname-based os.walk.
 
     Known symlinks and special entries are skipped (and counted), preserving
@@ -159,6 +162,10 @@ def inventory(root: Path, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
         raise ValueError("Invalid source inventory bounds")
     if not isinstance(root, Path) or not NOFOLLOW or not DIRECTORY:
         raise ValueError("Anchored inventory requires local no-follow directories")
+    if (type(max_dir_entries) is not int or not 1 <= max_dir_entries <= 100000 or
+            type(max_dir_name_bytes) is not int or
+            not 1 <= max_dir_name_bytes <= 64 * 1024 * 1024):
+        raise ValueError("Invalid source directory listing limits")
     result: dict = {
         "schema": "foj-texture-candidates-v1",
         "source": "local-extracted-files",
@@ -190,11 +197,9 @@ def inventory(root: Path, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
         visited += 1
         if visited > max_files + 1:
             raise ValueError("Too many directories for bounded DDS inventory")
-        try:
-            with os.scandir(directory_fd) as scanner:
-                names = sorted(entry.name for entry in scanner)
-        except OSError:
-            raise ValueError("Unable to enumerate source directory") from None
+        names = bounded_directory_names(
+            directory_fd, max_entries=max_dir_entries,
+            max_name_bytes=max_dir_name_bytes)
         # Process the files in this directory before descending into the
         # sorted children, preserving the former os.walk ordering.
         children = []
@@ -248,6 +253,10 @@ def inventory(root: Path, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
                 return
         if _identity(start) != _identity(os.fstat(directory_fd)):
             raise ValueError("Source directory changed during enumeration")
+        if names != bounded_directory_names(
+                directory_fd, max_entries=max_dir_entries,
+                max_name_bytes=max_dir_name_bytes):
+            raise ValueError("Source directory membership changed during scan")
 
     try:
         root_start = os.fstat(root_fd)
@@ -272,13 +281,19 @@ def main() -> int:
                         help="Local JSON report; never automatically uploaded")
     parser.add_argument("--max-file-mib", type=int, default=512)
     parser.add_argument("--max-files", type=int, default=20000)
+    parser.add_argument("--max-dir-entries", type=int,
+                        default=DEFAULT_MAX_DIR_ENTRIES)
+    parser.add_argument("--max-dir-name-bytes", type=int,
+                        default=DEFAULT_MAX_DIR_NAME_BYTES)
     args = parser.parse_args()
     if args.max_file_mib < 1 or args.max_files < 1:
         parser.error("Limits must be positive")
     try:
         report = inventory(args.directory,
                            max_file_bytes=args.max_file_mib * 1024 * 1024,
-                           max_files=args.max_files)
+                           max_files=args.max_files,
+                           max_dir_entries=args.max_dir_entries,
+                           max_dir_name_bytes=args.max_dir_name_bytes)
     except ValueError as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
