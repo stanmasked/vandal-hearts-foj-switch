@@ -1,6 +1,6 @@
 # Flames of Judgment PS3 texture reconnaissance — evidence-first workflow
 
-**Status (stage 143, October 17, 2026): no original FoJ PS3 texture
+**Status (stage 144, October 17, 2026): no original FoJ PS3 texture
 container, swizzling scheme or texture-format distribution has been
 confirmed by an actual resource dump.** The existing Switch renderer supports
 a deliberately narrow classic DDS subset and small private texture atlases;
@@ -118,6 +118,48 @@ or arbitrary binary words. In particular, there is still no identified
 FoJ asset container format. An actual material binding would require
 independent structure evidence from privately inspected files, not just a
 repeating pointer pattern.
+
+## Stage 144: index-like fields and negative-control comparisons
+
+Use stage-143 table hypotheses with the same private extracted directory
+to **observe numerical index patterns in adjacent words**, without assuming
+a material or model format:
+
+```sh
+python3 -m tools.foj_index_column_controls \
+  local-data/foj-table-hypotheses.json \
+  --root /path/to/private/foj-extracted \
+  --output local-data/foj-index-observations.json
+```
+
+For hypothetical fixed-stride tables of **four or more rows**, the tool
+examines other 32-bit words before or after the proposed pointer slot.
+It labels exact ascending `0, 1, ..., N-1` sequences and dense
+zero-based permutations, using the table's candidate byte order. It
+does not treat repeated values or arbitrary increasing integers as
+established indices. Runs with only one four-byte word per row or fewer
+than four rows remain ineligible by default.
+
+As a **negative control**, up to 256 windows sampled elsewhere in the
+same file prefix are independently checked for similar dense
+zero-based sequences. A hit outside the supposed pointer table adds the
+observation `index-like-with-control-matches`; multiple candidate
+fields are labeled ambiguous, and zero controls are never represented
+as evidence of semantic correctness. These counts are descriptive, **not
+a statistical confidence score** and not proof of causality.
+
+The script reopens local files **read-only**, validates relative paths and
+symlinks, and reads no more than 64 KiB from each file by default
+(1 MiB maximum). It outputs relative filenames and strictly bounded
+numeric pattern summaries, not model identifiers, pixel data, binary
+records, shader data or commercial textures. All reports should stay
+under gitignored `local-data/`.
+
+**Even a clean index sequence does not identify a FoJ material index
+or model table.** Verification requires independent evidence from
+actual private FoJ resource files and ultimately correct on-console
+rendering. Original FoJ package parts were not available to run these
+heuristics on real game data during stage 144.
 
 ## How to interpret results
 
