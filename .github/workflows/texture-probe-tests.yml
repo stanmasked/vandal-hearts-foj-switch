@@ -13,6 +13,7 @@ on:
       - "tools/foj_holdout_replication.py"
       - "tools/foj_stability_matrix.py"
       - "tools/foj_corrupt_container_matrix.py"
+      - "tools/foj_report_replay_audit.py"
       - "tests/test_foj_texture_probe.py"
       - "tests/test_foj_texture_relations.py"
       - "tests/test_foj_resource_table_hypotheses.py"
@@ -21,6 +22,7 @@ on:
       - "tests/test_foj_holdout_replication.py"
       - "tests/test_foj_stability_matrix.py"
       - "tests/test_foj_corrupt_container_matrix.py"
+      - "tests/test_foj_report_replay_audit.py"
   pull_request:
     paths:
       - ".github/workflows/texture-probe-tests.yml"
@@ -32,6 +34,7 @@ on:
       - "tools/foj_holdout_replication.py"
       - "tools/foj_stability_matrix.py"
       - "tools/foj_corrupt_container_matrix.py"
+      - "tools/foj_report_replay_audit.py"
       - "tests/test_foj_texture_probe.py"
       - "tests/test_foj_texture_relations.py"
       - "tests/test_foj_resource_table_hypotheses.py"
@@ -40,6 +43,7 @@ on:
       - "tests/test_foj_holdout_replication.py"
       - "tests/test_foj_stability_matrix.py"
       - "tests/test_foj_corrupt_container_matrix.py"
+      - "tests/test_foj_report_replay_audit.py"
   workflow_dispatch:
 
 permissions:
@@ -75,9 +79,11 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_foj_stability_matrix.py' -v
       - name: Test damaged DDS headers and broken container reference tables
         run: python -m unittest discover -s tests -p 'test_foj_corrupt_container_matrix.py' -v
+      - name: Replay four-stage synthetic DDS reports and detect stale edits
+        run: python -m unittest discover -s tests -p 'test_foj_report_replay_audit.py' -v
       - name: Check Python parser and command-line usage
         run: |
-          python -m py_compile tools/foj_texture_probe.py tools/foj_texture_relations.py tools/foj_resource_table_hypotheses.py tools/foj_index_column_controls.py tools/foj_evidence_triage.py tools/foj_holdout_replication.py tools/foj_stability_matrix.py tools/foj_corrupt_container_matrix.py tests/test_foj_texture_probe.py tests/test_foj_texture_relations.py tests/test_foj_resource_table_hypotheses.py tests/test_foj_index_column_controls.py tests/test_foj_evidence_triage.py tests/test_foj_holdout_replication.py tests/test_foj_stability_matrix.py tests/test_foj_corrupt_container_matrix.py
+          python -m py_compile tools/foj_texture_probe.py tools/foj_texture_relations.py tools/foj_resource_table_hypotheses.py tools/foj_index_column_controls.py tools/foj_evidence_triage.py tools/foj_holdout_replication.py tools/foj_stability_matrix.py tools/foj_corrupt_container_matrix.py tools/foj_report_replay_audit.py tests/test_foj_texture_probe.py tests/test_foj_texture_relations.py tests/test_foj_resource_table_hypotheses.py tests/test_foj_index_column_controls.py tests/test_foj_evidence_triage.py tests/test_foj_holdout_replication.py tests/test_foj_stability_matrix.py tests/test_foj_corrupt_container_matrix.py tests/test_foj_report_replay_audit.py
           python -m tools.foj_texture_probe --help
           python -m tools.foj_texture_relations --help
           python -m tools.foj_resource_table_hypotheses --help
@@ -86,3 +92,4 @@ jobs:
           python -m tools.foj_holdout_replication --help
           python -m tools.foj_stability_matrix --help
           python -m tools.foj_corrupt_container_matrix --help
+          python -m tools.foj_report_replay_audit --help
