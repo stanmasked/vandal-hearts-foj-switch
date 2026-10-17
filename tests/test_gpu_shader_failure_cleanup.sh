@@ -110,4 +110,22 @@ for shader in foj_actor.vert foj_actor.frag foj_triangle.frag; do
     [[ $(wc -l < validator-invocations.log) -eq 2 ]] || { echo "FAIL: edited shader was not revalidated" >&2; exit 1; }
     [[ -s "$target" ]] || { echo "FAIL: rebuilt DKSH is missing" >&2; exit 1; }
 done
+# A changed DKSH validator must invalidate previously accepted outputs,
+# even if the shader source itself has not changed.
+for shader in foj_actor.vert foj_actor.frag foj_triangle.frag; do
+    target="gpu/build/$shader.dksh"
+    touch -t 202001010000 "$target" "gpu/shaders/$shader"
+done
+touch -t 202401010000 tools/validate_dksh.py
+for shader in foj_actor.vert foj_actor.frag foj_triangle.frag; do
+    target="gpu/build/$shader.dksh"
+    rm -f compiler-invocations.log validator-invocations.log
+    FAKE_VALIDATE_PASS=1 PYTHONPATH="$tmp" make --no-print-directory -f gpu/Makefile "$target" UAM="$tmp/fake-uam" >"$tmp/validator-rebuild.log" 2>&1 || {
+        cat "$tmp/validator-rebuild.log" >&2
+        echo "FAIL: changed validator prevented rebuilding $target" >&2
+        exit 1
+    }
+    [[ $(wc -l < compiler-invocations.log) -eq 1 ]] || { echo "FAIL: validator edit did not regenerate $target" >&2; exit 1; }
+    [[ $(wc -l < validator-invocations.log) -eq 1 ]] || { echo "FAIL: validator edit did not recheck $target" >&2; exit 1; }
+done
 echo "UAM Makefile all three shader targets: compiler and validator cleanup, reuse and source-triggered rebuild PASS"
