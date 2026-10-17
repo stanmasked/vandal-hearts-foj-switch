@@ -86,4 +86,24 @@ for config in gpu/triangle.mk gpu/clear.mk; do
     fi
     touch -t 202001010000 "$config"
 done
-echo "GPU triangle ELF, NACP and NRO configuration dependencies: PASS"
+# Verify the separate shader-free clear-smoke variant as well.
+clear_elf=build/foj-deko3d-clear-smoke.elf
+clear_nacp=build/foj-deko3d-clear-smoke.nacp
+clear_nro=build/foj-deko3d-clear-smoke.nro
+touch "$clear_elf" "$clear_nacp" "$clear_nro"
+touch -t 202201010000 "$clear_elf" "$clear_nacp"
+touch -t 202301010000 "$clear_nro"
+clear_recipe='--nacp=build/foj-deko3d-clear-smoke.nacp'
+plan="$(make -f gpu/clear.mk -n "$clear_nro")"
+if [[ "$plan" == *'--create'* || "$plan" == *"$clear_recipe"* ]]; then
+    echo "FAIL: unchanged clear-smoke NRO should not rebuild" >&2
+    exit 1
+fi
+touch -t 202401010000 gpu/clear.mk
+plan="$(make -f gpu/clear.mk -n "$clear_nro")"
+if [[ "$plan" != *'--create'* || "$plan" != *"$clear_recipe"* ]]; then
+    echo "FAIL: shared Makefile change did not rebuild clear-smoke metadata and NRO" >&2
+    exit 1
+fi
+touch -t 202001010000 gpu/clear.mk
+echo "GPU triangle and clear-smoke ELF, NACP and NRO dependencies: PASS"
