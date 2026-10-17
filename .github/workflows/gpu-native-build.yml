@@ -24,10 +24,12 @@ on:
       - "tools/foj_stage171_build_identity.py"
       - "tools/foj_stage173_private_json_snapshot.py"
       - "tools/foj_stage174_native_artifact_coherence.py"
+      - "tools/foj_stage175_downloaded_artifact_audit.py"
       - "tools/foj_fd_bound_reader.py"
       - "tests/test_foj_stage171_build_identity.py"
       - "tests/test_foj_stage173_private_json_snapshot.py"
       - "tests/test_foj_stage174_native_artifact_coherence.py"
+      - "tests/test_foj_stage175_downloaded_artifact_audit.py"
       - "tests/test_foj_stage170_cpu_visual_alignment.py"
       - "tests/test_foj_stage169_two_attempt_recovery.py"
       - "tests/foj_stage169_native_boot_fixture.c"
@@ -54,10 +56,12 @@ on:
       - "tools/foj_stage171_build_identity.py"
       - "tools/foj_stage173_private_json_snapshot.py"
       - "tools/foj_stage174_native_artifact_coherence.py"
+      - "tools/foj_stage175_downloaded_artifact_audit.py"
       - "tools/foj_fd_bound_reader.py"
       - "tests/test_foj_stage171_build_identity.py"
       - "tests/test_foj_stage173_private_json_snapshot.py"
       - "tests/test_foj_stage174_native_artifact_coherence.py"
+      - "tests/test_foj_stage175_downloaded_artifact_audit.py"
       - "tests/test_foj_stage170_cpu_visual_alignment.py"
       - "tests/test_foj_stage169_two_attempt_recovery.py"
       - "tests/foj_stage169_native_boot_fixture.c"
@@ -155,6 +159,14 @@ jobs:
             --expected-commit "$GITHUB_SHA" --expected-run-id "$GITHUB_RUN_ID" \
             --output build/foj-stage174-loose-coherence.json
           python3 -m unittest discover -s tests -p 'test_foj_stage174_native_artifact_coherence.py' -v
+      - name: Record all five native research binaries before upload
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage175_downloaded_artifact_audit \
+            --artifact-root . --expected-commit "$GITHUB_SHA" \
+            --expected-run-id "$GITHUB_RUN_ID" --create-receipt
+          python3 -m unittest discover -s tests -p 'test_foj_stage175_downloaded_artifact_audit.py' -v
       - name: Upload SDK-built research binaries
         if: success()
         uses: actions/upload-artifact@v4
@@ -170,5 +182,27 @@ jobs:
             build/foj-stage166-blank-observations.json
             build/foj-stage171-ci-build-receipt.json
             build/foj-stage174-loose-coherence.json
+            build/foj-stage175-five-binary-receipt.json
           if-no-files-found: error
           retention-days: 7
+
+  downloaded-audit:
+    name: Independently recheck downloaded five-binary research artifact
+    needs: native-gpu
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download previously uploaded SDK research artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: foj-gpu-native-research
+          path: audit-artifact
+      - name: Independently verify five binaries, full inventory and receipts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage175_downloaded_artifact_audit \
+            --artifact-root audit-artifact \
+            --expected-commit "$GITHUB_SHA" --expected-run-id "$GITHUB_RUN_ID" \
+            --verify-downloaded
