@@ -6,6 +6,9 @@ on:
     paths:
       - ".github/workflows/gpu-native-build.yml"
       - "gpu/**"
+      - "tools/foj_gpu_local_dds_preflight.py"
+      - "tests/test_foj_gpu_local_dds_preflight.py"
+      - "tests/foj_native_dds_contract_probe.c"
       - "core/gpu_vertex_stream.h"
       - "core/gpu_vertex_stream.c"
       - "core/gpu_draw_plan.c"
@@ -17,6 +20,9 @@ on:
     paths:
       - ".github/workflows/gpu-native-build.yml"
       - "gpu/**"
+      - "tools/foj_gpu_local_dds_preflight.py"
+      - "tests/test_foj_gpu_local_dds_preflight.py"
+      - "tests/foj_native_dds_contract_probe.c"
       - "core/gpu_vertex_stream.h"
       - "core/gpu_vertex_stream.c"
       - "core/gpu_draw_plan.c"
