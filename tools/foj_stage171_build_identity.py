@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+from io import BytesIO
 import json
 import os
 from pathlib import Path
@@ -19,7 +20,7 @@ import zipfile
 
 from tools.foj_stage165_sd_bundle import ZIP_PREFIX
 from tools.foj_stage166_hardware_observations import (
-    audit as audit_operator, inspect_bundle, read_ledger,
+    MAX_BUNDLE_BYTES, audit as audit_operator, inspect_bundle, read_ledger,
 )
 from tools.foj_stage170_cpu_visual_alignment import align, read_link
 from tools.foj_stage169_two_attempt_recovery import read_strict
@@ -54,18 +55,44 @@ def _pairs(pairs):
 
 
 def _fixed_bundle_digest(bundle: Path) -> tuple[str, dict[str, str]]:
-    """Reuse stage-166 complete fixed ZIP validation, then bind its binaries."""
+    """Verify all fixed members against one stable, bounded ZIP snapshot.
+
+    Stage 166 validates the entire ZIP and manifest. A second
+    descriptor-bound, byte-identical double read must match that exact
+    first digest before any per-NRO/DKSH hash may be reported.
+    """
     digest = inspect_bundle(bundle)
     try:
-        with zipfile.ZipFile(bundle) as archive:
+        initial = bundle.lstat()
+        if not stat.S_ISREG(initial.st_mode) or not 1 <= initial.st_size <= MAX_BUNDLE_BYTES:
+            raise _bad()
+        fd = os.open(bundle, os.O_RDONLY |
+                     getattr(os, "O_NOFOLLOW", 0) |
+                     getattr(os, "O_NONBLOCK", 0))
+        with os.fdopen(fd, "rb") as stream:
+            opened = os.fstat(stream.fileno())
+            first = stream.read(MAX_BUNDLE_BYTES + 1)
+            stream.seek(0)
+            second = stream.read(MAX_BUNDLE_BYTES + 1)
+            final = os.fstat(stream.fileno())
+        named = bundle.lstat()
+        def identity(m):
+            return (m.st_dev, m.st_ino, m.st_mode, m.st_size,
+                    m.st_mtime_ns, m.st_ctime_ns)
+        if (identity(initial) != identity(opened) or
+                identity(opened) != identity(final) or
+                identity(final) != identity(named) or
+                len(first) != initial.st_size or first != second or
+                hashlib.sha256(first).hexdigest() != digest):
+            raise _bad()
+        with zipfile.ZipFile(BytesIO(first)) as archive:
             binaries = {
                 name: hashlib.sha256(archive.read(name)).hexdigest()
                 for name in MEMBERS
             }
-    except (OSError, KeyError, zipfile.BadZipFile):
+    except (OSError, KeyError, ValueError, zipfile.BadZipFile):
         raise _bad() from None
     return digest, binaries
-
 
 def _validate_git_run(commit: Any, run: Any) -> None:
     if (not isinstance(commit, str) or GIT.fullmatch(commit) is None or
