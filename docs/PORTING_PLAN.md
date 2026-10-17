@@ -778,3 +778,17 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Updated `docs/GPU_SWITCH_SMOKE_TEST.md` with exact latest artifact and the expected two different synthetic textures.
 - [ ] **Unverified on real Switch hardware:** image copy/synchronization, descriptor programming, texture sampling and GPU frame presentation. CI confirms compilable native code, not actual console output.
 - [ ] Real FoJ textures, material parsing, DDS atlas uploads, user-owned local game assets and gameplay renderer integration remain future work.
+
+## Stage 138: bounded private RGBA8 DDS atlas input for GPU materials — CI SUCCESS (2026-10-17)
+
+- [x] Added portable `gpu/atlas_dds.{c,h}`, accepting only classic, uncompressed, contiguous 32-bit RGBA8 DDS files with exact header masks, width 8..256 (multiple of 8), height 1..256, single image, at most one mip level, exact pitch and payload length. Explicitly rejects unsupported formats including common BC/DXT compression and DX10.
+- [x] Added transactional `foj_atlas_dds_decode` and bounded file API `foj_atlas_dds_try_read`: absent file returns 0, accepted file 1, corrupt/unsupported/I/O error -1; any failure preserves output pixel buffer and metadata. File size is capped at 128+256*256*4 bytes.
+- [x] In the optional native shader-backed GPU NRO, each research material can now source pixels from private SD card paths `sdmc:/switch/foj/gpu/material0.dds` and `material1.dds`. When missing, retain generated synthetic 8x8 textures. When present but invalid, exit research application rather than silently use unintended data. Image layouts and buffer-to-image copy rectangles use accepted file dimensions.
+- [x] Increased independent CPU-visible RGBA8 staging pool to 0x90000 with two 0x40000 pixel slots. DDS width multiple-of-8 guarantees 32-byte aligned RGBA8 linear-row pitch. Existing per-draw material descriptor bindings are unchanged.
+- [x] New `tests/test_gpu_atlas_dds.c` exercises invalid masks/flags/dimensions/size, omitted and truncated file, maximum 256x256 bounds, transactional rejection and real synthetic test files. Integrated GCC and Clang, strict C11, NDEBUG, ASan/UBSan, and clean/dependency fixtures.
+- [x] **Actual GPU host CI run 39036526010 SUCCESS** (GCC and Clang), three `Private RGBA8 DDS atlas bounds, flags, file intake: PASS` outputs per compiler.
+- [x] **Actual native devkitA64/UAM build run 39036526057 SUCCESS**: clear-smoke NRO 262200 bytes, texture-research NRO 290872 bytes, all three UAM DKSH modules built and validated. Artifact **12102068939**: https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39036526057/artifacts/12102068939.
+- [x] **Research tools tests run 39036526025 SUCCESS**. Merged PR #21 into `main` as `566fd80578a77c6b496d270a1fb88387fc1a3331`.
+- [x] Updated `docs/GPU_SWITCH_SMOKE_TEST.md` to describe private SD paths, supported format constraints and absence/failure behavior.
+- [ ] Real PS3 compressed DDS (BCn/DXT) and PS3 layout/swizzling conversion remain unsupported. No PS3 content added to GitHub.
+- [ ] Actual user-owned game atlas tests, physical Switch image upload/sampling, material correctness and presented pixels remain unverified.
