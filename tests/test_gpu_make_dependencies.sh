@@ -159,4 +159,21 @@ if [[ "$plan" != *'-o build/foj-deko3d-clear-smoke.elf'* ||
     exit 1
 fi
 touch -t 202001010000 gpu/smoke_plan.h
+# All host binaries built by the strict NDEBUG / sanitizer matrix must
+# be included in 'clean', otherwise stale executables can survive.
+clean_plan="$(make -f gpu/clear.mk -n clean)"
+for binary in \
+    build/foj-deko3d-lifecycle-host \
+    build/foj-deko3d-lifecycle-ndebug \
+    build/foj-deko3d-lifecycle-asan \
+    build/foj-dksh-layout-integration-ndebug \
+    build/foj-dksh-intake-ndebug \
+    build/foj-deko3d-shader-layout-ndebug \
+    build/foj-gpu-smoke-plan-ndebug \
+    build/foj-deko3d-contract-ndebug; do
+    if [[ "$clean_plan" != *"$binary"* ]]; then
+        echo "FAIL: GPU clean does not remove $binary" >&2
+        exit 1
+    fi
+done
 echo "GPU triangle and clear-smoke ELF, NACP and NRO dependencies: PASS"
