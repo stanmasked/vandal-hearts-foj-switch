@@ -497,3 +497,10 @@ This test verifies host-side validation/integration, not real Switch GPU executi
 - [x] Commit changes to `tests/test_deko3d_clear_host.c`.
 - [ ] Run exact 16-scenario host mock in a complete checkout and inspect real GitHub Actions logs. This environment cannot resolve github.com for git clone and does not contain a nonempty local GPU main C source; no execution pass is claimed.
 - [ ] Build NRO with devkitA64/UAM and verify first deko3d GPU frame on Switch hardware.
+
+## Stage 106: deko3d lifecycle mock under NDEBUG (2026-10-17)
+
+- [x] Add `HOST_MOCK_NDEBUG` target in `gpu/clear.mk` for the full stateful deko3d lifecycle mock, compiled with `-DNDEBUG`; call it from `host-check` and remove it with `clean`.
+- [x] Review the stored Makefile to confirm the target, compiler command and host-check invocation are present. Existing GPU CI host-check now includes the new variant automatically.
+- [ ] Confirm successful execution of all 16 mock scenarios in both ordinary and NDEBUG configurations from a complete repository checkout / GitHub Actions. No completed CI run or native test execution was verified here.
+- [ ] Build and execute the real GPU NRO with devkitA64/UAM and Switch hardware.
