@@ -1,4 +1,4 @@
-name: Private PS3 Texture Probe Tests
+name: Private PS3 Texture Probe and Relations Tests
 
 on:
   push:
@@ -6,12 +6,16 @@ on:
     paths:
       - ".github/workflows/texture-probe-tests.yml"
       - "tools/foj_texture_probe.py"
+      - "tools/foj_texture_relations.py"
       - "tests/test_foj_texture_probe.py"
+      - "tests/test_foj_texture_relations.py"
   pull_request:
     paths:
       - ".github/workflows/texture-probe-tests.yml"
       - "tools/foj_texture_probe.py"
+      - "tools/foj_texture_relations.py"
       - "tests/test_foj_texture_probe.py"
+      - "tests/test_foj_texture_relations.py"
   workflow_dispatch:
 
 permissions:
@@ -19,7 +23,7 @@ permissions:
 
 jobs:
   probe-unit-tests:
-    name: Texture probe (${{ matrix.python-version }})
+    name: Texture inventory (${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
@@ -33,7 +37,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Run synthetic DDS metadata scan regressions
         run: python -m unittest discover -s tests -p 'test_foj_texture_probe.py' -v
+      - name: Test candidate layout and local pointer hints
+        run: python -m unittest discover -s tests -p 'test_foj_texture_relations.py' -v
       - name: Check Python parser and command-line usage
         run: |
-          python -m py_compile tools/foj_texture_probe.py tests/test_foj_texture_probe.py
+          python -m py_compile tools/foj_texture_probe.py tools/foj_texture_relations.py tests/test_foj_texture_probe.py tests/test_foj_texture_relations.py
           python -m tools.foj_texture_probe --help
+          python -m tools.foj_texture_relations --help
