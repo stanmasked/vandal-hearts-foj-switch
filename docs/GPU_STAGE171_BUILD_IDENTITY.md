@@ -117,3 +117,8 @@ See [stage 165 SD ZIP](GPU_STAGE165_SD_RELEASE.md),
 [stage 166 manual observation sheet](GPU_STAGE166_HARDWARE_OBSERVATIONS.md),
 [stage 169 CPU recovery comparison](GPU_STAGE169_TWO_ATTEMPT_RECOVERY.md),
 and [stage 170 explicit link](GPU_STAGE170_CPU_VISUAL_ALIGNMENT.md).
+
+
+Stage 172 additionally hardens the offline receipt JSON reader against
+final-path inode substitution and in-place changes during parsing.
+See [stage 172 descriptor snapshot](GPU_STAGE172_RECEIPT_DESCRIPTOR_SNAPSHOT.md).
