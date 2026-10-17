@@ -17,7 +17,7 @@
 enum {
     FAIL_NONE, FAIL_DEVICE, FAIL_QUEUE, FAIL_IMG_1, FAIL_IMG_2,
     FAIL_SWAP, FAIL_CMDMEM, FAIL_CMDBUF, FAIL_CMDLIST, FAIL_ACQUIRE,
-    FAIL_PLUS, FAIL_VERTEX_MEM, FAIL_VERTEX_CPU, FAIL_VERTEX_GPU
+    FAIL_PLUS, FAIL_PLUS_EARLY, FAIL_VERTEX_MEM, FAIL_VERTEX_CPU, FAIL_VERTEX_GPU
 };
 struct FakeDevice { int tag; };
 struct FakeQueue { int tag; };
@@ -60,7 +60,8 @@ void padInitializeDefault(PadState* p) { assert(p); }
 void padUpdate(PadState* p) { assert(p); }
 u64 padGetButtonsDown(PadState* p) {
     assert(p);
-    return g.failure==FAIL_PLUS&&g.presented==2?HidNpadButton_Plus:0;
+    return ((g.failure==FAIL_PLUS&&g.presented==2)||
+            g.failure==FAIL_PLUS_EARLY)?HidNpadButton_Plus:0;
 }
 int appletMainLoop(void) { return g.loop_calls++<242; }
 void* nwindowGetDefault(void) { return (void*)(uintptr_t)0x1234; }
@@ -278,9 +279,10 @@ int main(void) {
     run_case(FAIL_CMDLIST,3,0);
     run_case(FAIL_ACQUIRE,4,3);
     run_case(FAIL_PLUS,0,2);
+    run_case(FAIL_PLUS_EARLY,3,0);
     run_case(FAIL_VERTEX_MEM,3,0);
     run_case(FAIL_VERTEX_CPU,3,0);
     run_case(FAIL_VERTEX_GPU,3,0);
-    puts("Host deko3d lifecycle mock: all 14 scenarios passed");
+    puts("Host deko3d lifecycle mock: all 15 scenarios passed");
     return 0;
 }
