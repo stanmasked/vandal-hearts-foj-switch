@@ -21,13 +21,13 @@ touch -t 202201010000 "$target"
 cd "$tmp"
 # The preflight target is order-only. A current ELF must not be rebuilt.
 build_command='-o build/foj-deko3d-triangle-research.elf'
-if make -f gpu/triangle.mk -n build/foj-deko3d-triangle-research.elf | grep -Fq -- "$build_command"; then
+if make -f gpu/triangle.mk -n build/foj-deko3d-triangle-research.elf | grep -F -- "$build_command" >/dev/null; then
     echo "FAIL: current triangle ELF should not rebuild" >&2
     exit 1
 fi
 for header in gpu/dksh_module.h gpu/shader_layout.h gpu/triangle.mk gpu/clear.mk; do
     touch -t 202401010000 "$header"
-    if ! make -f gpu/triangle.mk -n build/foj-deko3d-triangle-research.elf | grep -Fq -- "$build_command"; then
+    if ! make -f gpu/triangle.mk -n build/foj-deko3d-triangle-research.elf | grep -F -- "$build_command" >/dev/null; then
         echo "FAIL: editing $header did not trigger the triangle ELF compiler" >&2
         exit 1
     fi
@@ -38,13 +38,13 @@ done
 nacp=build/foj-deko3d-triangle-research.nacp
 touch "$nacp"
 touch -t 202201010000 "$nacp"
-if make -f gpu/triangle.mk -n "$nacp" | grep -Fq -- '--create'; then
+if make -f gpu/triangle.mk -n "$nacp" | grep -F -- '--create' >/dev/null; then
     echo "FAIL: current triangle NACP should not rebuild" >&2
     exit 1
 fi
 for config in gpu/triangle.mk gpu/clear.mk; do
     touch -t 202401010000 "$config"
-    if ! make -f gpu/triangle.mk -n "$nacp" | grep -Fq -- '--create'; then
+    if ! make -f gpu/triangle.mk -n "$nacp" | grep -F -- '--create' >/dev/null; then
         echo "FAIL: editing $config did not trigger NACP metadata regeneration" >&2
         exit 1
     fi
@@ -72,18 +72,18 @@ nro=build/foj-deko3d-triangle-research.nro
 touch "$nro"
 touch -t 202301010000 "$nro"
 nro_command='--nacp=build/foj-deko3d-triangle-research.nacp'
-if make -f gpu/triangle.mk -n "$nro" | grep -Fq -- "$nro_command"; then
+if make -f gpu/triangle.mk -n "$nro" | grep -F -- "$nro_command" >/dev/null; then
     echo "FAIL: unchanged triangle NRO should not be repackaged" >&2
     exit 1
 fi
 touch -t 202401010000 "$nacp"
-if ! make -f gpu/triangle.mk -n "$nro" | grep -Fq -- "$nro_command"; then
+if ! make -f gpu/triangle.mk -n "$nro" | grep -F -- "$nro_command" >/dev/null; then
     echo "FAIL: changed NACP does not repackage triangle NRO" >&2
     exit 1
 fi
 touch -t 202201010000 "$nacp"
 touch -t 202401010000 "$target"
-if ! make -f gpu/triangle.mk -n "$nro" | grep -Fq -- "$nro_command"; then
+if ! make -f gpu/triangle.mk -n "$nro" | grep -F -- "$nro_command" >/dev/null; then
     echo "FAIL: changed ELF does not repackage triangle NRO" >&2
     exit 1
 fi
