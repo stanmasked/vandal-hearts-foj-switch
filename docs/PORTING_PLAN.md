@@ -681,3 +681,11 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Preserve GCC/Clang matrix and synthetic SDK-free host test scope; no proprietary assets or native Switch output are involved.
 - [ ] Inspect actual CI outcomes and run the full 18-scenario lifecycle test; the present GitHub connector exposes source changes but no confirmed push-triggered Actions run.
 - [ ] Build ARM64 NRO and validate actual GPU output with devkitPro and Switch hardware.
+
+## Stage 129: DKSH validator changes must invalidate generated shaders (2026-10-17)
+
+- [x] Found an actual dependency gap: generated DKSH targets in `gpu/Makefile` depended only on their GLSL-like source, so changing `tools/validate_dksh.py` left previously validated binaries untouched.
+- [x] Add validator script as a prerequisite of all three UAM DKSH targets (actor vertex, actor fragment, triangle fragment); subsequent `make` re-invokes compiler and validator after a validator change.
+- [x] Extend `tests/test_gpu_shader_failure_cleanup.sh` to bump the validator timestamp and assert all three targets are recompiled and revalidated exactly once.
+- [ ] Run the exact updated shell test from the current checkout and obtain verified CI results; no such full run was completed here.
+- [ ] Cross-compile native GPU NRO with devkitA64/UAM and verify on Switch hardware.
