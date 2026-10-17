@@ -61,6 +61,20 @@ interrupted or abruptly terminated run; it does not prove why.
 The `frames` field counts completed CPU calls through the
 research presentation path, **not actual visible hardware frames**.
 
+## Stage 169: compare two copied attempts without asserting GPU recovery
+
+For a first failure followed by a later retry, copy only the two
+selected `foj-boot-XX.txt` files to your private computer and use
+`python3 -m tools.foj_stage169_two_attempt_recovery --before ./foj-boot-00.txt --after ./foj-boot-01.txt`.
+The new analysis validates a stricter enter/outcome/exit state machine,
+two stable descriptor-bound reads, chronological slot order and
+CPU-side differences in failure stage and presentation-call count.
+It reports whether the later log describes a clean **CPU** exit after
+a prior logged error, but **never claims a physical Switch GPU frame,
+a working scene or completed game recovery**. See
+`docs/GPU_STAGE169_TWO_ATTEMPT_RECOVERY.md` for exact outcomes,
+examples, security limits and cross-language C/Python tests.
+
 ## Safe manual recovery test
 
 1. Back up your own files and install the latest synthetic-only
