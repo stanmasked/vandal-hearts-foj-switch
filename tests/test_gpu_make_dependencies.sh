@@ -12,7 +12,8 @@ touch -t 202001010000 "$tmp/gpu/clear.mk" "$tmp/gpu/triangle.mk"
 for path in gpu/deko3d_clear_main.c gpu/smoke_plan.c gpu/dksh_module.c \
             gpu/shader_layout.c gpu/dksh_module.h gpu/shader_layout.h \
             gpu/research_mesh.c gpu/research_mesh.h gpu/research_texture.c \
-            gpu/research_texture.h core/gpu_vertex_stream.c \
+            gpu/research_texture.h gpu/atlas_dds.c gpu/atlas_dds.h \
+            core/gpu_vertex_stream.c \
             core/textured_triangles.h core/gpu_draw_plan.c core/gpu_draw_plan.h \
             gpu/smoke_plan.h gpu/deko3d_api_contract.h core/gpu_vertex_stream.h; do
     touch "$tmp/$path"
@@ -182,7 +183,10 @@ for binary in \
     build/foj-gpu-research-mesh-asan \
     build/foj-gpu-research-texture-host \
     build/foj-gpu-research-texture-ndebug \
-    build/foj-gpu-research-texture-asan; do
+    build/foj-gpu-research-texture-asan \
+    build/foj-gpu-dds-atlas-host \
+    build/foj-gpu-dds-atlas-ndebug \
+    build/foj-gpu-dds-atlas-asan; do
     if [[ "$clean_plan" != *"$binary"* ]]; then
         echo "FAIL: GPU clean does not remove $binary" >&2
         exit 1
@@ -217,7 +221,10 @@ for binary in \
     build/foj-gpu-research-mesh-asan \
     build/foj-gpu-research-texture-host \
     build/foj-gpu-research-texture-ndebug \
-    build/foj-gpu-research-texture-asan; do
+    build/foj-gpu-research-texture-asan \
+    build/foj-gpu-dds-atlas-host \
+    build/foj-gpu-dds-atlas-ndebug \
+    build/foj-gpu-dds-atlas-asan; do
     touch "$binary"
 done
 # Guard against overly broad clean rules (for example rm -f build/*).
@@ -251,7 +258,10 @@ for binary in \
     build/foj-gpu-research-mesh-asan \
     build/foj-gpu-research-texture-host \
     build/foj-gpu-research-texture-ndebug \
-    build/foj-gpu-research-texture-asan; do
+    build/foj-gpu-research-texture-asan \
+    build/foj-gpu-dds-atlas-host \
+    build/foj-gpu-dds-atlas-ndebug \
+    build/foj-gpu-dds-atlas-asan; do
     if [[ -e "$binary" ]]; then
         echo "FAIL: clear clean retained host binary $binary" >&2
         exit 1
