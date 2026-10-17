@@ -96,7 +96,12 @@ def read_bounded_prefix(root: Path, relative: str | PurePosixPath,
     if type(limit) is not int or not 0 <= limit <= 1024 * 1024:
         raise ValueError("Invalid bounded prefix length")
     with open_regular_beneath(root, relative) as (stream, _):
-        return stream.read(limit)
+        first = stream.read(limit)
+        stream.seek(0)
+        second = stream.read(limit)
+        if first != second:
+            raise ValueError("Source prefix bytes changed between read passes")
+        return first
 
 
 @contextmanager
