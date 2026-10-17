@@ -213,6 +213,20 @@ malicious replacement of an ancestor directory, nor evidence of correct
 texture sampling on real hardware. Follow the stage-162 A–E observation
 matrix in `docs/GPU_STAGE162_SD_SMOKE.md`.
 
+## Stage 164 — generated-only DDS intake status screens
+
+The triangle-research GPU NRO shows a shader-free full-screen diagnostic
+prelude before its textures: 120 presented frames for material 0, then
+120 for material 1. Green means accepted classic DDS, blue means optional
+DDS absent and synthetic fallback, amber is invalid DDS, magenta an
+unsafe path, orange changed source, red I/O error and dark red invalid
+arguments. Malformed DDS status holds on-screen indefinitely and does
+not become a success exit code. A missing DKSH or other earlier device
+initialization error can still prevent diagnostics. See the exact stage-162
+A–E manual test matrix and the expanded legend in
+`docs/GPU_STAGE162_SD_SMOKE.md`. Physical Switch presentation of these
+status colors is **not verified**.
+
 ## SD card layout for a user-authorized homebrew Switch
 
 The NROs may be placed in a homebrew-launcher-readable folder, for example:
