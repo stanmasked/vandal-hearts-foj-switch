@@ -24,6 +24,7 @@
 #include "research_texture.h"
 #include "atlas_dds.h"
 #include "dds_screen_status.h"
+#include "dds_command_plan.h"
 _Static_assert((size_t)FOJ_GPU_SHADER_MAX_DKSH ==
                (size_t)FOJ_DKSH_MAX_BYTES,
                "DKSH intake and GPU shader slot capacities differ");
@@ -486,17 +487,25 @@ int main(int argc,char **argv) {
 
         /* Immutable GPU command lists, following the official deko3d
          * simple setup example. The clear color alternates periodically. */
-        const unsigned palette=foj_smoke_color_for_frame(frame);
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
-        unsigned status_slot=0;
-        const int diagnostic=foj_gpu_dds_status_screen(
-            frame,dds_observed_slots,dds_fatal,&status_slot);
-        if (diagnostic<0) { exit_status=5; break; }
-        const DkCmdList chosen=diagnostic?
-            dds_status_lists[slot][status_slot]:commands[slot][palette];
+        /* The same checked command planner is exercised by the SDK-free
+         * host simulation: never submit a scene list after a fatal DDS,
+         * select only the actual acquired framebuffer's lists, and keep
+         * the first 120 frames of each observed material in order. */
+        FojGpuDdsFrameCommand plan={0};
+        if (!foj_gpu_dds_frame_command(frame,(unsigned)slot,dds_states,
+                                       dds_observed_slots,dds_fatal,&plan)) {
+            exit_status=5;
+            break;
+        }
+        const DkCmdList chosen=
+            plan.kind==FOJ_GPU_DDS_LIST_STATUS?
+            dds_status_lists[plan.buffer][plan.index]:
+            commands[plan.buffer][plan.index];
         if (!chosen) { exit_status=5; break; }
         dkQueueSubmitCommands(queue,chosen);
 #else
+        const unsigned palette=foj_smoke_color_for_frame(frame);
         dkQueueSubmitCommands(queue,commands[slot][palette]);
 #endif
         dkQueuePresentImage(queue,swapchain,slot);
