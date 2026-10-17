@@ -40,6 +40,51 @@ The JSON report is written **only to the user-selected local path**.
 invented synthetic fixtures. The report itself contains filenames; review
 those locally before considering even a metadata-only excerpt for sharing.
 
+## Stage 142: candidate layout and possible container references
+
+After the stage-141 scan, derive a **metadata-only** view of potential
+linear image spans and candidate relationships:
+
+```sh
+python3 -m tools.foj_texture_relations \
+  local-data/foj-texture-candidates.json \
+  --output local-data/foj-texture-layout.json
+```
+
+This uses the existing private JSON report only: candidates are grouped
+by relative source filename and ordered by file offset. It reports
+hypothetical end offsets for **known-size** DDS payloads, and whether the
+next header appears adjacent, separated, or overlapping. Unknown
+FourCC/size headers stay explicitly unclassified. A negative gap may be a
+false-positive magic signature or non-linear container format, *not proof*
+that real texture payloads overlap.
+
+Optionally perform a **strictly bounded, read-only heuristic check** for
+32-bit file-relative offsets (both little- and big-endian):
+
+```sh
+python3 -m tools.foj_texture_relations \
+  local-data/foj-texture-candidates.json \
+  --root /path/to/private/foj-extracted \
+  --pointer-prefix-bytes 65536 \
+  --output local-data/foj-texture-relations.json
+```
+
+This second mode reads at most 64 KiB from the beginning of each
+candidate-bearing file (configurable to at most 1 MiB). Only
+4-byte-aligned words matching a candidate DDS **file offset** are noted.
+Matches inside DDS candidate spans are ignored; no original bytes are
+copied into output. The default record limit is 16 reference hints per
+candidate, and directory traversal or symlink references in an untrusted
+report are rejected. All output stays local and is covered by
+`local-data/` in `.gitignore`.
+
+**These are just pointer coincidences, never verified material/model
+references.** They are particularly uncertain when formats use relative
+offsets, segmented files, compressed indices or proprietary RSX layouts.
+The tool cannot identify asset ownership, link textures to models or
+claim a specific container type without independent real-file evidence.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ
