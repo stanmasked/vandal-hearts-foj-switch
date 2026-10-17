@@ -11,7 +11,8 @@ cp gpu/clear.mk gpu/triangle.mk "$tmp/gpu/"
 touch -t 202001010000 "$tmp/gpu/clear.mk" "$tmp/gpu/triangle.mk"
 for path in gpu/deko3d_clear_main.c gpu/smoke_plan.c gpu/dksh_module.c \
             gpu/shader_layout.c gpu/dksh_module.h gpu/shader_layout.h \
-            gpu/smoke_plan.h gpu/deko3d_api_contract.h core/gpu_vertex_stream.h; do
+            gpu/research_mesh.c gpu/research_mesh.h core/gpu_vertex_stream.c \
+            core/textured_triangles.h gpu/smoke_plan.h gpu/deko3d_api_contract.h core/gpu_vertex_stream.h; do
     touch "$tmp/$path"
     touch -t 202001010000 "$tmp/$path"
 done
@@ -173,7 +174,10 @@ for binary in \
     build/foj-dksh-intake-ndebug \
     build/foj-deko3d-shader-layout-ndebug \
     build/foj-gpu-smoke-plan-ndebug \
-    build/foj-deko3d-contract-ndebug; do
+    build/foj-deko3d-contract-ndebug \
+    build/foj-gpu-research-mesh-host \
+    build/foj-gpu-research-mesh-ndebug \
+    build/foj-gpu-research-mesh-asan; do
     if [[ "$clean_plan" != *"$binary"* ]]; then
         echo "FAIL: GPU clean does not remove $binary" >&2
         exit 1
@@ -202,7 +206,10 @@ for binary in \
     build/foj-dksh-intake-ndebug \
     build/foj-deko3d-shader-layout-ndebug \
     build/foj-gpu-smoke-plan-ndebug \
-    build/foj-deko3d-contract-ndebug; do
+    build/foj-deko3d-contract-ndebug \
+    build/foj-gpu-research-mesh-host \
+    build/foj-gpu-research-mesh-ndebug \
+    build/foj-gpu-research-mesh-asan; do
     touch "$binary"
 done
 # Guard against overly broad clean rules (for example rm -f build/*).
@@ -230,7 +237,10 @@ for binary in \
     build/foj-dksh-intake-ndebug \
     build/foj-deko3d-shader-layout-ndebug \
     build/foj-gpu-smoke-plan-ndebug \
-    build/foj-deko3d-contract-ndebug; do
+    build/foj-deko3d-contract-ndebug \
+    build/foj-gpu-research-mesh-host \
+    build/foj-gpu-research-mesh-ndebug \
+    build/foj-gpu-research-mesh-asan; do
     if [[ -e "$binary" ]]; then
         echo "FAIL: clear clean retained host binary $binary" >&2
         exit 1
