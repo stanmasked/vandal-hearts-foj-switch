@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import stat
 from pathlib import Path
 from typing import Any
 
 from tools.foj_stage168_boot_journal_audit import (
-    LINE, STAGES, invalid, parse_journal, read_journal,
+    BASENAME, LINE, MAX_BYTES, STAGES, invalid, parse_journal,
 )
 
 SCHEMA = "foj-stage169-two-attempt-cpu-recovery-v1"
@@ -59,22 +61,42 @@ def _events(data: bytes) -> list[tuple[int, int, int, int]]:
 
 
 def read_strict(path: Path) -> tuple[dict[str, Any], list[tuple[int, int, int, int]]]:
-    """Read via stage-168's bounded two-pass file check, then strict FSM."""
-    base = read_journal(path)
-    # The underlying stable file read is the only source of raw bytes;
-    # perform a second local bounded read for protocol details. For a
-    # concurrent hostile mutator, this is NOT an atomic filesystem snapshot.
+    """Double-read a single nofollow descriptor, with bounded path identity.
+
+    This protects against accidental edits and direct symlink traversal;
+    it does not atomically freeze an ancestor directory or defeat a
+    malicious concurrent ABA rewrite.
+    """
+    if not isinstance(path, Path) or BASENAME.fullmatch(path.name) is None:
+        raise invalid()
     try:
-        data = path.read_bytes()
+        before = path.lstat()
+        if not stat.S_ISREG(before.st_mode) or not 1 <= before.st_size <= MAX_BYTES:
+            raise invalid()
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        fd = os.open(path, flags)
+        with os.fdopen(fd, "rb") as stream:
+            opened = os.fstat(stream.fileno())
+            first = stream.read(MAX_BYTES + 1)
+            stream.seek(0)
+            second = stream.read(MAX_BYTES + 1)
+            final = os.fstat(stream.fileno())
+        after = path.lstat()
+        def identity(record):
+            return (record.st_dev, record.st_ino, record.st_mode,
+                    record.st_size, record.st_mtime_ns, record.st_ctime_ns)
+        if (identity(before) != identity(opened) or
+                identity(opened) != identity(final) or
+                identity(final) != identity(after) or
+                first != second or len(first) != before.st_size):
+            raise invalid()
     except OSError:
         raise invalid() from None
-    events = _events(data)
-    if not events or events[0][0] != base["slot"] or len(events) != base["records"]:
-        raise invalid()
-    if events[-1][3] != base["last_reported_present_calls"]:
+    base = parse_journal(first, expected_slot=int(BASENAME.fullmatch(path.name).group(1)))
+    events = _events(first)
+    if len(events) != base["records"]:
         raise invalid()
     return base, events
-
 
 def compare_attempts(
     earlier: tuple[dict[str, Any], list[tuple[int, int, int, int]]],
