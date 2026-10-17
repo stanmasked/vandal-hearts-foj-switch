@@ -738,3 +738,16 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Added `docs/GPU_SWITCH_SMOKE_TEST.md` with exact SD shader paths, visual verification checklist and limits of the evidence.
 - [ ] Neither native NRO has been launched on physical Nintendo Switch; frame presentation and true GPU behavior remain unverified.
 - [ ] The current research GPU binaries do not implement actual FoJ game rendering, PS3 asset loading, or playable game logic.
+
+## Stage 135: six-vertex research geometry through actual GPU stream (2026-10-17)
+
+- [x] Added synthetic six-vertex/two-triangle geometry `gpu/research_mesh.{c,h}` calling the existing `foj_gpu_prepare_stream` and producing one ordered draw batch. No original FoJ models, copyrighted textures or PS3 resource data.
+- [x] Connected the optional shader-backed GPU NRO to the new stream output, uploaded the exact six-float-per-vertex buffer and issued a single six-vertex `dkCmdBufDraw` call. The independent clear-only GPU NRO's original smoke data and behavior remain unchanged.
+- [x] Updated `gpu/triangle.mk` to cross-compile `gpu/research_mesh.c` and `core/gpu_vertex_stream.c` and track their headers; bumped experimental triangle metadata to 0.12.0.
+- [x] Added `tests/test_gpu_research_mesh.c` asserting strict capacity checks/no partially mutated output, six projected vertices, UV bounds, consistent shared edges and one batch. Integrated normal, `-DNDEBUG` and ASan/UBSan variants in `gpu/clear.mk` host suites and cleanup.
+- [x] **Actual GitHub Actions PR #18 GPU host regression run 39028292741 SUCCESS** under GCC and Clang. Logs show `GPU synthetic six-vertex research mesh: PASS` in normal, NDEBUG and sanitizer builds on both compilers. Existing 18-case deko3d mock and build dependency regression also pass.
+- [x] **Actual native devkitA64/UAM CI run 39028292878 SUCCESS**, compiling and validating both NROs and all three DKSH modules. Updated triangle-research NRO: **278584 bytes**; unchanged clear-smoke NRO: **262200 bytes**. Artifact `foj-gpu-native-research` ID **12099815118**: https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39028292878/artifacts/12099815118
+- [x] **Research tools tests run 39028292870 SUCCESS**. PR #18 merged into `main`, squash commit `144a7f67bfd9c732443a72f943e7b14d3ec1bed0`.
+- [x] Updated `docs/GPU_SWITCH_SMOKE_TEST.md` with newer artifact and revised six-vertex/two-triangle visual expectation.
+- [ ] Hardware visual confirmation on a physical Switch remains outstanding: successful real devkitA64/UAM compilation does not prove deko3d presentation.
+- [ ] Real FoJ geometry import and material/texture bindings, game logic and an actual playable port remain outstanding.
