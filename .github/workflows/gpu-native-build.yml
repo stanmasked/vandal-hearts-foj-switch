@@ -19,6 +19,9 @@ on:
       - "tools/foj_stage165_sd_bundle.py"
       - "tools/foj_stage166_hardware_observations.py"
       - "tools/foj_stage168_boot_journal_audit.py"
+      - "tools/foj_stage169_two_attempt_recovery.py"
+      - "tests/test_foj_stage169_two_attempt_recovery.py"
+      - "tests/foj_stage169_native_boot_fixture.c"
       - "tools/foj_stage162_synthetic_dds.py"
   pull_request:
     paths:
@@ -37,6 +40,9 @@ on:
       - "tools/foj_stage165_sd_bundle.py"
       - "tools/foj_stage166_hardware_observations.py"
       - "tools/foj_stage168_boot_journal_audit.py"
+      - "tools/foj_stage169_two_attempt_recovery.py"
+      - "tests/test_foj_stage169_two_attempt_recovery.py"
+      - "tests/foj_stage169_native_boot_fixture.c"
       - "tools/foj_stage162_synthetic_dds.py"
   workflow_dispatch:
 
@@ -93,6 +99,11 @@ jobs:
           python3 -m tools.foj_stage166_hardware_observations --init build/foj-stage166-blank-observations.json
           python3 -m tools.foj_stage166_hardware_observations --audit build/foj-stage166-blank-observations.json > build/foj-stage166-empty-audit.json
           python3 -c 'import json; r=json.load(open("build/foj-stage166-empty-audit.json")); assert r["declared_screen_stages"] == 0 and r["hardware_execution_verified"] is False'
+      - name: Cross-check two synthetic boot attempts with actual C journal writer
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_foj_stage169_two_attempt_recovery.py' -v
       - name: Upload SDK-built research binaries
         if: success()
         uses: actions/upload-artifact@v4
