@@ -1,5 +1,9 @@
 /* No Switch binaries or original game data: portable GPU setup test. */
 #include "smoke_plan.h"
+/* Test assertions must also run when the build supplies -DNDEBUG. */
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
