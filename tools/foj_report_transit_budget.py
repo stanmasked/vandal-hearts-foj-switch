@@ -28,8 +28,11 @@ def measure_report(report: dict[str, Any], *,
     """Count exact pretty-printed UTF-8 output before downstream consumers.
 
     Uses JSONEncoder.iterencode so it does not construct an entire second
-    report in memory merely to check its encoded size. A single enormous
-    input scalar is still limited by Python's JSON encoder implementation.
+    report in memory merely to check its encoded size. Almost all JSON
+    structural fragments and generated research metadata are ASCII; count
+    their characters directly without constructing temporary UTF-8 bytes.
+    Non-ASCII fragments still require exact UTF-8 byte measurement.
+    A single enormous input scalar is still limited by Python's encoder.
     """
     _valid_limit(limit)
     if not isinstance(report, dict):
@@ -39,9 +42,19 @@ def measure_report(report: dict[str, Any], *,
     count = 1  # final newline used by the CLI/published report
     try:
         for fragment in encoded.iterencode(report):
-            count += len(fragment.encode("utf-8"))
+            # Encoding ASCII only to calculate its length creates a bytes
+            # allocation per token. isascii() preserves byte-exact counting
+            # for escaped JSON strings, punctuation, spaces and numbers.
+            # Non-ASCII strings need the real UTF-8 length: code points
+            # occupy between 2 and 4 bytes, not one byte per character.
+            count += (len(fragment) if fragment.isascii()
+                      else len(fragment.encode("utf-8")))
             if count > limit:
                 raise ValueError("Local research report byte budget exceeded")
+    except UnicodeError:
+        # A surrogate-escaped local filename is not valid UTF-8 JSON.
+        # Reject without echoing private filesystem or source content.
+        raise ValueError("Invalid UTF-8 in local metadata report") from None
     except (OverflowError, RecursionError):
         raise ValueError("Invalid nested local report") from None
     return count

@@ -721,6 +721,38 @@ and verifies semantic completeness and privacy filtering.
 No actual FoJ container/material/model mapping or Nintendo Switch
 rendering has been established by profiling.
 
+## Stage 160: exact byte accounting without ASCII re-encoding
+
+After synthetic stage-159 CPU profiling identified per-report JSON
+measurement as a material expense, `measure_report()` now
+checks each emitted JSON fragment with Python's `str.isascii()`.
+For ASCII fragments the character length already equals the UTF-8 byte
+length; this avoids allocating a temporary `bytes` object for each
+piece of punctuation, indentation, JSON field name, or numeric text.
+Non-ASCII fragments continue to use exact UTF-8 encoding and length
+checking. The final trailing newline remains part of the budget.
+
+This is a **safe fast path, not a new estimator**: reports are still
+encoded incrementally and checked against the existing 64-MiB ceiling,
+without constructing an entire second serialized copy. The first
+over-budget fragment still aborts the pipeline. Surrogate-containing
+strings that cannot be represented in UTF-8 are explicitly rejected
+with a generic, private-data-free error.
+
+The new synthetic test matrix verifies the optimized counter against
+`json.dumps(..., indent=2, sort_keys=True, ensure_ascii=False)`
+plus newline, including multilingual names, emoji, combining characters,
+JSON escapes, random mixed strings, exact inclusive byte boundaries,
+stage-142/143 and full stage-150 outputs. It also checks that ASCII
+fragments are never re-encoded, Unicode fragments are byte-measured,
+and malformed inputs fail closed. Stage-159 generated-only profiling
+still runs in CI for follow-up measurements; the change is **not**
+subject to machine-dependent timing gates or a guaranteed speedup.
+
+These are metadata-processing improvements only. They establish
+nothing about real Flames of Judgment textures, PS3 resource formats,
+or execution on a Nintendo Switch.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ
