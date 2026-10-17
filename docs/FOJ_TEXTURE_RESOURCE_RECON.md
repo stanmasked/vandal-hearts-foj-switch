@@ -913,6 +913,20 @@ operator linkage is promoted to verified Nintendo Switch GPU
 scanout, original FoJ resource provenance, or gameplay.
 See `docs/GPU_STAGE170_CPU_VISUAL_ALIGNMENT.md`.
 
+## Stage 171: generated Switch build identity binding
+
+The stage-171 research-only build receipt independently records the
+GitHub commit/run ID, whole generated SD ZIP SHA-256 and four
+individual NRO/DKSH digests. It is published by the native CI
+alongside the same fixed research package. A local validator checks
+this receipt and rejects stage-166 operator metadata inconsistent
+with the provided package, optionally comparing an exact local NRO
+copy from SD. All partially populated or missing metadata remains
+explicitly incomplete. No ZIP checksum, user statement or CPU
+checkpoint is promoted to verified physical Switch GPU scanout or
+actual FoJ game content. Protocol and limits:
+`docs/GPU_STAGE171_BUILD_IDENTITY.md`.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ
