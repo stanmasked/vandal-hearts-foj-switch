@@ -1,6 +1,8 @@
 """Stage 150 uses only synthetic 16 KiB files and private temporary folders."""
 import json
 import os
+import io
+from contextlib import redirect_stderr
 from pathlib import Path
 import subprocess
 import sys
@@ -172,6 +174,28 @@ class SourceCoherenceTests(unittest.TestCase):
                     gate.publish(root, output)
             self.assertFalse(output.exists())
             self.assertFalse(list(base.glob(".foj-stage150-*")))
+
+    def test_nested_directories_are_bounded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "source"
+            root.mkdir()
+            (root / "empty-a").mkdir()
+            (root / "empty-b").mkdir()
+            with self.assertRaisesRegex(ValueError, "Too many source directories"):
+                gate.snapshot(root, max_files=1)
+
+    def test_cli_redacts_source_name_on_io_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args = ["foj_source_coherence_gate", tmp, "--output-dir",
+                    str(Path(tmp).parent / "different-output")]
+            private = OSError(13, "unreadable", "private-original-model.bmodel")
+            output = io.StringIO()
+            with patch.object(sys, "argv", args), redirect_stderr(output):
+                with patch.object(gate, "publish", side_effect=private):
+                    with self.assertRaises(SystemExit):
+                        gate.main()
+            self.assertNotIn("private-original-model.bmodel", output.getvalue())
+            self.assertIn("local I/O error", output.getvalue())
 
     def test_cli_runs_without_absolute_paths_or_source_content(self):
         with tempfile.TemporaryDirectory() as tmp:
