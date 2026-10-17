@@ -17,6 +17,7 @@ from typing import Any
 
 from tools.foj_fd_bound_reader import open_regular_beneath
 from tools.foj_stage165_sd_bundle import INPUTS
+from tools.foj_stage166_hardware_observations import blank_template
 from tools.foj_stage171_build_identity import read_receipt
 from tools.foj_stage174_native_artifact_coherence import (
     _stable_loose_bytes, verify_native_outputs,
@@ -116,6 +117,8 @@ def build_five_receipt(root: Path, expected_commit: str, expected_run_id: int) -
             root, root / BUNDLE, receipt, expected_commit, expected_run_id,
         )
         if _read_json(root, STAGE174) != previous:
+            raise _bad()
+        if _read_json(root, "build/foj-stage166-blank-observations.json") != blank_template():
             raise _bad()
         rows = [
             {"published_relative_path": relative, "sha256": entry["sha256"]}
