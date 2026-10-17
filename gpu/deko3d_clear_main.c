@@ -18,7 +18,8 @@
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
 #include "dksh_module.h"
 #include "shader_layout.h"
-_Static_assert(FOJ_GPU_SHADER_MAX_DKSH == FOJ_DKSH_MAX_BYTES,
+_Static_assert((size_t)FOJ_GPU_SHADER_MAX_DKSH ==
+               (size_t)FOJ_DKSH_MAX_BYTES,
                "DKSH intake and GPU shader slot capacities differ");
 #endif
 
