@@ -557,3 +557,10 @@ The local host test uses a reconstructed subset, not the exact full repository c
 - [x] Validate the same NACP Make dependency mechanism with a local minimal GNU Make fixture: current NACP no-op; touched triangle Makefile triggers build recipe.
 - [ ] Run complete repository test and inspect CI results; local GitHub cloning is blocked by DNS and no full repository run is confirmed.
 - [ ] Verify actual SDK UAM/ARM64/NRO compilation and Nintendo Switch GPU output.
+
+## Stage 113: ELF/NACP -> NRO packaging dependency regression (2026-10-17)
+
+- [x] Extend `tests/test_gpu_make_dependencies.sh` to verify the NRO packaging dependency chain using GNU Make dry-runs: an up-to-date triangle NRO does not invoke `elf2nro`, while a newer NACP or a newer ELF triggers repackaging.
+- [x] Locally execute the three corresponding dependency scenarios in an isolated minimal GNU Make fixture: PASS.
+- [ ] Execute the full updated regression from an exact GitHub checkout/Actions; local minimal fixture is not equivalent to the complete Makefile or SDK toolchain.
+- [ ] Confirm native ARM64 NRO build and deko3d GPU rendering on Switch hardware.
