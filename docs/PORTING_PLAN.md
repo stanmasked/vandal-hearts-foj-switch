@@ -868,3 +868,16 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Documented offline use and evidence limitations in `docs/FOJ_TEXTURE_RESOURCE_RECON.md`; PR #27 merged to `main` as squash commit `6d49dce8c4ddfd41fc92c13beab28abdea0d5566`.
 - [ ] Original FoJ PS3 files were not available in this stage; no candidate table/index or texture→material→model association has been confirmed from actual game data.
 - [ ] This stage does not change NRO builds or verify hardware. Physical Switch presentation and real game rendering remain untested.
+
+## Stage 145: cross-report FoJ texture candidate consistency and false-positive triage — CI SUCCESS (2026-10-17)
+
+- [x] Added `tools/foj_evidence_triage.py`, a **metadata-only** reconciler for the stage-142 DDS span/pointer report, stage-143 fixed-stride table hypotheses and stage-144 index-column/negative-control observations. It reads JSON only, not proprietary PS3 game assets.
+- [x] Reconciles exact relative filenames, per-table start/stride/count/endian, individual row positions and DDS destinations against actual prior pointer hints, classified DDS spans and index/control observations. Validates schema ancestry, path safety, numeric capacities, count invariants and limits.
+- [x] Generates deterministic reason-coded internal triage labels: `internally-contradicted` for absent target/pointer matches or known-size overlapping DDS candidates; `insufficient-or-ambiguous` for unknown image sizes, missing/negative/ambiguous indices or matching negative-control windows; `internally-consistent-for-private-review` only when none of these internal warnings applies. **These reports are dependent on the same original scanner, not independent confirmation**, probabilities, confidence estimates or real FoJ format recognition.
+- [x] Added nine wholly invented test cases in `tests/test_foj_evidence_triage.py`, exercising complete DDS→layout→pointer table→index controls→triage pipeline, LE/BE, negative controls, no-index cases, corrupted pointers, overlaps vs unknown sizes, missing records, malformed metadata, empty manifests and CLI output privacy.
+- [x] Initial CI exposed a gap in sampled negative controls: the synthetic decoy position lay between the default 256 sampled windows. Updated the small fixture to use 1024 windows (exhaustive at that fixture size) and explicitly documented that no sampled control hits **does not guarantee** absence of coincidences.
+- [x] **Actual dedicated GitHub Actions run 39049324713 SUCCESS**, Python 3.10 and 3.12: 7 previous metadata tests + 6 relation + 7 table + 8 index + 9 new triage = **37 passing tests per interpreter**.
+- [x] **Actual research tools CI run 39049324701 SUCCESS**, Python 3.11 and 3.13, **154 tests per interpreter**.
+- [x] PR #28 merged to `main` via squash as `7c7b23c1fd138e1a2c5f21d26836ddfd7346f485`. Documented local stage-145 CLI usage and evidence limitations in `docs/FOJ_TEXTURE_RESOURCE_RECON.md`.
+- [ ] No privately extracted real FoJ PS3 files available for analysis; original material/model mappings, native resource formats and container structures remain unknown.
+- [ ] No new GPU NRO features or on-console Switch testing this stage; hardware frame presentation remains unverified.
