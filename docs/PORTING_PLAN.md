@@ -642,3 +642,10 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Preserve existing isolation checks ensuring clear clean does not delete triangle ELF/NACP/NRO output files.
 - [ ] Execute the exact updated regression in the current checkout and verify actual GitHub CI logs; this stage only commits executable test coverage, not confirmed results.
 - [ ] Verify the 18-scenario deko3d GPU mock and build actual ARM64 NRO with devkitPro/UAM and hardware rendering.
+
+## Stage 124: GPU clean must preserve unrelated build files (2026-10-17)
+
+- [x] Added a non-GPU sentinel (`build/keep-unrelated-gpu-data.bin`) to the disposable `tests/test_gpu_make_dependencies.sh` fixture. Both real `clear.mk clean` and `triangle.mk clean` calls must leave its contents unchanged.
+- [x] Retained checks that the actual ELF, NACP, NRO and host mock binaries are deleted and that clearing one GPU variant does not remove another variant.
+- [ ] The exact updated regression and full GPU host suite have not been run or verified in this environment. Local /mnt/data contains no current checkout and the available GitHub connector does not offer a direct checkout into this container.
+- [ ] Actual devkitA64/UAM NRO build and Switch GPU rendering remain unverified.
