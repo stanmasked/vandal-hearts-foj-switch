@@ -1,4 +1,4 @@
-# Experimental Switch GPU smoke tests — stage 139
+# Experimental Switch GPU smoke tests — stage 140
 
 These are **homebrew research binaries**, not a playable port or a patch for
 *Vandal Hearts: Flames of Judgment*. No original PS3 content is embedded.
@@ -111,12 +111,12 @@ DXT5 (BC3)** FourCC compression. The input blocks are decoded entirely
 in host/CPU memory into tightly packed RGBA8 before the existing deko3d
 image-upload path. GPU texture binding and material IDs 0/1 are unchanged.
 
-Latest verified native build: GitHub Actions run **39037261317**, PR #22.
+Stage 139 verified native build: GitHub Actions run **39037261317**, PR #22.
 - `foj-deko3d-triangle-research.nro`: **294968 bytes**
 - `foj-deko3d-clear-smoke.nro`: **262200 bytes** (unchanged)
 - Three UAM-compiled and stage-validated DKSH files included
 
-Latest artifact:
+Stage 139 artifact:
 https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39037261317/artifacts/12102557872
 
 Accepted private atlas formats:
@@ -132,7 +132,7 @@ Accepted private atlas formats:
 - Exact file length, one image, at most one mip level; max decoded output
   **256 KiB per material**, with the same SD filenames as stage 138
 
-Still NOT supported: BC2/DXT3, BC4/BC5/BC6/BC7, DX10/DXGI variants,
+Stage 139 did NOT support: BC2/DXT3, BC4/BC5/BC6/BC7, DX10/DXGI variants,
 mipmaps, swizzled/tiled PS3 GPU textures, nonmatching channel masks,
 odd block dimensions and DDS files with trailing proprietary data. Some
 real game assets will require additional analysis or local conversion.
@@ -147,6 +147,50 @@ As in all previous stages, these CI results confirm CPU decoding and
 native compilation but **do NOT prove correct sampling, compositing or
 presentation on a physical Nintendo Switch**. Do not distribute private
 PS3 data with the build.
+
+## Stage 140 — BGRA byte order and complete DDS mip-chain validation
+
+The latest optional research GPU NRO accepts one more classic uncompressed
+pixel layout: **BGRA8**, with the 32-bit masks
+`R=0x00ff0000, G=0x0000ff00, B=0x000000ff, A=0xff000000`.
+It swaps red and blue channels on the CPU to produce the existing RGBA8
+GPU upload format; classic RGBA8, DXT1/BC1 and DXT5/BC3 remain supported.
+
+DDS files may now contain a **complete, contiguous mip chain**, including
+the canonical DDS mip-count flag and `DDSCAPS_TEXTURE|COMPLEX|MIPMAP`.
+The loader validates the exact bytes of every mip level (for BC1/BC3,
+using at least one compressed block as dimensions shrink), rejects
+truncation/trailing bytes, and decodes **only level 0**. It does *not*
+create GPU mip levels, enable mip filtering, or make the native renderer
+sample lower-resolution mipmaps.
+
+Dimensions still: base width 8–256 and divisible by 8; base height 1–256
+for uncompressed or divisible by 4 for BC1/BC3. Full mip chains may shrink
+to 1×1; at most nine levels. Peak input file cap is **384 KiB** and
+decoded level-0 RGBA8 is still capped at **256 KiB per atlas**.
+Incomplete mip chains are accepted only if their advertised level count
+and supplied bytes match exactly, with valid DDS flags and caps.
+DX10 headers, BC2/BC4/BC5/BC6/BC7, cubemaps, volumes, arrays,
+swizzled/tiled PS3 resources and proprietary extra bytes remain
+unsupported.
+
+**Latest verified build**: PR #23, native devkitA64/UAM GitHub Actions run
+**39037930630**. Native GPU NROs and DKSH shaders built successfully:
+- `foj-deko3d-triangle-research.nro`: **294968 bytes**
+- `foj-deko3d-clear-smoke.nro`: **262200 bytes**
+
+Download the current seven-day CI artifact:
+https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39037930630/artifacts/12103085997
+
+GPU host regressions run **39037930668** passed both GCC and Clang
+under strict C11, NDEBUG, and ASan/UBSan, including synthetic BGRA,
+RGBA8/BC1/BC3 mip tails, corrupt mip counts/caps, and a local
+256×256 nine-level DDS file test. Research tools run **39037930657**
+also passed.
+
+**No on-console image readback or GPU presentation has been confirmed.**
+None of these tests establishes compatibility with any specific FoJ PS3
+atlas; the SD cards must contain only user-owned, locally prepared files.
 
 ## SD card layout for a user-authorized homebrew Switch
 
