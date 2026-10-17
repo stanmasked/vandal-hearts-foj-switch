@@ -24,7 +24,8 @@
 _Static_assert((size_t)FOJ_GPU_SHADER_MAX_DKSH ==
                (size_t)FOJ_DKSH_MAX_BYTES,
                "DKSH intake and GPU shader slot capacities differ");
-_Static_assert(FOJ_RESEARCH_MATERIAL_COUNT == FOJ_RESEARCH_TEXTURE_COUNT,
+_Static_assert((size_t)FOJ_RESEARCH_MATERIAL_COUNT ==
+               (size_t)FOJ_RESEARCH_TEXTURE_COUNT,
                "Synthetic material and texture counts must agree");
 #endif
 
@@ -238,7 +239,8 @@ int main(int argc,char **argv) {
     _Static_assert(PIXEL_STAGING_OFFSET +
                    FOJ_RESEARCH_TEXTURE_COUNT*PIXEL_STAGING_STRIDE
                    <=TEXTURE_DATA_BYTES, "Texture staging pool too small");
-    _Static_assert(FOJ_RESEARCH_TEXTURE_BYTES<=PIXEL_STAGING_STRIDE,
+    _Static_assert((size_t)FOJ_RESEARCH_TEXTURE_BYTES<=
+                   (size_t)PIXEL_STAGING_STRIDE,
                    "Texture row data exceeds staging stride");
 
     DkMemBlockMaker texture_data_maker;
