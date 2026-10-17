@@ -673,3 +673,11 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Commit the new lifecycle assertion to GitHub.
 - [ ] A GitHub commit combined status lookup returned no classic statuses, which is not proof of Actions success or failure. The exact 18-scenario suite has not been run here.
 - [ ] Confirm host CI execution, native devkitA64/UAM build and Switch display separately.
+
+## Stage 128: isolate GPU Make dependency CI diagnostics (2026-10-17)
+
+- [x] Split `tests/test_gpu_make_dependencies.sh` out of the chained strict C11 CI step into its own GitHub Actions job step, with `gpu-host-dependencies.log` uploaded as a separate artifact.
+- [x] Add its outcome to the per-compiler GitHub Actions job summary. Strict C11 and sanitizer checks remain independent follow-on steps even if the Make dependency test fails.
+- [x] Preserve GCC/Clang matrix and synthetic SDK-free host test scope; no proprietary assets or native Switch output are involved.
+- [ ] Inspect actual CI outcomes and run the full 18-scenario lifecycle test; the present GitHub connector exposes source changes but no confirmed push-triggered Actions run.
+- [ ] Build ARM64 NRO and validate actual GPU output with devkitPro and Switch hardware.
