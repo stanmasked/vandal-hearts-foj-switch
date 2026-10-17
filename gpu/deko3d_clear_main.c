@@ -9,6 +9,7 @@
 #include <switch.h>
 #include <deko3d.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include "smoke_plan.h"
