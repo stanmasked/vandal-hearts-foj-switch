@@ -1,6 +1,6 @@
 #ifndef FOJ_ATLAS_DDS_H
 #define FOJ_ATLAS_DDS_H
-/* Private-user local DDS intake: strict uncompressed RGBA8 subset only.
+/* Private-user local DDS intake: strict RGBA8, BC1/DXT1 and BC3/DXT5 subset.
  * No PS3 files, codecs, encryption keys or bundled game content. */
 #include <stddef.h>
 #include <stdint.h>
@@ -15,9 +15,11 @@ typedef struct {
     size_t pixel_bytes;
 } FojAtlasRgba8Info;
 
-/* Only classic DDS (no DX10, BCn, mipmaps, arrays or cubemaps), RGBA8
- * little-endian byte order, row pitch width*4, width multiple of 8.
- * On failure, does NOT modify out pixels or info. */
+/* Classic DDS only (no DX10, mipmaps, arrays, cubemaps or swizzling).
+ * Input: raw RGBA8, BC1/DXT1 or BC3/DXT5; output is RGBA8 bytes.
+ * Width 8..256 multiple of 8; height 1..256, multiple of 4 for BCn.
+ * Strict pitch/linear-size, header masks and exact payload length.
+ * On any failure, preserves all output bytes and metadata. */
 int foj_atlas_dds_decode(const uint8_t *dds,size_t len,
                          uint8_t *out,size_t cap,FojAtlasRgba8Info *info);
 
