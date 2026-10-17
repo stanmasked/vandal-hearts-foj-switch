@@ -635,3 +635,10 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Commit the added executable assertions. These do not invoke devkitPro and never clean a user's real build directory, because the test changes directory into its own mktemp fixture.
 - [ ] Verify the *exact updated* test script and full host suite in a current checkout or GitHub Actions; neither successful CI run nor all 18 lifecycle scenarios has been observed here.
 - [ ] Build actual GPU NRO with devkitA64/UAM and test presentation on physical hardware.
+
+## Stage 123: prove host-test binaries are removed by make clean (2026-10-17)
+
+- [x] Extend the existing disposable-fixture regression to create eight representative host mock, sanitizer and NDEBUG output files, run the real `make -f gpu/clear.mk clean` command and assert each file no longer exists.
+- [x] Preserve existing isolation checks ensuring clear clean does not delete triangle ELF/NACP/NRO output files.
+- [ ] Execute the exact updated regression in the current checkout and verify actual GitHub CI logs; this stage only commits executable test coverage, not confirmed results.
+- [ ] Verify the 18-scenario deko3d GPU mock and build actual ARM64 NRO with devkitPro/UAM and hardware rendering.
