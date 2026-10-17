@@ -1,6 +1,6 @@
 # Flames of Judgment PS3 texture reconnaissance — evidence-first workflow
 
-**Status (stage 141, October 17, 2026): no original FoJ PS3 texture
+**Status (stage 143, October 17, 2026): no original FoJ PS3 texture
 container, swizzling scheme or texture-format distribution has been
 confirmed by an actual resource dump.** The existing Switch renderer supports
 a deliberately narrow classic DDS subset and small private texture atlases;
@@ -84,6 +84,40 @@ references.** They are particularly uncertain when formats use relative
 offsets, segmented files, compressed indices or proprietary RSX layouts.
 The tool cannot identify asset ownership, link textures to models or
 claim a specific container type without independent real-file evidence.
+
+## Stage 143: hypothetical fixed-stride offset tables
+
+The stage-142 pointer report can be analyzed **without re-opening any source
+asset files**, to discover short runs of potential DDS file offsets placed at
+uniform 4-, 8-, 12-, 16-, 24- or 32-byte strides:
+
+```sh
+python3 -m tools.foj_resource_table_hypotheses \
+  local-data/foj-texture-relations.json \
+  --output local-data/foj-table-hypotheses.json
+```
+
+The command requires a stage-142 JSON report generated **with** `--root`
+to include possible LE/BE pointer coincidences. It requires at least
+three distinct DDS candidate targets per proposed run by default.
+`--min-distinct 2` is available for broader exploratory scans, but will
+produce substantially more false positives.
+
+This analyzer works **only from existing numeric metadata**. It verifies
+relative paths and numeric bounds, discards ambiguous interpretations at a
+single pointer position, rejects unsupported endian labels, limits input
+size and number of reported tables, and suppresses shorter patterns that
+are subsets of a larger fixed-stride run. It reports possible tables with
+their file name, starting word position, stride, endian, entry count and
+candidate DDS offsets. It does not copy pixels, models, byte strings or
+container contents.
+
+**No table is proof of a texture-index, material slot or model link.**
+Four sequential numerical matches can be a coincidence, debugging data
+or arbitrary binary words. In particular, there is still no identified
+FoJ asset container format. An actual material binding would require
+independent structure evidence from privately inspected files, not just a
+repeating pointer pattern.
 
 ## How to interpret results
 
