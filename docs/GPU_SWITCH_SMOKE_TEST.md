@@ -238,6 +238,18 @@ A pure C GPU command-selection model checks frame order, framebuffer
 selection and failure holds without physical GPU execution. Instructions:
 `docs/GPU_STAGE165_SD_RELEASE.md`.
 
+## Stage 167 — DKSH boot failures before DDS colors
+
+In shader-backed triangle mode, vertex/fragment DKSH file or
+shader-program setup failures can now produce shaderless persistent
+color-clear screens: violet = vertex DKSH unavailable, amber =
+fragment DKSH unavailable, orange = code-memory problem, red =
+invalid slot layout and dark red = deko3d shader-stage rejection.
+The NRO remains in error status 6; the early color path requires
+an already working device, queue, swapchain and command buffer.
+See `docs/GPU_STAGE167_DKSH_BOOT_SCREENS.md` and do not mistake
+a native CI build for physical console verification.
+
 ## SD card layout for a user-authorized homebrew Switch
 
 The NROs may be placed in a homebrew-launcher-readable folder, for example:
