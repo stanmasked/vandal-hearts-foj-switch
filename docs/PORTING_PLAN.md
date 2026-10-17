@@ -792,3 +792,16 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Updated `docs/GPU_SWITCH_SMOKE_TEST.md` to describe private SD paths, supported format constraints and absence/failure behavior.
 - [ ] Real PS3 compressed DDS (BCn/DXT) and PS3 layout/swizzling conversion remain unsupported. No PS3 content added to GitHub.
 - [ ] Actual user-owned game atlas tests, physical Switch image upload/sampling, material correctness and presented pixels remain unverified.
+
+## Stage 139: CPU-decode classic BC1/BC3 DDS into GPU RGBA8 — CI SUCCESS (2026-10-17)
+
+- [x] Extended the existing user-local `gpu/atlas_dds.c` pipeline to accept classic DDS FourCC `DXT1` (BC1) and `DXT5` (BC3), decoding block data to tightly packed RGBA8 using the already bounded 256 KiB staging buffers. Existing uncompressed RGBA8 input remains supported.
+- [x] Implemented RGB565 palette conversion; BC1 4-color and 3-color-with-transparent modes; BC3 unconditional 4-color mode; BC3 8-level and 6-level alpha interpolation and the special zero/255 alpha indexes, using endian-safe block loads.
+- [x] Validates exact DDS header flags, FourCC, block-aligned height, linear compressed byte size, pixel flags, zeroed classic DDS masks, single image/mip and exact file length *before writing any output*. No BC2, BC4/5/6/7, DX10, mip chains, proprietary tiling or PS3 assets.
+- [x] Expanded `tests/test_gpu_atlas_dds.c` with generated BC1 and BC3 synthetic blocks, endpoint interpolation/alpha checks, transparent texels, negative malformed headers and compressed file-read tests. Fixed the old negative helper to pass the full destination capacity so header-rejection tests cannot trivially pass just because capacity is too small.
+- [x] Initial host CI caught incorrect arguments in a new test helper `put32`; repaired that compiler error and reran all checks.
+- [x] **Actual GPU host regression run 39037261332: SUCCESS**, GCC and Clang ordinary, NDEBUG, ASan/UBSan. Logs report `Private RGBA8/BC1/BC3 DDS atlas decode, alpha and bounds: PASS` three times per compiler.
+- [x] **Actual native devkitA64/UAM run 39037261317: SUCCESS**; shader-backed research NRO **294968 bytes**, independent clear NRO **262200 bytes**; 3 validated UAM DKSH modules; downloadable artifact `foj-gpu-native-research` ID **12102557872** at https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39037261317/artifacts/12102557872.
+- [x] **Research tools tests run 39037261302: SUCCESS**. PR #22 merged into `main` as squash commit `02fbf3528ec0d5c993c4614f65db4daca8b75f9f`.
+- [x] Updated `docs/GPU_SWITCH_SMOKE_TEST.md` with stage 139 compressed format constraints, behavior, current artifact and explicit runtime verification limitations.
+- [ ] No physical Switch verification, no actual FoJ PS3 texture ingest, and no validation of PS3-specific swizzle/tiling/mip data yet. Native toolchain success is **not** proof of correct GPU output.
