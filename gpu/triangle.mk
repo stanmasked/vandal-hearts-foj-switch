@@ -7,6 +7,7 @@ SRC := gpu/deko3d_clear_main.c gpu/smoke_plan.c gpu/dksh_module.c gpu/shader_lay
 GPU_TITLE := FoJ GPU Triangle Research
 GPU_VERSION := 0.11.0
 GPU_EXTRA_DEPS := gpu/triangle.mk gpu/dksh_module.h gpu/shader_layout.h
+GPU_METADATA_DEPS := gpu/triangle.mk
 
 include gpu/clear.mk
 
