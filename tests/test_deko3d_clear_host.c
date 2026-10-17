@@ -68,7 +68,8 @@ u64 padGetButtonsDown(PadState* p) {
             g.failure==FAIL_PLUS_EARLY)?HidNpadButton_Plus:0;
 }
 int appletMainLoop(void) {
-    const int limit=g.failure==FAIL_APPLET_EARLY?0:\n                    g.failure==FAIL_APPLET_AFTER_ONE?1:242;
+    const int limit=g.failure==FAIL_APPLET_EARLY?0:
+                    g.failure==FAIL_APPLET_AFTER_ONE?1:242;
     return g.loop_calls++<limit;
 }
 void* nwindowGetDefault(void) { return (void*)(uintptr_t)0x1234; }
