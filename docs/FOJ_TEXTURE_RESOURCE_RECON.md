@@ -194,6 +194,10 @@ It assigns descriptive **internal triage** labels, not probabilities:
 
 The new tool reads **only JSON**, checks report schemas and numeric
 bounds, writes a metadata-only summary and keeps source files local.
+The stage-144 negative-control scan is **sampled, not exhaustive**:
+an absence of observed control matches must not be interpreted as a
+confirmed absence of false positives. For local investigations, raising
+its `--control-windows` limit can reveal additional coincidences.
 Even when stage-142, -143 and -144 agree, their evidence is **not
 independent**: all three come from the same candidate scans and
 pointer coincidences. No "confidence score" or game-asset schema is
