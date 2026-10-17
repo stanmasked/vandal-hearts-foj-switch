@@ -40,10 +40,10 @@ def _read_prefix(root: Path, relative: PurePosixPath, limit: int) -> bytes:
 
 
 def build_relations(manifest: dict[str, Any], *, root: Path | None = None,
-    measure_report(manifest)
                     prefix_bytes: int = DEFAULT_PREFIX_BYTES,
                     max_pointers_per_candidate: int =
                     DEFAULT_MAX_POINTERS_PER_CANDIDATE) -> dict[str, Any]:
+    measure_report(manifest)
     """Build layout hypotheses, optionally probing prefix-aligned pointers.
 
     No offsets/lengths in an untrusted report are treated as proven locations.
