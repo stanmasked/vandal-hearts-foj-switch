@@ -70,10 +70,10 @@ def _controls(prefix: bytes, start: int, last: int, stride: int,
 
 
 def analyze_index_columns(manifest: dict[str, Any], *, root: Path,
-    measure_report(manifest)
                           prefix_bytes: int = DEFAULT_PREFIX_BYTES,
                           min_entries: int = 4,
                           max_control_windows: int = 256) -> dict[str, Any]:
+    measure_report(manifest)
     if not isinstance(manifest, dict) or (
         manifest.get("schema") != "foj-resource-table-hypotheses-v1"
     ):
