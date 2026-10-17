@@ -19,6 +19,9 @@ target="$tmp/build/foj-deko3d-triangle-research.elf"
 touch "$target"
 touch -t 202201010000 "$target"
 cd "$tmp"
+# Use the same *relative* target name as the Makefile rule below.
+# The earlier absolute fixture path would bypass Make dependency checks.
+target=build/foj-deko3d-triangle-research.elf
 # The preflight target is order-only. A current ELF must not be rebuilt.
 build_command='-o build/foj-deko3d-triangle-research.elf'
 if make -f gpu/triangle.mk -n build/foj-deko3d-triangle-research.elf | grep -F -- "$build_command" >/dev/null; then
