@@ -489,7 +489,14 @@ int main(int argc,char **argv) {
 #endif
 
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
-    FOJ_READY_BOOT();
+    /* An invalid DDS remains a failed intake even when we deliberately
+     * continue into the shaderless color-only diagnostic path. */
+    if (dds_fatal) {
+        (void)foj_gpu_boot_journal_note(
+            &boot_journal,boot_stage,FOJ_BOOT_FAILED,boot_frames);
+    } else {
+        FOJ_READY_BOOT();
+    }
     FOJ_ENTER_BOOT(FOJ_BOOT_COMMAND_LISTS);
 #endif
     /* Mirror switchbrew's deko_basic/Example01 approach: pre-record
