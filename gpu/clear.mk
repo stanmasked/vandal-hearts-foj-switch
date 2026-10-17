@@ -85,6 +85,18 @@ HOST_SHADERS_NDEBUG := build/foj-deko3d-shader-layout-ndebug
 $(HOST_SHADERS_NDEBUG): tests/test_shader_layout.c gpu/shader_layout.c gpu/shader_layout.h | build
 	$(HOSTCC) -DNDEBUG -std=c11 -Wall -Wextra -Werror -pedantic -Igpu tests/test_shader_layout.c gpu/shader_layout.c -o $@
 
+# Additional host regressions must not disappear under -DNDEBUG.
+HOST_TEST_NDEBUG := build/foj-gpu-smoke-plan-ndebug
+HOST_ABI_NDEBUG := build/foj-deko3d-contract-ndebug
+HOST_DKSH_NDEBUG := build/foj-dksh-intake-ndebug
+
+$(HOST_TEST_NDEBUG): tests/test_gpu_smoke_plan.c gpu/smoke_plan.c gpu/smoke_plan.h core/gpu_vertex_stream.h | build
+	$(HOSTCC) -DNDEBUG -std=c11 -Wall -Wextra -Werror -pedantic -Igpu tests/test_gpu_smoke_plan.c gpu/smoke_plan.c -lm -o $@
+$(HOST_ABI_NDEBUG): tests/test_deko3d_api_contract.c tests/mock_switch_sdk/deko3d.h gpu/deko3d_api_contract.h | build
+	$(HOSTCC) -DNDEBUG -std=c11 -Wall -Wextra -Werror -pedantic -Itests/mock_switch_sdk -Igpu -Icore tests/test_deko3d_api_contract.c -o $@
+$(HOST_DKSH_NDEBUG): tests/test_dksh_module.c gpu/dksh_module.c gpu/dksh_module.h | build
+	$(HOSTCC) -DNDEBUG -std=c11 -Wall -Wextra -Werror -pedantic -Igpu tests/test_dksh_module.c gpu/dksh_module.c -o $@
+
 # Verify transactional DKSH intake using generated-only modules.
 $(HOST_DKSH): tests/test_dksh_module.c gpu/dksh_module.c \
               gpu/dksh_module.h | build
@@ -138,12 +150,15 @@ host-triangle-check:
 	  -Itests/mock_switch_sdk -Icore -Igpu \
 	  gpu/deko3d_clear_main.c
 
-host-check: host-triangle-check $(HOST_TEST) $(HOST_ABI) $(HOST_SHADERS) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_MOCK) $(HOST_MOCK_NDEBUG)
+host-check: host-triangle-check $(HOST_TEST) $(HOST_TEST_NDEBUG) $(HOST_ABI) $(HOST_ABI_NDEBUG) $(HOST_SHADERS) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_NDEBUG) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_MOCK) $(HOST_MOCK_NDEBUG)
 	./$(HOST_TEST)
+	./$(HOST_TEST_NDEBUG)
 	./$(HOST_ABI)
+	./$(HOST_ABI_NDEBUG)
 	./$(HOST_SHADERS)
 	./$(HOST_SHADERS_NDEBUG)
 	./$(HOST_DKSH)
+	./$(HOST_DKSH_NDEBUG)
 	./$(HOST_DKSH_INTEGRATION)
 	./$(HOST_DKSH_INTEGRATION_NDEBUG)
 	./$(HOST_MOCK)
@@ -170,4 +185,4 @@ verify: $(OUT).nro
 	python3 tools/validate_nro.py $(OUT).nro
 
 clean:
-	rm -f $(OUT).elf $(OUT).nacp $(OUT).nro $(HOST_TEST) $(HOST_ABI) $(HOST_MOCK) $(HOST_MOCK_SAN) $(HOST_MOCK_NDEBUG) $(HOST_SHADERS) $(HOST_SHADERS_SAN) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_TEST_SAN) $(HOST_ABI_SAN)
+	rm -f $(OUT).elf $(OUT).nacp $(OUT).nro $(HOST_TEST) $(HOST_TEST_NDEBUG) $(HOST_ABI) $(HOST_ABI_NDEBUG) $(HOST_MOCK) $(HOST_MOCK_SAN) $(HOST_MOCK_NDEBUG) $(HOST_SHADERS) $(HOST_SHADERS_SAN) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_NDEBUG) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_TEST_SAN) $(HOST_ABI_SAN)
