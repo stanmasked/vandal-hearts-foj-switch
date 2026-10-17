@@ -605,3 +605,10 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Execute an isolated GNU Make reproduction of this dependency chain: up-to-date NRO schedules no recipes; after header touch it schedules ELF + NRO and no NACP (PASS).
 - [ ] Run the exact committed test in a current full repository checkout / GitHub Actions. The locally available files are from stage 87 and cannot verify current GitHub tests.
 - [ ] Run the 18-case deko3d lifecycle suite, compile ARM64 NRO and inspect output on Switch hardware.
+
+## Stage 119: clear-smoke header-only incremental NRO update (2026-10-17)
+
+- [x] Add a negative metadata regression for `gpu/smoke_plan.h`: changing the C header must cause the clear-smoke ELF and packaged NRO to rebuild without rerunning `nacptool --create`.
+- [x] Execute an isolated GNU Make fixture with the corresponding dependency graph: unchanged inputs caused no rebuild; after touching the header, only ELF and NRO recipes were printed (PASS).
+- [ ] Execute the entire updated `tests/test_gpu_make_dependencies.sh` from the exact current checkout and verify GitHub CI results; this local fixture does not qualify as that full test.
+- [ ] Run the full deko3d mock suite and build/verify real ARM64 NRO on Nintendo Switch with devkitPro/UAM.
