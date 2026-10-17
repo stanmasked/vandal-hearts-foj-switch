@@ -581,3 +581,11 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Committed the new GPU build regression in GitHub.
 - [ ] Execute the exact changed regression from a full checkout / GitHub Actions. Current local reconstruction lacks the latest packaging targets and git clone fails DNS; no full test pass is asserted.
 - [ ] Compile authentic UAM DKSH and ARM64 NRO with devkitA64 and verify GPU presentation on physical Nintendo Switch.
+
+## Stage 116: source-only clear-smoke incremental rebuild (2026-10-17)
+
+- [x] Inspect the current GPU host CI workflow: GCC/Clang matrix is configured and uploads strict/sanitized logs, but actual Actions runs could not be fetched or verified in this session.
+- [x] Add a regression to `tests/test_gpu_make_dependencies.sh` for editing only `gpu/smoke_plan.c`: the clear-smoke ELF compiler and NRO packaging must run, but NACP metadata generation must not run.
+- [x] Verify the incremental GNU Make dependency pattern in a small local fixture: baseline no recipes; source edit recompiles ELF and repackages NRO without NACP regeneration (PASS). This is not a run of the exact committed test.
+- [ ] Run full GPU host suite and its 18-scenario stateful deko3d lifecycle mock from the full checkout; inspect actual CI outputs.
+- [ ] Build native ARM64 GPU NRO with devkitA64/UAM and verify on Nintendo Switch hardware.
