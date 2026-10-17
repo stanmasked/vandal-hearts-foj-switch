@@ -22,6 +22,7 @@
 #include "research_mesh.h"
 #include "gpu_draw_plan.h"
 #include "research_texture.h"
+#include "atlas_dds.h"
 _Static_assert((size_t)FOJ_GPU_SHADER_MAX_DKSH ==
                (size_t)FOJ_DKSH_MAX_BYTES,
                "DKSH intake and GPU shader slot capacities differ");
@@ -227,22 +228,23 @@ int main(int argc,char **argv) {
         dkShaderGetStage(&shader_fragment)!=DkStage_Fragment)
         goto cleanup;
 
-    /* Two invented 8x8 RGBA8 textures. Staging and descriptors live in a
-     * persistent CPU-visible GPU block; sampled images are GPU image blocks.
-     * DMA completes and queue idles before render lists are recorded. */
+    /* Optionally load private RGBA8 DDS files from SD (8..256 pixels wide,
+     * width multiple of 8, up to 256 high); absent files retain invented
+     * test gradients. Reject invalid files instead of silently falling back.
+     * Each material has its own aligned CPU-visible staging slot. */
     enum {
-        TEXTURE_DATA_BYTES=0x1000,
+        TEXTURE_DATA_BYTES=0x90000,
         IMAGE_DESCRIPTORS_OFFSET=0,
         SAMPLER_DESCRIPTORS_OFFSET=0x100,
-        PIXEL_STAGING_OFFSET=0x200,
-        PIXEL_STAGING_STRIDE=0x200
+        PIXEL_STAGING_OFFSET=0x1000,
+        PIXEL_STAGING_STRIDE=0x40000
     };
     _Static_assert(PIXEL_STAGING_OFFSET +
                    FOJ_RESEARCH_TEXTURE_COUNT*PIXEL_STAGING_STRIDE
                    <=TEXTURE_DATA_BYTES, "Texture staging pool too small");
-    _Static_assert((size_t)FOJ_RESEARCH_TEXTURE_BYTES<=
+    _Static_assert((size_t)FOJ_ATLAS_MAX_BYTES<=
                    (size_t)PIXEL_STAGING_STRIDE,
-                   "Texture row data exceeds staging stride");
+                   "Private DDS texture exceeds staging stride");
 
     DkMemBlockMaker texture_data_maker;
     dkMemBlockMakerDefaults(&texture_data_maker,device,TEXTURE_DATA_BYTES);
@@ -255,22 +257,42 @@ int main(int argc,char **argv) {
     if (!texture_data_cpu || texture_data_addr==DK_GPU_ADDR_INVALID)
         goto cleanup;
 
-    DkImageLayout texture_layout;
-    DkImageLayoutMaker texture_layout_maker;
-    dkImageLayoutMakerDefaults(&texture_layout_maker,device);
-    texture_layout_maker.type=DkImageType_2D;
-    texture_layout_maker.format=DkImageFormat_RGBA8_Unorm;
-    texture_layout_maker.dimensions[0]=FOJ_RESEARCH_TEXTURE_WIDTH;
-    texture_layout_maker.dimensions[1]=FOJ_RESEARCH_TEXTURE_HEIGHT;
-    texture_layout_maker.dimensions[2]=1;
-    dkImageLayoutInitialize(&texture_layout,&texture_layout_maker);
-    uint32_t texture_image_bytes=0;
-    if (!foj_smoke_image_allocation(dkImageLayoutGetSize(&texture_layout),
-                                    dkImageLayoutGetAlignment(&texture_layout),
-                                    DK_MEMBLOCK_ALIGNMENT,&texture_image_bytes))
-        goto cleanup;
-
+    const char *const atlas_paths[FOJ_RESEARCH_TEXTURE_COUNT]={
+        "sdmc:/switch/foj/gpu/material0.dds",
+        "sdmc:/switch/foj/gpu/material1.dds"
+    };
     for (unsigned i=0;i<FOJ_RESEARCH_TEXTURE_COUNT;++i) {
+        uint8_t *pixels=texture_data_cpu+PIXEL_STAGING_OFFSET+
+                        i*PIXEL_STAGING_STRIDE;
+        FojAtlasRgba8Info atlas={0};
+        const int loaded=foj_atlas_dds_try_read(
+            atlas_paths[i],pixels,PIXEL_STAGING_STRIDE,&atlas);
+        if (loaded<0)goto cleanup;
+        if (loaded==0) {
+            if (!foj_research_texture_rgba8(i,pixels,
+                                            PIXEL_STAGING_STRIDE))
+                goto cleanup;
+            atlas=(FojAtlasRgba8Info){FOJ_RESEARCH_TEXTURE_WIDTH,
+                                      FOJ_RESEARCH_TEXTURE_HEIGHT,
+                                      FOJ_RESEARCH_TEXTURE_BYTES};
+        }
+
+        DkImageLayout texture_layout;
+        DkImageLayoutMaker texture_layout_maker;
+        dkImageLayoutMakerDefaults(&texture_layout_maker,device);
+        texture_layout_maker.type=DkImageType_2D;
+        texture_layout_maker.format=DkImageFormat_RGBA8_Unorm;
+        texture_layout_maker.dimensions[0]=atlas.width;
+        texture_layout_maker.dimensions[1]=atlas.height;
+        texture_layout_maker.dimensions[2]=1;
+        dkImageLayoutInitialize(&texture_layout,&texture_layout_maker);
+        uint32_t texture_image_bytes=0;
+        if (!foj_smoke_image_allocation(
+                dkImageLayoutGetSize(&texture_layout),
+                dkImageLayoutGetAlignment(&texture_layout),
+                DK_MEMBLOCK_ALIGNMENT,&texture_image_bytes))
+            goto cleanup;
+
         DkMemBlockMaker image_maker;
         dkMemBlockMakerDefaults(&image_maker,device,texture_image_bytes);
         image_maker.flags=DkMemBlockFlags_GpuCached|DkMemBlockFlags_Image;
@@ -279,22 +301,18 @@ int main(int argc,char **argv) {
         dkImageInitialize(&texture_images[i],&texture_layout,
                           texture_images_mem[i],0);
         dkImageViewDefaults(&texture_views[i],&texture_images[i]);
-
         DkImageDescriptor image_desc;
         dkImageDescriptorInitialize(&image_desc,&texture_views[i],false,false);
         memcpy(texture_data_cpu+IMAGE_DESCRIPTORS_OFFSET+
                i*sizeof(image_desc),&image_desc,sizeof(image_desc));
-        if (!foj_research_texture_rgba8(i,
-               texture_data_cpu+PIXEL_STAGING_OFFSET+
-               i*PIXEL_STAGING_STRIDE,FOJ_RESEARCH_TEXTURE_BYTES))
-            goto cleanup;
 
-        DkCopyBuf source={
+        /* Copy row length is in pixels. The DDS width multiple-of-8 rule
+         * ensures 32-byte-aligned linear source pitch for RGBA8. */
+        const DkCopyBuf source={
             texture_data_addr+PIXEL_STAGING_OFFSET+i*PIXEL_STAGING_STRIDE,
-            FOJ_RESEARCH_TEXTURE_WIDTH,FOJ_RESEARCH_TEXTURE_HEIGHT
+            atlas.width,atlas.height
         };
-        const DkImageRect rect={0,0,0,FOJ_RESEARCH_TEXTURE_WIDTH,
-                               FOJ_RESEARCH_TEXTURE_HEIGHT,1};
+        const DkImageRect rect={0,0,0,atlas.width,atlas.height,1};
         dkCmdBufCopyBufferToImage(cmd,&source,&texture_views[i],&rect,0);
     }
 
@@ -329,9 +347,8 @@ int main(int argc,char **argv) {
             dkCmdBufClearColorFloat(cmd,0,DkColorMask_RGBA,
                                     rgba[0],rgba[1],rgba[2],rgba[3]);
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
-            /* Ordered draw ranges originate in the real CPU-to-GPU stream.
-             * Both synthetic section IDs share the same UV gradient shader;
-             * material/texture switching is not implemented yet. */
+            /* Each validated draw range selects its own GPU texture,
+             * optionally sourced from a user-owned local RGBA8 DDS atlas. */
             const DkViewport viewport={0.f,0.f,SCREEN_WIDTH,
                                        SCREEN_HEIGHT,0.f,1.f};
             DkRasterizerState rasterizer;
