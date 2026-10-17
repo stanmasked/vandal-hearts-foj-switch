@@ -1,0 +1,75 @@
+name: Native Switch GPU NRO and DKSH build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/gpu-native-build.yml"
+      - "gpu/**"
+      - "core/gpu_vertex_stream.h"
+      - "core/textured_triangles.h"
+      - "tools/validate_nro.py"
+      - "tools/validate_dksh.py"
+  pull_request:
+    paths:
+      - ".github/workflows/gpu-native-build.yml"
+      - "gpu/**"
+      - "core/gpu_vertex_stream.h"
+      - "core/textured_triangles.h"
+      - "tools/validate_nro.py"
+      - "tools/validate_dksh.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-gpu:
+    name: devkitA64 deko3d NRO / UAM DKSH
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    container:
+      image: devkitpro/devkita64:20260219
+    env:
+      DEVKITPRO: /opt/devkitpro
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show installed toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          "${DEVKITPRO}/devkitA64/bin/aarch64-none-elf-gcc" --version
+          test -f "${DEVKITPRO}/libnx/include/deko3d.h"
+          test -f "${DEVKITPRO}/libnx/lib/libdeko3dd.a"
+          test -x "${DEVKITPRO}/tools/bin/elf2nro"
+          test -x "${DEVKITPRO}/tools/bin/nacptool"
+          command -v uam
+      - name: Build and validate shader-free GPU clear NRO
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f gpu/clear.mk verify
+      - name: Build and validate shader-backed research triangle NRO
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f gpu/triangle.mk verify
+      - name: Compile and validate generated-only UAM DKSH modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f gpu/Makefile triangle-verify
+          make -f gpu/Makefile verify
+      - name: Upload SDK-built research binaries
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-gpu-native-research
+          path: |
+            build/foj-deko3d-clear-smoke.nro
+            build/foj-deko3d-triangle-research.nro
+            gpu/build/foj_actor.vert.dksh
+            gpu/build/foj_actor.frag.dksh
+            gpu/build/foj_triangle.frag.dksh
+          if-no-files-found: error
+          retention-days: 7
