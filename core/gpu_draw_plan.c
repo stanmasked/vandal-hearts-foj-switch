@@ -17,7 +17,7 @@ FojGpuStreamStatus foj_gpu_build_draw_plan(
         const FojGpuBatch *b=&batches[i];
         if (b->first_vertex!=covered||!b->vertex_count||
             b->vertex_count%3||b->vertex_count>vertex_count-covered||
-            b->material_index>=material_count)
+            b->texture_index>=material_count)
             return FOJ_GPU_STREAM_INVALID;
         covered+=b->vertex_count;
     }
@@ -26,7 +26,7 @@ FojGpuStreamStatus foj_gpu_build_draw_plan(
         draws_out[i]=(FojGpuDrawRange){
             batches[i].first_vertex,
             batches[i].vertex_count,
-            batches[i].material_index
+            batches[i].texture_index
         };
     }
     return FOJ_GPU_STREAM_OK;
