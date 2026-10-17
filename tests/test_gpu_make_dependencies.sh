@@ -205,7 +205,7 @@ done
 # Guard against overly broad clean rules (for example rm -f build/*).
 # Unrelated build assets and a neighboring variant must remain untouched.
 sentinel=build/keep-unrelated-gpu-data.bin
-printf 'KEEP_GPU_SENTINEL\\n' > "$sentinel"
+printf '%s\n' 'KEEP_GPU_SENTINEL' > "$sentinel"
 # Execute the real clean recipes in this disposable fixture as well:
 # text-matching a dry-run alone cannot prove that outputs are removed.
 make -f gpu/clear.mk clean >/dev/null
