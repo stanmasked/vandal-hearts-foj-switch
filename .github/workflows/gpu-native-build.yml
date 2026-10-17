@@ -20,6 +20,8 @@ on:
       - "tools/foj_stage166_hardware_observations.py"
       - "tools/foj_stage168_boot_journal_audit.py"
       - "tools/foj_stage169_two_attempt_recovery.py"
+      - "tools/foj_stage170_cpu_visual_alignment.py"
+      - "tests/test_foj_stage170_cpu_visual_alignment.py"
       - "tests/test_foj_stage169_two_attempt_recovery.py"
       - "tests/foj_stage169_native_boot_fixture.c"
       - "tools/foj_stage162_synthetic_dds.py"
@@ -41,6 +43,8 @@ on:
       - "tools/foj_stage166_hardware_observations.py"
       - "tools/foj_stage168_boot_journal_audit.py"
       - "tools/foj_stage169_two_attempt_recovery.py"
+      - "tools/foj_stage170_cpu_visual_alignment.py"
+      - "tests/test_foj_stage170_cpu_visual_alignment.py"
       - "tests/test_foj_stage169_two_attempt_recovery.py"
       - "tests/foj_stage169_native_boot_fixture.c"
       - "tools/foj_stage162_synthetic_dds.py"
@@ -104,6 +108,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m unittest discover -s tests -p 'test_foj_stage169_two_attempt_recovery.py' -v
+      - name: Prove visual comparisons require an explicit user link
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_foj_stage170_cpu_visual_alignment.py' -v
       - name: Upload SDK-built research binaries
         if: success()
         uses: actions/upload-artifact@v4
