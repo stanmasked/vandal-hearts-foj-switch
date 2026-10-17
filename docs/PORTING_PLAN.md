@@ -564,3 +564,12 @@ The local host test uses a reconstructed subset, not the exact full repository c
 - [x] Locally execute the three corresponding dependency scenarios in an isolated minimal GNU Make fixture: PASS.
 - [ ] Execute the full updated regression from an exact GitHub checkout/Actions; local minimal fixture is not equivalent to the complete Makefile or SDK toolchain.
 - [ ] Confirm native ARM64 NRO build and deko3d GPU rendering on Switch hardware.
+
+## Stage 114: complete GPU metadata-to-NRO dependency chain (2026-10-17)
+
+- [x] Extend `tests/test_gpu_make_dependencies.sh` to check that updating either shared `gpu/clear.mk` or `gpu/triangle.mk` schedules both the NACP generation and NRO packaging commands, with all other synthetic outputs older than NRO.
+- [x] Run the same chain conditions in an isolated minimal GNU Make fixture: both common and variant Makefile changes trigger NACP and NRO recipes (PASS).
+- [ ] Execute the exact committed regression in a full repository checkout / GitHub Actions; this environment cannot resolve github.com for cloning.
+- [ ] Build real UAM shaders and an ARM64 NRO with devkitA64, then validate actual Switch GPU presentation.
+
+Because both Makefiles are ELF prerequisites, configuration changes may also recompile ELF. The test intentionally does not require compiler reuse.
