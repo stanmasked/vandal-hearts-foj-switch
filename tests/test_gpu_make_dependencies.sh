@@ -106,4 +106,15 @@ if [[ "$plan" != *'--create'* || "$plan" != *"$clear_recipe"* ]]; then
     exit 1
 fi
 touch -t 202001010000 gpu/clear.mk
+# Editing only a source file must rebuild the ELF and packaged NRO but
+# must not regenerate NACP metadata that depends only on build settings.
+touch -t 202401010000 gpu/smoke_plan.c
+plan="$(make -f gpu/clear.mk -n "$clear_nro")"
+if [[ "$plan" != *'-o build/foj-deko3d-clear-smoke.elf'* ||
+      "$plan" != *"$clear_recipe"* ||
+      "$plan" == *'--create'* ]]; then
+    echo "FAIL: clear-smoke source edit must rebuild ELF/NRO, not NACP" >&2
+    exit 1
+fi
+touch -t 202001010000 gpu/smoke_plan.c
 echo "GPU triangle and clear-smoke ELF, NACP and NRO dependencies: PASS"
