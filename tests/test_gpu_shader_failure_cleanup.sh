@@ -14,6 +14,7 @@ cat > "$tmp/fake-uam" <<'EOF'
 set -euo pipefail
 while (($#)); do
     if [[ "$1" == "-o" ]]; then
+        printf 'called\n' >> compiler-invocations.log
         printf 'invalid-dksh\n' > "$2"
         if [[ "${FAKE_UAM_FAIL:-0}" == "1" ]]; then
             exit 17
@@ -79,7 +80,7 @@ for shader in foj_actor.vert foj_actor.frag foj_triangle.frag; do
 done
 # Successful compile and validation must preserve a usable output.
 for shader in foj_actor.vert foj_actor.frag foj_triangle.frag; do
-    rm -f validator-invocations.log
+    rm -f validator-invocations.log compiler-invocations.log
     target="gpu/build/$shader.dksh"
     FAKE_VALIDATE_PASS=1 PYTHONPATH="$tmp" make --no-print-directory -f gpu/Makefile "$target" UAM="$tmp/fake-uam" >"$tmp/success.log" 2>&1 || {
         cat "$tmp/success.log" >&2
@@ -91,11 +92,22 @@ for shader in foj_actor.vert foj_actor.frag foj_triangle.frag; do
         echo "FAIL: validator did not accept shader exactly once" >&2
         exit 1
     }
+    [[ $(wc -l < compiler-invocations.log) -eq 1 ]] || { echo "FAIL: UAM invocation count after first build" >&2; exit 1; }
     FAKE_VALIDATE_PASS=1 PYTHONPATH="$tmp" make --no-print-directory -f gpu/Makefile "$target" UAM="$tmp/fake-uam" >"$tmp/incremental.log" 2>&1 || exit 1
     [[ $(wc -l < validator-invocations.log) -eq 1 ]] || {
         echo "FAIL: already-built shader unexpectedly revalidated" >&2
         exit 1
     }
     [[ -s "$target" ]] || exit 1
+    [[ $(wc -l < compiler-invocations.log) -eq 1 ]] || { echo "FAIL: unchanged shader was recompiled" >&2; exit 1; }
+    # Advancing the source timestamp must rebuild the previously valid DKSH.
+    touch -t 203001010000 "gpu/shaders/$shader"
+    FAKE_VALIDATE_PASS=1 PYTHONPATH="$tmp" make --no-print-directory -f gpu/Makefile "$target" UAM="$tmp/fake-uam" >"$tmp/rebuild.log" 2>&1 || {
+        cat "$tmp/rebuild.log" >&2
+        exit 1
+    }
+    [[ $(wc -l < compiler-invocations.log) -eq 2 ]] || { echo "FAIL: edited shader did not recompile" >&2; exit 1; }
+    [[ $(wc -l < validator-invocations.log) -eq 2 ]] || { echo "FAIL: edited shader was not revalidated" >&2; exit 1; }
+    [[ -s "$target" ]] || { echo "FAIL: rebuilt DKSH is missing" >&2; exit 1; }
 done
-echo "UAM Makefile all three shader targets: compiler and validator cleanup and successful reuse PASS"
+echo "UAM Makefile all three shader targets: compiler and validator cleanup, reuse and source-triggered rebuild PASS"
