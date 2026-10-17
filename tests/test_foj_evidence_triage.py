@@ -40,7 +40,10 @@ def fixture(root: Path, *, indices=(0, 1, 2, 3), decoy=False,
     (root / "synthetic.bin").write_bytes(buffer)
     layout = build_relations(inventory(root), root=root)
     tables = infer_tables(layout)
-    indices_report = analyze_index_columns(tables, root=root)
+    # Exhaustive coverage of the small invented file catches the decoy;
+    # the default sampled-window budget is intentionally not exhaustive.
+    indices_report = analyze_index_columns(
+        tables, root=root, max_control_windows=1024)
     return layout, tables, indices_report
 
 
