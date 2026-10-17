@@ -657,3 +657,11 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Executed an isolated Bash reproduction: the old literal-backslash format failed its comparison; the corrected format passed.
 - [ ] Run the full updated `tests/test_gpu_make_dependencies.sh` and the 18-case GPU host mock in a current checkout; neither is verified yet.
 - [ ] Cross-compile and validate an actual ARM64 GPU NRO with devkitPro/UAM and test on Switch.
+
+## Stage 126: repair blocker in actual GPU lifecycle host mock (2026-10-17)
+
+- [x] Found a literal backslash + n in `tests/test_deko3d_clear_host.c` within `appletMainLoop` ternary expression; this is invalid C syntax and blocks the lifecycle mock build.
+- [x] Replace it with a real newline. Preserve the 0 / 1 / 242 loop cases for early exit, one-frame exit, and regular 242-frame execution.
+- [x] Compile and run the corrected ternary-expression/loop boundary logic in a standalone C11 fixture with `gcc` and `clang`, `-Wall -Wextra -Werror -pedantic`: both PASS.
+- [ ] Compile and execute the full actual 18-scenario mock and inspect GitHub Actions; the standalone fixture does not validate the entire test harness.
+- [ ] Build UAM DKSH and devkitA64 GPU NRO; test real Switch GPU presentation.
