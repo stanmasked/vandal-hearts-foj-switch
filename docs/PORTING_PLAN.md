@@ -464,3 +464,14 @@ The local test sources come from the previous reconstructed stage-83 workspace, 
 - [x] Locally reconstruct this expanded regression including prior truncated/capacity negative cases from GitHub; compile with strict C11 GCC and Clang, each using ASan and UBSan. Both runs PASS.
 - [ ] Execute exact file from full checkout in GitHub Actions and validate the whole GPU host suite; local source is a reconstruction based on the stage-83 files with equivalent new cases.
 - [ ] Build authentic DKSH using UAM, native ARM64 NRO with devkitA64, and physically verify deko3d draw.
+
+## Stage 102: ensure transactional GPU loader test survives NDEBUG (2026-10-17)
+
+- [x] Identify test correctness defect: `assert(foj_dksh_read_file(...))` and file I/O calls inside assertions silently disappear when compiling with `-DNDEBUG`.
+- [x] Add explicit `#undef NDEBUG` before importing `assert.h` inside `tests/test_gpu_dksh_integration.c`, keeping every side-effecting check active.
+- [x] Locally compile and execute reconstructed DKSH integration sources under `-DNDEBUG` with strict C11, GCC and Clang, each with ASan/UBSan: PASS.
+- [x] Add a dedicated `HOST_DKSH_INTEGRATION_NDEBUG` host target to `gpu/clear.mk`, invoked from `host-check` and removed by `clean`. Existing GPU CI matrix now includes it automatically via host-check.
+- [ ] Run the exact current full repo host suite in CI; no actual GitHub Actions result is confirmed.
+- [ ] Compile actual DKSH with UAM and run native GPU NRO on Switch hardware.
+
+This test verifies host-side validation/integration, not real Switch GPU execution.
