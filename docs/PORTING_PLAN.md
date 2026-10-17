@@ -612,3 +612,11 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Execute an isolated GNU Make fixture with the corresponding dependency graph: unchanged inputs caused no rebuild; after touching the header, only ELF and NRO recipes were printed (PASS).
 - [ ] Execute the entire updated `tests/test_gpu_make_dependencies.sh` from the exact current checkout and verify GitHub CI results; this local fixture does not qualify as that full test.
 - [ ] Run the full deko3d mock suite and build/verify real ARM64 NRO on Nintendo Switch with devkitPro/UAM.
+
+## Stage 120: cleanup coverage for GPU host test binaries (2026-10-17)
+
+- [x] Read current GPU Makefiles and regression script from GitHub. The full current checkout remains unavailable for direct local execution due to github.com DNS resolution.
+- [x] Execute the available earlier stage-87 `tests/test_gpu_make_dependencies.sh` with GNU Make (PASS); this older test does not cover subsequent stage 88–120 changes.
+- [x] Add a dry-run `make -f gpu/clear.mk -n clean` regression to `tests/test_gpu_make_dependencies.sh` to assert that all eight important lifecycle, NDEBUG and sanitizer host binaries are removed; protects against stale test executables.
+- [ ] Run the exact updated GPU dependency regression and complete 18-case deko3d host mock in a current checkout or GitHub Actions and inspect CI logs.
+- [ ] Build real ARM64 NRO and UAM DKSH with devkitPro and confirm on Nintendo Switch hardware.
