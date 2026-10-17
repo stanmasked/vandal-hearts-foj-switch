@@ -489,3 +489,11 @@ This test verifies host-side validation/integration, not real Switch GPU executi
 - [x] Extend `tests/test_deko3d_clear_host.c` with an immediate-Plus scenario expecting zero presented frames, status 3 and complete resource cleanup; update expected scenario count to 15.
 - [ ] Execute the full stateful deko3d mock from an up-to-date checkout and inspect GitHub CI logs. The local reconstructed `deko3d_clear_main.c` was empty, and no claim of test pass is made.
 - [ ] Build with real devkitA64/UAM and verify GPU output on Switch hardware.
+
+## Stage 105: GPU lifecycle early applet exit and NDEBUG guard (2026-10-17)
+
+- [x] Add `FAIL_APPLET_EARLY` to the stateful deko3d lifecycle mock, where `appletMainLoop()` returns false immediately. Assert no frame was presented, exit code remains 3 (not GPU success), and resources are balanced. The mock now lists 16 scenarios.
+- [x] Keep mock-side `assert` expressions active when `-DNDEBUG` is supplied, matching the DKSH/shader-layout test protections from earlier stages.
+- [x] Commit changes to `tests/test_deko3d_clear_host.c`.
+- [ ] Run exact 16-scenario host mock in a complete checkout and inspect real GitHub Actions logs. This environment cannot resolve github.com for git clone and does not contain a nonempty local GPU main C source; no execution pass is claimed.
+- [ ] Build NRO with devkitA64/UAM and verify first deko3d GPU frame on Switch hardware.
