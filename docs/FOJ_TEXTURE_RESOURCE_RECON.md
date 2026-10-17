@@ -1,6 +1,6 @@
 # Flames of Judgment PS3 texture reconnaissance — evidence-first workflow
 
-**Status (stage 145, October 17, 2026): no original FoJ PS3 texture
+**Status (stage 146, October 17, 2026): no original FoJ PS3 texture
 container, swizzling scheme or texture-format distribution has been
 confirmed by an actual resource dump.** The existing Switch renderer supports
 a deliberately narrow classic DDS subset and small private texture atlases;
@@ -202,6 +202,51 @@ Even when stage-142, -143 and -144 agree, their evidence is **not
 independent**: all three come from the same candidate scans and
 pointer coincidences. No "confidence score" or game-asset schema is
 claimed, and no original FoJ game file has been inspected here.
+
+## Stage 146: reproducibility check across two separate private cohorts
+
+After processing two **separately acquired or independently sampled local
+directories** through the preceding stages, compare the stage-145 reports:
+
+```sh
+python3 -m tools.foj_holdout_replication \
+  --baseline local-data/baseline/foj-evidence-triage.json \
+  --holdout local-data/holdout/foj-evidence-triage.json \
+  --baseline-root /private/foj-cohort-a \
+  --holdout-root /private/foj-cohort-b \
+  --output local-data/foj-holdout-comparison.json
+```
+
+The tool compares **structural shapes only** (32-bit pointer-table stride
+and byte order) among stage-145 internally consistent entries. It ignores
+absolute offsets and table row counts so that the same hypothesized
+record layout can occur in different-sized containers. It records
+whether the pattern was repeated, absent, ambiguous or contradicted in
+the second cohort. Use `--min-consistent 2` to require two
+non-contradictory tables in each cohort before labelling a repeated
+pattern.
+
+To reduce accidental data reuse, the two roots must exist, must not be
+the same or nested, and neither may be a symlink. Every referenced file
+must be a regular file with no symlink path component. Shared hardlink
+inodes across cohorts are rejected, even under different filenames.
+
+**This does not prove genuinely independent evidence.** Separate files
+may contain duplicate or copied content, and these JSON reports cannot
+prove original game provenance, verify an RSX format or identify an actual
+FoJ material/model link. The tool does not hash or expose private file
+contents; the output contains aggregate pattern counts only, with no
+absolute paths or raw source bytes.
+
+The labels `repeated-unverified-pattern`,
+`not-reproduced-in-holdout`, `holdout-contradiction-observed`,
+`holdout-ambiguous` and `holdout-only-unverified-pattern` are
+**descriptive**, not confidence scores or claims that a gameplay
+renderer can import the PS3 assets.
+
+Use **different privately owned original-resource subsets** when
+available, rather than copied synthetic fixtures. No original
+Flames of Judgment PS3 resource dump was available at implementation.
 
 ## How to interpret results
 
