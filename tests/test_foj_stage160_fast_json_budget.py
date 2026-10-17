@@ -77,7 +77,7 @@ class FastJsonByteAccountingTests(unittest.TestCase):
 
     def test_exact_minimum_byte_budget_including_final_newline(self):
         # The 1,024-byte minimum configured budget must remain inclusive.
-        report = {"payload": "a" * 1000}
+        report = {"payload": "a" * 1004}
         limit = canonical_size(report)
         self.assertGreaterEqual(limit, 1024)
         self.assertEqual(transit.measure_report(report, limit=limit), limit)
