@@ -540,3 +540,10 @@ Local smoke-plan verification used an older reconstructed source, not the curren
 - [ ] Build authentic UAM-generated DKSH and devkitA64 GPU NRO; validate on Switch.
 
 The local host test uses a reconstructed subset, not the exact full repository checkout.
+
+## Stage 111: oversized DKSH input protection (2026-10-17)
+
+- [x] Add an integration regression for a generated DKSH file larger than `FOJ_DKSH_MAX_BYTES` by 256 bytes. Rejected loads must preserve both shader-memory slots and leave `bytes_written` unchanged.
+- [x] Commit the new coverage to `tests/test_gpu_dksh_integration.c`.
+- [ ] Execute the exact GitHub test against a complete source checkout and obtain GitHub Actions results; local direct GitHub clone fails DNS.
+- [ ] Run all 18 deko3d lifecycle mock scenarios and build native NRO with real devkitA64/UAM before claiming hardware GPU compatibility.
