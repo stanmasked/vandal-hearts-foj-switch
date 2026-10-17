@@ -2,6 +2,11 @@
 /* Synthetic two-stage shader memory integration test. No game resources. */
 #include "dksh_module.h"
 #include "shader_layout.h"
+/* The test intentionally uses assertions with side effects (I/O, loader calls).
+ * Never compile them away when a caller supplies -DNDEBUG. */
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
