@@ -884,6 +884,21 @@ converts CPU checkpoints into independently verified visible Switch
 frames. Manual recovery and retention rules:
 `docs/GPU_STAGE168_EARLY_BOOT_JOURNAL.md`.
 
+## Stage 169: strict C/Python two-attempt boot recovery auditing
+
+The read-only stage-169 analyzer takes two explicitly selected
+private boot logs, rejects truncated, reordered or inconsistent
+enter/outcome/exit state transitions, and reports generic CPU-side
+progress between older and newer exclusive-new log slots. Input
+reads are bounded, descriptor-anchored and verified twice. CI
+compiles the actual `gpu/gpu_boot_journal.c` producer and checks
+two generated-only runs against the Python analyzer, including
+a synthetic queue failure followed by a clean CPU exit. A positive
+comparison means only that the *supplied* CPU logs describe forward
+progress; physical console frames and FoJ game resource import
+remain **unverified**. Instructions:
+`docs/GPU_STAGE169_TWO_ATTEMPT_RECOVERY.md`.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ
