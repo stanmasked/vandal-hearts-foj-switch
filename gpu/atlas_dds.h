@@ -28,7 +28,10 @@ int foj_atlas_dds_decode(const uint8_t *dds,size_t len,
                          uint8_t *out,size_t cap,FojAtlasRgba8Info *info);
 
 /* 1 = loaded; 0 = file absent (ENOENT); -1 = rejected or I/O failed.
- * Never modifies outputs on 0 or -1. Input file size is strictly capped. */
+ * Input is size-bounded, read twice and compared on the same open stream,
+ * checked for growth/truncation, and closed before RGBA8 decode.
+ * Never modifies outputs on 0 or -1. This best-effort replay is not an
+ * adversarial concurrent-write proof or an on-console verification. */
 int foj_atlas_dds_try_read(const char *path,uint8_t *out,size_t cap,
                            FojAtlasRgba8Info *info);
 #endif
