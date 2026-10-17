@@ -13,6 +13,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from tools.foj_report_transit_budget import measure_report, read_report
+
 from tools.foj_texture_relations import _safe_relative_path, MAX_PREFIX_BYTES
 
 SUPPORTED_STRIDES = (4, 8, 12, 16, 24, 32)
@@ -131,6 +133,7 @@ def _candidate_runs(points: list[tuple[int, int]], *, min_distinct: int) -> list
 
 
 def infer_tables(manifest: dict[str, Any], *, min_distinct: int = DEFAULT_MIN_DISTINCT,
+    measure_report(manifest)
                  max_tables: int = MAX_TABLES) -> dict[str, Any]:
     """Derive strictly metadata-only candidate pointer table patterns."""
     _integer(min_distinct, "minimum distinct targets", low=2, high=16)
@@ -153,7 +156,7 @@ def infer_tables(manifest: dict[str, Any], *, min_distinct: int = DEFAULT_MIN_DI
         total += len(records)
         if records:
             output.append({"relative_path": relative, "table_hypotheses": records})
-    return {
+    report = {
         "schema": "foj-resource-table-hypotheses-v1",
         "input_schema": "foj-texture-layout-hypotheses-v1",
         "evidence": "numeric-coincidence-only; no confirmed FoJ resource mapping",
@@ -167,6 +170,8 @@ def infer_tables(manifest: dict[str, Any], *, min_distinct: int = DEFAULT_MIN_DI
         },
     }
 
+    measure_report(report)
+    return report
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -179,7 +184,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         report = infer_tables(
-            json.loads(args.relations.read_text(encoding="utf-8")),
+            read_report(args.relations),
             min_distinct=args.min_distinct)
     except (ValueError, TypeError, OSError) as exc:
         parser.error(str(exc))
