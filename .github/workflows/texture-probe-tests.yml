@@ -12,6 +12,7 @@ on:
       - "tools/foj_stage165_sd_bundle.py"
       - "tools/foj_stage166_hardware_observations.py"
       - "tools/foj_stage168_boot_journal_audit.py"
+      - "tools/foj_stage169_two_attempt_recovery.py"
       - "tools/foj_texture_relations.py"
       - "tools/foj_resource_table_hypotheses.py"
       - "tools/foj_stage158_benchmark.py"
@@ -33,6 +34,8 @@ on:
       - "tests/test_foj_stage165_sd_bundle.py"
       - "tests/test_foj_stage166_hardware_observations.py"
       - "tests/test_foj_stage168_boot_journal_audit.py"
+      - "tests/test_foj_stage169_two_attempt_recovery.py"
+      - "tests/foj_stage169_native_boot_fixture.c"
       - "tests/foj_native_dds_contract_probe.c"
       - "tests/test_foj_two_pass_dds_integrity.py"
       - "tests/test_foj_global_candidate_budget.py"
@@ -129,6 +132,8 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_foj_stage166_hardware_observations.py' -v
       - name: Validate local-only early GPU CPU boot event parsing and relaunch
         run: python -m unittest discover -s tests -p 'test_foj_stage168_boot_journal_audit.py' -v
+      - name: Stage 169 cross-check two-run CPU recovery against real C journal writer
+        run: python -m unittest discover -s tests -p 'test_foj_stage169_two_attempt_recovery.py' -v
       - name: Run synthetic DDS metadata scan regressions
         run: python -m unittest discover -s tests -p 'test_foj_texture_probe.py' -v
       - name: Test indexed DDS span and table equivalence under synthetic load
@@ -165,13 +170,14 @@ jobs:
         run: python -m tools.foj_stage159_profile --profile smoke --repeats 2
       - name: Check Python parser and command-line usage
         run: |
-          python -m py_compile tools/foj_fd_bound_reader.py tools/foj_texture_probe.py tools/foj_gpu_local_dds_preflight.py tools/foj_stage162_synthetic_dds.py tools/foj_stage165_sd_bundle.py tools/foj_stage166_hardware_observations.py tools/foj_stage168_boot_journal_audit.py tools/foj_texture_relations.py tools/foj_resource_table_hypotheses.py tools/foj_stage158_benchmark.py tools/foj_stage159_profile.py tools/foj_index_column_controls.py tools/foj_evidence_triage.py tools/foj_holdout_replication.py tools/foj_stability_matrix.py tools/foj_corrupt_container_matrix.py tools/foj_report_replay_audit.py tools/foj_report_transit_budget.py tools/foj_source_coherence_gate.py tests/test_foj_fd_bound_reader.py tests/test_foj_fd_directory_inventory.py tests/test_foj_bounded_directory_membership.py tests/test_foj_texture_probe.py tests/test_foj_gpu_local_dds_preflight.py tests/test_foj_stage162_synthetic_dds.py tests/test_foj_stage165_sd_bundle.py tests/test_foj_stage166_hardware_observations.py tests/test_foj_stage168_boot_journal_audit.py tests/test_foj_two_pass_dds_integrity.py tests/test_foj_global_candidate_budget.py tests/test_foj_texture_relations.py tests/test_foj_stage157_indexed_search.py tests/test_foj_stage158_benchmark.py tests/test_foj_stage159_profile.py tests/test_foj_resource_table_hypotheses.py tests/test_foj_index_column_controls.py tests/test_foj_evidence_triage.py tests/test_foj_holdout_replication.py tests/test_foj_stability_matrix.py tests/test_foj_corrupt_container_matrix.py tests/test_foj_report_replay_audit.py tests/test_foj_report_transit_budget.py tests/test_foj_stage160_fast_json_budget.py tests/test_foj_source_coherence_gate.py
+          python -m py_compile tools/foj_fd_bound_reader.py tools/foj_texture_probe.py tools/foj_gpu_local_dds_preflight.py tools/foj_stage162_synthetic_dds.py tools/foj_stage165_sd_bundle.py tools/foj_stage166_hardware_observations.py tools/foj_stage168_boot_journal_audit.py tools/foj_stage169_two_attempt_recovery.py tools/foj_texture_relations.py tools/foj_resource_table_hypotheses.py tools/foj_stage158_benchmark.py tools/foj_stage159_profile.py tools/foj_index_column_controls.py tools/foj_evidence_triage.py tools/foj_holdout_replication.py tools/foj_stability_matrix.py tools/foj_corrupt_container_matrix.py tools/foj_report_replay_audit.py tools/foj_report_transit_budget.py tools/foj_source_coherence_gate.py tests/test_foj_fd_bound_reader.py tests/test_foj_fd_directory_inventory.py tests/test_foj_bounded_directory_membership.py tests/test_foj_texture_probe.py tests/test_foj_gpu_local_dds_preflight.py tests/test_foj_stage162_synthetic_dds.py tests/test_foj_stage165_sd_bundle.py tests/test_foj_stage166_hardware_observations.py tests/test_foj_stage168_boot_journal_audit.py tests/test_foj_stage169_two_attempt_recovery.py tests/test_foj_two_pass_dds_integrity.py tests/test_foj_global_candidate_budget.py tests/test_foj_texture_relations.py tests/test_foj_stage157_indexed_search.py tests/test_foj_stage158_benchmark.py tests/test_foj_stage159_profile.py tests/test_foj_resource_table_hypotheses.py tests/test_foj_index_column_controls.py tests/test_foj_evidence_triage.py tests/test_foj_holdout_replication.py tests/test_foj_stability_matrix.py tests/test_foj_corrupt_container_matrix.py tests/test_foj_report_replay_audit.py tests/test_foj_report_transit_budget.py tests/test_foj_stage160_fast_json_budget.py tests/test_foj_source_coherence_gate.py
           python -m tools.foj_texture_probe --help
           python -m tools.foj_gpu_local_dds_preflight --help
           python -m tools.foj_stage162_synthetic_dds --help
           python -m tools.foj_stage165_sd_bundle --help
           python -m tools.foj_stage166_hardware_observations --help
           python -m tools.foj_stage168_boot_journal_audit --help
+          python -m tools.foj_stage169_two_attempt_recovery --help
           python -m tools.foj_texture_relations --help
           python -m tools.foj_resource_table_hypotheses --help
           python -m tools.foj_stage158_benchmark --help
