@@ -726,3 +726,15 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] **Actual CI run 39026135587: Research tools tests SUCCESS** for the same PR head commit `2f2fe56b376814a0d5c7afa5227837d173b5a91f`.
 - [x] PR #16 merged via squash to main: merge commit `2e51078cb834e6633ea1033e6a2bf8a5e3f38007`.
 - [ ] These confirmed results are **SDK-free host-only tests**; real UAM DKSH generation, devkitA64 GPU NRO cross-compilation and GPU presentation on Switch hardware remain unverified.
+
+## Stage 134: native GPU NRO cross-compilation and real UAM DKSH — CI SUCCESS (2026-10-17)
+
+- [x] Added independent `.github/workflows/gpu-native-build.yml` on PR #17 using official `devkitpro/devkita64:20260219` and strict real devkitA64/UAM tools, with NRO0/DKSH verification and downloadable artifact. SDK-free host suite remains independent.
+- [x] First native CI run **39026722840** failed compiling `DkDeviceFlags_YAxisPointsUp`, which is not defined in the installed public SDK headers (the up-axis convention requires no flag). Removed the nonexistent zero-valued flag; retained explicit zero-to-one depth and upper-left origin.
+- [x] Actual native CI run **39026793109: SUCCESS**. Compiled and validated `build/foj-deko3d-clear-smoke.nro` (262200 bytes), `build/foj-deko3d-triangle-research.nro` (274488 bytes), and real UAM `foj_actor.vert.dksh`, `foj_actor.frag.dksh`, `foj_triangle.frag.dksh`. UAM and both NRO validators ran successfully.
+- [x] GitHub Actions uploaded the five generated files as artifact `foj-gpu-native-research`, artifact ID **12099185278**, available for seven days at https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39026793109/artifacts/12099185278.
+- [x] Same PR head also passed `GPU host regression checks` (39026793120) and `Research tools tests` (39026793124); all three workflows `success`.
+- [x] Merged PR #17 into `main`, merge commit `a82be0b408a90c772b577b91bc62f76968afcd8d`.
+- [x] Added `docs/GPU_SWITCH_SMOKE_TEST.md` with exact SD shader paths, visual verification checklist and limits of the evidence.
+- [ ] Neither native NRO has been launched on physical Nintendo Switch; frame presentation and true GPU behavior remain unverified.
+- [ ] The current research GPU binaries do not implement actual FoJ game rendering, PS3 asset loading, or playable game logic.
