@@ -367,6 +367,52 @@ Python 3.10/3.12 CI executes generated-only replay, corruption, malformed
 metadata, stale-report and CLI privacy tests. This is an offline research
 integrity gate, not progress on the playable game's engine.
 
+## Stage 150: source-tree coherence across analysis stages
+
+The earlier report-replay gate checks saved JSON, but cannot detect a game
+resource changed between stage-141 header scanning and stage-144
+index/control scanning. Run the existing pipeline under two read-only,
+in-memory SHA-256 source snapshots, with a NEW output directory:
+
+    python3 -m tools.foj_source_coherence_gate \
+      /path/to/private/foj-extracted \
+      --output-dir local-data/foj-coherent-run-001
+
+The tool performs source snapshot A, then stages 141 (DDS inventory), 142
+(relations/pointer read), 143 (hypothetical tables), 144 (index/controls),
+145 (consistency triage), followed by source snapshot B and stage-149 JSON
+replay. Both snapshots record file and directory names, file identity,
+permissions, size, change/modify timestamps and SHA-256 content IN MEMORY.
+A missing/new file, in-place modification, changed inode, unsupported
+entry or symlink causes a hard failure. The DDS inventory must cover
+every regular file in the selected source tree; skipped or unreadable
+files are rejected rather than silently claimed coherent.
+
+Defaults are 20,000 files, 512 MiB per file and 1,024 MiB total per
+snapshot. For a larger source tree use --total-mib, up to 65,536 MiB.
+Unlike stage-141 reconnaissance, this strict gate refuses oversized,
+symlinked and non-regular entries instead of skipping them.
+
+Only after success, seven metadata-only JSON files are written into a
+fresh directory outside the source tree. Some reports contain private
+source-relative filenames. Keep them under gitignored local-data/ and
+never publish them. The final foj-source-coherence.json records only
+aggregate counts/statuses, never file paths or hashes. A failed scan
+does not create the new output directory.
+
+**Scope and limits:** two matching snapshots catch ordinary changes
+during processing but cannot prevent a malicious writer from swapping
+source bytes between reads, restoring contents and spoofing metadata.
+The stage-141 and stage-144 readers are not fd-bound to the snapshots.
+Neither source provenance, game-specific PS3 container semantics nor
+Nintendo Switch rendering is proven. Deterministic metadata replay is
+not evidence of a playable port.
+
+Python 3.10/3.12 CI uses disposable invented DDS buffers only, testing
+in-place byte changes, timestamp changes, added/deleted files,
+symlinks, resource limits and fail-closed publication. No original PS3
+resources or fingerprints are included in the repository.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ
