@@ -18,6 +18,7 @@ import stat
 import zipfile
 from typing import Any
 
+from tools.foj_stage173_private_json_snapshot import read_private_json_bytes
 from tools.foj_stage162_synthetic_dds import generated_dds
 from tools.foj_stage165_sd_bundle import INPUTS, ZIP_PREFIX
 from tools.validate_dksh import inspect_dksh
@@ -121,16 +122,13 @@ def write_template(path: Path, *, bundle_sha256: str | None = None) -> None:
 
 def read_ledger(path: Path) -> dict[str, Any]:
     try:
-        length = path.stat().st_size
-        if not 2 <= length <= MAX_REPORT_BYTES or not path.is_file() or path.is_symlink():
-            raise _bad()
-        with path.open("rb") as stream:
-            raw = stream.read(MAX_REPORT_BYTES + 1)
-        if len(raw) != length:
-            raise _bad()
-        return json.loads(raw.decode("utf-8"), object_pairs_hook=_pairs_no_duplicates,
-                          parse_constant=lambda _: (_ for _ in ()).throw(_bad()))
-    except (OSError, UnicodeError, json.JSONDecodeError, RecursionError):
+        raw = read_private_json_bytes(path, MAX_REPORT_BYTES)
+        return json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=_pairs_no_duplicates,
+            parse_constant=lambda _: (_ for _ in ()).throw(_bad()),
+        )
+    except (ValueError, OSError, UnicodeError, json.JSONDecodeError, RecursionError):
         raise _bad() from None
 
 
