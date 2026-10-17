@@ -145,8 +145,9 @@ def _iter_headers_stream(stream, *, max_hits: int = 128) -> Iterator[tuple[int, 
 class _HashingReader:
     """Accumulate SHA-256 over the exact bytes seen by DDS header scanning."""
 
-    def __init__(self, stream):
+    def __init__(self, stream, *, expected_bytes: int):
         self.stream = stream
+        self.expected_bytes = expected_bytes
         self.digest = hashlib.sha256()
         self.count = 0
 
@@ -154,6 +155,8 @@ class _HashingReader:
         chunk = self.stream.read(limit)
         self.digest.update(chunk)
         self.count += len(chunk)
+        if self.count > self.expected_bytes:
+            raise ValueError("DDS source grew during initial scan")
         return chunk
 
 
@@ -183,7 +186,10 @@ def _verified_header_candidates(stream, *, file_bytes: int,
     of the first pass before comparing against the second full-file pass.
     Both digests remain in process memory and are never written to reports.
     """
-    hashed = _HashingReader(stream)
+    if (type(max_hits) is not int or not 1 <= max_hits <= 4096 or
+            type(file_bytes) is not int or file_bytes < 0):
+        raise ValueError("Invalid DDS byte replay bounds")
+    hashed = _HashingReader(stream, expected_bytes=file_bytes)
     headers = list(_iter_headers_stream(hashed, max_hits=max_hits))
     while hashed.read(CHUNK_SIZE):
         pass
