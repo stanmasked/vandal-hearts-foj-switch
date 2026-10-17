@@ -439,3 +439,11 @@ These synthetic tests do not validate Maxwell shader code or hardware draw calls
 - [ ] Run real UAM, devkitA64 and physical Switch GPU display checks.
 
 The locally executed Makefile was a reconstruction of the relevant shader rules; no actual SDK-generated DKSH was produced.
+
+## Stage 99: verify DKSH incremental builds and source-change rebuilds (2026-10-17)
+
+- [x] Extend `tests/test_gpu_shader_failure_cleanup.sh`: count fake UAM invocations and assert an unchanged target does not invoke UAM; changing a shader source must invoke UAM and the validator exactly once more and leave a DKSH output.
+- [x] Exercise all three shader targets locally with isolated reconstructed Makefile rules: failed-validator cleanup PASS, compiler write-then-fail cleanup PASS, successful no-op + source-triggered rebuild PASS (three targets).
+- [x] Use source timestamps relative to the created DKSH (+2 seconds) to avoid fixed far-future timestamps. The updated local test passed all three shader targets.
+- [ ] Execute exact new committed test from a full GitHub checkout and obtain CI host matrix results; GitHub DNS unavailable in this local container.
+- [ ] Validate UAM-generated actual shader programs, native ARM64 NRO build and Switch hardware frame. devkitA64 is not installed in this local container.
