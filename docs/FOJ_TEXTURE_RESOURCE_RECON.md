@@ -519,6 +519,42 @@ A stable nested DDS fixture must still pass the complete metadata/replay
 pipeline. Tests neither process original PS3 data nor prove FoJ
 container semantics or Nintendo Switch GPU operation.
 
+## Stage 154: full byte replay within anchored DDS file reads
+
+Stage 153 checked inode/size/timestamps and directory membership, but a
+same-sized write could change bytes during DDS scanning. Stage 154
+adds SHA-256 content replay to stage-141 DDS inventory and its direct
+candidate-header iterator. The first digest is accumulated from the bytes
+**actually read by the parser**; after header scanning (even when the
+bounded `max_hits_per_file` count is reached early), the
+rest of the source file is read to EOF and hashed. The same already-open
+regular file descriptor is then rewound and **the complete file is read
+again**. Both length and SHA-256 must match before candidate metadata
+can be accepted. Header candidates are held only in bounded memory
+(up to 4096 headers), so no half-verified candidate is yielded by the
+direct iterator.
+
+Stages 142/144 now immediately read their small file prefix twice
+through the same anchored descriptor and reject mismatched bytes. The
+stage-150 two full SHA snapshots remain an independent cross-stage
+coherence requirement. The reports retain the existing JSON schemas;
+neither raw payloads nor SHA-256 fingerprints are written to the
+metadata reports. The cost is an extra whole-file read for each scanned
+regular file and an extra prefix read for pointer/index analysis.
+
+Generated-only regression tests inject same-size changes immediately
+before hash replay, after the first DDS header and in an unscanned tail
+after the header cap. They also test empty/no-DDS files, truncation,
+file growth, direct iterators, prefix replay and failure to publish
+incomplete stage-150 reports.
+
+**Security limit:** two sequential reads are not an atomic snapshot,
+cannot prove original game provenance, and cannot defeat an adversarial
+writer who makes and restores changes between observations. File
+timestamps and inode checks remain necessary. The actual private
+Flames of Judgment container format, game renderer and Nintendo Switch
+hardware execution are not verified by these synthetic tests.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ

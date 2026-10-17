@@ -8,6 +8,7 @@ An observed signature is a *candidate*, not proof of a usable game texture.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -140,10 +141,72 @@ def _iter_headers_stream(stream, *, max_hits: int = 128) -> Iterator[tuple[int, 
         read_pos += len(chunk)
 
 
+
+class _HashingReader:
+    """Accumulate SHA-256 over the exact bytes seen by DDS header scanning."""
+
+    def __init__(self, stream, *, expected_bytes: int):
+        self.stream = stream
+        self.expected_bytes = expected_bytes
+        self.digest = hashlib.sha256()
+        self.count = 0
+
+    def read(self, limit: int) -> bytes:
+        chunk = self.stream.read(limit)
+        self.digest.update(chunk)
+        self.count += len(chunk)
+        if self.count > self.expected_bytes:
+            raise ValueError("DDS source grew during initial scan")
+        return chunk
+
+
+def _replay_file_hash(stream, *, size: int) -> bytes:
+    """Second complete pass over the *same fd*. Never export the digest."""
+    stream.seek(0)
+    digest = hashlib.sha256()
+    count = 0
+    while True:
+        chunk = stream.read(CHUNK_SIZE)
+        if not chunk:
+            break
+        count += len(chunk)
+        if count > size:
+            raise ValueError("DDS source grew during byte replay")
+        digest.update(chunk)
+    if count != size:
+        raise ValueError("DDS source size changed during byte replay")
+    return digest.digest()
+
+
+def _verified_header_candidates(stream, *, file_bytes: int,
+                                max_hits: int) -> list[tuple[int, bytes]]:
+    """Collect bounded DDS headers; verify complete bytes across two reads.
+
+    Even when the maximum header count is reached early, drain the remainder
+    of the first pass before comparing against the second full-file pass.
+    Both digests remain in process memory and are never written to reports.
+    """
+    if (type(max_hits) is not int or not 1 <= max_hits <= 4096 or
+            type(file_bytes) is not int or file_bytes < 0):
+        raise ValueError("Invalid DDS byte replay bounds")
+    hashed = _HashingReader(stream, expected_bytes=file_bytes)
+    headers = list(_iter_headers_stream(hashed, max_hits=max_hits))
+    while hashed.read(CHUNK_SIZE):
+        pass
+    if hashed.count != file_bytes:
+        raise ValueError("DDS source size changed during initial scan")
+    original_digest = hashed.digest.digest()
+    if _replay_file_hash(stream, size=file_bytes) != original_digest:
+        raise ValueError("DDS source bytes changed between read passes")
+    return headers
+
+
 def iter_candidate_headers(path: Path, *, max_hits: int = 128) -> Iterator[tuple[int, bytes]]:
     """Backward-compatible scanner with no-follow final file access."""
-    with open_regular_beneath(path.parent, path.name) as (stream, _):
-        yield from _iter_headers_stream(stream, max_hits=max_hits)
+    with open_regular_beneath(path.parent, path.name) as (stream, opened):
+        headers = _verified_header_candidates(
+            stream, file_bytes=opened.st_size, max_hits=max_hits)
+    yield from headers
 
 
 def inventory(root: Path, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
@@ -158,7 +221,8 @@ def inventory(root: Path, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
     """
     if (type(max_file_bytes) is not int or max_file_bytes < 0 or
             type(max_files) is not int or max_files < 1 or
-            type(max_hits_per_file) is not int or max_hits_per_file < 1):
+            type(max_hits_per_file) is not int or
+            not 1 <= max_hits_per_file <= 4096):
         raise ValueError("Invalid source inventory bounds")
     if not isinstance(root, Path) or not NOFOLLOW or not DIRECTORY:
         raise ValueError("Anchored inventory requires local no-follow directories")
@@ -224,8 +288,10 @@ def inventory(root: Path, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
             with open_regular_at(directory_fd, name) as (stream, opened):
                 if _identity(initial) != _identity(opened):
                     raise ValueError("DDS source changed between stat and open")
-                for offset, head in _iter_headers_stream(
-                        stream, max_hits=max_hits_per_file):
+                headers = _verified_header_candidates(
+                    stream, file_bytes=opened.st_size,
+                    max_hits=max_hits_per_file)
+                for offset, head in headers:
                     metadata = parse_dds_candidate(
                         head, offset=offset, file_bytes=opened.st_size)
                     if metadata is not None:
