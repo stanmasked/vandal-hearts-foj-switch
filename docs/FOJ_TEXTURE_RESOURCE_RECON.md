@@ -1,6 +1,6 @@
 # Flames of Judgment PS3 texture reconnaissance — evidence-first workflow
 
-**Status (stage 144, October 17, 2026): no original FoJ PS3 texture
+**Status (stage 145, October 17, 2026): no original FoJ PS3 texture
 container, swizzling scheme or texture-format distribution has been
 confirmed by an actual resource dump.** The existing Switch renderer supports
 a deliberately narrow classic DDS subset and small private texture atlases;
@@ -160,6 +160,48 @@ or model table.** Verification requires independent evidence from
 actual private FoJ resource files and ultimately correct on-console
 rendering. Original FoJ package parts were not available to run these
 heuristics on real game data during stage 144.
+
+## Stage 145: cross-report consistency triage (not independent evidence)
+
+After stages 142–144 have generated their **private local** JSON reports,
+compare the metadata of all three stages without reopening any game data:
+
+```sh
+python3 -m tools.foj_evidence_triage \
+  --relations local-data/foj-texture-relations.json \
+  --tables local-data/foj-table-hypotheses.json \
+  --indices local-data/foj-index-observations.json \
+  --output local-data/foj-evidence-triage.json
+```
+
+The tool checks whether each proposed fixed-stride table entry actually
+has a matching file-relative pointer hint in the stage-142 report, whether
+its DDS candidate still exists, whether candidate payload spans conflict
+with subsequent headers, and whether the matching stage-144 index-column
+observation was missing, ambiguous, or had hits in the independent
+control windows.
+
+It assigns descriptive **internal triage** labels, not probabilities:
+
+- `internally-contradicted`: missing target DDS, pointer hint not present
+  in the earlier report, or overlapping known-size candidate spans
+- `insufficient-or-ambiguous`: unknown texture size, missing/negative
+  index observation, multiple possible index-like fields, or similar
+  dense index patterns found in control windows
+- `internally-consistent-for-private-review`: the metadata reports agree
+  with no flagged contradiction or ambiguity; **still not independently
+  validated and never evidence of a confirmed material/model link**
+
+The new tool reads **only JSON**, checks report schemas and numeric
+bounds, writes a metadata-only summary and keeps source files local.
+The stage-144 negative-control scan is **sampled, not exhaustive**:
+an absence of observed control matches must not be interpreted as a
+confirmed absence of false positives. For local investigations, raising
+its `--control-windows` limit can reveal additional coincidences.
+Even when stage-142, -143 and -144 agree, their evidence is **not
+independent**: all three come from the same candidate scans and
+pointer coincidences. No "confidence score" or game-asset schema is
+claimed, and no original FoJ game file has been inspected here.
 
 ## How to interpret results
 

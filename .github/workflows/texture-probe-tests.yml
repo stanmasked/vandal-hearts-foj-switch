@@ -1,4 +1,4 @@
-name: Private PS3 Texture and Index Evidence Tests
+name: Private PS3 Resource Evidence and Texture Tests
 
 on:
   push:
@@ -9,10 +9,12 @@ on:
       - "tools/foj_texture_relations.py"
       - "tools/foj_resource_table_hypotheses.py"
       - "tools/foj_index_column_controls.py"
+      - "tools/foj_evidence_triage.py"
       - "tests/test_foj_texture_probe.py"
       - "tests/test_foj_texture_relations.py"
       - "tests/test_foj_resource_table_hypotheses.py"
       - "tests/test_foj_index_column_controls.py"
+      - "tests/test_foj_evidence_triage.py"
   pull_request:
     paths:
       - ".github/workflows/texture-probe-tests.yml"
@@ -20,10 +22,12 @@ on:
       - "tools/foj_texture_relations.py"
       - "tools/foj_resource_table_hypotheses.py"
       - "tools/foj_index_column_controls.py"
+      - "tools/foj_evidence_triage.py"
       - "tests/test_foj_texture_probe.py"
       - "tests/test_foj_texture_relations.py"
       - "tests/test_foj_resource_table_hypotheses.py"
       - "tests/test_foj_index_column_controls.py"
+      - "tests/test_foj_evidence_triage.py"
   workflow_dispatch:
 
 permissions:
@@ -51,10 +55,13 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_foj_resource_table_hypotheses.py' -v
       - name: Test candidate index columns and negative controls
         run: python -m unittest discover -s tests -p 'test_foj_index_column_controls.py' -v
+      - name: Cross-check independent report fields and synthetic contradictions
+        run: python -m unittest discover -s tests -p 'test_foj_evidence_triage.py' -v
       - name: Check Python parser and command-line usage
         run: |
-          python -m py_compile tools/foj_texture_probe.py tools/foj_texture_relations.py tools/foj_resource_table_hypotheses.py tools/foj_index_column_controls.py tests/test_foj_texture_probe.py tests/test_foj_texture_relations.py tests/test_foj_resource_table_hypotheses.py tests/test_foj_index_column_controls.py
+          python -m py_compile tools/foj_texture_probe.py tools/foj_texture_relations.py tools/foj_resource_table_hypotheses.py tools/foj_index_column_controls.py tools/foj_evidence_triage.py tests/test_foj_texture_probe.py tests/test_foj_texture_relations.py tests/test_foj_resource_table_hypotheses.py tests/test_foj_index_column_controls.py tests/test_foj_evidence_triage.py
           python -m tools.foj_texture_probe --help
           python -m tools.foj_texture_relations --help
           python -m tools.foj_resource_table_hypotheses --help
           python -m tools.foj_index_column_controls --help
+          python -m tools.foj_evidence_triage --help
