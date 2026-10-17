@@ -224,6 +224,18 @@ class DdsTwoPassIntegrityTests(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, "bytes changed"):
                         list(scanner.iter_candidate_headers(file))
 
+    def test_first_read_growth_rejected_immediately(self):
+        with self.assertRaisesRegex(ValueError, "grew during initial scan"):
+            scanner._verified_header_candidates(
+                io.BytesIO(b"\xff" * 64), file_bytes=10, max_hits=1)
+
+    def test_direct_header_iterator_rejects_unbounded_hits(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            file = Path(tmp) / "test.bin"
+            file.write_bytes(b"\xff" * 32)
+            with self.assertRaisesRegex(ValueError, "replay bounds"):
+                list(scanner.iter_candidate_headers(file, max_hits=4097))
+
     def test_max_hit_count_is_bounded(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
