@@ -781,6 +781,28 @@ matrix at `docs/GPU_STAGE162_SD_SMOKE.md`, with both checkerboards, one
 fallback, no files, invalid file and recovery. None of these changes
 confirms PS3 texture or material provenance, or real on-console rendering.
 
+## Stage 163: native DDS path checks and generic two-slot diagnostics
+
+The native research DDS loader now uses a descriptor-backed `open` /
+`fdopen` path with `lstat` and `fstat` identity checks. It rejects
+final-component symlinks, directory entries, FIFOs and unexpected
+replacement or metadata changes, in addition to stage-162 byte replay.
+It uses `O_NOFOLLOW` when the target platform defines it; the
+presence or absence of that flag does not make ancestor directories
+unconditionally safe. The loader still operates on trusted, fixed SD
+paths; this does not constitute a secure snapshot against hostile
+concurrent rewriting or mounting semantics on Switch.
+
+The compatible old 1/0/-1 function remains available. A new
+`foj_atlas_dds_try_read_status` API distinguishes absent optional
+slots, rejected path, failed I/O, changed data, unsupported DDS and
+successful CPU decode. The experimental GPU NRO logs only material
+slot numbers and generic outcome strings, not private paths, hashes,
+pixels or game assets. Whether stderr can actually be seen on Switch
+depends on its homebrew environment and is unverified. SDK-free C11,
+NDEBUG and sanitizer test suites include symlink/FIFO/directory input
+regressions; successful CI is not a hardware validation.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ
