@@ -1,4 +1,4 @@
-# Experimental Switch GPU smoke tests — stage 137
+# Experimental Switch GPU smoke tests — stage 138
 
 These are **homebrew research binaries**, not a playable port or a patch for
 *Vandal Hearts: Flames of Judgment*. No original PS3 content is embedded.
@@ -14,7 +14,7 @@ instead of the earlier single hardcoded triangle. The independent clear NRO
 is unchanged. Both host compilers, the native compiler and research tests
 passed. There is still no verified hardware runtime.
 
-Download the latest artifact `foj-gpu-native-research` from:
+Archived stage 135 artifact `foj-gpu-native-research`:
 https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39028292878/artifacts/12099815118
 
 Earlier stage 134 build evidence: run `39026793109`, artifact `12099185278`;
@@ -33,7 +33,7 @@ UV-gradient shader; the material indexes are not yet real texture binds.
 The clear-only NRO is unchanged. GPU host checks and research tests also
 passed.
 
-Newest artifact `foj-gpu-native-research`:
+Archived stage 136 artifact `foj-gpu-native-research`:
 https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39034956773/artifacts/12101922180
 
 Do not interpret successful compilation as verified on-console rendering.
@@ -51,13 +51,58 @@ shader from previous stages.
 New native research NRO: **290872 bytes** (validated NRO0 header).
 The clear-only NRO is unchanged (**262200 bytes**).
 
-Latest artifact:
+Archived stage 137 artifact:
 https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39035732156/artifacts/12102067683
 
 Host GCC/Clang tests (including normal, NDEBUG and ASan/UBSan pixel
 regressions), Research tools tests and native GPU NRO/DKSH CI all passed.
 **This does NOT prove GPU sampling, orientation, copy synchronization or
 presentation on real Switch hardware.**
+
+## Stage 138 — optional user-local DDS material atlases
+
+GitHub Actions native build run **39036526057** (PR #21) compiled and
+validated two real devkitA64 ARM64 NRO files plus three UAM DKSH modules.
+The research NRO can now optionally load a private DDS for each material,
+while keeping the original two synthetic RGBA8 images when no files exist.
+The cross-compiled GPU NRO is **290872 bytes**, same aligned NRO size as
+stage 137; the independent clear NRO remains **262200 bytes**.
+
+Current artifact:
+https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39036526057/artifacts/12102068939
+
+Optional paths, local to the user's own SD card:
+
+```text
+sdmc:/switch/foj/gpu/material0.dds
+sdmc:/switch/foj/gpu/material1.dds
+```
+
+**Strict supported subset** (deliberately narrow and independently tested):
+- Classic 128-byte `DDS ` header (`dwSize=124` and `DDS_PIXELFORMAT.dwSize=32`)
+- Uncompressed 32-bit pixels in **RGBA byte order** (`R=0x000000ff`,
+  `G=0x0000ff00`, `B=0x00ff0000`, `A=0xff000000`)
+- Width **8–256**, a multiple of 8; height **1–256**
+- Pitch = width × 4, one image, at most one mip level, no extra file bytes
+- No BC1/BC3/BC5/BC7, DXT, DX10, compressed formats, mip chains, cube maps
+  or PS3-specific tiling/swizzling. The common commercial-game DDS formats
+  will therefore often require a separate **local, user-controlled**
+  conversion step before they become compatible.
+
+A missing optional DDS uses the internal synthetic texture for that
+material. A DDS that exists but is malformed or unsupported **causes the
+research NRO to reject startup** rather than silently interpreting data
+as pixels. The DDS reader is bounded to 256 KiB pixel data per material
+and host tests check that failures do not modify caller buffers.
+
+These are the research material IDs 0 and 1 only; this is **not**
+automatic import of the original FoJ materials or geometry. Do not
+publish original PS3 assets or place them into this repository.
+
+Host checks: run **39036526010**, GCC/Clang ordinary, NDEBUG, ASan/UBSan
+all successful. Research tests run **39036526025** successful.
+
+**Physical Nintendo Switch read/copy/sample/display is NOT verified.**
 
 ## SD card layout for a user-authorized homebrew Switch
 
@@ -68,6 +113,9 @@ sdmc:/switch/foj/foj-deko3d-clear-smoke.nro
 sdmc:/switch/foj/foj-deko3d-triangle-research.nro
 sdmc:/switch/foj/gpu/foj_actor.vert.dksh
 sdmc:/switch/foj/gpu/foj_triangle.frag.dksh
+# Optional, user-owned DDS in the strict supported format:
+sdmc:/switch/foj/gpu/material0.dds
+sdmc:/switch/foj/gpu/material1.dds
 ```
 
 The triangle program loads its DKSH files from **exactly** those two GPU
