@@ -906,3 +906,16 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] PR #30 merged into `main` as squash commit `6113fd66ff26d4bd307e8ee0ac661e4976b23c84`.
 - [ ] No actual original FoJ PS3 game assets were available: observed stability applies **only to invented fixtures** and does not prove real game container formats, texture/material/model relationships, or sample provenance.
 - [ ] Native GPU NRO was unchanged at stage 147; physical Nintendo Switch texture sampling, image readback and frame presentation remain unverified.
+
+## Stage 148: corrupted DDS/container and truncated-payload controls — CI SUCCESS (2026-10-17)
+
+- [x] Extended stage-142 `tools/foj_texture_relations.py` to preserve the optional stage-141 `payload_check` field in local candidate relation metadata. Validates allowed classifications and remains backward compatible with metadata reports lacking the field.
+- [x] Extended stage-145 `tools/foj_evidence_triage.py` to emit `dds-payload-truncated` and mark a candidate table as `internally-contradicted` whenever a known-size DDS advertises an image payload beyond the source file's final byte, even if a plausible table still points at the header.
+- [x] Added `tools/foj_corrupt_container_matrix.py`, a deterministic **12-scenario synthetic-only** generator exercising corrupt DDS signature/header size/width, two broken headers, missing or unaligned reference words, incomplete last header, truncated image, unknown FourCC, shifted-but-valid embedded DDS and trailing container bytes. Uses the whole existing scan→relations→table→index→triage pipeline and fails on unexpected candidate counts or heuristic labels.
+- [x] Added **11 generated tests** in `tests/test_foj_corrupt_container_matrix.py` validating all authored scenarios, reproducibility, exact truncated-payload reason, no invented pointer links, partial headers, unaligned embedded DDS acceptance, invalid metadata/check labels, unknown FourCC, intentional regression detection, invalid matrix parameters and metadata-only CLI.
+- [x] First GitHub CI found an overly strict privacy test that disallowed the harmless literal phrase `DDS ` in the report description. Updated it to reject embedded binary control escapes instead; no game source data is included or copied to GitHub.
+- [x] **Actual dedicated private texture CI run 39051728025 SUCCESS**, Python 3.10 and 3.12, **67 tests each** (previous 56 plus 11).
+- [x] **Actual Research tools CI run 39051728037 SUCCESS**, Python 3.11 and 3.13, **184 tests each** (previous 173 plus 11).
+- [x] Updated `docs/FOJ_TEXTURE_RESOURCE_RECON.md` with synthetic corruption command, truncated-DDS detection, unknown-format limits and alignment nuances. PR #31 merged to `main` as squash commit `ca466f15d56cfc2608ede5e4ab232cdb68c0de28`.
+- [ ] No original FoJ PS3 binary/container was available for direct research, so no original material/model/texture map or game resource format has been identified.
+- [ ] Stage 148 changes only the offline diagnostic tools. GPU NRO, real on-console frame presentation and texture-sampling verification are unchanged/unverified.
