@@ -148,7 +148,9 @@ class SourceCoherenceTests(unittest.TestCase):
             for name in gate.FILE_NAMES:
                 contents = (output / name).read_text(encoding="utf-8")
                 self.assertNotIn(str(root), contents)
-                self.assertNotIn("DDS ", contents)
+                # Metadata-only DDS descriptions are expected; binary payloads are not.
+                self.assertNotIn("\\u0000", contents)
+                self.assertNotIn("\\xff", contents)
                 self.assertIsInstance(json.loads(contents), dict)
             with self.assertRaisesRegex(ValueError, "already exist"):
                 gate.publish(root, output)
