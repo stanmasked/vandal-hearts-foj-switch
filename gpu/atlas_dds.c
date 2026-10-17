@@ -180,28 +180,56 @@ int foj_atlas_dds_decode(const uint8_t *dds,size_t len,
     return 1;
 }
 
+/* Verify every byte a second time from the *same* open FILE. The fixed
+ * 4-KiB stack block avoids a second full-size image allocation. No caller
+ * pixels have been modified when this verification runs. This detects
+ * ordinary file edits and append/truncate races, not adversarial ABA
+ * rewrites that restore the same content between passes. */
+static int verify_atlas_replay(FILE *fp,const uint8_t *first,size_t len) {
+    uint8_t block[4096];
+    if (!fp||!first||fseek(fp,0,SEEK_SET)!=0)return 0;
+    size_t offset=0;
+    while (offset<len) {
+        const size_t count=len-offset<sizeof(block)?len-offset:sizeof(block);
+        if (fread(block,1,count,fp)!=count ||
+            memcmp(block,first+offset,count)!=0)return 0;
+        offset+=count;
+    }
+    /* Also reject appended bytes, including additions since first sizing. */
+    if (fgetc(fp)!=EOF || ferror(fp))return 0;
+    if (fseek(fp,0,SEEK_END)!=0)return 0;
+    const long final_bytes=ftell(fp);
+    return final_bytes>=0 && (unsigned long)final_bytes==(unsigned long)len;
+}
+
 int foj_atlas_dds_try_read(const char *path,uint8_t *out,size_t cap,
                            FojAtlasRgba8Info *info) {
     if (!path||!out||!info)return -1;
     FILE *fp=fopen(path,"rb");
     if (!fp)return errno==ENOENT?0:-1;
-    int result=-1;
+    int verified=0;
+    size_t input_bytes=0;
     uint8_t *blob=NULL;
     if (fseek(fp,0,SEEK_END)!=0)goto done;
-    long file_size=ftell(fp);
-    if (file_size<0 || (unsigned long)file_size>
+    const long file_size=ftell(fp);
+    if (file_size<FOJ_ATLAS_DDS_HEADER_BYTES ||
+        (unsigned long)file_size>
           (unsigned long)(FOJ_ATLAS_DDS_HEADER_BYTES+FOJ_ATLAS_MAX_INPUT_BYTES))
         goto done;
+    input_bytes=(size_t)file_size;
     if (fseek(fp,0,SEEK_SET)!=0)goto done;
-    blob=(uint8_t*)malloc((size_t)file_size+1);
+    blob=(uint8_t*)malloc(input_bytes);
     if (!blob)goto done;
-    if (fread(blob,1,(size_t)file_size,fp)!=(size_t)file_size)
-        goto done;
-    if (!foj_atlas_dds_decode(blob,(size_t)file_size,out,cap,info))
-        goto done;
-    result=1;
+    if (fread(blob,1,input_bytes,fp)!=input_bytes)goto done;
+    if (!verify_atlas_replay(fp,blob,input_bytes))goto done;
+    verified=1;
 done:
+    /* Close the source before decoding into caller memory, so any read or
+     * close failure is transactional. No pixels or metadata on failure. */
+    if (fclose(fp)!=0)verified=0;
+    int result=-1;
+    if (verified && foj_atlas_dds_decode(
+            blob,input_bytes,out,cap,info))result=1;
     free(blob);
-    fclose(fp);
     return result;
 }
