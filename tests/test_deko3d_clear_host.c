@@ -2,6 +2,10 @@
  * Includes and runs the ACTUAL optional GPU NRO entrypoint (renamed).
  * No Nintendo GPU, proprietary files or copyrighted game data.
  */
+/* Keep host mock actions inside assertions active with -DNDEBUG. */
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <assert.h>
 #include <math.h>
 #include <stdlib.h>
