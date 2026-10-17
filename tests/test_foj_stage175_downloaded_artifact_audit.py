@@ -105,6 +105,16 @@ class Stage175DownloadedArtifactTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 verify_download(root, COMMIT, RUN)
 
+    def test_published_observation_sheet_must_remain_blank(self):
+        temp, root = self.prepare()
+        with temp:
+            path = root / "build/foj-stage166-blank-observations.json"
+            doc = json.loads(path.read_text())
+            doc["startup"]["clear_smoke_visual"] = "alternating_colors"
+            path.write_text(json.dumps(doc), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                verify_download(root, COMMIT, RUN)
+
     def test_stage174_coherence_report_tamper_rejected(self):
         temp, root = self.prepare()
         with temp:
