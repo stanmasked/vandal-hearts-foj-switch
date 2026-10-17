@@ -1,6 +1,6 @@
 # Flames of Judgment PS3 texture reconnaissance — evidence-first workflow
 
-**Status (stage 147, October 17, 2026): no original FoJ PS3 texture
+**Status (stage 148, October 17, 2026): no original FoJ PS3 texture
 container, swizzling scheme or texture-format distribution has been
 confirmed by an actual resource dump.** The existing Switch renderer supports
 a deliberately narrow classic DDS subset and small private texture atlases;
@@ -282,6 +282,45 @@ table can be recognized as a numeric pointer-table candidate while
 stage-144 index analysis (minimum four entries) marks the evidence
 insufficient. Changes in heuristic thresholds may reasonably require
 revising these authored expectations with new tests and justification.
+
+## Stage 148: incomplete DDS payloads and container-corruption regression
+
+Run the deterministic **synthetic-only** malformed-container matrix:
+
+```sh
+python3 -m tools.foj_corrupt_container_matrix \
+  --output local-data/foj-corruption-matrix.json
+```
+
+This generates disposable fake DDS containers, then exercises the real
+DDS inventory → candidate relations → table discovery → index checks →
+reason-coded evidence triage pipeline. Twelve mutations cover corrupted
+DDS magic/header size/width, multiple missing headers, a broken pointer
+word, unaligned pointer placement, a partially available last DDS header,
+a **complete DDS header with a truncated pixel payload**, an unsupported
+FourCC, a genuinely unaligned *embedded DDS header*, and extra unrelated
+container bytes. Unexpected classifications are reported and make the
+command fail. No PS3 proprietary game files are needed or included.
+
+The stage-142 report now carries an optional `payload_check` from the
+stage-141 inventory. A `truncated` candidate must be marked
+`dds-payload-truncated` and treated as `internally-contradicted` in
+stage-145 triage, even if an aligned pointer table still points to its
+header. This is only an **end-of-file bounds indication**; embedded DDS
+containers can have external headers/footers, and a valid-looking stream
+does not prove FoJ asset format. Existing reports without this optional
+field remain readable.
+
+A **DDS signature at an unaligned embedded byte offset is not
+automatically corrupt**. Conversely, a pointer at an unaligned word
+position is not discovered by the existing 4-byte-aligned pointer scan.
+These distinctions are intentional: don't introduce false negative
+claims about unknown PS3 container layouts.
+
+Generated fixtures and temporary roots are deleted on exit. The JSON
+report contains scenario names and aggregate counts only. As with
+all prior stages, these tests cannot establish an actual FoJ texture,
+material/model link, and they do not test Nintendo Switch GPU rendering.
 
 ## How to interpret results
 
