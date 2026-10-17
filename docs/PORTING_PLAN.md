@@ -504,3 +504,11 @@ This test verifies host-side validation/integration, not real Switch GPU executi
 - [x] Review the stored Makefile to confirm the target, compiler command and host-check invocation are present. Existing GPU CI host-check now includes the new variant automatically.
 - [ ] Confirm successful execution of all 16 mock scenarios in both ordinary and NDEBUG configurations from a complete repository checkout / GitHub Actions. No completed CI run or native test execution was verified here.
 - [ ] Build and execute the real GPU NRO with devkitA64/UAM and Switch hardware.
+
+## Stage 107: swapchain acquisition boundaries (2026-10-17)
+
+- [x] Add `FAIL_ACQUIRE_OOB` case to stateful GPU mock: an invalid acquired image index 2 (two-frame swapchain) after three successful frames must lead to exit status 4; no extra frame is presented and resources must be freed. This increases mock cases to 17.
+- [x] Require submitted and presented command-list counts to match in every mock scenario, preventing a silent unpresented submission on error exits.
+- [x] Commit changed host mock to GitHub.
+- [ ] Run ordinary, NDEBUG and ASan/UBSan lifecycle host mock from a full checkout; no successful execution was confirmed this stage. Direct git clone failed due to DNS in current environment.
+- [ ] Cross-compile GPU NRO with devkitA64/UAM and test hardware output.
