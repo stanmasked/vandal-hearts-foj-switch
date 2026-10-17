@@ -696,3 +696,10 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Assert replacement validator runs exactly once per stage and that no rejected DKSH remains on disk.
 - [ ] Execute the exact full shader-failure regression and the 18-scenario deko3d lifecycle suite in a complete checkout / CI; neither has been verified in this environment.
 - [ ] Compile real UAM DKSH and devkitA64 GPU NRO, then test on Switch hardware.
+
+## Stage 131: recover rejected DKSH and verify incremental reuse (2026-10-17)
+
+- [x] Extend `tests/test_gpu_shader_failure_cleanup.sh` for all three shader targets: after a stricter validator rejects and deletes each DKSH, accepting policy must regenerate the file with exactly one compiler and validator invocation.
+- [x] Re-invoking Make without changes must then leave the successful DKSH untouched, without a second compiler or validator invocation.
+- [x] Run a minimal isolated GNU Make `.DELETE_ON_ERROR` scenario with validator rejection, cleanup, successful rebuild and incremental reuse: PASS. This is not the exact full repo shell test.
+- [ ] Run current shader regression and deko3d mock from a complete checkout; CI results and physical Switch NRO are still unverified.
