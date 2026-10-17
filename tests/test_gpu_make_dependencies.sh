@@ -12,7 +12,8 @@ touch -t 202001010000 "$tmp/gpu/clear.mk" "$tmp/gpu/triangle.mk"
 for path in gpu/deko3d_clear_main.c gpu/smoke_plan.c gpu/dksh_module.c \
             gpu/shader_layout.c gpu/dksh_module.h gpu/shader_layout.h \
             gpu/research_mesh.c gpu/research_mesh.h core/gpu_vertex_stream.c \
-            core/textured_triangles.h gpu/smoke_plan.h gpu/deko3d_api_contract.h core/gpu_vertex_stream.h; do
+            core/textured_triangles.h core/gpu_draw_plan.c core/gpu_draw_plan.h \
+            gpu/smoke_plan.h gpu/deko3d_api_contract.h core/gpu_vertex_stream.h; do
     touch "$tmp/$path"
     touch -t 202001010000 "$tmp/$path"
 done

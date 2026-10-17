@@ -148,18 +148,18 @@ $(HOST_MOCK_SAN): tests/test_deko3d_clear_host.c tests/mock_switch_sdk/deko3d.h 
 
 # Exercise the same six-vertex research stream that the optional native
 # shader-backed GPU NRO uploads (without GPU SDK or copyrighted game data).
-$(HOST_RESEARCH): tests/test_gpu_research_mesh.c gpu/research_mesh.c gpu/research_mesh.h core/gpu_vertex_stream.c core/gpu_vertex_stream.h core/textured_triangles.h | build
+$(HOST_RESEARCH): tests/test_gpu_research_mesh.c gpu/research_mesh.c gpu/research_mesh.h core/gpu_vertex_stream.c core/gpu_vertex_stream.h core/gpu_draw_plan.c core/gpu_draw_plan.h core/textured_triangles.h | build
 	$(HOSTCC) -std=c11 -Wall -Wextra -Werror -pedantic -Igpu -Icore \
-	  tests/test_gpu_research_mesh.c gpu/research_mesh.c core/gpu_vertex_stream.c -lm -o $@
+	  tests/test_gpu_research_mesh.c gpu/research_mesh.c core/gpu_vertex_stream.c core/gpu_draw_plan.c -lm -o $@
 
-$(HOST_RESEARCH_NDEBUG): tests/test_gpu_research_mesh.c gpu/research_mesh.c gpu/research_mesh.h core/gpu_vertex_stream.c core/gpu_vertex_stream.h core/textured_triangles.h | build
+$(HOST_RESEARCH_NDEBUG): tests/test_gpu_research_mesh.c gpu/research_mesh.c gpu/research_mesh.h core/gpu_vertex_stream.c core/gpu_vertex_stream.h core/gpu_draw_plan.c core/gpu_draw_plan.h core/textured_triangles.h | build
 	$(HOSTCC) -DNDEBUG -std=c11 -Wall -Wextra -Werror -pedantic -Igpu -Icore \
-	  tests/test_gpu_research_mesh.c gpu/research_mesh.c core/gpu_vertex_stream.c -lm -o $@
+	  tests/test_gpu_research_mesh.c gpu/research_mesh.c core/gpu_vertex_stream.c core/gpu_draw_plan.c -lm -o $@
 
-$(HOST_RESEARCH_SAN): tests/test_gpu_research_mesh.c gpu/research_mesh.c gpu/research_mesh.h core/gpu_vertex_stream.c core/gpu_vertex_stream.h core/textured_triangles.h | build
+$(HOST_RESEARCH_SAN): tests/test_gpu_research_mesh.c gpu/research_mesh.c gpu/research_mesh.h core/gpu_vertex_stream.c core/gpu_vertex_stream.h core/gpu_draw_plan.c core/gpu_draw_plan.h core/textured_triangles.h | build
 	$(HOSTCC) -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic \
 	  -fsanitize=address,undefined -fno-omit-frame-pointer -Igpu -Icore \
-	  tests/test_gpu_research_mesh.c gpu/research_mesh.c core/gpu_vertex_stream.c -lm -o $@
+	  tests/test_gpu_research_mesh.c gpu/research_mesh.c core/gpu_vertex_stream.c core/gpu_draw_plan.c -lm -o $@
 
 # Check the real optional triangle source in GCC/Clang C11 syntax mode.
 # This uses lightweight SDK declarations and DOES NOT link or run GPU code.
