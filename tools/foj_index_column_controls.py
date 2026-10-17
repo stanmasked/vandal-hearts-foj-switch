@@ -12,6 +12,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from tools.foj_report_transit_budget import measure_report, read_report
+
 from tools.foj_texture_relations import (
     _read_prefix, _safe_relative_path, MAX_PREFIX_BYTES,
 )
@@ -68,6 +70,7 @@ def _controls(prefix: bytes, start: int, last: int, stride: int,
 
 
 def analyze_index_columns(manifest: dict[str, Any], *, root: Path,
+    measure_report(manifest)
                           prefix_bytes: int = DEFAULT_PREFIX_BYTES,
                           min_entries: int = 4,
                           max_control_windows: int = 256) -> dict[str, Any]:
@@ -192,7 +195,7 @@ def analyze_index_columns(manifest: dict[str, Any], *, root: Path,
                 totals["ineligible_short_or_no_secondary_word"] += 1
             results.append(item)
         output.append({"relative_path": rel, "examined_tables": results})
-    return {
+    report = {
         "schema": "foj-index-column-observations-v1",
         "source_schema": "foj-resource-table-hypotheses-v1",
         "assessment": "unverified numeric patterns; no FoJ material/model indices confirmed",
@@ -203,6 +206,8 @@ def analyze_index_columns(manifest: dict[str, Any], *, root: Path,
         "summary": {**totals, "model_or_material_mapping_verified": False},
     }
 
+    measure_report(report)
+    return report
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -217,7 +222,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         observations = analyze_index_columns(
-            json.loads(args.tables.read_text(encoding="utf-8")),
+            read_report(args.tables),
             root=args.root, prefix_bytes=args.prefix_bytes,
             min_entries=args.min_entries,
             max_control_windows=args.control_windows)
