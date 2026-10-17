@@ -649,3 +649,11 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Retained checks that the actual ELF, NACP, NRO and host mock binaries are deleted and that clearing one GPU variant does not remove another variant.
 - [ ] The exact updated regression and full GPU host suite have not been run or verified in this environment. Local /mnt/data contains no current checkout and the available GitHub connector does not offer a direct checkout into this container.
 - [ ] Actual devkitA64/UAM NRO build and Switch GPU rendering remain unverified.
+
+## Stage 125: fix sentinel fixture false-failure (2026-10-17)
+
+- [x] Found real shell bug in the GPU clean test: `printf 'KEEP_GPU_SENTINEL\\\\n'` printed literal backslash+n, whereas the test compared `cat` output with `KEEP_GPU_SENTINEL`.
+- [x] Changed the fixture to `printf '%s\\n' 'KEEP_GPU_SENTINEL'`, which writes a newline stripped by command substitution. No change to actual GPU clean rules was necessary.
+- [x] Executed an isolated Bash reproduction: the old literal-backslash format failed its comparison; the corrected format passed.
+- [ ] Run the full updated `tests/test_gpu_make_dependencies.sh` and the 18-case GPU host mock in a current checkout; neither is verified yet.
+- [ ] Cross-compile and validate an actual ARM64 GPU NRO with devkitPro/UAM and test on Switch.
