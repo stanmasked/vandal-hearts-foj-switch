@@ -66,6 +66,8 @@ def read_report(path: Path, *, limit: int = MAX_REPORT_BYTES) -> dict[str, Any]:
     _valid_limit(limit)
     if not isinstance(path, Path):
         raise ValueError("Local report path must be a Path")
+    if path.is_symlink():
+        raise ValueError("Report must be a regular non-symlink local file")
     if not getattr(os, "O_NOFOLLOW", 0):
         raise ValueError("Platform lacks no-follow local report support")
     try:
