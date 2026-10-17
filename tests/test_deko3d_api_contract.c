@@ -3,6 +3,10 @@
  * actual SDK deko3d.h. This host test is not a physical GPU test. */
 #include <deko3d.h>
 #include "deko3d_api_contract.h"
+/* Test assertions must also run when the build supplies -DNDEBUG. */
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <assert.h>
 #include <stdio.h>
 
