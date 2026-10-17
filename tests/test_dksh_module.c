@@ -1,6 +1,10 @@
 #define _POSIX_C_SOURCE 200809L
 /* Entirely generated DKSH test data; never copies actual game shaders. */
 #include "dksh_module.h"
+/* Test assertions must also run when the build supplies -DNDEBUG. */
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
