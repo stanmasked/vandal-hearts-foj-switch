@@ -264,6 +264,8 @@ static void run_case(int failure,int expected_status,int frames) {
     int status=foj_gpu_smoke_main(0,NULL);
     assert(status==expected_status);
     assert(g.presented==frames);
+    /* No submitted GPU list may be left unpresented on any exit path. */
+    assert(g.submitted==g.presented);
     assert(g.creates==g.frees);
     if(failure==FAIL_NONE) {
         assert(g.list_count==4);
