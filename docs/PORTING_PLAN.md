@@ -521,3 +521,13 @@ This test verifies host-side validation/integration, not real Switch GPU executi
 - [ ] Build actual UAM shaders, devkitA64 NRO and validate a real Switch GPU frame.
 
 The local tests use reconstructed sources from stages 102/103; they are not a full checkout nor a native GPU build.
+
+## Stage 109: extend release-style assertion safety to all GPU host tests (2026-10-17)
+
+- [x] Found remaining `assert()`-dependent smoke-plan, DKSH intake and deko3d API contract tests; added `#undef NDEBUG` before `assert.h` to preserve calls and invariants when building with `-DNDEBUG`.
+- [x] Added dedicated `HOST_TEST_NDEBUG`, `HOST_ABI_NDEBUG`, and `HOST_DKSH_NDEBUG` targets to `gpu/clear.mk`, invoked by `host-check` and removed by `clean`. The existing GPU CI matrix inherits these checks.
+- [x] Reproduced an old smoke-plan test's `-DNDEBUG -Werror` unused-variable compilation failure in a local stage-82 source copy, then patched the assert guard there and built and ran it with GCC and Clang: PASS in both cases.
+- [ ] Run exact current checkout's complete GPU host-check, including 18-scenario deko3d mock, and inspect actual CI logs; DNS prevents git clone here.
+- [ ] Real UAM DKSH generation, devkitA64 NRO and Switch hardware GPU test remain unverified.
+
+Local smoke-plan verification used an older reconstructed source, not the current GitHub checkout.
