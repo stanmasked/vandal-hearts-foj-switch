@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 from collections import defaultdict
+from bisect import bisect_right
 import json
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,8 @@ MAX_INPUT_CONTAINERS = 20000
 MAX_TOTAL_CANDIDATES = 250000
 MAX_TOTAL_POINTER_HINTS = 500000
 MAX_TABLES = 10000
+MAX_POINTS_PER_ENDIAN = 131072
+MAX_PROVISIONAL_RUNS = 32768
 
 
 def _integer(value: Any, label: str, *, low: int = 0, high: int = 0xffffffff) -> int:
@@ -84,51 +87,91 @@ def _validated_references(manifest: dict[str, Any]) -> dict[str, dict[str, list[
 
 
 def _candidate_runs(points: list[tuple[int, int]], *, min_distinct: int) -> list[dict[str, Any]]:
-    """Report maximal fixed-stride runs with distinct DDS destinations.
+    """Find maximal fixed-stride runs using indexed subset suppression.
 
-    A byte position that ambiguously maps to multiple candidate targets
-    for the same endianness is omitted rather than arbitrarily selected.
+    A shorter-stride run can subsume a longer-stride run only when its
+    stride divides the candidate stride and the candidate's first and
+    final word lie in the same residue-class interval. This avoids
+    quadratic reconstruction and comparison of sets of positions.
     """
+    if len(points) > MAX_POINTS_PER_ENDIAN:
+        raise ValueError("Too many pointer observations for bounded table search")
     targets: dict[int, set[int]] = defaultdict(set)
     for pos, offset in points:
         targets[pos].add(offset)
     safe = {p: next(iter(t)) for p, t in targets.items() if len(t) == 1}
+    offsets = sorted(safe)
     possible = []
     for stride in SUPPORTED_STRIDES:
-        for start in sorted(safe):
+        for start in offsets:
             if start - stride in safe:
-                continue  # Only the first entry of a maximal run.
+                continue
             positions = []
             at = start
             while at in safe:
                 positions.append(at)
                 at += stride
-            dest = [safe[p] for p in positions]
-            if len(positions) < min_distinct or len(set(dest)) < min_distinct:
+            if len(positions) < min_distinct:
                 continue
+            dest = [safe[p] for p in positions]
+            distinct = len(set(dest))
+            if distinct < min_distinct:
+                continue
+            if len(possible) >= MAX_PROVISIONAL_RUNS:
+                raise ValueError("Too many provisional table runs")
             possible.append({
                 "start_word_offset": start,
                 "end_word_offset": positions[-1],
                 "stride_bytes": stride,
                 "entry_count": len(positions),
-                "distinct_dds_targets": len(set(dest)),
+                "distinct_dds_targets": distinct,
                 "target_dds_offsets": dest,
-                "_positions": positions,
             })
-    # A long stride-4 sequence otherwise produces many spurious alternate
-    # stride-8/12 sub-tables. Retain only maximal, non-subsumed hypotheses.
+
+    # The maximal runs of one stride and residue never overlap. For any
+    # queried start, the preceding run with the greatest endpoint bounds
+    # whether a smaller stride contains the candidate completely.
+    grouped: dict[tuple[int, int], list[tuple[int, int]]] = defaultdict(list)
+    for run in possible:
+        stride = run["stride_bytes"]
+        first = run["start_word_offset"]
+        grouped[(stride, first % stride)].append(
+            (first, run["end_word_offset"]))
+    coverage = {}
+    for key, intervals in grouped.items():
+        intervals.sort()
+        starts = []
+        furthest = []
+        last_end = -1
+        for first, end in intervals:
+            starts.append(first)
+            last_end = max(last_end, end)
+            furthest.append(last_end)
+        coverage[key] = (starts, furthest)
+
     possible.sort(key=lambda t: (-t["entry_count"], t["stride_bytes"],
                                  t["start_word_offset"]))
     accepted = []
     for run in possible:
-        positions = set(run["_positions"])
-        if any(positions.issubset(set(prev["_positions"])) for prev in accepted):
-            continue
-        accepted.append(run)
+        first = run["start_word_offset"]
+        end = run["end_word_offset"]
+        stride = run["stride_bytes"]
+        contained = False
+        for short_stride in SUPPORTED_STRIDES:
+            if short_stride >= stride or stride % short_stride:
+                continue
+            data = coverage.get((short_stride, first % short_stride))
+            if data is None:
+                continue
+            starts, furthest = data
+            index = bisect_right(starts, first) - 1
+            if index >= 0 and furthest[index] >= end:
+                contained = True
+                break
+        if not contained:
+            accepted.append(run)
     accepted.sort(key=lambda t: (t["start_word_offset"], t["stride_bytes"],
                                  -t["entry_count"]))
-    for run in accepted:
-        del run["_positions"]
     return accepted
 
 

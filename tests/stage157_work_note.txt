@@ -1,1 +1,0 @@
-Stage 157 synthetic performance checks; no source game assets.

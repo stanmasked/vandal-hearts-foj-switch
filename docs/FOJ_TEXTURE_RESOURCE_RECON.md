@@ -632,6 +632,27 @@ Unicode byte counting, sparse oversized inputs, symlinks, duplicate
 object members, malformed bytes, oversized CLI inputs, legitimate
 multi-stage reports, and fail-closed stage-150 publication.
 
+## Stage 157: indexed DDS span and table search
+
+Stage 142 now merges overlapping DDS candidate byte ranges and scans
+ascending aligned prefix positions using a monotone interval cursor.
+This eliminates repeated per-word scans of every DDS interval. Relative
+paths, pointer classifications and the output JSON schema are unchanged.
+Reports with more than 65,536 candidate entries fail closed.
+
+Stage 143 keeps the previous maximal-stride search and suppresses
+subsumed candidate runs using binary searches over sorted arithmetic
+intervals indexed by stride and remainder. Input points per endianness
+are limited to 131,072; more than 32,768 provisional table runs are
+rejected rather than emitted as an incomplete report.
+
+Generated-only tests compare the optimized algorithms against the
+stage-156 reference on deterministic randomized cases and exercise
+2,500 disjoint hypothetical table runs. These are algorithmic checks,
+not a measured general-purpose speedup guarantee. Source provenance,
+actual FoJ resource formats and Nintendo Switch playback remain
+unverified.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ

@@ -24,6 +24,7 @@ on:
       - "tests/test_foj_two_pass_dds_integrity.py"
       - "tests/test_foj_global_candidate_budget.py"
       - "tests/test_foj_texture_relations.py"
+      - "tests/test_foj_stage157_indexed_search.py"
       - "tests/test_foj_resource_table_hypotheses.py"
       - "tests/test_foj_index_column_controls.py"
       - "tests/test_foj_evidence_triage.py"
@@ -55,6 +56,7 @@ on:
       - "tests/test_foj_two_pass_dds_integrity.py"
       - "tests/test_foj_global_candidate_budget.py"
       - "tests/test_foj_texture_relations.py"
+      - "tests/test_foj_stage157_indexed_search.py"
       - "tests/test_foj_resource_table_hypotheses.py"
       - "tests/test_foj_index_column_controls.py"
       - "tests/test_foj_evidence_triage.py"
@@ -95,6 +97,8 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_foj_two_pass_dds_integrity.py' -v
       - name: Run synthetic DDS metadata scan regressions
         run: python -m unittest discover -s tests -p 'test_foj_texture_probe.py' -v
+      - name: Test indexed DDS span and table equivalence under synthetic load
+        run: python -m unittest discover -s tests -p 'test_foj_stage157_indexed_search.py' -v
       - name: Test candidate layout and local pointer hints
         run: python -m unittest discover -s tests -p 'test_foj_texture_relations.py' -v
       - name: Test DDS pointer table hypothesis detection
@@ -117,7 +121,7 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_foj_source_coherence_gate.py' -v
       - name: Check Python parser and command-line usage
         run: |
-          python -m py_compile tools/foj_fd_bound_reader.py tools/foj_texture_probe.py tools/foj_texture_relations.py tools/foj_resource_table_hypotheses.py tools/foj_index_column_controls.py tools/foj_evidence_triage.py tools/foj_holdout_replication.py tools/foj_stability_matrix.py tools/foj_corrupt_container_matrix.py tools/foj_report_replay_audit.py tools/foj_report_transit_budget.py tools/foj_source_coherence_gate.py tests/test_foj_fd_bound_reader.py tests/test_foj_fd_directory_inventory.py tests/test_foj_bounded_directory_membership.py tests/test_foj_texture_probe.py tests/test_foj_two_pass_dds_integrity.py tests/test_foj_global_candidate_budget.py tests/test_foj_texture_relations.py tests/test_foj_resource_table_hypotheses.py tests/test_foj_index_column_controls.py tests/test_foj_evidence_triage.py tests/test_foj_holdout_replication.py tests/test_foj_stability_matrix.py tests/test_foj_corrupt_container_matrix.py tests/test_foj_report_replay_audit.py tests/test_foj_report_transit_budget.py tests/test_foj_source_coherence_gate.py
+          python -m py_compile tools/foj_fd_bound_reader.py tools/foj_texture_probe.py tools/foj_texture_relations.py tools/foj_resource_table_hypotheses.py tools/foj_index_column_controls.py tools/foj_evidence_triage.py tools/foj_holdout_replication.py tools/foj_stability_matrix.py tools/foj_corrupt_container_matrix.py tools/foj_report_replay_audit.py tools/foj_report_transit_budget.py tools/foj_source_coherence_gate.py tests/test_foj_fd_bound_reader.py tests/test_foj_fd_directory_inventory.py tests/test_foj_bounded_directory_membership.py tests/test_foj_texture_probe.py tests/test_foj_two_pass_dds_integrity.py tests/test_foj_global_candidate_budget.py tests/test_foj_texture_relations.py tests/test_foj_stage157_indexed_search.py tests/test_foj_resource_table_hypotheses.py tests/test_foj_index_column_controls.py tests/test_foj_evidence_triage.py tests/test_foj_holdout_replication.py tests/test_foj_stability_matrix.py tests/test_foj_corrupt_container_matrix.py tests/test_foj_report_replay_audit.py tests/test_foj_report_transit_budget.py tests/test_foj_source_coherence_gate.py
           python -m tools.foj_texture_probe --help
           python -m tools.foj_texture_relations --help
           python -m tools.foj_resource_table_hypotheses --help
