@@ -228,7 +228,7 @@ int main(int argc,char **argv) {
         dkShaderGetStage(&shader_fragment)!=DkStage_Fragment)
         goto cleanup;
 
-    /* Optionally load private RGBA8 DDS files from SD (8..256 pixels wide,
+    /* Optionally decode private raw RGBA8 or DXT1/DXT5 DDS from SD (8..256 wide,
      * width multiple of 8, up to 256 high); absent files retain invented
      * test gradients. Reject invalid files instead of silently falling back.
      * Each material has its own aligned CPU-visible staging slot. */
@@ -306,7 +306,8 @@ int main(int argc,char **argv) {
         memcpy(texture_data_cpu+IMAGE_DESCRIPTORS_OFFSET+
                i*sizeof(image_desc),&image_desc,sizeof(image_desc));
 
-        /* Copy row length is in pixels. The DDS width multiple-of-8 rule
+        /* Decoded destination is always tightly packed RGBA8.
+         * Copy row length is in pixels; width multiple-of-8 ensures
          * ensures 32-byte-aligned linear source pitch for RGBA8. */
         const DkCopyBuf source={
             texture_data_addr+PIXEL_STAGING_OFFSET+i*PIXEL_STAGING_STRIDE,
