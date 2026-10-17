@@ -182,6 +182,26 @@ class Stage166ObservationLedgerTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "digest"):
                 audit(doc, bundle_sha256="d" * 64)
 
+    def test_new_template_may_bind_validated_zip_without_fake_observations(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "fixture"
+            fake_build(root)
+            archive = Path(tmp) / "bundle.zip"
+            publish_bundle(root, archive)
+            target = Path(tmp) / "blank.json"
+            result = subprocess.run(
+                [sys.executable, "-m", "tools.foj_stage166_hardware_observations",
+                 "--init", str(target), "--bundle", str(archive)],
+                capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            data = read_ledger(target)
+            self.assertEqual(data["build"]["sd_bundle_sha256"],
+                             inspect_bundle(archive))
+            audited = audit(data, bundle_sha256=inspect_bundle(archive))
+            self.assertEqual(audited["declared_screen_stages"], 0)
+            self.assertEqual(audited["declared_startup_fields"], 0)
+            self.assertFalse(audited["hardware_execution_verified"])
+
     def test_zip_checksum_corruption_rejected_even_with_valid_zip_headers(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "fixture"
