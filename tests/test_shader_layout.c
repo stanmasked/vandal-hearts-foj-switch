@@ -1,4 +1,8 @@
 #include "shader_layout.h"
+/* Keep side-effecting test calls active when compiled with -DNDEBUG. */
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <assert.h>
 #include <stdio.h>
 #include <stdint.h>
