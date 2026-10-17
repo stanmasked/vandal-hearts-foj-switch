@@ -23,8 +23,11 @@ on:
       - "tools/foj_stage170_cpu_visual_alignment.py"
       - "tools/foj_stage171_build_identity.py"
       - "tools/foj_stage173_private_json_snapshot.py"
+      - "tools/foj_stage174_native_artifact_coherence.py"
+      - "tools/foj_fd_bound_reader.py"
       - "tests/test_foj_stage171_build_identity.py"
       - "tests/test_foj_stage173_private_json_snapshot.py"
+      - "tests/test_foj_stage174_native_artifact_coherence.py"
       - "tests/test_foj_stage170_cpu_visual_alignment.py"
       - "tests/test_foj_stage169_two_attempt_recovery.py"
       - "tests/foj_stage169_native_boot_fixture.c"
@@ -50,8 +53,11 @@ on:
       - "tools/foj_stage170_cpu_visual_alignment.py"
       - "tools/foj_stage171_build_identity.py"
       - "tools/foj_stage173_private_json_snapshot.py"
+      - "tools/foj_stage174_native_artifact_coherence.py"
+      - "tools/foj_fd_bound_reader.py"
       - "tests/test_foj_stage171_build_identity.py"
       - "tests/test_foj_stage173_private_json_snapshot.py"
+      - "tests/test_foj_stage174_native_artifact_coherence.py"
       - "tests/test_foj_stage170_cpu_visual_alignment.py"
       - "tests/test_foj_stage169_two_attempt_recovery.py"
       - "tests/foj_stage169_native_boot_fixture.c"
@@ -138,6 +144,17 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m unittest discover -s tests -p 'test_foj_stage173_private_json_snapshot.py' -v
+      - name: Verify four loose SDK NRO/DKSH files against CI ZIP receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage174_native_artifact_coherence \
+            --repo-root . \
+            --bundle build/foj-stage165-gpu-sd-smoke.zip \
+            --receipt build/foj-stage171-ci-build-receipt.json \
+            --expected-commit "$GITHUB_SHA" --expected-run-id "$GITHUB_RUN_ID" \
+            --output build/foj-stage174-loose-coherence.json
+          python3 -m unittest discover -s tests -p 'test_foj_stage174_native_artifact_coherence.py' -v
       - name: Upload SDK-built research binaries
         if: success()
         uses: actions/upload-artifact@v4
@@ -152,5 +169,6 @@ jobs:
             build/foj-stage165-gpu-sd-smoke.zip
             build/foj-stage166-blank-observations.json
             build/foj-stage171-ci-build-receipt.json
+            build/foj-stage174-loose-coherence.json
           if-no-files-found: error
           retention-days: 7
