@@ -21,7 +21,7 @@
 enum {
     FAIL_NONE, FAIL_DEVICE, FAIL_QUEUE, FAIL_IMG_1, FAIL_IMG_2,
     FAIL_SWAP, FAIL_CMDMEM, FAIL_CMDBUF, FAIL_CMDLIST, FAIL_ACQUIRE, FAIL_ACQUIRE_OOB,
-    FAIL_PLUS, FAIL_PLUS_EARLY, FAIL_APPLET_EARLY, FAIL_VERTEX_MEM, FAIL_VERTEX_CPU, FAIL_VERTEX_GPU
+    FAIL_PLUS, FAIL_PLUS_EARLY, FAIL_APPLET_EARLY, FAIL_APPLET_AFTER_ONE, FAIL_VERTEX_MEM, FAIL_VERTEX_CPU, FAIL_VERTEX_GPU
 };
 struct FakeDevice { int tag; };
 struct FakeQueue { int tag; };
@@ -68,7 +68,7 @@ u64 padGetButtonsDown(PadState* p) {
             g.failure==FAIL_PLUS_EARLY)?HidNpadButton_Plus:0;
 }
 int appletMainLoop(void) {
-    const int limit=g.failure==FAIL_APPLET_EARLY?0:242;
+    const int limit=g.failure==FAIL_APPLET_EARLY?0:\n                    g.failure==FAIL_APPLET_AFTER_ONE?1:242;
     return g.loop_calls++<limit;
 }
 void* nwindowGetDefault(void) { return (void*)(uintptr_t)0x1234; }
@@ -292,9 +292,10 @@ int main(void) {
     run_case(FAIL_PLUS,0,2);
     run_case(FAIL_PLUS_EARLY,3,0);
     run_case(FAIL_APPLET_EARLY,3,0);
+    run_case(FAIL_APPLET_AFTER_ONE,0,1);
     run_case(FAIL_VERTEX_MEM,3,0);
     run_case(FAIL_VERTEX_CPU,3,0);
     run_case(FAIL_VERTEX_GPU,3,0);
-    puts("Host deko3d lifecycle mock: all 17 scenarios passed");
+    puts("Host deko3d lifecycle mock: all 18 scenarios passed");
     return 0;
 }
