@@ -79,6 +79,12 @@ def build_relations(manifest: dict[str, Any], *, root: Path | None = None,
         offset = item.get("offset")
         size = item.get("expected_payload_bytes")
         fmt = item.get("format_candidate")
+        payload_check = item.get("payload_check")
+        if payload_check is not None and payload_check not in (
+            "truncated", "ends-at-file-boundary",
+            "additional-bytes-after-declared-mips", "not-computed"
+        ):
+            raise ValueError("Invalid DDS payload-check classification")
         if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
             raise ValueError("Invalid DDS candidate offset")
         if size is not None and (isinstance(size, bool) or not
@@ -90,6 +96,7 @@ def build_relations(manifest: dict[str, Any], *, root: Path | None = None,
             "offset": offset,
             "format_candidate": fmt,
             "expected_payload_bytes": size,
+            "payload_check": payload_check,
             "candidate_span_end": offset + HEADER_BYTES + size
                 if size is not None else None,
             "next_candidate_offset": None,

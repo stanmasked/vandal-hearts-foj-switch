@@ -170,6 +170,11 @@ def triage_reports(layout: dict, tables: dict, indices: dict) -> dict:
                     corroborated += 1
                 else:
                     reasons.add("pointer-hint-not-corroborated")
+                # Explicitly preserve the stage-141 end-of-file check:
+                # a header may be syntactically valid while its advertised
+                # image payload extends beyond the source file's final byte.
+                if candidate.get("payload_check") == "truncated":
+                    reasons.add("dds-payload-truncated")
                 end = candidate.get("candidate_span_end")
                 if end is None:
                     reasons.add("unknown-dds-payload-size")
@@ -213,7 +218,8 @@ def triage_reports(layout: dict, tables: dict, indices: dict) -> dict:
 
             hard = {"missing-dds-header-candidate",
                     "pointer-hint-not-corroborated",
-                    "overlapping-dds-candidate-spans"}
+                    "overlapping-dds-candidate-spans",
+                    "dds-payload-truncated"}
             if reasons & hard:
                 result = "internally-contradicted"
             elif reasons:
