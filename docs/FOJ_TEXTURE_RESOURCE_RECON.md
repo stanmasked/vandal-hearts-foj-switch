@@ -853,6 +853,21 @@ expected sequence. Native CI publishes a blank worksheet only;
 no Switch hardware or video capture is connected. Instructions:
 `docs/GPU_STAGE166_HARDWARE_OBSERVATIONS.md`.
 
+## Stage 167: shader-independent early DKSH failure colors
+
+The optional triangle-research NRO includes a shaderless presentation
+fallback for shader-code memory failures, invalid/missing vertex or
+fragment DKSH modules, rejected shader layout and failed deko3d
+shader-stage checks. It records two color-clear lists for the existing
+swapchain buffers and attempts to present them until user exit, while
+retaining a nonzero error code 6. This route is earlier than DDS
+status presentation but later than device, queue, swapchain and command
+buffer initialization, so not all black screens are diagnosed.
+The host regression covers fixed status colors and 4096 synthetic
+buffer-selection decisions per failure class; native CI cross-compiles
+the app, **without proving physical Switch output**. Manual protocol:
+`docs/GPU_STAGE167_DKSH_BOOT_SCREENS.md`.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ

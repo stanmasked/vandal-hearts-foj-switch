@@ -25,6 +25,7 @@
 #include "atlas_dds.h"
 #include "dds_screen_status.h"
 #include "dds_command_plan.h"
+#include "gpu_boot_diagnostics.h"
 _Static_assert((size_t)FOJ_GPU_SHADER_MAX_DKSH ==
                (size_t)FOJ_DKSH_MAX_BYTES,
                "DKSH intake and GPU shader slot capacities differ");
@@ -51,6 +52,54 @@ static const FojGpuVertex kResearchTriangle[3]={
     { 0.60f,-0.55f,0.5f,1.0f,1.0f,0.0f},
     { 0.00f, 0.65f,0.5f,1.0f,0.5f,1.0f}
 };
+#endif
+
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+/* Shaderless failure presentation *after* swapchain/command buffers exist,
+ * but before DKSH stage setup succeeds. The color stays visible until +
+ * or applet exit, while the enclosing NRO still returns a failure code.
+ * Device/swapchain/cmd creation failures cannot be displayed here. */
+static void foj_present_shader_boot_failure(
+    DkQueue queue,DkSwapchain swapchain,DkCmdBuf cmd,
+    const DkImageView views[BUFFER_COUNT],FojGpuBootFailure failure) {
+    unsigned selected=0;
+    float rgba[4];
+    if (!foj_gpu_boot_failure_frame(0,0,failure,&selected,rgba))
+        return;
+    fprintf(stderr,"FoJ GPU boot: %s\n",
+            foj_gpu_boot_failure_name(failure));
+    const DkScissor full_screen={0,0,SCREEN_WIDTH,SCREEN_HEIGHT};
+    DkCmdList lists[BUFFER_COUNT]={0};
+    for (unsigned buffer=0;buffer<BUFFER_COUNT;++buffer) {
+        DkImageView const *targets[]={&views[buffer]};
+        dkCmdBufBindRenderTargets(cmd,targets,1,NULL);
+        dkCmdBufSetScissors(cmd,0,&full_screen,1);
+        dkCmdBufClearColorFloat(cmd,0,DkColorMask_RGBA,
+                                rgba[0],rgba[1],rgba[2],rgba[3]);
+        lists[buffer]=dkCmdBufFinishList(cmd);
+        if (!lists[buffer])return;
+    }
+    padConfigureInput(1,HidNpadStyleSet_NpadStandard);
+    PadState pad;
+    padInitializeDefault(&pad);
+    uint64_t frame=0;
+    while (appletMainLoop()) {
+        padUpdate(&pad);
+        if (padGetButtonsDown(&pad)&HidNpadButton_Plus)break;
+        const int acquired=dkQueueAcquireImage(queue,swapchain);
+        if (acquired<0 || acquired>=BUFFER_COUNT)break;
+        float shown_color[4];
+        unsigned image=0;
+        if (!foj_gpu_boot_failure_frame(frame,(unsigned)acquired,failure,
+                                        &image,shown_color))
+            break;
+        const DkCmdList chosen=lists[image];
+        if (!chosen)break;
+        dkQueueSubmitCommands(queue,chosen);
+        dkQueuePresentImage(queue,swapchain,acquired);
+        ++frame;
+    }
+}
 #endif
 
 int main(int argc,char **argv) {
@@ -206,23 +255,45 @@ int main(int argc,char **argv) {
                        DkMemBlockFlags_GpuCached|
                        DkMemBlockFlags_Code;
     shader_mem=dkMemBlockCreate(&shader_maker);
-    if (!shader_mem)goto cleanup;
+    if (!shader_mem) {
+        foj_present_shader_boot_failure(
+            queue,swapchain,cmd,views,FOJ_GPU_BOOT_SHADER_CODE_MEMORY);
+        exit_status=6;
+        goto cleanup;
+    }
     uint8_t *shader_cpu=(uint8_t*)dkMemBlockGetCpuAddr(shader_mem);
-    if (!shader_cpu)goto cleanup;
+    if (!shader_cpu) {
+        foj_present_shader_boot_failure(
+            queue,swapchain,cmd,views,FOJ_GPU_BOOT_SHADER_CODE_MEMORY);
+        exit_status=6;
+        goto cleanup;
+    }
 
     size_t vs_bytes=0,fs_bytes=0;
     if (!foj_dksh_read_file(
             "sdmc:/switch/foj/gpu/foj_actor.vert.dksh",
-            shader_cpu,FOJ_DKSH_MAX_BYTES,FOJ_DKSH_VERTEX,&vs_bytes))
+            shader_cpu,FOJ_DKSH_MAX_BYTES,FOJ_DKSH_VERTEX,&vs_bytes)) {
+        foj_present_shader_boot_failure(
+            queue,swapchain,cmd,views,FOJ_GPU_BOOT_VERTEX_DKSH);
+        exit_status=6;
         goto cleanup;
+    }
     if (!foj_dksh_read_file(
             "sdmc:/switch/foj/gpu/foj_triangle.frag.dksh",
             shader_cpu+FOJ_GPU_SHADER_SLOT_BYTES,FOJ_DKSH_MAX_BYTES,
-            FOJ_DKSH_FRAGMENT,&fs_bytes))
+            FOJ_DKSH_FRAGMENT,&fs_bytes)) {
+        foj_present_shader_boot_failure(
+            queue,swapchain,cmd,views,FOJ_GPU_BOOT_FRAGMENT_DKSH);
+        exit_status=6;
         goto cleanup;
+    }
     FojGpuShaderLayout shader_plan;
-    if (!foj_gpu_shader_layout(vs_bytes,fs_bytes,&shader_plan))
+    if (!foj_gpu_shader_layout(vs_bytes,fs_bytes,&shader_plan)) {
+        foj_present_shader_boot_failure(
+            queue,swapchain,cmd,views,FOJ_GPU_BOOT_SHADER_LAYOUT);
+        exit_status=6;
         goto cleanup;
+    }
     DkShaderMaker shader_init;
     dkShaderMakerDefaults(&shader_init,shader_mem,
                           shader_plan.vertex_offset);
@@ -233,8 +304,12 @@ int main(int argc,char **argv) {
     if (!dkShaderIsValid(&shader_vertex) ||
         !dkShaderIsValid(&shader_fragment) ||
         dkShaderGetStage(&shader_vertex)!=DkStage_Vertex ||
-        dkShaderGetStage(&shader_fragment)!=DkStage_Fragment)
+        dkShaderGetStage(&shader_fragment)!=DkStage_Fragment) {
+        foj_present_shader_boot_failure(
+            queue,swapchain,cmd,views,FOJ_GPU_BOOT_SHADER_STAGE);
+        exit_status=6;
         goto cleanup;
+    }
 
     /* Optionally decode private raw RGBA8 or DXT1/DXT5 DDS from SD (8..256 wide,
      * width multiple of 8, up to 256 high); absent files retain invented
