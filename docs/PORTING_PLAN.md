@@ -429,3 +429,13 @@ These synthetic tests do not validate Maxwell shader code or hardware draw calls
 - [x] Preserve the existing UAM write-then-fail and validator rejection cases, and commit the upgraded regression.
 - [ ] Run the exact updated script within a complete checkout/CI and verify outcomes; no GitHub Actions success is claimed.
 - [ ] Compile actual UAM Maxwell programs, link a Switch GPU NRO and verify a hardware frame.
+
+## Stage 98: executed DKSH success and incremental host regression (2026-10-17)
+
+- [x] Reconstructed the existing three-target GPU shader Makefile and the fake-UAM/fake-validator regression locally under `/mnt/data/vh97`.
+- [x] Verified failing validator removes generated DKSH, and fake UAM's write-then-fail branch removes DKSH; both PASS.
+- [x] Exercised newly introduced stage-97 successful fake validation, retained output and second incremental no-op build for vertex, actor fragment and triangle fragment: all three PASS.
+- [ ] Repeat exact committed test from a complete GitHub checkout, run full host suite and check actual GitHub Actions logs.
+- [ ] Run real UAM, devkitA64 and physical Switch GPU display checks.
+
+The locally executed Makefile was a reconstruction of the relevant shader rules; no actual SDK-generated DKSH was produced.
