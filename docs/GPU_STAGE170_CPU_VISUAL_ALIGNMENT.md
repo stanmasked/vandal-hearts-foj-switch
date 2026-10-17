@@ -21,6 +21,17 @@ The stage-170 comparison therefore requires a **third, explicit
 operator-only association**. Its default value is completely blank.
 No implicit or automatic association is permitted.
 
+## Stage 171 — guard against mixing different research builds
+
+Stage 171 separately validates the SHA-256 of the complete generated
+stage-165 SD ZIP, the two research NRO binaries and the two DKSH
+shaders, and binds the CI commit/run ID to all *filled* stage-166
+build-metadata fields. This rejects inconsistent build combinations
+without automatically associating operator scenarios with a run.
+An optional local SD NRO copy can be compared by bytes, but it cannot
+prove the console executed the file or presented the observed colors.
+See `docs/GPU_STAGE171_BUILD_IDENTITY.md`.
+
 ## Local usage
 
 From the repository root, create a new private form:
