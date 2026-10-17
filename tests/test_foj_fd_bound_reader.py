@@ -142,20 +142,20 @@ class AnchoredLocalReadTests(unittest.TestCase):
             synthetic_sample(root, SPEC)
             outside = Path(tmp) / "not-ps3.bin"
             outside.write_bytes(b"outside")
-            real_open = scanner.open_regular_beneath
+            real_open = scanner.open_regular_at
             triggered = []
 
             @contextmanager
-            def swap_before_descriptor(root_path, relative):
+            def swap_before_descriptor(directory_fd, name):
                 if not triggered:
                     triggered.append(True)
                     source = root / "synthetic.bin"
                     source.rename(root / "saved")
                     source.symlink_to(outside)
-                with real_open(root_path, relative) as opened:
+                with real_open(directory_fd, name) as opened:
                     yield opened
 
-            with patch.object(scanner, "open_regular_beneath",
+            with patch.object(scanner, "open_regular_at",
                               side_effect=swap_before_descriptor):
                 with self.assertRaises(ValueError):
                     inventory(root)
