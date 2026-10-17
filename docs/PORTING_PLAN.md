@@ -817,3 +817,16 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] **Research tools tests 39037930657 SUCCESS**. PR #23 merged to `main` as `150db82e2ddc5e5a7c77a067b9abc20dcf5801ab`.
 - [x] Updated `docs/GPU_SWITCH_SMOKE_TEST.md` with current supported DDS variants, level-0-only restriction and latest native artifact.
 - [ ] No physical Switch verification of pixel sampling/presentation, and no original FoJ PS3 atlas has been checked. PS3-specific layout/swizzle and unsupported DDS variants remain future work.
+
+## Stage 141: evidence-first private FoJ PS3 texture candidate inventory — CI SUCCESS (2026-10-17)
+
+- [x] Reviewed accessible project/repository files: original FoJ PS3 multipart package contents are **not accessible in this checkout**, so the original game's texture formats, container indexes, swizzling and per-resource atlas dimensions **cannot yet be identified as confirmed facts**. Historical texture libraries for the 1996 *Vandal Hearts* are a distinct project and must not be mistaken for *Flames of Judgment*.
+- [x] Added read-only, metadata-only `tools/foj_texture_probe.py`: scans user-local extracted directory files in 1-MiB chunks with 127-byte overlap; identifies candidate DDS headers at file start or embedded offsets; parses plausible dimensions, FourCC/raw channel layouts, mip count and estimated linear payload sizes. Labels the results explicitly as candidates, never as verified FoJ textures.
+- [x] Scanner defaults are 20,000 scanned regular files, file-size cap 512 MiB and up to 128 magic occurrences per file; follows no symlinks, extracts no content and does not upload any data. Outputs only a user-requested local JSON report with relative filenames and metadata; recommended path `local-data/foj-texture-candidates.json` is gitignored.
+- [x] Added seven standard-library synthetic tests `tests/test_foj_texture_probe.py`: classic BC1 and BC3 candidates, BGRA8 masks/mip-size computation, invalid and unknown FourCC, a header split across a 1-MiB chunk boundary, deterministic inventory order, file limits and a CLI report excluding original byte strings and absolute paths.
+- [x] Added `.github/workflows/texture-probe-tests.yml`, independently checking Python **3.10 and 3.12**. **Actual GitHub Actions run 39038809095 SUCCESS**, both jobs reporting **7 tests OK**.
+- [x] First full research tests reported `TypeError: unhashable type: bytearray` when the parser received a mutable header fixture. Corrected FourCC lookup by converting the slice to `bytes`.
+- [x] **Actual Research tools tests run 39038809102 SUCCESS** on Python **3.11 and 3.13**; 124 tests passed per environment.
+- [x] Added `docs/FOJ_TEXTURE_RESOURCE_RECON.md` with private local workflow, explicit interpretation limits and requirements for validating actual PS3-specific formats. PR #24 merged to `main`, squash commit `078bb0e5378a0978c07bc498839b90186fdc54ab`.
+- [ ] Run metadata inventory against user-owned, locally extracted **actual FoJ PS3** resource files and independently verify candidate formats; no such input was available to test this stage. No original game data has been uploaded to GitHub.
+- [ ] Physical Switch testing of texture uploads, presentation and the actual FoJ game renderer remains outstanding.
