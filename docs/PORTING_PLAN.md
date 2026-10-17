@@ -598,3 +598,10 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Execute an isolated GNU Make fixture exercising both invariants: shader header triggers ELF only; triangle metadata config triggers NACP (PASS). This fixture is not the full repository test.
 - [ ] Execute full repository GPU host-suite and inspect actual GitHub Actions logs; still unverified.
 - [ ] Native ARM64 build/UAM DKSH and real Switch rendering remain unverified.
+
+## Stage 118: shader-header changes must repackage NRO, not metadata (2026-10-17)
+
+- [x] Add a full triangle NRO dry-run regression for shader header updates in `tests/test_gpu_make_dependencies.sh`: changing either DKSH/layout header must rebuild ELF, repackage NRO and leave NACP unchanged.
+- [x] Execute an isolated GNU Make reproduction of this dependency chain: up-to-date NRO schedules no recipes; after header touch it schedules ELF + NRO and no NACP (PASS).
+- [ ] Run the exact committed test in a current full repository checkout / GitHub Actions. The locally available files are from stage 87 and cannot verify current GitHub tests.
+- [ ] Run the 18-case deko3d lifecycle suite, compile ARM64 NRO and inspect output on Switch hardware.
