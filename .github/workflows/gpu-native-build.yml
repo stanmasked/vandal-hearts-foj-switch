@@ -125,6 +125,9 @@ jobs:
             --bundle build/foj-stage165-gpu-sd-smoke.zip \
             --create-receipt build/foj-stage171-ci-build-receipt.json \
             --git-commit "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID"
+          python3 -m tools.foj_stage171_build_identity \
+            --bundle build/foj-stage165-gpu-sd-smoke.zip \
+            --verify-receipt build/foj-stage171-ci-build-receipt.json
           python3 -m unittest discover -s tests -p 'test_foj_stage171_build_identity.py' -v
       - name: Upload SDK-built research binaries
         if: success()
