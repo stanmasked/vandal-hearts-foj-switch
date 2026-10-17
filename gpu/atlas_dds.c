@@ -13,14 +13,14 @@ int foj_atlas_dds_decode(const uint8_t *dds,size_t len,
     if (!dds||!out||!info)return 0;
     if (len<FOJ_ATLAS_DDS_HEADER_BYTES||
         memcmp(dds,"DDS ",4)!=0||little32(dds+4)!=124 ||
-        (little32(dds+8)&0x100fU)!=0x100fU ||
+        little32(dds+8)!=0x100fU ||
         little32(dds+76)!=32 || little32(dds+80)!=0x41 ||
         little32(dds+84)!=0 || little32(dds+88)!=32 ||
         little32(dds+92)!=0x000000ffU ||
         little32(dds+96)!=0x0000ff00U ||
         little32(dds+100)!=0x00ff0000U ||
         little32(dds+104)!=0xff000000U ||
-        (little32(dds+108)&0x1000U)==0 ||
+        little32(dds+108)!=0x1000U ||
         little32(dds+112)!=0 || little32(dds+116)!=0 ||
         little32(dds+120)!=0 || little32(dds+124)!=0)
         return 0;
