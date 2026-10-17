@@ -50,6 +50,22 @@ for config in gpu/triangle.mk gpu/clear.mk; do
     fi
     touch -t 202001010000 "$config"
 done
+# Shader header updates change the ELF, not title/version metadata.
+# Check this independently before the NRO packaging fixture below.
+for header in gpu/dksh_module.h gpu/shader_layout.h; do
+    touch -t 202401010000 "$header"
+    plan="$(make -f gpu/triangle.mk -n "$nacp")"
+    if [[ "$plan" == *'--create'* ]]; then
+        echo "FAIL: changing $header unnecessarily regenerates triangle NACP" >&2
+        exit 1
+    fi
+    plan="$(make -f gpu/triangle.mk -n "$target")"
+    if [[ "$plan" != *"$build_command"* ]]; then
+        echo "FAIL: changing $header did not rebuild triangle ELF" >&2
+        exit 1
+    fi
+    touch -t 202001010000 "$header"
+done
 # The packaged NRO depends on both ELF and NACP. Verify changing only
 # metadata triggers elf2nro without needing to rerun the ELF compiler.
 nro=build/foj-deko3d-triangle-research.nro
