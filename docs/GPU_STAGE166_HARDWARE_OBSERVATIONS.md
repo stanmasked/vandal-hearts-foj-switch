@@ -103,6 +103,17 @@ These are operator descriptions only. They do not instrument GPU
 queues, title launch, or libnx error codes. An early failed shader
 load can prevent any color diagnostic, as before.
 
+## Stage 169: CPU-only retry comparison
+
+A separate offline analyzer accepts exactly two stable fixed-name
+stage-168 CPU boot logs from earlier and later attempts. It can
+highlight a queue/shader/texture-stage failure followed by a
+subsequent CPU presentation loop without automatically marking
+GPU frames or hardware success. See
+`docs/GPU_STAGE169_TWO_ATTEMPT_RECOVERY.md`. Operator-filled
+visual observations remain independent and must not be generated
+from the CPU logs.
+
 ## Audit and keep the result private
 
     python3 -m tools.foj_stage166_hardware_observations \
