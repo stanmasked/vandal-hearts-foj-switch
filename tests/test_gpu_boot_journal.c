@@ -63,6 +63,10 @@ static void test_record_and_recovery(void) {
     assert(!strcmp(line,"FOJBOOT1 slot=00 step=01 event=1 frames=0000000000\n"));
     assert(fclose(input)==0);
     assert(unlink(symlink_name)==0);
+    /* The formerly reserved slot can now be used, with old logs intact. */
+    assert(foj_gpu_boot_journal_begin(&journal,prefix));
+    assert(journal.slot==2);
+    foj_gpu_boot_journal_close(&journal);
     for(unsigned i=0;i<FOJ_GPU_BOOT_JOURNAL_SLOTS;++i) {
         path_for(filename,sizeof(filename),prefix,i);
         /* Fill available slots without clobbering earlier contents. */
