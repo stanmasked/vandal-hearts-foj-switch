@@ -114,6 +114,18 @@ GPU frames or hardware success. See
 visual observations remain independent and must not be generated
 from the CPU logs.
 
+## Stage 170 — an operator-only association with one CPU boot log
+
+The stage-166 sheet contains five independent A–E scenarios; it
+does not identify which individual `foj-boot-XX.txt` attempt, if
+any, produced a specific entry. Stage 170 uses a NEW, initially
+blank JSON link form to associate **one** scenario with **one**
+explicitly chosen CPU boot slot. If no such association was actually
+observed, leave all fields blank. A consistent CPU+operator
+comparison does **not** establish frame presentation or hardware
+verification. Full instructions:
+`docs/GPU_STAGE170_CPU_VISUAL_ALIGNMENT.md`.
+
 ## Audit and keep the result private
 
     python3 -m tools.foj_stage166_hardware_observations \
