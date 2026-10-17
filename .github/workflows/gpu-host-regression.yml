@@ -56,12 +56,19 @@ jobs:
         run: |
           "${HOSTCC}" --version
           make --version
-      - name: Strict C11 host suite and triangle syntax
-        id: strict
+      - name: GPU Makefile dependency regression
+        id: dependencies
         shell: bash
         run: |
           set -o pipefail
-          { bash tests/test_gpu_make_dependencies.sh && bash tests/test_gpu_preflight.sh && bash tests/test_gpu_shader_failure_cleanup.sh && make -f gpu/clear.mk host-check; } 2>&1 | tee gpu-host-strict.log
+          bash tests/test_gpu_make_dependencies.sh 2>&1 | tee gpu-host-dependencies.log
+      - name: Strict C11 host suite and triangle syntax
+        id: strict
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -o pipefail
+          { bash tests/test_gpu_preflight.sh && bash tests/test_gpu_shader_failure_cleanup.sh && make -f gpu/clear.mk host-check; } 2>&1 | tee gpu-host-strict.log
       - name: ASan and UBSan host suite
         if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         id: sanitized
@@ -81,6 +88,7 @@ jobs:
             echo ''
             echo '| Suite | Result |'
             echo '|---|---|'
+            echo '| GPU Make dependency regression | ${{ steps.dependencies.outcome }} |'
             echo '| Strict C11 / triangle syntax | ${{ steps.strict.outcome }} |'
             echo '| ASan and UBSan | ${{ steps.sanitized.outcome }} |'
             echo ''
@@ -92,6 +100,7 @@ jobs:
         with:
           name: gpu-host-check-logs-${{ matrix.compiler }}
           path: |
+            gpu-host-dependencies.log
             gpu-host-strict.log
             gpu-host-sanitized.log
           if-no-files-found: warn
