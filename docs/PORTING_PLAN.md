@@ -531,3 +531,12 @@ The local tests use reconstructed sources from stages 102/103; they are not a fu
 - [ ] Real UAM DKSH generation, devkitA64 NRO and Switch hardware GPU test remain unverified.
 
 Local smoke-plan verification used an older reconstructed source, not the current GitHub checkout.
+
+## Stage 110: DKSH output-pointer failure invariant (2026-10-17)
+
+- [x] Add negative integration case to `tests/test_gpu_dksh_integration.c`: passing a NULL `bytes_written` pointer must reject loading without changing the existing fragment and vertex GPU shader slots.
+- [x] Exercise the equivalent case in the local restored stage-102 shader integration workspace with strict C11 GCC and Clang, `-DNDEBUG` and UBSan: both PASS. An initial local fixture comparison used the vertex buffer as its reference and failed; regenerated the correct fragment reference and reran successfully.
+- [ ] Execute current full checkout and 18-scenario GPU lifecycle mock in GitHub Actions. No GitHub CI success has been verified and git clone continues to fail local DNS resolution.
+- [ ] Build authentic UAM-generated DKSH and devkitA64 GPU NRO; validate on Switch.
+
+The local host test uses a reconstructed subset, not the exact full repository checkout.
