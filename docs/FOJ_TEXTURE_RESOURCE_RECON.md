@@ -838,6 +838,21 @@ installation procedure. Neither C host simulation nor native NRO
 cross-compilation verifies real Switch GPU presentation or original
 FoJ texture/material mappings.
 
+## Stage 166: private operator observation audit, no hardware attestation
+
+A fixed-schema, blank-first local observation journal records the five
+stage-162 screen scenarios as user-supplied declarations and tracks
+initialization symptoms (including no frame, black screen and exit
+behavior) separately. Optional SHA-256 binding to a locally validated
+stage-165 research-only SD ZIP distinguishes binary packaging from
+visual evidence. The offline tool rejects duplicate JSON fields,
+out-of-order scenarios, malformed observations and mismatched bundle
+hashes. Its output omits free-form private paths and never marks
+hardware execution verified, even if all declared colors match the
+expected sequence. Native CI publishes a blank worksheet only;
+no Switch hardware or video capture is connected. Instructions:
+`docs/GPU_STAGE166_HARDWARE_OBSERVATIONS.md`.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ

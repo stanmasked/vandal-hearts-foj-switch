@@ -91,6 +91,17 @@ No private DDS bytes, file paths, game data or user text are drawn.
 
 For case D, use a NEW synthetic seven-byte file containing the literal word invalid. Do not edit or deliberately damage any user-owned original DDS or PS3 assets. Observe on-screen presentation, possible channel flips, tiling, missing shader errors and any freeze or abnormal exit. Press + to exit only after frames have been displayed in A/B/C/E, if possible. Record screenshots only from the synthetic tests.
 
+## Stage 166 — optional private observation ledger
+
+The workflow publishes an explicitly blank JSON worksheet next to the
+stage-165 research SD ZIP. You may enter actual seen screen colors for
+A–E and separately record any black screen before the first triangle
+frame, plus-exit behavior or a freeze. The offline tool checks the
+fixed sequence and (optionally) the SHA-256 of the exact local ZIP,
+without asserting it can verify real Switch hardware. See
+`docs/GPU_STAGE166_HARDWARE_OBSERVATIONS.md`. Do not invent outcomes
+from CI builds or commit private screenshot files.
+
 ## Hardware observation log (not yet executed)
 
 | Observation | Result |
