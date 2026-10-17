@@ -19,6 +19,7 @@
 #include "dksh_module.h"
 #include "shader_layout.h"
 #include "research_mesh.h"
+#include "gpu_draw_plan.h"
 _Static_assert((size_t)FOJ_GPU_SHADER_MAX_DKSH ==
                (size_t)FOJ_DKSH_MAX_BYTES,
                "DKSH intake and GPU shader slot capacities differ");
@@ -128,20 +129,24 @@ int main(int argc,char **argv) {
     if (!cmd) goto cleanup;
     dkCmdBufAddMemory(cmd,cmd_mem,0,CMD_MEMORY_SIZE);
 
-    /* The clear-only probe retains its original synthetic triangle.
-     * Triangle mode now exercises the actual CPU-to-GPU geometry stream,
-     * preparing two invented triangles / one ordered batch. */
+    /* Clear-only mode keeps the original smoke data. Shader-backed mode
+     * uploads a synthetic four-triangle surface in two ordered sections. */
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
     FojGpuVertex research_vertices[FOJ_RESEARCH_VERTEX_COUNT];
     FojGpuBatch research_batches[FOJ_RESEARCH_BATCH_COUNT];
     FojGpuStreamInfo research_info;
+    FojGpuDrawRange draw_ranges[FOJ_RESEARCH_BATCH_COUNT];
     if (foj_gpu_research_mesh(research_vertices,FOJ_RESEARCH_VERTEX_COUNT,
                               research_batches,FOJ_RESEARCH_BATCH_COUNT,
                               &research_info)!=FOJ_GPU_STREAM_OK ||
         research_info.vertices_written!=FOJ_RESEARCH_VERTEX_COUNT ||
         research_info.batches_written!=FOJ_RESEARCH_BATCH_COUNT ||
-        research_batches[0].first_vertex!=0 ||
-        research_batches[0].vertex_count!=FOJ_RESEARCH_VERTEX_COUNT)
+        foj_gpu_build_draw_plan(research_batches,
+                                research_info.batches_written,
+                                research_info.vertices_written,
+                                FOJ_RESEARCH_MATERIAL_COUNT,
+                                draw_ranges,FOJ_RESEARCH_BATCH_COUNT)
+                                !=FOJ_GPU_STREAM_OK)
         goto cleanup;
     const size_t vertex_upload_bytes=sizeof(research_vertices);
 #else
@@ -228,9 +233,9 @@ int main(int argc,char **argv) {
             dkCmdBufClearColorFloat(cmd,0,DkColorMask_RGBA,
                                     rgba[0],rgba[1],rgba[2],rgba[3]);
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
-            /* This is the first actual GPU triangle DRAW command in source.
-             * It requires two valid user-supplied UAM DKSH modules. No FoJ
-             * geometry/materials or proprietary assets enter this mode. */
+            /* Ordered draw ranges originate in the real CPU-to-GPU stream.
+             * Both synthetic section IDs share the same UV gradient shader;
+             * material/texture switching is not implemented yet. */
             const DkViewport viewport={0.f,0.f,SCREEN_WIDTH,
                                        SCREEN_HEIGHT,0.f,1.f};
             DkRasterizerState rasterizer;
@@ -272,8 +277,12 @@ int main(int argc,char **argv) {
             dkCmdBufBindVtxAttribState(cmd,attribs,2);
             dkCmdBufBindVtxBufferState(cmd,vertex_states,1);
             dkCmdBufBindVtxBuffers(cmd,0,vertex_data,1);
-            dkCmdBufDraw(cmd,DkPrimitive_Triangles,
-                         (uint32_t)research_info.vertices_written,1,0,0);
+            for (size_t batch=0;batch<research_info.batches_written;
+                 ++batch) {
+                const FojGpuDrawRange *range=&draw_ranges[batch];
+                dkCmdBufDraw(cmd,DkPrimitive_Triangles,
+                             range->vertex_count,1,range->first_vertex,0);
+            }
 #endif
             commands[slot][phase]=dkCmdBufFinishList(cmd);
             if (!commands[slot][phase])goto cleanup;
