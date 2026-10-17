@@ -87,6 +87,21 @@ if ! make -f gpu/triangle.mk -n "$nro" | grep -Fq -- "$nro_command"; then
     echo "FAIL: changed ELF does not repackage triangle NRO" >&2
     exit 1
 fi
+# A shader header edit propagates through ELF into NRO packaging,
+# without regenerating NACP. Check the complete resulting target.
+touch -t 202201010000 "$target" "$nacp"
+touch -t 202301010000 "$nro"
+for header in gpu/dksh_module.h gpu/shader_layout.h; do
+    touch -t 202401010000 "$header"
+    plan="$(make -f gpu/triangle.mk -n "$nro")"
+    if [[ "$plan" != *"$build_command"* ||
+          "$plan" != *"$nro_command"* ||
+          "$plan" == *'--create'* ]]; then
+        echo "FAIL: changing $header must rebuild ELF/NRO without NACP" >&2
+        exit 1
+    fi
+    touch -t 202001010000 "$header"
+done
 # A packaging-only version/title change must regenerate metadata and NRO.
 # Since both common and triangle Makefiles also feed the ELF target, a
 # configuration change can legitimately rebuild ELF as well; assert that
