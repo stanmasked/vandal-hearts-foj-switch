@@ -114,7 +114,30 @@ int main(void) {
     assert(memcmp(pool+layout.fragment_offset,module,max)==0);
     generated_module(module,max,FOJ_DKSH_VERTEX);
     assert(memcmp(pool+layout.vertex_offset,module,max)==0);
+    /* Invalid input pointers/stages must be rejected without touching slots. */
+    generated_module(module,max,FOJ_DKSH_FRAGMENT);
+    used=901;
+    assert(!foj_dksh_read_file(NULL,pool+layout.fragment_offset,
+                               max,FOJ_DKSH_FRAGMENT,&used));
+    assert(!foj_dksh_read_file(path,NULL,max,FOJ_DKSH_FRAGMENT,&used));
+    assert(!foj_dksh_read_file(path,pool+layout.fragment_offset,
+                               max,UINT32_MAX,&used));
+    assert(!foj_dksh_read_file(path,pool+layout.fragment_offset,
+                               255,FOJ_DKSH_FRAGMENT,&used));
+    assert(used==901);
+    assert(memcmp(pool+layout.fragment_offset,module,max)==0);
+    generated_module(module,max,FOJ_DKSH_VERTEX);
+    assert(memcmp(pool+layout.vertex_offset,module,max)==0);
     assert(unlink(path)==0);
+    /* Missing file after removal must also leave the loaded shaders intact. */
+    used=902;
+    assert(!foj_dksh_read_file(path,pool+layout.fragment_offset,
+                               max,FOJ_DKSH_FRAGMENT,&used));
+    assert(used==902);
+    generated_module(module,max,FOJ_DKSH_FRAGMENT);
+    assert(memcmp(pool+layout.fragment_offset,module,max)==0);
+    generated_module(module,max,FOJ_DKSH_VERTEX);
+    assert(memcmp(pool+layout.vertex_offset,module,max)==0);
     free(module);
     free(pool);
     puts("DKSH two-slot transactional integration: PASS");
