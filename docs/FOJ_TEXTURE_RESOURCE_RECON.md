@@ -689,6 +689,38 @@ does not require a particular elapsed time or benchmark speedup.
 Benchmark reports are not treated as evidence of real FoJ decoding or
 runtime performance and are not uploaded automatically.
 
+## Stage 159: allowlisted CPU hotspot profiling
+
+Run `python -m tools.foj_stage159_profile --profile smoke --repeats 2`
+for deterministic synthetic-only cProfile measurements on stage-142
+candidate-to-prefix relations and **full stage-143 hypothetical-table
+inference**, including input validation and JSON budget checks.
+
+The stage-158 fixture sizes (32/128, 128/512, 512/2048) are reused by
+`--profile smoke|standard|stress`. The generated tables contain
+three pointer observations per hypothetical table, so no commercial PS3
+resource data or inferred game-specific material links are involved.
+
+Stage 159 records median wall time and profiled total CPU time, plus a
+small, fixed allowlist of function-phase labels: range indexing, prefix
+reads, report byte validation, reference validation, and table-run
+discovery. Calls and self/cumulative times are summarized by phase.
+Use `--top-phases 1..8` to limit display and `--output` to
+write a **new** metadata-only JSON file. Output never contains the raw
+profiler call graph, source file paths, line numbers, input bytes,
+temporary directory names, or private filenames.
+
+**Interpretation:** a cumulative function time includes time spent in
+nested functions, so cumulative phase times must not be added together.
+Python's cProfile overhead also changes runtime relative to the
+unprofiled stage-158 timings; both depend on host load and Python
+version. These diagnostics are not pass/fail speed thresholds or proof
+of memory efficiency. CI runs only the small, generated-only profile
+and verifies semantic completeness and privacy filtering.
+
+No actual FoJ container/material/model mapping or Nintendo Switch
+rendering has been established by profiling.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ
