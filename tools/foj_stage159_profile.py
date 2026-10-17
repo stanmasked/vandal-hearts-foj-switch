@@ -98,7 +98,7 @@ def _profile_once(workload: str, task: Callable[[], Any],
         "wall_elapsed_ms": round(elapsed_ms, 3),
         "profiled_cpu_ms": round(stats.total_tt * 1000, 3),
         "observed_records": expected_count,
-        "phases": phases[:max_phases],
+        "phases": phases,
     }
 
 
@@ -132,7 +132,7 @@ def _measure(workload: str, task: Callable[[], Any], expected: int,
         "observed_records": expected,
         "median_wall_elapsed_ms": round(statistics.median(elapsed), 3),
         "median_profiled_cpu_ms": round(statistics.median(cpu), 3),
-        "phases": phases,
+        "phases": phases[:top_phases],
     }
 
 
