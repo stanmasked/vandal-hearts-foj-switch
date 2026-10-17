@@ -64,7 +64,7 @@ static void fill_bc1(uint8_t *dest,uint16_t c0,uint16_t c1) {
     put16(dest+2,c1);
     /* Four texels per row use palette indexes 0,1,2,3. */
 
-    put32(dest+4,0xe4e4e4e4u);
+    put32(dest,4,0xe4e4e4e4u);
 }
 static void test_bcn(void) {
     uint8_t data[FOJ_ATLAS_DDS_HEADER_BYTES+256];
