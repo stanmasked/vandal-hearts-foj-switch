@@ -23,6 +23,7 @@
 #include "gpu_draw_plan.h"
 #include "research_texture.h"
 #include "atlas_dds.h"
+#include "dds_screen_status.h"
 _Static_assert((size_t)FOJ_GPU_SHADER_MAX_DKSH ==
                (size_t)FOJ_DKSH_MAX_BYTES,
                "DKSH intake and GPU shader slot capacities differ");
@@ -69,6 +70,12 @@ int main(int argc,char **argv) {
     DkImage texture_images[FOJ_RESEARCH_TEXTURE_COUNT];
     DkImageView texture_views[FOJ_RESEARCH_TEXTURE_COUNT];
     DkGpuAddr texture_data_addr=DK_GPU_ADDR_INVALID;
+    DkCmdList dds_status_lists[BUFFER_COUNT][FOJ_RESEARCH_TEXTURE_COUNT]={{0}};
+    FojAtlasDdsStatus dds_states[FOJ_RESEARCH_TEXTURE_COUNT]={
+        FOJ_ATLAS_DDS_INVALID_ARGUMENT,FOJ_ATLAS_DDS_INVALID_ARGUMENT
+    };
+    unsigned dds_observed_slots=0;
+    int dds_fatal=0;
     DkShader shader_vertex={0},shader_fragment={0};
 #endif
     DkGpuAddr vertex_gpu_addr=0;
@@ -274,7 +281,14 @@ int main(int argc,char **argv) {
          * the homebrew environment and is not hardware-verified. */
         fprintf(stderr,"FoJ GPU DDS material %u: %s\n",
                 i,foj_atlas_dds_status_name(dds_status));
-        if (loaded<0)goto cleanup;
+        dds_states[i]=dds_status;
+        dds_observed_slots=i+1u;
+        if (loaded<0) {
+            /* Preserve a visible GPU failure screen even when intake fails.
+             * No partial source bytes are displayed as GPU pixels. */
+            dds_fatal=1;
+            break;
+        }
         if (loaded==0) {
             if (!foj_research_texture_rgba8(i,pixels,
                                             PIXEL_STAGING_STRIDE))
@@ -324,6 +338,7 @@ int main(int argc,char **argv) {
         dkCmdBufCopyBufferToImage(cmd,&source,&texture_views[i],&rect,0);
     }
 
+    if (!dds_fatal) {
     DkSampler sampler;
     dkSamplerDefaults(&sampler);
     sampler.wrapMode[0]=DkWrapMode_ClampToEdge;
@@ -338,6 +353,10 @@ int main(int argc,char **argv) {
     dkQueueSubmitCommands(queue,upload_list);
     dkQueueWaitIdle(queue);
     dkCmdBufClear(cmd);
+    } else {
+        /* Discard pending copies from earlier slots after DDS failure. */
+        dkCmdBufClear(cmd);
+    }
 #endif
 
     /* Mirror switchbrew's deko_basic/Example01 approach: pre-record
@@ -345,6 +364,27 @@ int main(int argc,char **argv) {
      * and only submit pre-recorded lists during the presentation loop.
      * This avoids reusing/freeing in-flight command memory each frame. */
     DkScissor full_screen={0,0,SCREEN_WIDTH,SCREEN_HEIGHT};
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+    /* One persistent shader-free GPU color screen per material and image.
+     * These render even when a malformed DDS prevents normal draw lists.
+     * Slot 0 appears before slot 1, according to the legend in the docs. */
+    for (unsigned buffer=0;buffer<BUFFER_COUNT;++buffer) {
+        for (unsigned material=0;material<FOJ_RESEARCH_TEXTURE_COUNT;
+             ++material) {
+            DkImageView const* targets[]={&views[buffer]};
+            float color[4];
+            if (!foj_gpu_dds_status_color(dds_states[material],color))
+                goto cleanup;
+            dkCmdBufBindRenderTargets(cmd,targets,1,NULL);
+            dkCmdBufSetScissors(cmd,0,&full_screen,1);
+            dkCmdBufClearColorFloat(cmd,0,DkColorMask_RGBA,
+                                    color[0],color[1],color[2],color[3]);
+            dds_status_lists[buffer][material]=dkCmdBufFinishList(cmd);
+            if (!dds_status_lists[buffer][material])goto cleanup;
+        }
+    }
+    if (!dds_fatal) {
+#endif
     for (unsigned slot=0;slot<BUFFER_COUNT;++slot) {
         for (unsigned phase=0;phase<2;++phase) {
             DkImageView const* color_targets[]={&views[slot]};
@@ -417,6 +457,9 @@ int main(int argc,char **argv) {
         }
     }
 
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+    }
+#endif
     padConfigureInput(1,HidNpadStyleSet_NpadStandard);
     PadState pad;
     padInitializeDefault(&pad);
@@ -425,7 +468,13 @@ int main(int argc,char **argv) {
         padUpdate(&pad);
         if (padGetButtonsDown(&pad)&HidNpadButton_Plus) {
             /* Exiting before presenting a frame is not a successful smoke test. */
-            if (frame>0) exit_status=0;
+            if (frame>0) {
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+                exit_status=dds_fatal?5:0;
+#else
+                exit_status=0;
+#endif
+            }
             break;
         }
 
@@ -438,10 +487,25 @@ int main(int argc,char **argv) {
         /* Immutable GPU command lists, following the official deko3d
          * simple setup example. The clear color alternates periodically. */
         const unsigned palette=foj_smoke_color_for_frame(frame);
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+        unsigned status_slot=0;
+        const int diagnostic=foj_gpu_dds_status_screen(
+            frame,dds_observed_slots,dds_fatal,&status_slot);
+        if (diagnostic<0) { exit_status=5; break; }
+        const DkCmdList chosen=diagnostic?
+            dds_status_lists[slot][status_slot]:commands[slot][palette];
+        if (!chosen) { exit_status=5; break; }
+        dkQueueSubmitCommands(queue,chosen);
+#else
         dkQueueSubmitCommands(queue,commands[slot][palette]);
+#endif
         dkQueuePresentImage(queue,swapchain,slot);
         ++frame;
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+        exit_status=dds_fatal?5:0;
+#else
         exit_status=0;
+#endif
     }
 cleanup:
     if (queue)dkQueueWaitIdle(queue);
