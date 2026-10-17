@@ -803,6 +803,20 @@ depends on its homebrew environment and is unverified. SDK-free C11,
 NDEBUG and sanitizer test suites include symlink/FIFO/directory input
 regressions; successful CI is not a hardware validation.
 
+## Stage 164: GPU DDS intake screens
+
+The existing shader-backed deko3d research NRO now displays two short
+GPU-rendered solid-color screens before normal material draws: first
+material 0, then material 1, 120 presented frames each. Colors encode
+stage-163 generic DDS intake statuses, with no text, private path or
+source bytes rendered. A malformed DDS produces a persistent failure
+screen and a nonzero return code rather than an unexplained black frame
+or incorrect silent fallback. The shader-free clear NRO is unaffected.
+Pure C status/timing tests, host compiler tests and native devkitA64/UAM
+builds check the implementation, but actual on-console image output
+remains unverified. Consult `docs/GPU_STAGE162_SD_SMOKE.md` for the
+complete color legend, interpretation and real-hardware observation plan.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ
