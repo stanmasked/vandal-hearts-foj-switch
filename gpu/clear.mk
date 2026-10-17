@@ -15,6 +15,9 @@ HOST_MOCK := build/foj-deko3d-lifecycle-host
 HOST_MOCK_SAN := build/foj-deko3d-lifecycle-asan
 HOST_SHADERS := build/foj-deko3d-shader-layout-host
 HOST_SHADERS_SAN := build/foj-deko3d-shader-layout-asan
+HOST_RESEARCH := build/foj-gpu-research-mesh-host
+HOST_RESEARCH_NDEBUG := build/foj-gpu-research-mesh-ndebug
+HOST_RESEARCH_SAN := build/foj-gpu-research-mesh-asan
 HOST_DKSH := build/foj-dksh-intake-host
 HOST_DKSH_SAN := build/foj-dksh-intake-asan
 HOST_DKSH_INTEGRATION := build/foj-dksh-layout-integration
@@ -143,6 +146,21 @@ $(HOST_MOCK_SAN): tests/test_deko3d_clear_host.c tests/mock_switch_sdk/deko3d.h 
 	  -Itests/mock_switch_sdk -Igpu -Icore \
 	  tests/test_deko3d_clear_host.c gpu/smoke_plan.c -lm -o $@
 
+# Exercise the same six-vertex research stream that the optional native
+# shader-backed GPU NRO uploads (without GPU SDK or copyrighted game data).
+$(HOST_RESEARCH): tests/test_gpu_research_mesh.c gpu/research_mesh.c gpu/research_mesh.h core/gpu_vertex_stream.c core/gpu_vertex_stream.h core/textured_triangles.h | build
+	$(HOSTCC) -std=c11 -Wall -Wextra -Werror -pedantic -Igpu -Icore \
+	  tests/test_gpu_research_mesh.c gpu/research_mesh.c core/gpu_vertex_stream.c -lm -o $@
+
+$(HOST_RESEARCH_NDEBUG): tests/test_gpu_research_mesh.c gpu/research_mesh.c gpu/research_mesh.h core/gpu_vertex_stream.c core/gpu_vertex_stream.h core/textured_triangles.h | build
+	$(HOSTCC) -DNDEBUG -std=c11 -Wall -Wextra -Werror -pedantic -Igpu -Icore \
+	  tests/test_gpu_research_mesh.c gpu/research_mesh.c core/gpu_vertex_stream.c -lm -o $@
+
+$(HOST_RESEARCH_SAN): tests/test_gpu_research_mesh.c gpu/research_mesh.c gpu/research_mesh.h core/gpu_vertex_stream.c core/gpu_vertex_stream.h core/textured_triangles.h | build
+	$(HOSTCC) -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic \
+	  -fsanitize=address,undefined -fno-omit-frame-pointer -Igpu -Icore \
+	  tests/test_gpu_research_mesh.c gpu/research_mesh.c core/gpu_vertex_stream.c -lm -o $@
+
 # Check the real optional triangle source in GCC/Clang C11 syntax mode.
 # This uses lightweight SDK declarations and DOES NOT link or run GPU code.
 host-triangle-check:
@@ -151,7 +169,9 @@ host-triangle-check:
 	  -Itests/mock_switch_sdk -Icore -Igpu \
 	  gpu/deko3d_clear_main.c
 
-host-check: host-triangle-check $(HOST_TEST) $(HOST_TEST_NDEBUG) $(HOST_ABI) $(HOST_ABI_NDEBUG) $(HOST_SHADERS) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_NDEBUG) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_MOCK) $(HOST_MOCK_NDEBUG)
+host-check: host-triangle-check $(HOST_TEST) $(HOST_TEST_NDEBUG) $(HOST_ABI) $(HOST_ABI_NDEBUG) $(HOST_SHADERS) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_NDEBUG) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_MOCK) $(HOST_MOCK_NDEBUG) $(HOST_RESEARCH) $(HOST_RESEARCH_NDEBUG)
+	./$(HOST_RESEARCH)
+	./$(HOST_RESEARCH_NDEBUG)
 	./$(HOST_TEST)
 	./$(HOST_TEST_NDEBUG)
 	./$(HOST_ABI)
@@ -165,7 +185,8 @@ host-check: host-triangle-check $(HOST_TEST) $(HOST_TEST_NDEBUG) $(HOST_ABI) $(H
 	./$(HOST_MOCK)
 	./$(HOST_MOCK_NDEBUG)
 
-host-mock-sanitized: $(HOST_MOCK_SAN) $(HOST_SHADERS_SAN) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_TEST_SAN) $(HOST_ABI_SAN)
+host-mock-sanitized: $(HOST_MOCK_SAN) $(HOST_SHADERS_SAN) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_TEST_SAN) $(HOST_ABI_SAN) $(HOST_RESEARCH_SAN)
+	./$(HOST_RESEARCH_SAN)
 	./$(HOST_MOCK_SAN)
 	./$(HOST_TEST_SAN)
 	./$(HOST_ABI_SAN)
@@ -186,4 +207,4 @@ verify: $(OUT).nro
 	python3 tools/validate_nro.py $(OUT).nro
 
 clean:
-	rm -f $(OUT).elf $(OUT).nacp $(OUT).nro $(HOST_TEST) $(HOST_TEST_NDEBUG) $(HOST_ABI) $(HOST_ABI_NDEBUG) $(HOST_MOCK) $(HOST_MOCK_SAN) $(HOST_MOCK_NDEBUG) $(HOST_SHADERS) $(HOST_SHADERS_SAN) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_NDEBUG) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_TEST_SAN) $(HOST_ABI_SAN)
+	rm -f $(OUT).elf $(OUT).nacp $(OUT).nro $(HOST_TEST) $(HOST_TEST_NDEBUG) $(HOST_ABI) $(HOST_ABI_NDEBUG) $(HOST_MOCK) $(HOST_MOCK_SAN) $(HOST_MOCK_NDEBUG) $(HOST_SHADERS) $(HOST_SHADERS_SAN) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_NDEBUG) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_TEST_SAN) $(HOST_ABI_SAN) $(HOST_RESEARCH) $(HOST_RESEARCH_NDEBUG) $(HOST_RESEARCH_SAN)

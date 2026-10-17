@@ -18,6 +18,7 @@
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
 #include "dksh_module.h"
 #include "shader_layout.h"
+#include "research_mesh.h"
 _Static_assert((size_t)FOJ_GPU_SHADER_MAX_DKSH ==
                (size_t)FOJ_DKSH_MAX_BYTES,
                "DKSH intake and GPU shader slot capacities differ");
@@ -35,11 +36,13 @@ _Static_assert(offsetof(FojGpuVertex,x)==0,
                "shader position must start at byte zero");
 _Static_assert(offsetof(FojGpuVertex,u)==16,
                "shader UV must start at byte sixteen");
+#if !defined(FOJ_GPU_DRAW_TRIANGLE)
 static const FojGpuVertex kResearchTriangle[3]={
     {-0.60f,-0.55f,0.5f,1.0f,0.0f,0.0f},
     { 0.60f,-0.55f,0.5f,1.0f,1.0f,0.0f},
     { 0.00f, 0.65f,0.5f,1.0f,0.5f,1.0f}
 };
+#endif
 
 int main(int argc,char **argv) {
     (void)argc;(void)argv;
@@ -125,11 +128,27 @@ int main(int argc,char **argv) {
     if (!cmd) goto cleanup;
     dkCmdBufAddMemory(cmd,cmd_mem,0,CMD_MEMORY_SIZE);
 
-    /* Phase-1 geometry residency (no GPU draw submitted yet).
-     * Upload an invented triangle using exactly the six-float vertex
-     * layout shared with the original-game GPU staging module. */
+    /* The clear-only probe retains its original synthetic triangle.
+     * Triangle mode now exercises the actual CPU-to-GPU geometry stream,
+     * preparing two invented triangles / one ordered batch. */
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+    FojGpuVertex research_vertices[FOJ_RESEARCH_VERTEX_COUNT];
+    FojGpuBatch research_batches[FOJ_RESEARCH_BATCH_COUNT];
+    FojGpuStreamInfo research_info;
+    if (foj_gpu_research_mesh(research_vertices,FOJ_RESEARCH_VERTEX_COUNT,
+                              research_batches,FOJ_RESEARCH_BATCH_COUNT,
+                              &research_info)!=FOJ_GPU_STREAM_OK ||
+        research_info.vertices_written!=FOJ_RESEARCH_VERTEX_COUNT ||
+        research_info.batches_written!=FOJ_RESEARCH_BATCH_COUNT ||
+        research_batches[0].first_vertex!=0 ||
+        research_batches[0].vertex_count!=FOJ_RESEARCH_VERTEX_COUNT)
+        goto cleanup;
+    const size_t vertex_upload_bytes=sizeof(research_vertices);
+#else
+    const size_t vertex_upload_bytes=sizeof(kResearchTriangle);
+#endif
     uint32_t vertex_memory_bytes=0;
-    if (!foj_smoke_image_allocation(sizeof(kResearchTriangle),
+    if (!foj_smoke_image_allocation(vertex_upload_bytes,
                                     DK_MEMBLOCK_ALIGNMENT,
                                     DK_MEMBLOCK_ALIGNMENT,
                                     &vertex_memory_bytes))goto cleanup;
@@ -145,7 +164,11 @@ int main(int argc,char **argv) {
      * Zero alone must not be treated as the documented error value. */
     if (!vertex_cpu_addr || vertex_gpu_addr==DK_GPU_ADDR_INVALID)
         goto cleanup;
-    memcpy(vertex_cpu_addr,kResearchTriangle,sizeof(kResearchTriangle));
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+    memcpy(vertex_cpu_addr,research_vertices,vertex_upload_bytes);
+#else
+    memcpy(vertex_cpu_addr,kResearchTriangle,vertex_upload_bytes);
+#endif
 
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
     /* Optional native triangle mode. Load UAM-generated research DKSH
@@ -239,7 +262,7 @@ int main(int argc,char **argv) {
             };
             const DkBufExtents vertex_data[1]={
                 { .addr=vertex_gpu_addr,
-                  .size=sizeof(kResearchTriangle) }
+                  .size=vertex_upload_bytes }
             };
             dkCmdBufSetViewports(cmd,0,&viewport,1);
             dkCmdBufBindShaders(cmd,DkStageFlag_GraphicsMask,shaders,2);
@@ -249,7 +272,8 @@ int main(int argc,char **argv) {
             dkCmdBufBindVtxAttribState(cmd,attribs,2);
             dkCmdBufBindVtxBufferState(cmd,vertex_states,1);
             dkCmdBufBindVtxBuffers(cmd,0,vertex_data,1);
-            dkCmdBufDraw(cmd,DkPrimitive_Triangles,3,1,0,0);
+            dkCmdBufDraw(cmd,DkPrimitive_Triangles,
+                         (uint32_t)research_info.vertices_written,1,0,0);
 #endif
             commands[slot][phase]=dkCmdBufFinishList(cmd);
             if (!commands[slot][phase])goto cleanup;
