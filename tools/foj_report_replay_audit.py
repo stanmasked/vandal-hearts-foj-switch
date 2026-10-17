@@ -22,6 +22,7 @@ from tools.foj_resource_table_hypotheses import (
     SUPPORTED_STRIDES, infer_tables,
 )
 from tools.foj_texture_relations import MAX_PREFIX_BYTES
+from tools.foj_report_transit_budget import measure_report, read_report
 
 MAX_JSON_BYTES = 128 * 1024 * 1024
 INDEX_PATTERNS = ("ascending-zero-based", "zero-based-permutation")
@@ -128,6 +129,8 @@ def audit_replay(layout: dict, tables: dict, indices: dict,
     if not all(isinstance(x, dict)
                for x in (layout, tables, indices, triage)):
         raise ValueError("All four reports must be JSON objects")
+    for report in (layout, tables, indices, triage):
+        measure_report(report)
     minimum = _uint(
         tables.get("minimum_distinct_dds_targets"),
         "stage-143 minimum distinct targets", minimum=2, maximum=16)
@@ -143,7 +146,7 @@ def audit_replay(layout: dict, tables: dict, indices: dict,
     _require_equal(
         triage, replay_triage,
         "Stage-145 triage report does not replay from stages 142-144")
-    return {
+    report = {
         "schema": "foj-report-replay-audit-v1",
         "status": "internally-replayed",
         "assessment": ("deterministic JSON report consistency only; "
@@ -161,6 +164,8 @@ def audit_replay(layout: dict, tables: dict, indices: dict,
             "nintendo_switch_runtime_verified": False,
         },
     }
+    measure_report(report)
+    return report
 
 
 def _no_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict:
@@ -173,13 +178,7 @@ def _no_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict:
 
 
 def _read_report(path: Path) -> dict:
-    if path.is_symlink() or not path.is_file():
-        raise ValueError("Report must be a regular non-symlink local file")
-    size = path.stat().st_size
-    if not 2 <= size <= MAX_JSON_BYTES:
-        raise ValueError("JSON report size outside permitted bounds")
-    return json.loads(path.read_text(encoding="utf-8"),
-                      object_pairs_hook=_no_duplicate_keys)
+    return read_report(path)
 
 
 def main() -> int:

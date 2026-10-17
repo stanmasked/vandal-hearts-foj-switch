@@ -593,6 +593,45 @@ runtime. The estimated budget is deliberately conservative; a report
 below the hard emitted JSON limit can still be rejected earlier due to
 reserved bookkeeping overhead.
 
+## Stage 156: bounded metadata transit through research stages
+
+Previously stage 155 restricted candidate generation, but a user-supplied
+stage-141 JSON file or a stage-142 layout expansion could still be passed
+to later tools without the same byte budget. Stage 156 adds
+`tools/foj_report_transit_budget.py` for stage-to-stage
+JSON transfer. It measures **actual UTF-8 bytes of the canonical,
+indented JSON** using an incremental encoder, limiting **each source
+and generated report to 64 MiB** before downstream processing or
+publication. Reports exceeding the bound fail closed: no partial
+private report is intentionally written.
+
+Independent stage 142 (layouts), 143 (table hypotheses), 144 (numeric
+index observations), 145 (consistency triage), and 149 (deterministic
+replay) now validate report objects on entry and return. Their CLI
+readers open private input JSON via a no-follow regular file descriptor,
+check file size **before reading**, verify metadata/size after reading,
+reject duplicate JSON object members and malformed/non-finite JSON.
+This replaces unbounded path-based JSON input reads in stages 142–145
+and the larger former 149 reader allowance. The stage-150 complete
+pipeline additionally limits its seven report outputs to **128 MiB in
+total**; `--bundle-mib` permits a smaller configured
+aggregate bound. All original report schemas are preserved.
+
+This limits serialization and file-backed JSON input size, but does not
+give a hard process RSS bound: Python object representation and
+downstream table-search complexity can exceed serialized JSON size.
+Standalone output path publication has not been made atomic by this
+stage. Untrusted local files can still be concurrently changed; the
+no-follow input check and timestamps are not a full filesystem
+snapshot. No original PS3 resources or source hashes enter public
+reports, and a passing test does not prove a game texture mapping or
+Nintendo Switch GPU presentation.
+
+Synthetic regression tests cover per-stage input/output checks,
+Unicode byte counting, sparse oversized inputs, symlinks, duplicate
+object members, malformed bytes, oversized CLI inputs, legitimate
+multi-stage reports, and fail-closed stage-150 publication.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ

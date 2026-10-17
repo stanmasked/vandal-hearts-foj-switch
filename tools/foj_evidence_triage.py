@@ -13,6 +13,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from tools.foj_report_transit_budget import measure_report, read_report
+
 from tools.foj_texture_relations import _safe_relative_path
 from tools.foj_resource_table_hypotheses import SUPPORTED_STRIDES
 
@@ -105,6 +107,8 @@ def _candidate_map(entry: dict[str, Any]) -> dict[int, dict[str, Any]]:
 
 
 def triage_reports(layout: dict, tables: dict, indices: dict) -> dict:
+    for source in (layout, tables, indices):
+        measure_report(source)
     """Reconcile known-size DDS spans, pointer hints and adjacent number fields."""
     rel = _by_file(layout, "foj-texture-layout-hypotheses-v1")
     tab = _by_file(tables, "foj-resource-table-hypotheses-v1")
@@ -242,7 +246,7 @@ def triage_reports(layout: dict, tables: dict, indices: dict) -> dict:
                 "relative_path": filename,
                 "table_observations": grouped_results,
             })
-    return {
+    report = {
         "schema": "foj-cross-report-consistency-v1",
         "inputs": [
             "foj-texture-layout-hypotheses-v1",
@@ -261,6 +265,8 @@ def triage_reports(layout: dict, tables: dict, indices: dict) -> dict:
         },
     }
 
+    measure_report(report)
+    return report
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -275,7 +281,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         output = triage_reports(*[
-            json.loads(path.read_text(encoding="utf-8"))
+            read_report(path)
             for path in (args.relations, args.tables, args.indices)
         ])
     except (ValueError, OSError, TypeError) as exc:
