@@ -217,17 +217,24 @@ def read_local_nro(path: Path) -> bytes:
     return first
 
 
+def verify_receipt(bundle: Path, receipt: dict[str, Any]) -> dict[str, str]:
+    """Independently recheck the real CI ZIP against all receipt hashes."""
+    validate_receipt(receipt)
+    digest, binaries = _fixed_bundle_digest(bundle)
+    if (receipt["bundle_sha256"] != digest or
+            any(row["sha256"] != binaries[name]
+                for name, row in zip(MEMBERS, receipt["built_members"]))):
+        raise _bad()
+    return binaries
+
+
 def bind(
     bundle: Path, receipt: dict[str, Any], ledger: dict[str, Any],
     before: tuple, after: tuple, visual_link: dict[str, Any],
     sd_nro: Path | None = None,
 ) -> dict[str, Any]:
-    validate_receipt(receipt)
-    actual_bundle, binary_hashes = _fixed_bundle_digest(bundle)
-    if (receipt["bundle_sha256"] != actual_bundle or
-            any(row["sha256"] != binary_hashes[name]
-                for name, row in zip(MEMBERS, receipt["built_members"]))):
-        raise _bad()
+    binary_hashes = verify_receipt(bundle, receipt)
+    actual_bundle = receipt["bundle_sha256"]
     # Strict structural validation and independent CPU/visual comparison.
     visual_result = align(before, after, ledger, visual_link)
     audit_operator(ledger)
@@ -290,6 +297,8 @@ def main() -> int:
     parser.add_argument("--bundle", type=Path, required=True)
     parser.add_argument("--create-receipt", type=Path,
                         help="Exclusive-new generated-only artifact identity JSON")
+    parser.add_argument("--verify-receipt", type=Path,
+                        help="Validate CI archive/receipt without private operator files")
     parser.add_argument("--git-commit", type=str)
     parser.add_argument("--run-id", type=int)
     parser.add_argument("--receipt", type=Path)
@@ -302,7 +311,8 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.create_receipt is not None:
-            if (args.git_commit is None or args.run_id is None or
+            if (args.verify_receipt is not None or
+                    args.git_commit is None or args.run_id is None or
                     any(x is not None for x in
                         (args.receipt, args.ledger, args.before,
                          args.after, args.link, args.sd_nro))):
@@ -310,6 +320,14 @@ def main() -> int:
             write_receipt(args.bundle, args.create_receipt,
                           args.git_commit, args.run_id)
             print("Generated-only research identity receipt created; NO Switch tested")
+        elif args.verify_receipt is not None:
+            if any(x is not None for x in
+                    (args.git_commit, args.run_id, args.receipt, args.ledger,
+                     args.before, args.after, args.link, args.sd_nro)):
+                raise _bad()
+            verify_receipt(args.bundle, read_receipt(args.verify_receipt))
+            print("Generated-only ZIP and four NRO/DKSH hashes match CI receipt; "
+                  "no console hardware verified")
         else:
             if (args.git_commit is not None or args.run_id is not None or
                     any(x is None for x in
