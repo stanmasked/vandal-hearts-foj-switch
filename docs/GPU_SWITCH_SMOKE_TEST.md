@@ -200,6 +200,19 @@ also passed.
 None of these tests establishes compatibility with any specific FoJ PS3
 atlas; the SD cards must contain only user-owned, locally prepared files.
 
+## Stage 163 — DDS descriptor checks and safe manual diagnostics
+
+The shader-backed research NRO now emits a generic DDS intake result for
+each synthetic material slot to stderr if the homebrew environment
+provides it. The messages do not contain the private filename or image
+data. A missing DDS keeps the synthetic fallback; present symlinks,
+directories, unsupported or changed DDS files cause startup rejection.
+The native code uses descriptor/stat checks and `O_NOFOLLOW` where the
+platform provides that flag. This is not a complete defense against
+malicious replacement of an ancestor directory, nor evidence of correct
+texture sampling on real hardware. Follow the stage-162 A–E observation
+matrix in `docs/GPU_STAGE162_SD_SMOKE.md`.
+
 ## SD card layout for a user-authorized homebrew Switch
 
 The NROs may be placed in a homebrew-launcher-readable folder, for example:
