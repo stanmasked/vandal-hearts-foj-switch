@@ -817,6 +817,27 @@ builds check the implementation, but actual on-console image output
 remains unverified. Consult `docs/GPU_STAGE162_SD_SMOKE.md` for the
 complete color legend, interpretation and real-hardware observation plan.
 
+## Stage 165: frame-command simulation and manual Switch smoke bundle
+
+A platform-neutral C command planner now decides whether the GPU
+presents a status color or a normal textured scene, keyed by
+frame number, actually acquired swapchain buffer, number of observed
+DDS slots and validated status array. An invalid state never produces
+a command. Generated-only host tests simulate 4096 presented frames
+for healthy, failed-first-slot, and failed-second-slot scenarios.
+The native deko3d triangle research NRO calls this same planner.
+
+A reproducible script `tools/foj_stage165_sd_bundle.py` packages only
+the two CI-compiled research NROs, two required UAM DKSH shader files,
+two invented 8×8 DDS images, a README and a metadata-only SHA-256
+manifest into a new SD-layout ZIP. No original PS3 game files are
+included by the fixed packaging path. Native GitHub Actions compile,
+validate and publish that ZIP for **manual hardware testing only**.
+See `docs/GPU_STAGE165_SD_RELEASE.md` for exact contents and
+installation procedure. Neither C host simulation nor native NRO
+cross-compilation verifies real Switch GPU presentation or original
+FoJ texture/material mappings.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ
