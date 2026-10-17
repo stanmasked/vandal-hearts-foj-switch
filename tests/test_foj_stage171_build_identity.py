@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 from tools.foj_stage165_sd_bundle import INPUTS, publish_bundle, ZIP_PREFIX
@@ -185,6 +186,16 @@ class Stage171ReceiptTests(unittest.TestCase):
                     out.writestr(path, payload)
             with self.assertRaises(ValueError):
                 self.compare(different, r, sheet, link, a, b)
+
+    def test_disagreement_between_bundle_validation_and_snapshot_rejected(self):
+        tmp, root, z, r, sheet, link, a, b = self.prepare()
+        with tmp:
+            # Simulate a changed valid archive between the independent
+            # structural check and the later binary-hash inspection.
+            with patch("tools.foj_stage171_build_identity.inspect_bundle",
+                       return_value="f" * 64):
+                with self.assertRaises(ValueError):
+                    build_receipt(z, COMMIT, RUN)
 
     def test_sd_copy_matches_only_when_nro_bytes_match(self):
         tmp, root, z, r, sheet, link, a, b = self.prepare()
