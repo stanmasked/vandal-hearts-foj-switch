@@ -573,3 +573,11 @@ The local host test uses a reconstructed subset, not the exact full repository c
 - [ ] Build real UAM shaders and an ARM64 NRO with devkitA64, then validate actual Switch GPU presentation.
 
 Because both Makefiles are ELF prerequisites, configuration changes may also recompile ELF. The test intentionally does not require compiler reuse.
+
+## Stage 115: cover both native GPU packaging variants (2026-10-17)
+
+- [x] Audited current GitHub GPU build dependency test. The regression only exercised the triangle variant, leaving the independent clear-smoke NRO's NACP dependencies untested.
+- [x] Extended `tests/test_gpu_make_dependencies.sh` with an unchanged clear-smoke NRO control and a changed shared Makefile case, expecting NACP regeneration followed by NRO repackaging.
+- [x] Committed the new GPU build regression in GitHub.
+- [ ] Execute the exact changed regression from a full checkout / GitHub Actions. Current local reconstruction lacks the latest packaging targets and git clone fails DNS; no full test pass is asserted.
+- [ ] Compile authentic UAM DKSH and ARM64 NRO with devkitA64 and verify GPU presentation on physical Nintendo Switch.
