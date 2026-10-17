@@ -22,6 +22,49 @@ Place the NRO and required shader files at these exact locations on the SD card 
 
 The separate foj_actor.frag.dksh is not needed by the triangle research NRO. First launch the clear-smoke NRO and confirm that alternating colors are visible. Never infer a successful hardware test from CI alone. Files are copied manually; no project script accesses the console.
 
+## Stage 164 — on-screen DDS intake diagnostics (not yet tested on Switch)
+
+The shader-backed *research* NRO now presents **two full-screen status colors**
+before showing the normal synthetic textured quads. It does not require
+stderr, a font file or an additional DKSH shader. The **first 120 presented
+frames are material slot 0**; the **next 120 presented frames are slot 1**.
+After 240 frames, supported DDS uploads and synthetic fallback material
+quads appear as before. Frame counts, not wall-clock seconds, determine
+the transition; on-console frame pacing is unverified.
+
+| Screen color | DDS intake status |
+| --- | --- |
+| Green | Classic DDS successfully CPU-decoded |
+| Blue | Optional DDS missing; synthetic material fallback |
+| Yellow/amber | Present DDS malformed or unsupported |
+| Purple/magenta | Unsafe path, e.g. symlink/directory |
+| Bright red | DDS read or close failed |
+| Orange/red | DDS changed during reading |
+| Dark red | Invalid internal DDS loader arguments |
+
+**A failed DDS does not silently fall back.** For material 0 failure the
+first status color remains visible until exit. For material 1 failure,
+slot 0 appears during the first 120 frames, then the slot 1 error color
+remains visible indefinitely. The triangle-research NRO retains a
+nonzero exit status (5) for fatal DDS errors even if the user exits
+normally with +. Only statuses from slots actually checked determine
+the visible error sequence. A missing/invalid DKSH or other *earlier*
+GPU initialization error can still prevent **any** status screen from
+appearing; these colors diagnose DDS intake, not arbitrary boot failures.
+
+The separate clear-only NRO remains unchanged and does not show this
+new diagnostic prelude. Every status frame is issued by the GPU through
+a persistent deko3d color-clear command list. CPU host tests verify
+the fixed color legend, 120-frame transitions, failed-slot hold and
+invalid input handling. The devkitA64 build verifies code generation,
+not actual GPU scanout or visual correctness.
+
+For stage-162 manual cases A–E, expect: A blue then blue, B green then
+blue, C green then green, D green then amber (held), E green then green.
+After each nonfatal pair, normal textured quads should become visible.
+Observe the exact color sequence and whether it remains on the failure.
+No private DDS bytes, file paths, game data or user text are drawn.
+
 ## Step 3: Run five independent cases
 
 | Case | DDS presence in sdmc:/switch/foj/gpu | Expected |

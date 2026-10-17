@@ -13,6 +13,7 @@ for path in gpu/deko3d_clear_main.c gpu/smoke_plan.c gpu/dksh_module.c \
             gpu/shader_layout.c gpu/dksh_module.h gpu/shader_layout.h \
             gpu/research_mesh.c gpu/research_mesh.h gpu/research_texture.c \
             gpu/research_texture.h gpu/atlas_dds.c gpu/atlas_dds.h \
+            gpu/dds_screen_status.c gpu/dds_screen_status.h \
             core/gpu_vertex_stream.c \
             core/textured_triangles.h core/gpu_draw_plan.c core/gpu_draw_plan.h \
             gpu/smoke_plan.h gpu/deko3d_api_contract.h core/gpu_vertex_stream.h; do
@@ -32,7 +33,7 @@ if make -f gpu/triangle.mk -n build/foj-deko3d-triangle-research.elf | grep -F -
     echo "FAIL: current triangle ELF should not rebuild" >&2
     exit 1
 fi
-for header in gpu/dksh_module.h gpu/shader_layout.h gpu/triangle.mk gpu/clear.mk; do
+for header in gpu/dksh_module.h gpu/shader_layout.h gpu/dds_screen_status.h gpu/triangle.mk gpu/clear.mk; do
     touch -t 202401010000 "$header"
     if ! make -f gpu/triangle.mk -n build/foj-deko3d-triangle-research.elf | grep -F -- "$build_command" >/dev/null; then
         echo "FAIL: editing $header did not trigger the triangle ELF compiler" >&2
@@ -59,7 +60,7 @@ for config in gpu/triangle.mk gpu/clear.mk; do
 done
 # Shader header updates change the ELF, not title/version metadata.
 # Check this independently before the NRO packaging fixture below.
-for header in gpu/dksh_module.h gpu/shader_layout.h; do
+for header in gpu/dksh_module.h gpu/shader_layout.h gpu/dds_screen_status.h; do
     touch -t 202401010000 "$header"
     plan="$(make -f gpu/triangle.mk -n "$nacp")"
     if [[ "$plan" == *'--create'* ]]; then
@@ -98,7 +99,7 @@ fi
 # without regenerating NACP. Check the complete resulting target.
 touch -t 202201010000 "$target" "$nacp"
 touch -t 202301010000 "$nro"
-for header in gpu/dksh_module.h gpu/shader_layout.h; do
+for header in gpu/dksh_module.h gpu/shader_layout.h gpu/dds_screen_status.h; do
     touch -t 202401010000 "$header"
     plan="$(make -f gpu/triangle.mk -n "$nro")"
     if [[ "$plan" != *"$build_command"* ||

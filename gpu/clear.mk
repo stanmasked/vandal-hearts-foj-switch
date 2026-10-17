@@ -30,6 +30,9 @@ HOST_ATLAS_REPLAY_SAN := build/foj-gpu-dds-replay-asan
 HOST_ATLAS_PATH := build/foj-gpu-dds-path-host
 HOST_ATLAS_PATH_NDEBUG := build/foj-gpu-dds-path-ndebug
 HOST_ATLAS_PATH_SAN := build/foj-gpu-dds-path-asan
+HOST_DDS_SCREEN := build/foj-gpu-dds-screen-host
+HOST_DDS_SCREEN_NDEBUG := build/foj-gpu-dds-screen-ndebug
+HOST_DDS_SCREEN_SAN := build/foj-gpu-dds-screen-asan
 HOST_DKSH := build/foj-dksh-intake-host
 HOST_DKSH_SAN := build/foj-dksh-intake-asan
 HOST_DKSH_INTEGRATION := build/foj-dksh-layout-integration
@@ -231,6 +234,21 @@ $(HOST_ATLAS_PATH_SAN): tests/test_gpu_dds_path_status.c gpu/atlas_dds.c gpu/atl
 	  -fsanitize=address,undefined -fno-omit-frame-pointer -Igpu \
 	  tests/test_gpu_dds_path_status.c gpu/atlas_dds.c -o $@
 
+# Validate every visible DDS intake status color and the timed two-slot
+# startup/hold screen plan without depending on devkitPro or original assets.
+$(HOST_DDS_SCREEN): tests/test_gpu_dds_screen_status.c gpu/dds_screen_status.c gpu/dds_screen_status.h gpu/atlas_dds.h | build
+	$(HOSTCC) -std=c11 -Wall -Wextra -Werror -pedantic -Igpu \
+	  tests/test_gpu_dds_screen_status.c gpu/dds_screen_status.c -lm -o $@
+
+$(HOST_DDS_SCREEN_NDEBUG): tests/test_gpu_dds_screen_status.c gpu/dds_screen_status.c gpu/dds_screen_status.h gpu/atlas_dds.h | build
+	$(HOSTCC) -DNDEBUG -std=c11 -Wall -Wextra -Werror -pedantic -Igpu \
+	  tests/test_gpu_dds_screen_status.c gpu/dds_screen_status.c -lm -o $@
+
+$(HOST_DDS_SCREEN_SAN): tests/test_gpu_dds_screen_status.c gpu/dds_screen_status.c gpu/dds_screen_status.h gpu/atlas_dds.h | build
+	$(HOSTCC) -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic \
+	  -fsanitize=address,undefined -fno-omit-frame-pointer -Igpu \
+	  tests/test_gpu_dds_screen_status.c gpu/dds_screen_status.c -lm -o $@
+
 # Check the real optional triangle source in GCC/Clang C11 syntax mode.
 # This uses lightweight SDK declarations and DOES NOT link or run GPU code.
 host-triangle-check:
@@ -239,12 +257,14 @@ host-triangle-check:
 	  -Itests/mock_switch_sdk -Icore -Igpu \
 	  gpu/deko3d_clear_main.c
 
-host-check: host-triangle-check $(HOST_TEST) $(HOST_TEST_NDEBUG) $(HOST_ABI) $(HOST_ABI_NDEBUG) $(HOST_SHADERS) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_NDEBUG) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_MOCK) $(HOST_MOCK_NDEBUG) $(HOST_RESEARCH) $(HOST_RESEARCH_NDEBUG) $(HOST_TEXTURE) $(HOST_TEXTURE_NDEBUG) $(HOST_ATLAS) $(HOST_ATLAS_NDEBUG) $(HOST_ATLAS_REPLAY) $(HOST_ATLAS_REPLAY_NDEBUG) $(HOST_ATLAS_PATH) $(HOST_ATLAS_PATH_NDEBUG)
+host-check: host-triangle-check $(HOST_TEST) $(HOST_TEST_NDEBUG) $(HOST_ABI) $(HOST_ABI_NDEBUG) $(HOST_SHADERS) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_NDEBUG) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_MOCK) $(HOST_MOCK_NDEBUG) $(HOST_RESEARCH) $(HOST_RESEARCH_NDEBUG) $(HOST_TEXTURE) $(HOST_TEXTURE_NDEBUG) $(HOST_ATLAS) $(HOST_ATLAS_NDEBUG) $(HOST_ATLAS_REPLAY) $(HOST_ATLAS_REPLAY_NDEBUG) $(HOST_ATLAS_PATH) $(HOST_ATLAS_PATH_NDEBUG) $(HOST_DDS_SCREEN) $(HOST_DDS_SCREEN_NDEBUG)
 	./$(HOST_ATLAS)
 	./$(HOST_ATLAS_REPLAY)
 	./$(HOST_ATLAS_REPLAY_NDEBUG)
 	./$(HOST_ATLAS_PATH)
 	./$(HOST_ATLAS_PATH_NDEBUG)
+	./$(HOST_DDS_SCREEN)
+	./$(HOST_DDS_SCREEN_NDEBUG)
 	./$(HOST_ATLAS_NDEBUG)
 	./$(HOST_TEXTURE)
 	./$(HOST_TEXTURE_NDEBUG)
@@ -263,10 +283,11 @@ host-check: host-triangle-check $(HOST_TEST) $(HOST_TEST_NDEBUG) $(HOST_ABI) $(H
 	./$(HOST_MOCK)
 	./$(HOST_MOCK_NDEBUG)
 
-host-mock-sanitized: $(HOST_MOCK_SAN) $(HOST_SHADERS_SAN) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_TEST_SAN) $(HOST_ABI_SAN) $(HOST_RESEARCH_SAN) $(HOST_TEXTURE_SAN) $(HOST_ATLAS_SAN) $(HOST_ATLAS_REPLAY_SAN) $(HOST_ATLAS_PATH_SAN)
+host-mock-sanitized: $(HOST_MOCK_SAN) $(HOST_SHADERS_SAN) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_TEST_SAN) $(HOST_ABI_SAN) $(HOST_RESEARCH_SAN) $(HOST_TEXTURE_SAN) $(HOST_ATLAS_SAN) $(HOST_ATLAS_REPLAY_SAN) $(HOST_ATLAS_PATH_SAN) $(HOST_DDS_SCREEN_SAN)
 	./$(HOST_ATLAS_SAN)
 	./$(HOST_ATLAS_REPLAY_SAN)
 	./$(HOST_ATLAS_PATH_SAN)
+	./$(HOST_DDS_SCREEN_SAN)
 	./$(HOST_TEXTURE_SAN)
 	./$(HOST_RESEARCH_SAN)
 	./$(HOST_MOCK_SAN)
@@ -289,4 +310,4 @@ verify: $(OUT).nro
 	python3 tools/validate_nro.py $(OUT).nro
 
 clean:
-	rm -f $(OUT).elf $(OUT).nacp $(OUT).nro $(HOST_TEST) $(HOST_TEST_NDEBUG) $(HOST_ABI) $(HOST_ABI_NDEBUG) $(HOST_MOCK) $(HOST_MOCK_SAN) $(HOST_MOCK_NDEBUG) $(HOST_SHADERS) $(HOST_SHADERS_SAN) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_NDEBUG) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_TEST_SAN) $(HOST_ABI_SAN) $(HOST_RESEARCH) $(HOST_RESEARCH_NDEBUG) $(HOST_RESEARCH_SAN) $(HOST_TEXTURE) $(HOST_TEXTURE_NDEBUG) $(HOST_TEXTURE_SAN) $(HOST_ATLAS) $(HOST_ATLAS_NDEBUG) $(HOST_ATLAS_SAN) $(HOST_ATLAS_REPLAY) $(HOST_ATLAS_REPLAY_NDEBUG) $(HOST_ATLAS_REPLAY_SAN) $(HOST_ATLAS_PATH) $(HOST_ATLAS_PATH_NDEBUG) $(HOST_ATLAS_PATH_SAN)
+	rm -f $(OUT).elf $(OUT).nacp $(OUT).nro $(HOST_TEST) $(HOST_TEST_NDEBUG) $(HOST_ABI) $(HOST_ABI_NDEBUG) $(HOST_MOCK) $(HOST_MOCK_SAN) $(HOST_MOCK_NDEBUG) $(HOST_SHADERS) $(HOST_SHADERS_SAN) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_NDEBUG) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_TEST_SAN) $(HOST_ABI_SAN) $(HOST_RESEARCH) $(HOST_RESEARCH_NDEBUG) $(HOST_RESEARCH_SAN) $(HOST_TEXTURE) $(HOST_TEXTURE_NDEBUG) $(HOST_TEXTURE_SAN) $(HOST_ATLAS) $(HOST_ATLAS_NDEBUG) $(HOST_ATLAS_SAN) $(HOST_ATLAS_REPLAY) $(HOST_ATLAS_REPLAY_NDEBUG) $(HOST_ATLAS_REPLAY_SAN) $(HOST_ATLAS_PATH) $(HOST_ATLAS_PATH_NDEBUG) $(HOST_ATLAS_PATH_SAN) $(HOST_DDS_SCREEN) $(HOST_DDS_SCREEN_NDEBUG) $(HOST_DDS_SCREEN_SAN)
