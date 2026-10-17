@@ -512,3 +512,12 @@ This test verifies host-side validation/integration, not real Switch GPU executi
 - [x] Commit changed host mock to GitHub.
 - [ ] Run ordinary, NDEBUG and ASan/UBSan lifecycle host mock from a full checkout; no successful execution was confirmed this stage. Direct git clone failed due to DNS in current environment.
 - [ ] Cross-compile GPU NRO with devkitA64/UAM and test hardware output.
+
+## Stage 108: boundary after first GPU frame and direct host checks (2026-10-17)
+
+- [x] Add `FAIL_APPLET_AFTER_ONE` lifecycle test case: the applet loop runs exactly once, expecting one submitted/presented GPU frame, exit status 0, and balanced allocations. Mock cases now total 18.
+- [x] Execute four SDK-free C11 tests from existing local reconstructed source trees, including `-DNDEBUG`: two-slot DKSH integration and shader layout with both GCC and Clang; all four PASS.
+- [ ] Execute the full current 18-scenario lifecycle mock from an exact repository checkout or GitHub Actions; no full mock run has yet been verified.
+- [ ] Build actual UAM shaders, devkitA64 NRO and validate a real Switch GPU frame.
+
+The local tests use reconstructed sources from stages 102/103; they are not a full checkout nor a native GPU build.
