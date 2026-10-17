@@ -46,7 +46,7 @@ def parse_dds_candidate(header: bytes, *, offset: int, file_bytes: int) -> dict 
     if not 1 <= mips <= 16:
         return None
 
-    flags, fourcc = u32(header, 80), header[84:88]
+    flags, fourcc = u32(header, 80), bytes(header[84:88])
     bits_per_pixel = u32(header, 88)
     payload_start = offset + HEADER_SIZE
     if flags & 0x4:
