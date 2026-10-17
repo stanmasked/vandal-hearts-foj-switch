@@ -61,6 +61,18 @@ category for black-screen or pre-frame boot failure. The audit never
 claims to have independently verified actual hardware execution.
 Full instructions: `docs/GPU_STAGE166_HARDWARE_OBSERVATIONS.md`.
 
+## Stage 171 — exact binary identity receipt
+
+The native CI artifact now includes
+`foj-stage171-ci-build-receipt.json`, which records SHA-256 of the
+generated SD ZIP, the two research NROs and the two runtime DKSH
+modules, along with the CI commit and run ID. The stage-171 offline
+tool compares this exact package identity against the operator's
+stage-166 and stage-170 records and optionally an SD-copy NRO.
+Matching hashes are evidence of byte equality, **not** console
+execution or graphical correctness.
+See `docs/GPU_STAGE171_BUILD_IDENTITY.md`.
+
 ## Manual hardware checks
 
 1. Launch `foj-deko3d-clear-smoke.nro`; verify alternating full-screen
