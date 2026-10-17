@@ -267,6 +267,8 @@ static void run_case(int failure,int expected_status,int frames) {
     assert(g.presented==frames);
     /* No submitted GPU list may be left unpresented on any exit path. */
     assert(g.submitted==g.presented);
+    /* Queue must be idled exactly once before GPU resource teardown. */
+    assert(g.waited==((failure==FAIL_DEVICE||failure==FAIL_QUEUE)?0:1));
     assert(g.creates==g.frees);
     if(failure==FAIL_NONE) {
         assert(g.list_count==4);
