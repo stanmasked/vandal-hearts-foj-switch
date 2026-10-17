@@ -421,3 +421,11 @@ The simulated shader and stub validator do not prove genuine UAM or GPU compatib
 - [ ] Generate actual DKSH with UAM; cross-link and run a native GPU NRO on Switch.
 
 These synthetic tests do not validate Maxwell shader code or hardware draw calls.
+
+## Stage 97: DKSH success and incremental-build regression (2026-10-17)
+
+- [x] Extend the SDK-free shader Makefile regression across three DKSH targets to cover the successful compiler-and-validator path, not only two rejection modes.
+- [x] For each stage, assert the validated output remains present, the validator was invoked exactly once, and a second unchanged Make invocation does not revalidate/recompile the target.
+- [x] Preserve the existing UAM write-then-fail and validator rejection cases, and commit the upgraded regression.
+- [ ] Run the exact updated script within a complete checkout/CI and verify outcomes; no GitHub Actions success is claimed.
+- [ ] Compile actual UAM Maxwell programs, link a Switch GPU NRO and verify a hardware frame.
