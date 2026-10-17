@@ -20,6 +20,10 @@ import tempfile
 from typing import Any
 
 from tools.foj_texture_probe import DEFAULT_MAX_FILE_BYTES, inventory
+from tools.foj_fd_bound_reader import (
+    bounded_directory_names, DEFAULT_MAX_DIR_ENTRIES,
+    DEFAULT_MAX_DIR_NAME_BYTES,
+)
 from tools.foj_texture_relations import build_relations
 from tools.foj_resource_table_hypotheses import infer_tables
 from tools.foj_index_column_controls import analyze_index_columns
@@ -56,7 +60,9 @@ def _identical(a: os.stat_result, b: os.stat_result) -> None:
 
 def snapshot(root: Path, *, max_files: int = DEFAULT_MAX_FILES,
              max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
-             max_total_bytes: int = DEFAULT_MAX_TOTAL_BYTES) -> tuple[dict, dict]:
+             max_total_bytes: int = DEFAULT_MAX_TOTAL_BYTES,
+             max_dir_entries: int = DEFAULT_MAX_DIR_ENTRIES,
+             max_dir_name_bytes: int = DEFAULT_MAX_DIR_NAME_BYTES) -> tuple[dict, dict]:
     """Take a bounded, fd-relative, non-symlink, in-memory directory snapshot.
 
     Reject all non-regular entries, symlinks and unstable reads rather than
@@ -84,13 +90,18 @@ def snapshot(root: Path, *, max_files: int = DEFAULT_MAX_FILES,
         totals["directories"] += 1
         if totals["directories"] > max_files + 1:
             raise ValueError("Too many source directories for a complete audit")
-        with os.scandir(directory_fd) as stream:
-            entries = sorted(stream, key=lambda entry: entry.name)
-        for entry in entries:
-            rel = relative + entry.name
-            initial = entry.stat(follow_symlinks=False)
+        names = bounded_directory_names(
+            directory_fd, max_entries=max_dir_entries,
+            max_name_bytes=max_dir_name_bytes)
+        for name in names:
+            rel = relative + name
+            try:
+                initial = os.stat(name, dir_fd=directory_fd,
+                                  follow_symlinks=False)
+            except OSError:
+                raise ValueError("Source entry changed during snapshot") from None
             if stat.S_ISDIR(initial.st_mode):
-                child = os.open(entry.name, FLAGS | NOFOLLOW | DIRECTORY,
+                child = os.open(name, FLAGS | NOFOLLOW | DIRECTORY,
                                 dir_fd=directory_fd)
                 try:
                     _identical(initial, os.fstat(child))
@@ -106,7 +117,7 @@ def snapshot(root: Path, *, max_files: int = DEFAULT_MAX_FILES,
                         initial.st_size > max_total_bytes -
                         totals["bytes_per_pass"]):
                     raise ValueError("Source tree exceeds byte audit limits")
-                fd = os.open(entry.name, FLAGS | NOFOLLOW | NONBLOCK,
+                fd = os.open(name, FLAGS | NOFOLLOW | NONBLOCK,
                              dir_fd=directory_fd)
                 try:
                     opened = os.fstat(fd)
@@ -133,6 +144,10 @@ def snapshot(root: Path, *, max_files: int = DEFAULT_MAX_FILES,
             else:
                 raise ValueError("Symlink or unsupported source entry detected")
         _identical(start, os.fstat(directory_fd))
+        if names != bounded_directory_names(
+                directory_fd, max_entries=max_dir_entries,
+                max_name_bytes=max_dir_name_bytes):
+            raise ValueError("Source directory membership changed during snapshot")
         fingerprint["D:" + relative] = _metadata(start)
 
     try:
@@ -146,12 +161,17 @@ def examine(root: Path, *, max_files: int = DEFAULT_MAX_FILES,
             max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
             max_total_bytes: int = DEFAULT_MAX_TOTAL_BYTES,
             pointer_prefix_bytes: int = 65536,
-            control_windows: int = 256) -> tuple[dict[str, Any], ...]:
+            control_windows: int = 256,
+            max_dir_entries: int = DEFAULT_MAX_DIR_ENTRIES,
+            max_dir_name_bytes: int = DEFAULT_MAX_DIR_NAME_BYTES) -> tuple[dict[str, Any], ...]:
     """Produce reports only from a source tree stable across two snapshots."""
     before, stats = snapshot(
         root, max_files=max_files, max_file_bytes=max_file_bytes,
-        max_total_bytes=max_total_bytes)
-    scan = inventory(root, max_file_bytes=max_file_bytes, max_files=max_files)
+        max_total_bytes=max_total_bytes, max_dir_entries=max_dir_entries,
+        max_dir_name_bytes=max_dir_name_bytes)
+    scan = inventory(root, max_file_bytes=max_file_bytes, max_files=max_files,
+                     max_dir_entries=max_dir_entries,
+                     max_dir_name_bytes=max_dir_name_bytes)
     if (scan["files_scanned"] != stats["regular_files"] or
             scan["skipped_large"] or scan["skipped_links"] or
             scan["scan_truncated_at_file_limit"] or scan.get("read_errors", 0)):
@@ -165,7 +185,8 @@ def examine(root: Path, *, max_files: int = DEFAULT_MAX_FILES,
     triage = triage_reports(relations, tables, indices)
     after, final_stats = snapshot(
         root, max_files=max_files, max_file_bytes=max_file_bytes,
-        max_total_bytes=max_total_bytes)
+        max_total_bytes=max_total_bytes, max_dir_entries=max_dir_entries,
+        max_dir_name_bytes=max_dir_name_bytes)
     if before != after or stats != final_stats:
         raise ValueError("Source tree changed between DDS pipeline stages")
     replay = audit_replay(relations, tables, indices, triage)
@@ -227,13 +248,19 @@ def main() -> int:
                         help="Maximum source bytes per snapshot, default 1024 MiB")
     parser.add_argument("--max-files", type=int, default=DEFAULT_MAX_FILES)
     parser.add_argument("--file-mib", type=int, default=512)
+    parser.add_argument("--max-dir-entries", type=int,
+                        default=DEFAULT_MAX_DIR_ENTRIES)
+    parser.add_argument("--max-dir-name-bytes", type=int,
+                        default=DEFAULT_MAX_DIR_NAME_BYTES)
     args = parser.parse_args()
     try:
         result = publish(
             args.root, args.output_dir,
             max_files=args.max_files,
             max_file_bytes=args.file_mib * 1024 * 1024,
-            max_total_bytes=args.total_mib * 1024 * 1024)
+            max_total_bytes=args.total_mib * 1024 * 1024,
+            max_dir_entries=args.max_dir_entries,
+            max_dir_name_bytes=args.max_dir_name_bytes)
     except OSError as exc:
         # OSError strings can include private source filenames: redact them.
         parser.error("Source coherence gate failed: local I/O error (" +
