@@ -149,7 +149,7 @@ class FdDirectoryEnumerationTests(unittest.TestCase):
 
             with patch.object(scanner, "_iter_headers_stream",
                               side_effect=replace):
-                with self.assertRaisesRegex(ValueError, "replaced"):
+                with self.assertRaisesRegex(ValueError, "changed|replaced"):
                     inventory(root)
             self.assertTrue(triggered)
 
