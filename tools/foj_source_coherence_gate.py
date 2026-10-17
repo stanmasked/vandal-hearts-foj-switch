@@ -82,6 +82,8 @@ def snapshot(root: Path, *, max_files: int = DEFAULT_MAX_FILES,
         if not stat.S_ISDIR(start.st_mode):
             raise ValueError("Source directory replaced during scan")
         totals["directories"] += 1
+        if totals["directories"] > max_files + 1:
+            raise ValueError("Too many source directories for a complete audit")
         with os.scandir(directory_fd) as stream:
             entries = sorted(stream, key=lambda entry: entry.name)
         for entry in entries:
@@ -232,8 +234,11 @@ def main() -> int:
             max_files=args.max_files,
             max_file_bytes=args.file_mib * 1024 * 1024,
             max_total_bytes=args.total_mib * 1024 * 1024)
-    except (OSError, ValueError, TypeError) as exc:
-        # Never print source filenames, hashes, original bytes or raw paths.
+    except OSError as exc:
+        # OSError strings can include private source filenames: redact them.
+        parser.error("Source coherence gate failed: local I/O error (" +
+                     type(exc).__name__ + ")")
+    except (ValueError, TypeError) as exc:
         parser.error("Source coherence gate failed: " + str(exc))
     print("Source coherence verified:",
           result["summary"]["regular_files"],
