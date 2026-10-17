@@ -26,6 +26,7 @@
 #include "dds_screen_status.h"
 #include "dds_command_plan.h"
 #include "gpu_boot_diagnostics.h"
+#include "gpu_boot_journal.h"
 _Static_assert((size_t)FOJ_GPU_SHADER_MAX_DKSH ==
                (size_t)FOJ_DKSH_MAX_BYTES,
                "DKSH intake and GPU shader slot capacities differ");
@@ -126,6 +127,9 @@ int main(int argc,char **argv) {
     };
     unsigned dds_observed_slots=0;
     int dds_fatal=0;
+    FojGpuBootJournal boot_journal={0};
+    FojGpuBootStage boot_stage=FOJ_BOOT_DEVICE;
+    uint32_t boot_frames=0;
     DkShader shader_vertex={0},shader_fragment={0};
 #endif
     DkGpuAddr vertex_gpu_addr=0;
@@ -134,6 +138,23 @@ int main(int argc,char **argv) {
     DkImageView views[BUFFER_COUNT];
     DkImageLayout layout;
 
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+    /* CPU-side checkpoints only; never hardware frame evidence.
+     * Logging disables rather than overwriting any prior attempt. */
+    (void)fsdevMountSdmc();
+    (void)foj_gpu_boot_journal_begin(
+        &boot_journal,"sdmc:/switch/foj/gpu/foj-boot-");
+#define FOJ_ENTER_BOOT(stage_) do { \
+    boot_stage=(stage_); \
+    (void)foj_gpu_boot_journal_note(&boot_journal,boot_stage, \
+                                    FOJ_BOOT_ENTER,boot_frames); \
+} while (0)
+#define FOJ_READY_BOOT() do { \
+    (void)foj_gpu_boot_journal_note(&boot_journal,boot_stage, \
+                                    FOJ_BOOT_READY,boot_frames); \
+} while (0)
+    FOJ_ENTER_BOOT(FOJ_BOOT_DEVICE);
+#endif
     DkDeviceMaker device_maker;
     dkDeviceMakerDefaults(&device_maker);
     /* Keep deko3d's default orientation: clip Z 0..1, framebuffer
@@ -142,13 +163,30 @@ int main(int argc,char **argv) {
     device_maker.flags=DkDeviceFlags_DepthZeroToOne |
                        DkDeviceFlags_OriginUpperLeft;
     device=dkDeviceCreate(&device_maker);
-    if (!device) return 2;
+    if (!device) {
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+        (void)foj_gpu_boot_journal_note(
+            &boot_journal,boot_stage,FOJ_BOOT_FAILED,boot_frames);
+        (void)foj_gpu_boot_journal_note(
+            &boot_journal,FOJ_BOOT_EXIT,FOJ_BOOT_EXITED,boot_frames);
+        foj_gpu_boot_journal_close(&boot_journal);
+#endif
+        return 2;
+    }
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+    FOJ_READY_BOOT();
+    FOJ_ENTER_BOOT(FOJ_BOOT_QUEUE);
+#endif
 
     DkQueueMaker queue_maker;
     dkQueueMakerDefaults(&queue_maker,device);
     queue_maker.flags=DkQueueFlags_Graphics;
     queue=dkQueueCreate(&queue_maker);
     if (!queue) goto cleanup;
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+    FOJ_READY_BOOT();
+    FOJ_ENTER_BOOT(FOJ_BOOT_IMAGES);
+#endif
 
     DkImageLayoutMaker layout_maker;
     dkImageLayoutMakerDefaults(&layout_maker,device);
@@ -176,6 +214,10 @@ int main(int argc,char **argv) {
         dkImageViewDefaults(&views[i],&images[i]);
     }
 
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+    FOJ_READY_BOOT();
+    FOJ_ENTER_BOOT(FOJ_BOOT_SWAPCHAIN);
+#endif
     DkImage const* swap_images[BUFFER_COUNT]={
         &images[0],&images[1]
     };
@@ -184,6 +226,10 @@ int main(int argc,char **argv) {
                               swap_images,BUFFER_COUNT);
     swapchain=dkSwapchainCreate(&swap_maker);
     if (!swapchain) goto cleanup;
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+    FOJ_READY_BOOT();
+    FOJ_ENTER_BOOT(FOJ_BOOT_COMMAND_BUFFER);
+#endif
 
     DkMemBlockMaker cmd_mem_maker;
     dkMemBlockMakerDefaults(&cmd_mem_maker,device,CMD_MEMORY_SIZE);
@@ -196,6 +242,10 @@ int main(int argc,char **argv) {
     cmd=dkCmdBufCreate(&cmd_maker);
     if (!cmd) goto cleanup;
     dkCmdBufAddMemory(cmd,cmd_mem,0,CMD_MEMORY_SIZE);
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+    FOJ_READY_BOOT();
+    FOJ_ENTER_BOOT(FOJ_BOOT_VERTICES);
+#endif
 
     /* Clear-only mode keeps the original smoke data. Shader-backed mode
      * uploads a synthetic four-triangle surface in two ordered sections. */
@@ -247,7 +297,8 @@ int main(int argc,char **argv) {
     /* Optional native triangle mode. Load UAM-generated research DKSH
      * modules from the user's own SD card, NOT from original PS3 files.
      * This leaves the earlier shader-free GPU clear NRO intact. */
-    (void)fsdevMountSdmc();
+    FOJ_READY_BOOT();
+    FOJ_ENTER_BOOT(FOJ_BOOT_SHADERS);
     DkMemBlockMaker shader_maker;
     dkMemBlockMakerDefaults(&shader_maker,device,
                            FOJ_GPU_SHADER_CODE_POOL);
@@ -311,6 +362,8 @@ int main(int argc,char **argv) {
         goto cleanup;
     }
 
+    FOJ_READY_BOOT();
+    FOJ_ENTER_BOOT(FOJ_BOOT_TEXTURES);
     /* Optionally decode private raw RGBA8 or DXT1/DXT5 DDS from SD (8..256 wide,
      * width multiple of 8, up to 256 high); absent files retain invented
      * test gradients. Reject invalid files instead of silently falling back.
@@ -435,6 +488,17 @@ int main(int argc,char **argv) {
     }
 #endif
 
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+    /* An invalid DDS remains a failed intake even when we deliberately
+     * continue into the shaderless color-only diagnostic path. */
+    if (dds_fatal) {
+        (void)foj_gpu_boot_journal_note(
+            &boot_journal,boot_stage,FOJ_BOOT_FAILED,boot_frames);
+    } else {
+        FOJ_READY_BOOT();
+    }
+    FOJ_ENTER_BOOT(FOJ_BOOT_COMMAND_LISTS);
+#endif
     /* Mirror switchbrew's deko_basic/Example01 approach: pre-record
      * persistent framebuffer-binding lists, keep command memory alive,
      * and only submit pre-recorded lists during the presentation loop.
@@ -536,6 +600,10 @@ int main(int argc,char **argv) {
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
     }
 #endif
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+    FOJ_READY_BOOT();
+    FOJ_ENTER_BOOT(FOJ_BOOT_PRESENT);
+#endif
     padConfigureInput(1,HidNpadStyleSet_NpadStandard);
     PadState pad;
     padInitializeDefault(&pad);
@@ -586,12 +654,21 @@ int main(int argc,char **argv) {
         dkQueuePresentImage(queue,swapchain,slot);
         ++frame;
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
+        ++boot_frames;
         exit_status=dds_fatal?5:0;
 #else
         exit_status=0;
 #endif
     }
 cleanup:
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+    (void)foj_gpu_boot_journal_note(
+        &boot_journal,boot_stage,
+        exit_status?FOJ_BOOT_FAILED:FOJ_BOOT_READY,boot_frames);
+    (void)foj_gpu_boot_journal_note(
+        &boot_journal,FOJ_BOOT_EXIT,FOJ_BOOT_EXITED,boot_frames);
+    foj_gpu_boot_journal_close(&boot_journal);
+#endif
     if (queue)dkQueueWaitIdle(queue);
     if (cmd)dkCmdBufDestroy(cmd);
     if (vertex_mem)dkMemBlockDestroy(vertex_mem);

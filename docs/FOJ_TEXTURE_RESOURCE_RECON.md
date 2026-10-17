@@ -868,6 +868,22 @@ buffer-selection decisions per failure class; native CI cross-compiles
 the app, **without proving physical Switch output**. Manual protocol:
 `docs/GPU_STAGE167_DKSH_BOOT_SCREENS.md`.
 
+## Stage 168: best-effort pre-GPU CPU checkpoints
+
+The shader-backed deko3d research NRO now optionally writes a small
+exclusive-new SD boot journal with numeric startup stages from device
+creation through first GPU-present-loop calls and exit. This can help
+differentiate early CPU initialization failures that precede any possible
+GPU-rendered status color. The 16 fixed journal slots preserve earlier
+runs and never overwrite existing files, including symlinks. If writing
+is impossible or all slots are occupied, GPU boot proceeds unchanged.
+Records are bounded and do not include original FoJ data, filesystem
+paths, or console-unique information. An offline strict-format auditor
+is available at `tools/foj_stage168_boot_journal_audit.py`; it never
+converts CPU checkpoints into independently verified visible Switch
+frames. Manual recovery and retention rules:
+`docs/GPU_STAGE168_EARLY_BOOT_JOURNAL.md`.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ
