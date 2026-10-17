@@ -64,11 +64,11 @@ int main(int argc,char **argv) {
 
     DkDeviceMaker device_maker;
     dkDeviceMakerDefaults(&device_maker);
-    /* These are the deko3d defaults and match GPU vertex staging:
-     * clip-space Z 0..1, upper-left image origin, +Y upward. */
+    /* Keep deko3d's default orientation: clip Z 0..1, framebuffer
+     * origin upper-left, clip-space +Y upward. The "PointsUp" choice
+     * is represented by zero, not a named bit in some SDK headers. */
     device_maker.flags=DkDeviceFlags_DepthZeroToOne |
-                       DkDeviceFlags_OriginUpperLeft |
-                       DkDeviceFlags_YAxisPointsUp;
+                       DkDeviceFlags_OriginUpperLeft;
     device=dkDeviceCreate(&device_maker);
     if (!device) return 2;
 
