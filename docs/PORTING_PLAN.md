@@ -894,3 +894,15 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Added the local split-cohort workflow and limitations to `docs/FOJ_TEXTURE_RESOURCE_RECON.md`; **PR #29 merged** to `main` as squash commit `031166ebb4977f208f420436e6568290c05c2afc`.
 - [ ] Real user-owned original FoJ PS3 resource archives and their extracted data were **not** available in this session. No actual game DDS container, material index or model binding has been verified from original content.
 - [ ] No GPU NRO changes were made this stage, and framebuffer presentation / texture sampling on physical Nintendo Switch remain unverified.
+
+## Stage 147: deterministic synthetic structural-stability matrix — CI SUCCESS (2026-10-17)
+
+- [x] Added `tools/foj_stability_matrix.py`: a **synthetic-only** deterministic harness that creates tiny invented DDS files in two short-lived local cohort directories, runs the existing DDS candidate → span/pointer relation → hypothetical table → adjacent index/control → evidence triage → holdout comparison pipeline, and checks expected descriptive labels. All generated binary files are deleted with the temporary directories.
+- [x] Seven authored regression scenarios vary row count (3, 4, 6, 8), pointer-table stride (8 vs 16), LE vs BE encoding, zero-based index permutation, repeated index values, and a separate independent decoy dense-index control window. Unexpected heuristic labels are explicitly reported and cause the CLI to exit nonzero; the JSON contains **synthetic aggregate statistics only**.
+- [x] Added nine tests `tests/test_foj_stability_matrix.py`: seven-case matrix success, deterministic identical reports, purposeful expected-label regression detection, short-three-row underdetermination, false-positive control detection, invalid parameter rejection, temporary binary fixture bounds, request bounds and metadata-only CLI output.
+- [x] Updated Python 3.10/3.12 private texture workflow, SDK-free syntax checks, and `docs/FOJ_TEXTURE_RESOURCE_RECON.md` with the local synthetic-only command and explicit non-game evidence caveats.
+- [x] **Actual dedicated GitHub Actions run 39051066035 SUCCESS**, both Python **3.10 and 3.12** jobs, **56 tests each** (7+6+7+8+9+10+9).
+- [x] **Actual Research tools CI run 39051066019 SUCCESS**, Python **3.11 and 3.13**, **173 tests per interpreter**.
+- [x] PR #30 merged into `main` as squash commit `6113fd66ff26d4bd307e8ee0ac661e4976b23c84`.
+- [ ] No actual original FoJ PS3 game assets were available: observed stability applies **only to invented fixtures** and does not prove real game container formats, texture/material/model relationships, or sample provenance.
+- [ ] Native GPU NRO was unchanged at stage 147; physical Nintendo Switch texture sampling, image readback and frame presentation remain unverified.
