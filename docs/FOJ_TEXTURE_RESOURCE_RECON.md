@@ -753,6 +753,16 @@ These are metadata-processing improvements only. They establish
 nothing about real Flames of Judgment textures, PS3 resource formats,
 or execution on a Nintendo Switch.
 
+## Stage 161: local DDS preflight for two Switch research materials
+
+Run `python3 -m tools.foj_gpu_local_dds_preflight /private/dds-slots --output /private/gpu-intake-report.json` to inspect **user-selected, already-extracted or converted classic DDS** files, not PS3 packages or unverified FoJ resource containers.
+
+The input directory has fixed optional names `material0.dds` and `material1.dds`. Missing slots report `synthetic-fallback` (matching the existing NRO). A present file outside the native GPU DDS contract aborts the entire report. Accepted formats match `gpu/atlas_dds.c`: classic RGBA8/BGRA8, BC1/DXT1 and BC3/DXT5, width 8–256 divisible by eight, height 1–256 (multiple of four for BCn), up to nine valid mip levels with a complete exact-length chain. The native decoder uploads **base mip level zero only**. DX10, arrays, cubemaps, PS3 tiling/swizzling, trailing bytes and missing mip bytes are not supported.
+
+The tool reads bounded bytes twice from a pinned no-follow descriptor and checks inode/metadata before and after reading, though a malicious concurrent writer is not fully excluded. It emits only slot indices, dimensions, generic formats, mip counts and compatibility results. No private path, source filename, image data or hash appears in the JSON report. The output must be a new file. The native C atlas decoder itself supplies the acceptance oracle in synthetic host tests; native devkitA64/UAM build checks also run.
+
+After separately verifying user-owned files, copy them **manually** to `sdmc:/switch/foj/gpu/material0.dds` or `sdmc:/switch/foj/gpu/material1.dds` on the Switch SD card. Do not commit game data, private DDS sources or local reports. A preflight success proves only structural support by the experimental decoder, not the provenance of FoJ textures or on-console image presentation.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ

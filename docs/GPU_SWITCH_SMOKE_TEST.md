@@ -104,6 +104,14 @@ all successful. Research tests run **39036526025** successful.
 
 **Physical Nintendo Switch read/copy/sample/display is NOT verified.**
 
+## Stage 161 — two private classic DDS slot preflight
+
+Before manually copying your own classic DDS into `sdmc:/switch/foj/gpu/material0.dds` or `sdmc:/switch/foj/gpu/material1.dds`, run locally:
+
+`python3 -m tools.foj_gpu_local_dds_preflight /path/to/private/dds-slots`
+
+A missing slot explicitly uses the existing synthetic fallback. A malformed or unsupported existing slot fails; the tool does not attempt to convert or extract PS3 game data. No source bytes, private paths, or filenames are emitted into the report. The acceptance conditions are compared with the actual C atlas decoder using synthetic tests. Neither successful host tests nor a devkitA64 build proves presentation on real Switch hardware. Full limitations: `docs/FOJ_TEXTURE_RESOURCE_RECON.md`.
+
 ## Stage 139 — BC1/DXT1 and BC3/DXT5 classic DDS decoding
 
 The newest research NRO also accepts **classic DDS with DXT1 (BC1) or
