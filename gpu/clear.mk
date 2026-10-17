@@ -80,6 +80,11 @@ $(HOST_SHADERS_SAN): tests/test_shader_layout.c gpu/shader_layout.c \
 	  -fno-omit-frame-pointer -Igpu \
 	  tests/test_shader_layout.c gpu/shader_layout.c -o $@
 
+# Validate shader memory layout under NDEBUG as well.
+HOST_SHADERS_NDEBUG := build/foj-deko3d-shader-layout-ndebug
+$(HOST_SHADERS_NDEBUG): tests/test_shader_layout.c gpu/shader_layout.c gpu/shader_layout.h | build
+	$(HOSTCC) -DNDEBUG -std=c11 -Wall -Wextra -Werror -pedantic -Igpu tests/test_shader_layout.c gpu/shader_layout.c -o $@
+
 # Verify transactional DKSH intake using generated-only modules.
 $(HOST_DKSH): tests/test_dksh_module.c gpu/dksh_module.c \
               gpu/dksh_module.h | build
@@ -126,10 +131,11 @@ host-triangle-check:
 	  -Itests/mock_switch_sdk -Icore -Igpu \
 	  gpu/deko3d_clear_main.c
 
-host-check: host-triangle-check $(HOST_TEST) $(HOST_ABI) $(HOST_SHADERS) $(HOST_DKSH) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_MOCK)
+host-check: host-triangle-check $(HOST_TEST) $(HOST_ABI) $(HOST_SHADERS) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_MOCK)
 	./$(HOST_TEST)
 	./$(HOST_ABI)
 	./$(HOST_SHADERS)
+	./$(HOST_SHADERS_NDEBUG)
 	./$(HOST_DKSH)
 	./$(HOST_DKSH_INTEGRATION)
 	./$(HOST_DKSH_INTEGRATION_NDEBUG)
@@ -156,4 +162,4 @@ verify: $(OUT).nro
 	python3 tools/validate_nro.py $(OUT).nro
 
 clean:
-	rm -f $(OUT).elf $(OUT).nacp $(OUT).nro $(HOST_TEST) $(HOST_ABI) $(HOST_MOCK) $(HOST_MOCK_SAN) $(HOST_SHADERS) $(HOST_SHADERS_SAN) $(HOST_DKSH) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_TEST_SAN) $(HOST_ABI_SAN)
+	rm -f $(OUT).elf $(OUT).nacp $(OUT).nro $(HOST_TEST) $(HOST_ABI) $(HOST_MOCK) $(HOST_MOCK_SAN) $(HOST_SHADERS) $(HOST_SHADERS_SAN) $(HOST_SHADERS_NDEBUG) $(HOST_DKSH) $(HOST_DKSH_SAN) $(HOST_DKSH_INTEGRATION) $(HOST_DKSH_INTEGRATION_SAN) $(HOST_DKSH_INTEGRATION_NDEBUG) $(HOST_TEST_SAN) $(HOST_ABI_SAN)
