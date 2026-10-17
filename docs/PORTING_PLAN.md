@@ -589,3 +589,12 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Verify the incremental GNU Make dependency pattern in a small local fixture: baseline no recipes; source edit recompiles ELF and repackages NRO without NACP regeneration (PASS). This is not a run of the exact committed test.
 - [ ] Run full GPU host suite and its 18-scenario stateful deko3d lifecycle mock from the full checkout; inspect actual CI outputs.
 - [ ] Build native ARM64 GPU NRO with devkitA64/UAM and verify on Nintendo Switch hardware.
+
+## Stage 117: separate GPU binary and NACP metadata dependencies (2026-10-17)
+
+- [x] Fix a real incremental-build issue: `gpu/triangle.mk` lists shader headers in `GPU_EXTRA_DEPS`, which previously also fed the NACP target; touching code headers unnecessarily rebuilt app metadata.
+- [x] Introduce `GPU_METADATA_DEPS` in the shared clear Makefile, set it to `gpu/triangle.mk` for triangle, and retain `GPU_EXTRA_DEPS` for ELF compilation only. Editing either build-config Makefile continues to regenerate metadata.
+- [x] Add dependency regressions proving DKSH/layout header edits cause ELF rebuild but not NACP regeneration.
+- [x] Execute an isolated GNU Make fixture exercising both invariants: shader header triggers ELF only; triangle metadata config triggers NACP (PASS). This fixture is not the full repository test.
+- [ ] Execute full repository GPU host-suite and inspect actual GitHub Actions logs; still unverified.
+- [ ] Native ARM64 build/UAM DKSH and real Switch rendering remain unverified.
