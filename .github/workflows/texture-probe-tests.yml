@@ -1,4 +1,4 @@
-name: Private PS3 Texture Inventory and Table Tests
+name: Private PS3 Texture and Index Evidence Tests
 
 on:
   push:
@@ -8,18 +8,22 @@ on:
       - "tools/foj_texture_probe.py"
       - "tools/foj_texture_relations.py"
       - "tools/foj_resource_table_hypotheses.py"
+      - "tools/foj_index_column_controls.py"
       - "tests/test_foj_texture_probe.py"
       - "tests/test_foj_texture_relations.py"
       - "tests/test_foj_resource_table_hypotheses.py"
+      - "tests/test_foj_index_column_controls.py"
   pull_request:
     paths:
       - ".github/workflows/texture-probe-tests.yml"
       - "tools/foj_texture_probe.py"
       - "tools/foj_texture_relations.py"
       - "tools/foj_resource_table_hypotheses.py"
+      - "tools/foj_index_column_controls.py"
       - "tests/test_foj_texture_probe.py"
       - "tests/test_foj_texture_relations.py"
       - "tests/test_foj_resource_table_hypotheses.py"
+      - "tests/test_foj_index_column_controls.py"
   workflow_dispatch:
 
 permissions:
@@ -45,9 +49,12 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_foj_texture_relations.py' -v
       - name: Test DDS pointer table hypothesis detection
         run: python -m unittest discover -s tests -p 'test_foj_resource_table_hypotheses.py' -v
+      - name: Test candidate index columns and negative controls
+        run: python -m unittest discover -s tests -p 'test_foj_index_column_controls.py' -v
       - name: Check Python parser and command-line usage
         run: |
-          python -m py_compile tools/foj_texture_probe.py tools/foj_texture_relations.py tools/foj_resource_table_hypotheses.py tests/test_foj_texture_probe.py tests/test_foj_texture_relations.py tests/test_foj_resource_table_hypotheses.py
+          python -m py_compile tools/foj_texture_probe.py tools/foj_texture_relations.py tools/foj_resource_table_hypotheses.py tools/foj_index_column_controls.py tests/test_foj_texture_probe.py tests/test_foj_texture_relations.py tests/test_foj_resource_table_hypotheses.py tests/test_foj_index_column_controls.py
           python -m tools.foj_texture_probe --help
           python -m tools.foj_texture_relations --help
           python -m tools.foj_resource_table_hypotheses --help
+          python -m tools.foj_index_column_controls --help
