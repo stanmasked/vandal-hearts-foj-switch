@@ -21,6 +21,8 @@ on:
       - "tools/foj_stage168_boot_journal_audit.py"
       - "tools/foj_stage169_two_attempt_recovery.py"
       - "tools/foj_stage170_cpu_visual_alignment.py"
+      - "tools/foj_stage171_build_identity.py"
+      - "tests/test_foj_stage171_build_identity.py"
       - "tests/test_foj_stage170_cpu_visual_alignment.py"
       - "tests/test_foj_stage169_two_attempt_recovery.py"
       - "tests/foj_stage169_native_boot_fixture.c"
@@ -44,6 +46,8 @@ on:
       - "tools/foj_stage168_boot_journal_audit.py"
       - "tools/foj_stage169_two_attempt_recovery.py"
       - "tools/foj_stage170_cpu_visual_alignment.py"
+      - "tools/foj_stage171_build_identity.py"
+      - "tests/test_foj_stage171_build_identity.py"
       - "tests/test_foj_stage170_cpu_visual_alignment.py"
       - "tests/test_foj_stage169_two_attempt_recovery.py"
       - "tests/foj_stage169_native_boot_fixture.c"
@@ -113,6 +117,15 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m unittest discover -s tests -p 'test_foj_stage170_cpu_visual_alignment.py' -v
+      - name: Publish exact research ZIP/NRO/DKSH CI identity receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage171_build_identity \
+            --bundle build/foj-stage165-gpu-sd-smoke.zip \
+            --create-receipt build/foj-stage171-ci-build-receipt.json \
+            --git-commit "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID"
+          python3 -m unittest discover -s tests -p 'test_foj_stage171_build_identity.py' -v
       - name: Upload SDK-built research binaries
         if: success()
         uses: actions/upload-artifact@v4
@@ -126,5 +139,6 @@ jobs:
             gpu/build/foj_triangle.frag.dksh
             build/foj-stage165-gpu-sd-smoke.zip
             build/foj-stage166-blank-observations.json
+            build/foj-stage171-ci-build-receipt.json
           if-no-files-found: error
           retention-days: 7
