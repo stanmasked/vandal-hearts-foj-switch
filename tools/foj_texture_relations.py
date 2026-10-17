@@ -13,6 +13,8 @@ import json
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from tools.foj_report_transit_budget import measure_report, read_report
+
 from tools.foj_fd_bound_reader import read_bounded_prefix
 
 HEADER_BYTES = 128
@@ -38,6 +40,7 @@ def _read_prefix(root: Path, relative: PurePosixPath, limit: int) -> bytes:
 
 
 def build_relations(manifest: dict[str, Any], *, root: Path | None = None,
+    measure_report(manifest)
                     prefix_bytes: int = DEFAULT_PREFIX_BYTES,
                     max_pointers_per_candidate: int =
                     DEFAULT_MAX_POINTERS_PER_CANDIDATE) -> dict[str, Any]:
@@ -148,7 +151,7 @@ def build_relations(manifest: dict[str, Any], *, root: Path | None = None,
             "candidate_count": len(entries),
             "candidates": entries,
         })
-    return {
+    report = {
         "schema": "foj-texture-layout-hypotheses-v1",
         "source_schema": "foj-texture-candidates-v1",
         "status": "heuristic-only; not verified FoJ format or material mapping",
@@ -164,6 +167,8 @@ def build_relations(manifest: dict[str, Any], *, root: Path | None = None,
         },
     }
 
+    measure_report(report)
+    return report
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -177,7 +182,7 @@ def main() -> int:
                         default=DEFAULT_PREFIX_BYTES)
     args = parser.parse_args()
     try:
-        manifest = json.loads(args.inventory.read_text(encoding="utf-8"))
+        manifest = read_report(args.inventory)
         report = build_relations(
             manifest, root=args.root, prefix_bytes=args.pointer_prefix_bytes)
     except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
