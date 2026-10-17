@@ -265,8 +265,15 @@ int main(int argc,char **argv) {
         uint8_t *pixels=texture_data_cpu+PIXEL_STAGING_OFFSET+
                         i*PIXEL_STAGING_STRIDE;
         FojAtlasRgba8Info atlas={0};
-        const int loaded=foj_atlas_dds_try_read(
-            atlas_paths[i],pixels,PIXEL_STAGING_STRIDE,&atlas);
+        FojAtlasDdsStatus dds_status=FOJ_ATLAS_DDS_INVALID_ARGUMENT;
+        const int loaded=foj_atlas_dds_try_read_status(
+            atlas_paths[i],pixels,PIXEL_STAGING_STRIDE,&atlas,
+            &dds_status);
+        /* Generic status and slot ID only: never log user paths, game
+         * bytes or file hashes. Console stderr visibility depends on
+         * the homebrew environment and is not hardware-verified. */
+        fprintf(stderr,"FoJ GPU DDS material %u: %s\n",
+                i,foj_atlas_dds_status_name(dds_status));
         if (loaded<0)goto cleanup;
         if (loaded==0) {
             if (!foj_research_texture_rgba8(i,pixels,

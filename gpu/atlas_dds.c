@@ -1,4 +1,10 @@
+/* POSIX file descriptors are used only for user-selected local DDS files.
+ * DevkitPro/newlib availability is validated by the native NRO CI build. */
+#define _POSIX_C_SOURCE 200809L
 #include "atlas_dds.h"
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -202,34 +208,132 @@ static int verify_atlas_replay(FILE *fp,const uint8_t *first,size_t len) {
     return final_bytes>=0 && (unsigned long)final_bytes==(unsigned long)len;
 }
 
-int foj_atlas_dds_try_read(const char *path,uint8_t *out,size_t cap,
-                           FojAtlasRgba8Info *info) {
-    if (!path||!out||!info)return -1;
-    FILE *fp=fopen(path,"rb");
-    if (!fp)return errno==ENOENT?0:-1;
+static int same_source(const struct stat *a,const struct stat *b) {
+    return a->st_dev==b->st_dev && a->st_ino==b->st_ino &&
+           a->st_mode==b->st_mode && a->st_size==b->st_size &&
+           a->st_mtime==b->st_mtime && a->st_ctime==b->st_ctime;
+}
+
+const char *foj_atlas_dds_status_name(FojAtlasDdsStatus status) {
+    switch (status) {
+        case FOJ_ATLAS_DDS_INVALID_ARGUMENT: return "invalid arguments";
+        case FOJ_ATLAS_DDS_MISSING: return "optional texture absent";
+        case FOJ_ATLAS_DDS_PATH_REJECTED: return "unsafe texture path";
+        case FOJ_ATLAS_DDS_IO_FAILURE: return "texture read or close failed";
+        case FOJ_ATLAS_DDS_SOURCE_CHANGED: return "texture changed during read";
+        case FOJ_ATLAS_DDS_INVALID_FORMAT: return "unsupported or invalid DDS";
+        case FOJ_ATLAS_DDS_LOADED: return "classic DDS decoded";
+        default: return "unknown DDS status";
+    }
+}
+
+int foj_atlas_dds_try_read_status(const char *path,uint8_t *out,size_t cap,
+                                  FojAtlasRgba8Info *info,
+                                  FojAtlasDdsStatus *status) {
+    if (status)*status=FOJ_ATLAS_DDS_INVALID_ARGUMENT;
+    if (!status||!path||!out||!info)return -1;
+
+    /* Check the named last component without following it. On platforms
+     * exposing O_NOFOLLOW, use it for the actual open too. Directory
+     * prefixes remain trusted local mounts, not arbitrary private roots. */
+    struct stat named;
+    if (lstat(path,&named)!=0) {
+        if (errno==ENOENT) {
+            *status=FOJ_ATLAS_DDS_MISSING;
+            return 0;
+        }
+        *status=FOJ_ATLAS_DDS_IO_FAILURE;
+        return -1;
+    }
+    if (!S_ISREG(named.st_mode)) {
+        *status=FOJ_ATLAS_DDS_PATH_REJECTED;
+        return -1;
+    }
+
+    int flags=O_RDONLY;
+#ifdef O_CLOEXEC
+    flags|=O_CLOEXEC;
+#endif
+#ifdef O_NOFOLLOW
+    flags|=O_NOFOLLOW;
+#endif
+#ifdef O_NONBLOCK
+    flags|=O_NONBLOCK;
+#endif
+    const int fd=open(path,flags);
+    if (fd<0) {
+        *status=(errno==ELOOP ? FOJ_ATLAS_DDS_PATH_REJECTED :
+                 FOJ_ATLAS_DDS_IO_FAILURE);
+        return -1;
+    }
+    struct stat opened;
+    if (fstat(fd,&opened)!=0 || !S_ISREG(opened.st_mode) ||
+        !same_source(&named,&opened)) {
+        *status=FOJ_ATLAS_DDS_SOURCE_CHANGED;
+        close(fd);
+        return -1;
+    }
+    FILE *fp=fdopen(fd,"rb");
+    if (!fp) {
+        *status=FOJ_ATLAS_DDS_IO_FAILURE;
+        close(fd);
+        return -1;
+    }
+
     int verified=0;
     size_t input_bytes=0;
     uint8_t *blob=NULL;
-    if (fseek(fp,0,SEEK_END)!=0)goto done;
-    const long file_size=ftell(fp);
-    if (file_size<FOJ_ATLAS_DDS_HEADER_BYTES ||
-        (unsigned long)file_size>
-          (unsigned long)(FOJ_ATLAS_DDS_HEADER_BYTES+FOJ_ATLAS_MAX_INPUT_BYTES))
+    if (opened.st_size<FOJ_ATLAS_DDS_HEADER_BYTES ||
+        (unsigned long)opened.st_size>
+          (unsigned long)(FOJ_ATLAS_DDS_HEADER_BYTES+FOJ_ATLAS_MAX_INPUT_BYTES)) {
+        *status=FOJ_ATLAS_DDS_INVALID_FORMAT;
         goto done;
-    input_bytes=(size_t)file_size;
-    if (fseek(fp,0,SEEK_SET)!=0)goto done;
+    }
+    input_bytes=(size_t)opened.st_size;
     blob=(uint8_t*)malloc(input_bytes);
-    if (!blob)goto done;
-    if (fread(blob,1,input_bytes,fp)!=input_bytes)goto done;
-    if (!verify_atlas_replay(fp,blob,input_bytes))goto done;
+    if (!blob) {
+        *status=FOJ_ATLAS_DDS_IO_FAILURE;
+        goto done;
+    }
+    if (fread(blob,1,input_bytes,fp)!=input_bytes) {
+        *status=FOJ_ATLAS_DDS_SOURCE_CHANGED;
+        goto done;
+    }
+    if (!verify_atlas_replay(fp,blob,input_bytes)) {
+        *status=FOJ_ATLAS_DDS_SOURCE_CHANGED;
+        goto done;
+    }
+    struct stat final_fd,named_again;
+    if (fstat(fd,&final_fd)!=0 ||
+        lstat(path,&named_again)!=0 ||
+        !S_ISREG(named_again.st_mode) ||
+        !same_source(&opened,&final_fd) ||
+        !same_source(&opened,&named_again)) {
+        *status=FOJ_ATLAS_DDS_SOURCE_CHANGED;
+        goto done;
+    }
     verified=1;
 done:
-    /* Close the source before decoding into caller memory, so any read or
-     * close failure is transactional. No pixels or metadata on failure. */
-    if (fclose(fp)!=0)verified=0;
+    /* Never expose a partially validated DDS to caller memory. */
+    if (fclose(fp)!=0) {
+        *status=FOJ_ATLAS_DDS_IO_FAILURE;
+        verified=0;
+    }
     int result=-1;
-    if (verified && foj_atlas_dds_decode(
-            blob,input_bytes,out,cap,info))result=1;
+    if (verified) {
+        if (foj_atlas_dds_decode(blob,input_bytes,out,cap,info)) {
+            *status=FOJ_ATLAS_DDS_LOADED;
+            result=1;
+        } else {
+            *status=FOJ_ATLAS_DDS_INVALID_FORMAT;
+        }
+    }
     free(blob);
     return result;
+}
+
+int foj_atlas_dds_try_read(const char *path,uint8_t *out,size_t cap,
+                           FojAtlasRgba8Info *info) {
+    FojAtlasDdsStatus status;
+    return foj_atlas_dds_try_read_status(path,out,cap,info,&status);
 }

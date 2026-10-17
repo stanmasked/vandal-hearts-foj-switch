@@ -49,6 +49,38 @@ For case D, use a NEW synthetic seven-byte file containing the literal word inva
 | Correct colors, orientation and texture sampling | Not tested |
 | + exit cleanly terminates research NRO | Not tested |
 
+## Stage 163 — native DDS path safety and status diagnostics
+
+The updated native reader checks the final DDS pathname with `lstat`,
+opens a regular file through a descriptor, and compares file identity and
+timestamps with `fstat` before and after the two full byte reads. Where
+supported by the Switch C runtime, `O_NOFOLLOW` prevents the final
+pathname component from being a symbolic link at open. Direct symlinks,
+dangling links, directories and FIFOs are rejected; only an **absent**
+file activates the synthetic fallback. Native `O_NOFOLLOW` availability
+is platform-dependent, so **do not assume race-free handling of ancestor
+directory substitution or malicious concurrent file replacement**.
+
+Each material slot emits a generic diagnostic to stderr when supported
+by the homebrew environment. Messages have the form:
+
+    FoJ GPU DDS material 0: classic DDS decoded
+    FoJ GPU DDS material 1: optional texture absent
+
+Other possible codes: `unsafe texture path`, `texture read or close
+failed`, `texture changed during read`, `unsupported or invalid DDS`
+and `invalid arguments`. These codes do not contain user paths,
+filenames, texture bytes, source hashes, or original-game content.
+**stderr is not guaranteed to be visible on a physical Switch**.
+If the environment exposes logs, capture only these generic messages;
+otherwise record the observed startup result. Do not interpret a
+successful read as proof of GPU sampling or PS3 game assets.
+
+The existing five manual scenarios (A–E) still apply. Expected status
+pairs, in slot order: A absent/absent, B decoded/absent, C decoded/decoded,
+D decoded/invalid DDS, E decoded/decoded. In scenario D the application
+must not display a falsely successful second material.
+
 ## Security and interpretation
 
 The stage-162 C loader re-reads the bounded DDS file from the SAME open stream and compares its exact bytes before closing and decoding. This detects ordinary concurrent edits and unexpected append/truncation. It is **not** an atomic filesystem snapshot, protects neither against an adversarial rewrite-and-restore race nor malicious path substitutions, and native fopen still follows symlinks. The stage-161 local Python preflight uses no-follow access, but it does not protect against future replacement on SD. Use trusted, user-controlled paths.
