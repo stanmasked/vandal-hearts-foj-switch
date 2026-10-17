@@ -547,3 +547,5 @@ The local host test uses a reconstructed subset, not the exact full repository c
 - [x] Commit the new coverage to `tests/test_gpu_dksh_integration.c`.
 - [ ] Execute the exact GitHub test against a complete source checkout and obtain GitHub Actions results; local direct GitHub clone fails DNS.
 - [ ] Run all 18 deko3d lifecycle mock scenarios and build native NRO with real devkitA64/UAM before claiming hardware GPU compatibility.
+
+- [x] Follow-up local execution: stage-110 reconstructed two-slot C test with the new oversize case compiled and passed under strict C11, `-DNDEBUG`, UBSan using GCC and Clang. This confirms the isolated loader behavior, not the full GitHub checkout.
