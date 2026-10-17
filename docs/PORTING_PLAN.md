@@ -843,3 +843,15 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Updated `docs/FOJ_TEXTURE_RESOURCE_RECON.md` with the two-stage offline commands, pointer-prefix options and interpretation limits.
 - [ ] No original FoJ PS3 resource dump was available, so no true FoJ DDS header, container pointer structure or texture/material/model association has been confirmed.
 - [ ] Switch hardware rendering and correct texture sampling are not verified.
+
+## Stage 143: private DDS reference-table hypotheses — CI SUCCESS (2026-10-17)
+
+- [x] Added `tools/foj_resource_table_hypotheses.py`, which reads **only** the stage-142 numeric JSON report and looks for maximal fixed-stride runs of file-relative DDS candidate offsets, separately for little-endian and big-endian hints (4, 8, 12, 16, 24, 32-byte strides). Default minimum is **three distinct target candidates**.
+- [x] Discards ambiguous word positions and redundant subset stride-runs. Validates report schema, paths, file offsets, prefix bounds, alignment, endian labels and numeric sizes. Caps input containers/candidates/reference hints and table output. Neither original game assets nor plaintext resource bytes are needed, decoded or uploaded.
+- [x] Added `tests/test_foj_resource_table_hypotheses.py` with **seven wholly synthetic tests**: end-to-end probe→relation→table pipeline with distinct LE/BE reference runs, repeated targets, suppressing shorter alternative strides, ambiguous addresses, malformed/untrusted reports, output bounds, separate containers and local CLI privacy.
+- [x] Extended `.github/workflows/texture-probe-tests.yml`: **actual GitHub Actions run 39040334555 SUCCESS**, with 7 probe + 6 relations + 7 new table tests (**20 tests each**) under Python **3.10 and 3.12**.
+- [x] **Actual Research tools CI run 39040334552 SUCCESS**: **137 tests each** under Python **3.11 and 3.13**.
+- [x] Documented the optional purely local follow-up command and its interpretation limits in `docs/FOJ_TEXTURE_RESOURCE_RECON.md`.
+- [x] PR #26 merged into `main` as squash commit `ebb41d833763a49d036eb4e338135d2e46ad3da9`.
+- [ ] No real FoJ PS3 resource dump has been examined: repeated aligned values are only **numeric coincidences**, not an established texture/material/model relationship or a confirmed original container format.
+- [ ] No new GPU NRO or hardware-side functionality was added this stage; physical Switch GPU rendering remains unverified.
