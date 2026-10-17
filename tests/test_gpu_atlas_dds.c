@@ -63,9 +63,7 @@ static void fill_bc1(uint8_t *dest,uint16_t c0,uint16_t c1) {
     put16(dest,c0);
     put16(dest+2,c1);
     /* Four texels per row use palette indexes 0,1,2,3. */
-    put32(dest,0); /* overwritten below with the full block layout */
-    put16(dest,c0);
-    put16(dest+2,c1);
+
     put32(dest+4,0xe4e4e4e4u);
 }
 static void test_bcn(void) {
@@ -138,12 +136,12 @@ static void test_bcn(void) {
     /* Alpha a0<=a1 adds explicit zero/255 entries at indexes 6 and 7. */
     uint8_t *first=data+FOJ_ATLAS_DDS_HEADER_BYTES;
     first[0]=0;first[1]=100;
-    const uint64_t special=(6ull)|(7ull<<3);
+    const uint64_t special=(6ull)|(7ull<<3)|(2ull<<6)|(3ull<<9);
     for(unsigned k=0;k<6;++k)
         first[2+k]=(uint8_t)(special>>(8u*k));
     assert(foj_atlas_dds_decode(data,bc3len,pixels,sizeof(pixels),&info));
     assert(pixels[3]==0 && pixels[7]==255);
-    assert(pixels[11]==80); /* (4*0 + 1*100)/5? index 2 = 20; index 0 = 0 */
+    assert(pixels[11]==20 && pixels[15]==40);
     /* Rejection is transactional for truncated BC3 data as well. */
     memset(pixels,0xa5,sizeof(pixels));
     info=(FojAtlasRgba8Info){4,5,6};
