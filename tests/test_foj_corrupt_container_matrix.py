@@ -124,7 +124,9 @@ class CorruptContainerTests(unittest.TestCase):
             content = output.read_text(encoding="utf-8")
             self.assertNotIn(str(tmp), content)
             self.assertNotIn("synthetic.bin", content)
-            self.assertNotIn("DDS ", content)
+            # Human-readable DDS format names are fine; raw binary or
+            # embedded source paths must never appear in the report.
+            self.assertNotIn("\\u0000", content)
             self.assertFalse(json.loads(content)["original_foj_asset_verified"])
 
 
