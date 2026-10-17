@@ -152,7 +152,7 @@ class IndexColumnControlTests(unittest.TestCase):
             # offer a comparable independent control window.
             result = analyze_index_columns(source, root=root, prefix_bytes=96)
             item = result["containers"][0]["examined_tables"][0]
-            self.assertEqual(item["independent_control_windows_checked"], 0)
+            self.assertEqual(item["independent_control_dense_windows"], 0)
             self.assertEqual(item["structural_observation"], "index-like-unverified")
 
     def test_cli_no_pixels_or_absolute_paths(self):
