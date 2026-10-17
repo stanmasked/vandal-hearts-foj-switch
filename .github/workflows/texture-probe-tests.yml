@@ -15,6 +15,7 @@ on:
       - "tools/foj_stage169_two_attempt_recovery.py"
       - "tools/foj_stage170_cpu_visual_alignment.py"
       - "tools/foj_stage171_build_identity.py"
+      - "tools/foj_stage173_private_json_snapshot.py"
       - "tools/foj_texture_relations.py"
       - "tools/foj_resource_table_hypotheses.py"
       - "tools/foj_stage158_benchmark.py"
@@ -39,6 +40,7 @@ on:
       - "tests/test_foj_stage169_two_attempt_recovery.py"
       - "tests/test_foj_stage170_cpu_visual_alignment.py"
       - "tests/test_foj_stage171_build_identity.py"
+      - "tests/test_foj_stage173_private_json_snapshot.py"
       - "tests/foj_stage169_native_boot_fixture.c"
       - "tests/foj_native_dds_contract_probe.c"
       - "tests/test_foj_two_pass_dds_integrity.py"
@@ -61,6 +63,10 @@ on:
     paths:
       - ".github/workflows/texture-probe-tests.yml"
       - "tools/foj_fd_bound_reader.py"
+      - "tools/foj_stage166_hardware_observations.py"
+      - "tools/foj_stage170_cpu_visual_alignment.py"
+      - "tools/foj_stage173_private_json_snapshot.py"
+      - "tests/test_foj_stage173_private_json_snapshot.py"
       - "tools/foj_texture_probe.py"
       - "tools/foj_gpu_local_dds_preflight.py"
       - "tools/foj_texture_relations.py"
@@ -142,6 +148,8 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_foj_stage170_cpu_visual_alignment.py' -v
       - name: Stage 171 reject mixed CI build identities and NRO copies
         run: python -m unittest discover -s tests -p 'test_foj_stage171_build_identity.py' -v
+      - name: Stage 173 secure private operator JSON snapshots
+        run: python -m unittest discover -s tests -p 'test_foj_stage173_private_json_snapshot.py' -v
       - name: Run synthetic DDS metadata scan regressions
         run: python -m unittest discover -s tests -p 'test_foj_texture_probe.py' -v
       - name: Test indexed DDS span and table equivalence under synthetic load
