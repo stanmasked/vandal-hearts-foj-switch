@@ -20,7 +20,7 @@
 
 enum {
     FAIL_NONE, FAIL_DEVICE, FAIL_QUEUE, FAIL_IMG_1, FAIL_IMG_2,
-    FAIL_SWAP, FAIL_CMDMEM, FAIL_CMDBUF, FAIL_CMDLIST, FAIL_ACQUIRE,
+    FAIL_SWAP, FAIL_CMDMEM, FAIL_CMDBUF, FAIL_CMDLIST, FAIL_ACQUIRE, FAIL_ACQUIRE_OOB,
     FAIL_PLUS, FAIL_PLUS_EARLY, FAIL_APPLET_EARLY, FAIL_VERTEX_MEM, FAIL_VERTEX_CPU, FAIL_VERTEX_GPU
 };
 struct FakeDevice { int tag; };
@@ -232,6 +232,7 @@ DkCmdList dkCmdBufFinishList(DkCmdBuf b) {
 int dkQueueAcquireImage(DkQueue q,DkSwapchain s) {
     assert(q&&s);
     if(g.failure==FAIL_ACQUIRE&&g.acquired==3) return -1;
+    if(g.failure==FAIL_ACQUIRE_OOB&&g.acquired==3) return 2;
     const int slot=g.acquired%2;
     ++g.acquired;
     return slot;
@@ -285,12 +286,13 @@ int main(void) {
     run_case(FAIL_CMDBUF,3,0);
     run_case(FAIL_CMDLIST,3,0);
     run_case(FAIL_ACQUIRE,4,3);
+    run_case(FAIL_ACQUIRE_OOB,4,3);
     run_case(FAIL_PLUS,0,2);
     run_case(FAIL_PLUS_EARLY,3,0);
     run_case(FAIL_APPLET_EARLY,3,0);
     run_case(FAIL_VERTEX_MEM,3,0);
     run_case(FAIL_VERTEX_CPU,3,0);
     run_case(FAIL_VERTEX_GPU,3,0);
-    puts("Host deko3d lifecycle mock: all 16 scenarios passed");
+    puts("Host deko3d lifecycle mock: all 17 scenarios passed");
     return 0;
 }
