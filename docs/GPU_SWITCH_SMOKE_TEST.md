@@ -1,4 +1,4 @@
-# Experimental Switch GPU smoke tests — stage 136
+# Experimental Switch GPU smoke tests — stage 137
 
 These are **homebrew research binaries**, not a playable port or a patch for
 *Vandal Hearts: Flames of Judgment*. No original PS3 content is embedded.
@@ -38,6 +38,27 @@ https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39034956773/
 
 Do not interpret successful compilation as verified on-console rendering.
 
+## Stage 137 — actual two-texture GPU material research build
+
+GitHub Actions run **39035732156** (PR #20) generated both native ARM64
+NROs and all three DKSH modules using devkitA64/UAM. The shader-backed
+experiment now generates **two distinct synthetic 8x8 RGBA8 textures**,
+copies them into GPU-resident images, prepares one sampler and descriptor
+table, and binds a different image handle before each ordered batch draw.
+The fragment shader samples those textures, replacing the UV-gradient-only
+shader from previous stages.
+
+New native research NRO: **290872 bytes** (validated NRO0 header).
+The clear-only NRO is unchanged (**262200 bytes**).
+
+Latest artifact:
+https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39035732156/artifacts/12102067683
+
+Host GCC/Clang tests (including normal, NDEBUG and ASan/UBSan pixel
+regressions), Research tools tests and native GPU NRO/DKSH CI all passed.
+**This does NOT prove GPU sampling, orientation, copy synchronization or
+presentation on real Switch hardware.**
+
 ## SD card layout for a user-authorized homebrew Switch
 
 The NROs may be placed in a homebrew-launcher-readable folder, for example:
@@ -65,10 +86,10 @@ require DKSH files.
 3. Press **+** only after at least one frame has been displayed. Note whether
    the program closes cleanly or throws an error.
 4. Launch the **triangle-research** NRO with both DKSH files in the exact
-   paths above. Expect **two separated research quads** (four triangles,
-   12 uploaded vertices) over the alternating clear colors. Both quads use
-   one UV-gradient shader with different UV ranges; they do **not** load
-   FoJ PS3 assets or bind separate game textures.
+   paths above. Expect **two separated, differently colored textured
+   quads** (four triangles, 12 uploaded vertices) over the alternating
+   clear colors. Each synthetic 8×8 image uses its own color gradient.
+   Neither image comes from FoJ PS3 assets.
 5. Note whether an exception, missing shader, black screen, freeze, or
    rendering corruption occurred. Preserve any screenshots/error text
    and a brief description of which test failed.
