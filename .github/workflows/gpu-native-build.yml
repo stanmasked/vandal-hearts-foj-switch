@@ -16,6 +16,8 @@ on:
       - "core/textured_triangles.h"
       - "tools/validate_nro.py"
       - "tools/validate_dksh.py"
+      - "tools/foj_stage165_sd_bundle.py"
+      - "tools/foj_stage162_synthetic_dds.py"
   pull_request:
     paths:
       - ".github/workflows/gpu-native-build.yml"
@@ -30,6 +32,8 @@ on:
       - "core/textured_triangles.h"
       - "tools/validate_nro.py"
       - "tools/validate_dksh.py"
+      - "tools/foj_stage165_sd_bundle.py"
+      - "tools/foj_stage162_synthetic_dds.py"
   workflow_dispatch:
 
 permissions:
@@ -72,6 +76,12 @@ jobs:
           set -euo pipefail
           make -f gpu/Makefile triangle-verify
           make -f gpu/Makefile verify
+      - name: Create fixed generated-only manual SD smoke ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage165_sd_bundle --repo-root . --output build/foj-stage165-gpu-sd-smoke.zip
+          python3 -m zipfile -t build/foj-stage165-gpu-sd-smoke.zip
       - name: Upload SDK-built research binaries
         if: success()
         uses: actions/upload-artifact@v4
@@ -83,5 +93,6 @@ jobs:
             gpu/build/foj_actor.vert.dksh
             gpu/build/foj_actor.frag.dksh
             gpu/build/foj_triangle.frag.dksh
+            build/foj-stage165-gpu-sd-smoke.zip
           if-no-files-found: error
           retention-days: 7
