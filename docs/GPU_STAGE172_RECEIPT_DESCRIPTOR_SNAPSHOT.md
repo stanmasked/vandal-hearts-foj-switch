@@ -5,9 +5,9 @@ been verified. No commercial PS3 game content is included.**
 
 Stage 171 binds the SHA-256 of a generated research SD ZIP, two NRO
 files and two DKSH shader binaries to a declared CI commit/run ID.
-However, its offline \`read_receipt()\` previously checked the named
-JSON's metadata with \`lstat()\` and then followed the pathname with
-\`Path.open()\`. A local filesystem change could replace the file
+However, its offline `read_receipt()` previously checked the named
+JSON's metadata with `lstat()` and then followed the pathname with
+`Path.open()`. A local filesystem change could replace the file
 between those operations, causing the parser to accept a different
 inode from the one whose size and type were checked.
 
@@ -15,11 +15,11 @@ Stage 172 strengthens receipt input without changing the schema or the
 published stage-171 CI artifact:
 
 1. Reject non-regular and out-of-bounds named files before opening.
-2. Open once with \`O_NOFOLLOW\` and \`O_NONBLOCK\` when available.
+2. Open once with `O_NOFOLLOW` and `O_NONBLOCK` when available.
 3. Compare device, inode, mode, size, nanosecond modification and
    change times for the named file, opened descriptor, post-read
    descriptor, and final named file.
-4. Read no more than \`MAX_RECEIPT + 1\` bytes on two passes through the
+4. Read no more than `MAX_RECEIPT + 1` bytes on two passes through the
    same opened descriptor. Require equal content and exactly the
    initially recorded byte length.
 5. Parse UTF-8 JSON with duplicate keys and non-finite constants
@@ -28,11 +28,11 @@ published stage-171 CI artifact:
 
 ## Tests
 
-The existing \`tests/test_foj_stage171_build_identity.py\` suite is
+The existing `tests/test_foj_stage171_build_identity.py` suite is
 extended with adversarial checks for:
 
-- A symlink substituted between \`lstat()\` and \`os.open()\`.
-- A different *regular file* substituted just before \`os.open()\`.
+- A symlink substituted between `lstat()` and `os.open()`.
+- A different *regular file* substituted just before `os.open()`.
 - A different *regular file* substituted just after descriptor open.
 - Same-inode, same-length JSON changed between the two descriptor reads.
 - A named FIFO, rejected without waiting for a writer.
