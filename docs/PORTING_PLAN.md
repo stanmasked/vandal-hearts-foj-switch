@@ -714,3 +714,15 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Split shader failure/recovery regression into its own GitHub Actions step `shaders`; logs are saved as `gpu-host-shaders.log` and its result is shown in job summary (GCC/Clang matrix unchanged).
 - [ ] Confirm GitHub Actions runs and the separate full GPU mock C11 suite: no actual CI logs inspected here.
 - [ ] Compile real DKSH with UAM, build ARM64 GPU NRO using devkitA64 and test presentation on physical Switch.
+
+## Stage 133: actual 18-case deko3d GPU host CI passes (2026-10-17)
+
+- [x] Opened PR #16 (`stage133-gpu-lifecycle-ci`) to expose the stateful deko3d lifecycle mock as its own `lifecycle` Actions step, run ordinary and `-DNDEBUG` executables for GCC and Clang, publish `gpu-host-lifecycle.log`, and report results in the job summary.
+- [x] Retrieved **actual pull-request GitHub Actions job logs** (not just status flags): all 18 scenarios printed `Host deko3d lifecycle mock: all 18 scenarios passed` in the ordinary and `-DNDEBUG` executables under both GCC and Clang.
+- [x] First CI attempt exposed a GCC `-Werror=enum-compare` issue in a GPU shader capacity static assertion; cast both enum constants to `size_t` and confirmed this pattern with GCC and Clang C11 locally.
+- [x] First CI attempt also exposed a Make dependency regression test bug: after entering its temporary directory, `target` still held an absolute file path which bypassed the relative GNU Make target rule. Reset `target` to `build/foj-deko3d-triangle-research.elf` after `cd "$tmp"`.
+- [x] Removed `grep -q` on pipelines from the Make regression to avoid premature-pipe-closing false negatives with `pipefail`.
+- [x] **Actual CI run 39026135352: GPU host regression checks SUCCESS**, both GCC and Clang jobs successful in all steps: Make dependencies, synthetic DKSH regression, strict C11 / GPU triangle syntax, 18-case deko3d lifecycle (normal + NDEBUG), ASan/UBSan.
+- [x] **Actual CI run 39026135587: Research tools tests SUCCESS** for the same PR head commit `2f2fe56b376814a0d5c7afa5227837d173b5a91f`.
+- [x] PR #16 merged via squash to main: merge commit `2e51078cb834e6633ea1033e6a2bf8a5e3f38007`.
+- [ ] These confirmed results are **SDK-free host-only tests**; real UAM DKSH generation, devkitA64 GPU NRO cross-compilation and GPU presentation on Switch hardware remain unverified.
