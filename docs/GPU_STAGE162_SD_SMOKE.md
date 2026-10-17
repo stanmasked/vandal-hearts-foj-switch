@@ -2,6 +2,20 @@
 
 **This test has NOT been run on physical Switch hardware.** It uses two generated checkerboards, not PS3 game assets. A successful native NRO build is not an execution result.
 
+## Stage 165 — reproducible SD smoke ZIP and checked command scheduling
+
+A new **generated-only SD-ready ZIP** is published by the native
+devkitA64/UAM build, with both research NROs, exactly two runtime
+DKSH shaders and two invented checkerboard DDS images. No original FoJ
+game assets are packaged. See `docs/GPU_STAGE165_SD_RELEASE.md`
+for its fixed SD layout, checksums, extraction and download procedure.
+
+The native shader-backed NRO now uses a shared command-list planner.
+A host-only model verifies the first two 120-frame status phases, scene
+transition, fatal-status hold and the exact acquired framebuffer for
+4096 presentation decisions per scenario. Only an actual Switch test
+can verify correct GPU scanout and responsiveness.
+
 ## Step 1: Prepare two synthetic files
 
 From the repository root run the following commands on your development computer:
@@ -126,6 +140,6 @@ must not display a falsely successful second material.
 
 ## Security and interpretation
 
-The stage-162 C loader re-reads the bounded DDS file from the SAME open stream and compares its exact bytes before closing and decoding. This detects ordinary concurrent edits and unexpected append/truncation. It is **not** an atomic filesystem snapshot, protects neither against an adversarial rewrite-and-restore race nor malicious path substitutions, and native fopen still follows symlinks. The stage-161 local Python preflight uses no-follow access, but it does not protect against future replacement on SD. Use trusted, user-controlled paths.
+The stage-162 C loader re-reads the bounded DDS file from the SAME open stream and compares its exact bytes before closing and decoding. This detects ordinary concurrent edits and unexpected append/truncation. It is **not** an atomic filesystem snapshot, protects neither against an adversarial rewrite-and-restore race nor malicious path substitutions, and malicious path substitutions. The stage-163 native loader rejects final-component symlinks and uses O_NOFOLLOW when available; ancestor substitution and later replacement on SD are still not fully excluded. Use trusted, user-controlled paths.
 
 Even after a verified all-green hardware smoke test, this only confirms GPU rendering of TWO generated research materials. It does not establish any original Flames of Judgment material mapping, scene rendering, gameplay or completed Nintendo Switch port.
