@@ -665,3 +665,11 @@ Because both Makefiles are ELF prerequisites, configuration changes may also rec
 - [x] Compile and run the corrected ternary-expression/loop boundary logic in a standalone C11 fixture with `gcc` and `clang`, `-Wall -Wextra -Werror -pedantic`: both PASS.
 - [ ] Compile and execute the full actual 18-scenario mock and inspect GitHub Actions; the standalone fixture does not validate the entire test harness.
 - [ ] Build UAM DKSH and devkitA64 GPU NRO; test real Switch GPU presentation.
+
+## Stage 127: verify GPU queue idle in all 18 host lifecycle scenarios (2026-10-17)
+
+- [x] Inspect current stateful deko3d lifecycle mock and native GPU cleanup path after the C syntax repair. Main cleanup calls `dkQueueWaitIdle(queue)` whenever a queue exists, before releasing GPU resources.
+- [x] Extend `run_case` invariants: no queue wait for device/queue creation failures; exactly one wait for every scenario after queue creation. This complements existing allocation, command-submission and presentation counts.
+- [x] Commit the new lifecycle assertion to GitHub.
+- [ ] A GitHub commit combined status lookup returned no classic statuses, which is not proof of Actions success or failure. The exact 18-scenario suite has not been run here.
+- [ ] Confirm host CI execution, native devkitA64/UAM build and Switch display separately.
