@@ -126,6 +126,8 @@ int main(void) {
                                max,FOJ_DKSH_FRAGMENT,&used));
     assert(!foj_dksh_read_file(path,NULL,max,FOJ_DKSH_FRAGMENT,&used));
     assert(!foj_dksh_read_file(path,pool+layout.fragment_offset,
+                               max,FOJ_DKSH_FRAGMENT,NULL));
+    assert(!foj_dksh_read_file(path,pool+layout.fragment_offset,
                                max,UINT32_MAX,&used));
     assert(!foj_dksh_read_file(path,pool+layout.fragment_offset,
                                255,FOJ_DKSH_FRAGMENT,&used));
