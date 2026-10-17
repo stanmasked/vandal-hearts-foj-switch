@@ -133,8 +133,8 @@ def _candidate_runs(points: list[tuple[int, int]], *, min_distinct: int) -> list
 
 
 def infer_tables(manifest: dict[str, Any], *, min_distinct: int = DEFAULT_MIN_DISTINCT,
-    measure_report(manifest)
                  max_tables: int = MAX_TABLES) -> dict[str, Any]:
+    measure_report(manifest)
     """Derive strictly metadata-only candidate pointer table patterns."""
     _integer(min_distinct, "minimum distinct targets", low=2, high=16)
     _integer(max_tables, "maximum tables", low=1, high=MAX_TABLES)
