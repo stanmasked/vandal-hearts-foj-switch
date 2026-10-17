@@ -763,6 +763,24 @@ The tool reads bounded bytes twice from a pinned no-follow descriptor and checks
 
 After separately verifying user-owned files, copy them **manually** to `sdmc:/switch/foj/gpu/material0.dds` or `sdmc:/switch/foj/gpu/material1.dds` on the Switch SD card. Do not commit game data, private DDS sources or local reports. A preflight success proves only structural support by the experimental decoder, not the provenance of FoJ textures or on-console image presentation.
 
+## Stage 162: native DDS verified replay and synthetic Switch smoke
+
+The experimental native C DDS loader in `gpu/atlas_dds.c` now reads every
+bounded local DDS file twice on the SAME open stream, rejects changed bytes
+and unexpected growth/truncation, and closes the file before decoding into
+caller memory. No pixels or metadata are changed on a failed read. This is
+a best-effort stability check, not atomic source capture: unlike stage-161
+Python preflight, native `fopen()` still follows filesystem symlinks.
+
+The command `python3 -m tools.foj_stage162_synthetic_dds ./stage162-smoke-dds`
+creates a NEW directory containing two different invented 8x8 classic RGBA8
+DDS checkerboards for native Switch GPU tests. A directory that exists
+already is never overwritten. Run stage-161 preflight on those synthetic
+files before copying manually to SD. Use the step-by-step hardware test
+matrix at `docs/GPU_STAGE162_SD_SMOKE.md`, with both checkerboards, one
+fallback, no files, invalid file and recovery. None of these changes
+confirms PS3 texture or material provenance, or real on-console rendering.
+
 ## How to interpret results
 
 A DDS header is merely a **candidate**, not proof that an original FoJ

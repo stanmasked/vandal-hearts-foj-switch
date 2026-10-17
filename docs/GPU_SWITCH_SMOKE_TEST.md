@@ -222,6 +222,11 @@ require DKSH files.
 
 ## Hardware test checklist (NOT YET EXECUTED)
 
+For the new stage-162 two-DDS protocol (no original game assets), see
+`docs/GPU_STAGE162_SD_SMOKE.md`. The host/native builds do not replace
+on-console observations.
+
+
 1. Record Switch hardware model, homebrew environment and date; use a device
    you own and are already authorized to run homebrew on.
 2. Launch the **clear-smoke** NRO first. It should present two alternating
