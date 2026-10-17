@@ -161,6 +161,127 @@ static void test_bcn(void) {
     assert(remove(path)==0);
 }
 
+
+static void make_mips(uint8_t *data,unsigned count,int bc) {
+    put32(data,28,count);
+    put32(data,8,(bc?0x81007u:0x100fu)|0x20000u);
+    put32(data,108,0x401008u);
+}
+static void test_bgra_and_mips(void) {
+    uint8_t data[FOJ_ATLAS_DDS_HEADER_BYTES+FOJ_ATLAS_MAX_INPUT_BYTES];
+    uint8_t out[FOJ_ATLAS_MAX_BYTES];
+    FojAtlasRgba8Info info={0};
+
+    /* BGRA bytes 11/22/33/44 become RGBA 33/22/11/44. */
+    make_header(data,8,8);
+    put32(data,92,0x00ff0000u);
+    put32(data,100,0x000000ffu);
+    for (unsigned i=0;i<256;i+=4) {
+        data[128+i]=11;data[128+i+1]=22;
+        data[128+i+2]=33;data[128+i+3]=44;
+    }
+    const size_t base_len=128+256;
+    memset(out,0xa5,sizeof(out));
+    assert(foj_atlas_dds_decode(data,base_len,out,sizeof(out),&info));
+    assert(info.pixel_bytes==256 && info.width==8 && info.height==8);
+    for (unsigned i=0;i<256;i+=4) {
+        assert(out[i]==33 && out[i+1]==22);
+        assert(out[i+2]==11 && out[i+3]==44);
+    }
+    /* Wrong channel layout or partial payload must preserve output. */
+    memset(out,0xa5,sizeof(out));
+    info=(FojAtlasRgba8Info){4,5,6};
+    put32(data,92,0x0000ff00u);
+    expect_bad(data,base_len,out,&info);
+    put32(data,92,0x00ff0000u);
+    expect_bad(data,base_len-1,out,&info);
+    expect_bad(data,base_len+1,out,&info);
+
+    /* RGBA8: 8x8 -> 4x4 -> 2x2 -> 1x1, with only base decoded. */
+    make_header(data,8,8);
+    make_mips(data,4,0);
+    const size_t rgba_tail=64+16+4;
+    const size_t rgba_len=128+256+rgba_tail;
+    memset(data+128,0x34,256);
+    memset(data+128+256,0x91,rgba_tail);
+    memset(out,0xa5,sizeof(out));
+    assert(foj_atlas_dds_decode(data,rgba_len,out,sizeof(out),&info));
+    for(size_t i=0;i<256;++i)assert(out[i]==0x34);
+    assert(out[256]==0xa5);
+    memset(out,0xa5,sizeof(out));
+    info=(FojAtlasRgba8Info){4,5,6};
+    expect_bad(data,rgba_len-1,out,&info);
+    expect_bad(data,rgba_len+1,out,&info);
+    put32(data,28,5);expect_bad(data,rgba_len,out,&info);
+    put32(data,28,4);
+    put32(data,108,0x1000u);expect_bad(data,rgba_len,out,&info);
+    put32(data,108,0x401008u);
+    put32(data,8,0x100fu);expect_bad(data,rgba_len,out,&info);
+    put32(data,8,0x2100fu);
+    put32(data,20,32); /* correct base-level pitch */
+    assert(foj_atlas_dds_decode(data,rgba_len,out,sizeof(out),&info));
+
+    /* BC1/DXT1 full mip chain: 32 + 8 + 8 + 8 compressed bytes. */
+    make_bc_header(data,8,8,0);
+    make_mips(data,4,1);
+    for (unsigned i=0;i<4;++i)
+        fill_bc1(data+128+i*8u,0xf800u,0x07e0u);
+    const size_t bc1_total=32+8+8+8;
+    memset(data+128+32,0,bc1_total-32);
+    assert(foj_atlas_dds_decode(data,128+bc1_total,out,sizeof(out),&info));
+    assert(info.pixel_bytes==256 && out[0]==255 && out[3]==255);
+    memset(out,0xa5,sizeof(out));
+    info=(FojAtlasRgba8Info){4,5,6};
+    expect_bad(data,128+bc1_total-1,out,&info);
+    expect_bad(data,128+bc1_total+1,out,&info);
+    put32(data,20,24);expect_bad(data,128+bc1_total,out,&info);
+    put32(data,20,32);
+    put32(data,12,9);expect_bad(data,128+bc1_total,out,&info);
+    put32(data,12,8);
+
+    /* BC3/DXT5: four full-res blocks plus three 16-byte mip blocks. */
+    make_bc_header(data,8,8,1);
+    make_mips(data,4,1);
+    for (unsigned i=0;i<4;++i) {
+        uint8_t *block=data+128+i*16u;
+        memset(block,0,16);
+        block[0]=255;block[1]=0;
+        fill_bc1(block+8,0xf800u,0x07e0u);
+    }
+    const size_t bc3_total=64+16+16+16;
+    memset(data+128+64,0,bc3_total-64);
+    assert(foj_atlas_dds_decode(data,128+bc3_total,out,sizeof(out),&info));
+    assert(info.pixel_bytes==256 && out[0]==255 && out[3]==255);
+
+    /* Upper bound: all nine levels of a 256x256 RGBA8 DDS. */
+    make_header(data,256,256);
+    make_mips(data,9,0);
+    size_t cursor=128;
+    for(unsigned w=256,h=256,level=0;level<9;++level) {
+        size_t level_bytes=(size_t)w*h*4;
+        memset(data+cursor,level?0x91:0x41,level_bytes);
+        cursor+=level_bytes;
+        if(w>1)w/=2;
+        if(h>1)h/=2;
+    }
+    assert(cursor<=sizeof(data));
+    memset(out,0xa5,sizeof(out));
+    assert(foj_atlas_dds_decode(data,cursor,out,sizeof(out),&info));
+    assert(info.width==256 && info.height==256);
+    assert(info.pixel_bytes==FOJ_ATLAS_MAX_BYTES);
+    assert(out[0]==0x41 && out[FOJ_ATLAS_MAX_BYTES-1]==0x41);
+    expect_bad(data,cursor-1,out,&info);
+    /* A legal max-size mip file can pass the bounded file intake too. */
+    const char *path="build/foj-synthetic-mip-chain.dds";
+    FILE *fp=fopen(path,"wb");
+    assert(fp);
+    assert(fwrite(data,1,cursor,fp)==cursor);
+    assert(fclose(fp)==0);
+    assert(foj_atlas_dds_try_read(path,out,sizeof(out),&info)==1);
+    assert(out[0]==0x41);
+    assert(remove(path)==0);
+}
+
 int main(void) {
     uint8_t data[FOJ_ATLAS_DDS_HEADER_BYTES+FOJ_ATLAS_MAX_BYTES];
     uint8_t out[FOJ_ATLAS_MAX_BYTES];
@@ -227,6 +348,7 @@ int main(void) {
     assert(info.width==4 && info.height==5 && info.pixel_bytes==6);
     assert(remove(path)==0);
     test_bcn();
-    puts("Private RGBA8/BC1/BC3 DDS atlas decode, alpha and bounds: PASS");
+    test_bgra_and_mips();
+    puts("Private RGBA8/BGRA8/BC1/BC3 DDS + complete mip-chain intake: PASS");
     return 0;
 }
