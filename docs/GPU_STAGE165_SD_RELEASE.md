@@ -49,6 +49,18 @@ of its `switch/` directory to the root of your SD card on an
 *authorized homebrew Nintendo Switch*. Do not copy `switch/switch/`
 or overwrite existing user-owned files without checking their names.
 
+## Stage 166 — record what actually happened on Switch
+
+The native GitHub Actions artifact now also includes an entirely EMPTY
+`foj-stage166-blank-observations.json`. Fill it **only after physically
+observing frames** on an authorized homebrew Switch. The offline tool
+`python3 -m tools.foj_stage166_hardware_observations` can bind the
+worksheet to the structural/cryptographic manifest of the generated
+stage-165 ZIP and compare declared colors in A–E, including a separate
+category for black-screen or pre-frame boot failure. The audit never
+claims to have independently verified actual hardware execution.
+Full instructions: `docs/GPU_STAGE166_HARDWARE_OBSERVATIONS.md`.
+
 ## Manual hardware checks
 
 1. Launch `foj-deko3d-clear-smoke.nro`; verify alternating full-screen
