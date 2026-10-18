@@ -13,6 +13,7 @@
 
 #include "coll_grid.h"
 #include "coll_view.h"
+#include "coll_iso_view.h"
 
 enum { FB_WIDTH = 1280, FB_HEIGHT = 720 };
 static FojCollGrid g_map;
@@ -94,6 +95,7 @@ int main(int argc, char **argv) {
 
     int cursor_x = g_map.width / 2, cursor_y = g_map.height / 2;
     int channel = 0, tile_size = 12;
+    bool isometric_plot = false;
     while (appletMainLoop()) {
         padUpdate(&pad);
         u64 down = padGetButtonsDown(&pad);
@@ -107,6 +109,7 @@ int main(int argc, char **argv) {
         if (cursor_x >= g_map.width) cursor_x = g_map.width - 1;
         if (cursor_y >= g_map.height) cursor_y = g_map.height - 1;
 
+        if (down & HidNpadButton_Y) isometric_plot = !isometric_plot;
         if (down & HidNpadButton_R) channel = (channel + 1) % 6;
         if (down & HidNpadButton_L) channel = (channel + 5) % 6;
         if (down & HidNpadButton_ZR && tile_size < 30) tile_size += 2;
@@ -116,8 +119,13 @@ int main(int argc, char **argv) {
         u32 *pixels = (u32 *)framebufferBegin(&fb, &stride_bytes);
         if (pixels) {
             int stride = (int)(stride_bytes / sizeof(u32));
-            foj_coll_render(&g_map, (uint32_t *)pixels, FB_WIDTH, FB_HEIGHT,
-                            stride, cursor_x, cursor_y, tile_size, channel);
+            if (isometric_plot)
+                foj_coll_iso_render(&g_map, (uint32_t *)pixels,
+                                    FB_WIDTH, FB_HEIGHT, stride,
+                                    cursor_x, cursor_y, tile_size, channel);
+            else
+                foj_coll_render(&g_map, (uint32_t *)pixels, FB_WIDTH, FB_HEIGHT,
+                                stride, cursor_x, cursor_y, tile_size, channel);
             status_marker((uint32_t *)pixels, stride, loaded);
         }
         framebufferEnd(&fb);
