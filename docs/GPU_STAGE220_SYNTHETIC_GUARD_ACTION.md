@@ -42,8 +42,8 @@ gameplay values are included in GitHub or its workflow artifacts.
 
 ## Integration gate
 
-Stage220 follows Stage219 PR #103. Stage219 must pass Python 3.11/3.13,
-host C, isometric rendering and NRO builds before merging. After that,
-retarget Stage220 to `main`, require fresh independent CI and only then
-merge. This is still a synthetic homebrew battle prototype, not a
+Stage219 PR #103 has passed all eight workflows and merged into
+`main` at `9976654aa55bc7082fe62cd2d366601624ac9c02`. Stage220 now
+targets `main`; require fresh independent Python 3.11/3.13, host C,
+isometric-render and Switch NRO checks before merging. This is still a synthetic homebrew battle prototype, not a
 playable Vandal Hearts: Flames of Judgment port.
