@@ -111,9 +111,11 @@ int main(int argc, char **argv) {
             /* 8x8 guest-only audit indicator. Green = replay identical,
              * red = mismatch, amber = input log reached safe capacity.
              * Never interferes with synthetic battle state or COLL values. */
-            const u32 audit_color = !replay_ok ? 0xff4a3ed2u :
+            /* Unique colors, disjoint from hero, guard, enemy and win
+             * evidence palettes used by Stage223–227 guest classifiers. */
+            const u32 audit_color = !replay_ok ? 0xff3838ffu :
                 replay.count >= FOJ_REPLAY_MAX_INPUTS ?
-                    0xff54aef8u : 0xff8fd126u;
+                    0xff2ab6ffu : 0xff44e630u;
             const int pixel_stride = (int)(stride_bytes / sizeof(u32));
             for (int iy=12;iy<20;++iy)
                 for (int ix=12;ix<20;++ix)
