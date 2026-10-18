@@ -41,6 +41,7 @@ int main(int argc, char **argv) {
         raw_loaded=foj_local_coll_load_path(local_path,&raw_window);
     unsigned raw_channel=0;
     bool show_raw_window=true;
+    bool show_threat_preview=true;
 
     FojBattle battle;
     foj_battle_init(&battle);
@@ -98,12 +99,16 @@ int main(int argc, char **argv) {
         if (pressed & HidNpadButton_L) raw_channel=(raw_channel+5u)%6u;
         if (pressed & HidNpadButton_R) raw_channel=(raw_channel+1u)%6u;
         if (pressed & HidNpadButton_ZL) show_raw_window=!show_raw_window;
+        /* Right-stick click toggles only presentation, not battle inputs. */
+        if (pressed & HidNpadButton_StickR)
+            show_threat_preview=!show_threat_preview;
 
         u32 stride_bytes = 0;
         u32 *pixels = (u32 *)framebufferBegin(&framebuffer, &stride_bytes);
         if (pixels) {
-            foj_iso_render_battle(&battle, (uint32_t *)pixels, FB_WIDTH, FB_HEIGHT,
-                           (int)(stride_bytes / sizeof(u32)));
+            foj_iso_render_battle_options(&battle, (uint32_t *)pixels,
+                FB_WIDTH, FB_HEIGHT,
+                (int)(stride_bytes / sizeof(u32)),show_threat_preview);
             if (raw_loaded && show_raw_window)
                 (void)foj_coll_battle_overlay(
                     &raw_window,(uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,
