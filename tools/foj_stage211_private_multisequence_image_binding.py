@@ -16,7 +16,9 @@ import stat
 import sys
 
 from tools.foj_stage196_private_pose_observations import private_read,rejected,only_keys
-from tools.foj_stage199_private_multiwindow import _read as read_windows,SCHEMA as WINDOWS_SCHEMA
+from tools.foj_stage199_private_multiwindow import (
+    _read as read_windows,SCHEMA as WINDOWS_SCHEMA,INDEPENDENCE
+)
 from tools.foj_stage204_private_frame_landmarks import inspect_landmarks,read_bindings
 from tools.foj_stage205_private_source_png import inspect_sources
 
@@ -42,6 +44,9 @@ def verify(observations,config):
         "schema","motion_independence_declaration","observations"
     })
     if observations["schema"]!=WINDOWS_SCHEMA:
+        raise rejected()
+    declaration=observations["motion_independence_declaration"]
+    if type(declaration) is not str or declaration not in INDEPENDENCE:
         raise rejected()
     windows=observations["observations"]
     only_keys(config,{"schema","windows"})
