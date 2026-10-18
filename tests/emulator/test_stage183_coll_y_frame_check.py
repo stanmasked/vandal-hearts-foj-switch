@@ -27,6 +27,12 @@ class TestCollModeRoundtrip(unittest.TestCase):
         self.ri = self.p / "ref-iso.png"
         heat = Image.new("RGB", (1280, 720), (17, 22, 34))
         iso = Image.new("RGB", (1280, 720), (16, 22, 35))
+        # A real mode change affects the map geometry, not just
+        # background RGB by 1. Model a large mode-specific data region.
+        ImageDraw.Draw(heat).rectangle(
+            (90, 85, 350, 250), fill=(52, 97, 151))
+        ImageDraw.Draw(iso).rectangle(
+            (90, 85, 350, 250), fill=(161, 100, 72))
         for img, cursor in ((heat, (255, 232, 140)),
                             (iso, (255, 224, 118))):
             draw = ImageDraw.Draw(img)
