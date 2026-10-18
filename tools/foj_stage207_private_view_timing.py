@@ -49,9 +49,7 @@ def transform_fit(reference,experimental,*,mirror=False):
         u=(dot*a-cross*b)/den
         v=(cross*a+dot*b)/den
         errors+=(u-x)**2+(v-y)**2
-    rms=math.sqrt(max(0.,errors/len(ref)))/ref_radius if False else (
-        math.sqrt(max(0.,errors/len(reference)))/ref_radius
-    )
+    rms=math.sqrt(max(0.,errors/len(reference)))/ref_radius
     if not math.isfinite(rms):
         raise rejected()
     return rms,scale,angle
@@ -66,8 +64,8 @@ def roll_span(angles):
     if not angles:
         raise rejected()
     ordered=sorted((x%(2*math.pi)) for x in angles)
-    gaps=[(ordered[(i+1)%len(ordered)]-ordered[i])%(2*math.pi)
-          for i in range(len(ordered))]
+    gaps=[b-a for a,b in zip(ordered,ordered[1:])]
+    gaps.append(ordered[0]+2*math.pi-ordered[-1])
     return (2*math.pi-max(gaps))*RAD
 
 
