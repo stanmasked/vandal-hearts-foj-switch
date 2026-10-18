@@ -21,7 +21,7 @@ SKIN_SRC := switch/source/skinning_main.c core/skeletal_skin.c core/banim_core.c
 BANIM_SRC := switch/source/banim_main.c core/banim_core.c
 OBJ_SRC := switch/source/obj_main.c core/obj_wireframe.c
 DDS_SRC := switch/source/dds_main.c core/dds_texture.c
-COLL_SRC := switch/source/coll_main.c core/coll_grid.c core/coll_view.c
+COLL_SRC := switch/source/coll_main.c core/coll_grid.c core/coll_view.c core/coll_iso_view.c
 ISO_SRC := switch/source/iso_main.c core/tactical_demo.c core/isometric_demo.c
 SRC := switch/source/main.c core/tactical_demo.c
 HDR := core/tactical_demo.h
@@ -55,7 +55,7 @@ $(ISO_TARGET).nacp: | build
 $(ISO_TARGET).nro: $(ISO_TARGET).elf $(ISO_TARGET).nacp
 	$(ELF2NRO) $< $@ --nacp=$(ISO_TARGET).nacp
 
-$(COLL_TARGET).elf: $(COLL_SRC) core/coll_grid.h core/coll_view.h | build
+$(COLL_TARGET).elf: $(COLL_SRC) core/coll_grid.h core/coll_view.h core/coll_iso_view.h | build
 	$(CC) $(CFLAGS) $(LDFLAGS) $(COLL_SRC) -o $@ -lnx -lm
 
 $(COLL_TARGET).nacp: | build
