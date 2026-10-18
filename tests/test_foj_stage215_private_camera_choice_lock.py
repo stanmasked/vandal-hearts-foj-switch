@@ -112,12 +112,18 @@ class Stage215PrivateLockTests(unittest.TestCase):
             assets,cameras=self.setup_views(root)
             lock=root/"private-lock.json"
             lock_choice(cameras,1,lock)
+            final=root/"original-locked-research"
+            conduct(*assets,final,camera_yaw=-.65,camera_pitch=.4,
+                    camera_zoom=.86)
             index=cameras/"private-camera-view-index.json"
             content=json.loads(index.read_text())
             content["view_order"][1]["yaw_radians"]=-.35
             index.write_text(json.dumps(content))
+            # A PNG cannot independently certify a physical camera
+            # orientation. Comparing the manifest against the
+            # PREVIOUSLY LOCKED camera does detect the substitution.
             with self.assertRaises(ValueError):
-                preview_witness(cameras,1)
+                verify_choice(cameras,lock,final)
 
     def test_no_lock_overwrite_and_invalid_view_index(self):
         with tempfile.TemporaryDirectory() as d:
