@@ -201,7 +201,9 @@ def observations_if_any(path:Path|None,folder:Path):
 def conduct(rig:Path,primary:Path,secondary:Path|None,
             output:Path,*,observations:Path|None=None,
             multiwindow:Path|None=None,
-            frame_bindings:Path|None=None):
+            frame_bindings:Path|None=None,
+            source_png_manifest:Path|None=None,
+            source_png_dir:Path|None=None):
     safe_destination(output)
     # Strictly bounded source reads and independent source-coordinate
     # research math happen BEFORE creating ANY private output.
@@ -227,6 +229,16 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
         )
         validate_bindings(read_bindings(frame_bindings),
                           len(bound_annotations["frames"]))
+    if (source_png_manifest is None)!=(source_png_dir is None):
+        raise ValueError("Source PNG manifest and source directory must be paired")
+    if source_png_manifest is not None and observations is None:
+        raise ValueError("Source PNG binding requires source observations")
+    source_doc=None
+    if source_png_manifest is not None:
+        from tools.foj_stage205_private_source_png import inspect_sources
+        source_doc=private_read(source_png_manifest)
+        # Validate BEFORE creating any owner-private output directory.
+        inspect_sources(bound_annotations,source_doc,source_png_dir)
     if multiwindow is not None:
         evaluate(multi_read(multiwindow))
     old_umask=os.umask(0o077)
@@ -263,6 +275,24 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
         protected_json(output/"private-pose-envelope.json",envelope)
         protected_json(output/"private-render-evidence.json",frame_report)
         observed=observations_if_any(observations,output)
+        if source_doc is None:
+            source_bind={
+                "source_png_captures_content_bound":False,
+                "source_png_original_ps3_gameplay_authenticated":False,
+            }
+        else:
+            from tools.foj_stage205_private_source_png import inspect_sources
+            # Check source images again after native rendering to catch
+            # replacement during the local evidence operation.
+            source_audit=inspect_sources(
+                bound_annotations,source_doc,source_png_dir
+            )
+            protected_json(output/"private-source-png-audit.json",
+                           source_audit)
+            source_bind={
+                "source_png_captures_content_bound":True,
+                "source_png_original_ps3_gameplay_authenticated":False,
+            }
         if frame_bindings is None:
             bound={
                 "research_landmarks_bound_to_native_frames":False,
@@ -310,6 +340,7 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
             "secondary_motion_observed_in_private_frames":
                 frame_report["secondary_fade_motion_observed"],
             **observed,
+            **source_bind,
             **bound,
             **multi,
             "asset_identity_authenticated_as_original_ps3":False,
@@ -346,12 +377,16 @@ def main(argv=None):
     parser.add_argument("--observations",type=Path)
     parser.add_argument("--multiwindow",type=Path)
     parser.add_argument("--frame-bindings",type=Path)
+    parser.add_argument("--source-png-manifest",type=Path)
+    parser.add_argument("--source-png-dir",type=Path)
     args=parser.parse_args(argv)
     try:
         result=conduct(
             args.rig,args.primary,args.secondary,args.output_root,
             observations=args.observations,multiwindow=args.multiwindow,
             frame_bindings=args.frame_bindings,
+            source_png_manifest=args.source_png_manifest,
+            source_png_dir=args.source_png_dir,
         )
     except (OSError,ValueError,TypeError,RuntimeError,
             subprocess.SubprocessError,OverflowError,IndexError,
