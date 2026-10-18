@@ -81,12 +81,45 @@ static void test_cursor_clamps_to_board(void) {
     assert(!foj_in_bounds(FOJ_WIDTH, 0));
 }
 
+static void test_deterministic_bounded_route_preview(void) {
+    FojDemo s;
+    foj_demo_init(&s);
+    FojRoute route;
+    assert(foj_demo_preview_route(&s, 3, 2, &route));
+    assert(route.count == 3);
+    assert(route.x[0] == 1 && route.y[0] == 2);
+    assert(route.x[1] == 2 && route.y[1] == 2);
+    assert(route.x[2] == 3 && route.y[2] == 2);
+
+    /* Two equal-cost paths: backtracking north-first is deterministic. */
+    assert(foj_demo_preview_route(&s, 0, 3, &route));
+    assert(route.count == 3);
+    assert(route.x[1] == 0 && route.y[1] == 2);
+    assert(route.x[2] == 0 && route.y[2] == 3);
+
+    assert(!foj_demo_preview_route(&s, 6, 3, &route)); /* enemy */
+    assert(route.count == 0);
+    assert(!foj_demo_preview_route(&s, 2, 1, &route)); /* blocked */
+    assert(!foj_demo_preview_route(&s, 1, 2, &route)); /* no movement */
+    assert(!foj_demo_preview_route(&s, -1, 0, &route));
+    assert(!foj_demo_preview_route(&s, 100, 1, &route));
+    assert(!foj_demo_preview_route(&s, 7, 5, &route)); /* > budget */
+    assert(!foj_demo_preview_route(NULL, 3, 2, &route));
+    assert(!foj_demo_preview_route(&s, 3, 2, NULL));
+
+    s.cells[2][2].elevation = 3; /* impossible cliff into plateau */
+    assert(!foj_demo_preview_route(&s, 3, 2, &route));
+    assert(route.count == 0);
+    assert(s.hero_x == 1 && s.hero_y == 2);
+}
+
 int main(void) {
     test_initial_state_and_reachability();
     test_selection_move_and_cancel();
     test_reject_blocked_enemy_and_far_move();
     test_cliffs_and_no_selection();
     test_cursor_clamps_to_board();
-    puts("Synthetic tactics tests passed (five scenarios)");
+    test_deterministic_bounded_route_preview();
+    puts("Synthetic tactics tests passed (six scenarios)");
     return 0;
 }
