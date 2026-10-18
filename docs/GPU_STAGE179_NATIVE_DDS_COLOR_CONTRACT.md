@@ -17,7 +17,9 @@ does not write a file. If validation fails, it returns nonzero and
 emits no pixel bytes.
 
 Tests compare native output byte-for-byte against the independently
-generated Python payload, for **both distinct material slots**.
+generated Python payload, for **both distinct material slots**. An
+additional independent reference reconstructs the entire 64-texel
+2×2 checkerboard from fixed RGBA palette constants.
 They also transform each texture into a valid BGRA8-ordered DDS and
 verify the C decoder restores precisely the same canonical RGBA8
 output. Invalid magic, short/trailing payload, invalid channel
@@ -29,7 +31,7 @@ Run on a host with a C11 compiler:
     python3 -m unittest discover -s tests \
       -p 'test_foj_stage179_native_dds_color_contract.py' -v
 
-The normal Research tests matrix runs these five tests on Python 3.11
+The normal Research tests matrix runs these six tests on Python 3.11
 and 3.13. The native research build workflow explicitly repeats the
 same test after SDK NRO/DKSH compilation.
 
