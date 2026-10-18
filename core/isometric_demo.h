@@ -20,5 +20,14 @@ void foj_iso_render_battle_options(const FojBattle *battle, uint32_t *pixels,
                                    int width, int height, int stride_pixels,
                                    bool show_threat_preview);
 
+/* Optional cached rendering path used by the native isometric guest.
+ * NULL cache retains the previous behavior; render output is identical. */
+void foj_iso_render_battle_cached_options(const FojBattle *battle,
+                                          uint32_t *pixels,
+                                          int width, int height,
+                                          int stride_pixels,
+                                          bool show_threat_preview,
+                                          FojBattleThreatCache *cache);
+
 
 #endif
