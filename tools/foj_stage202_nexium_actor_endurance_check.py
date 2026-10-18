@@ -11,7 +11,6 @@ import argparse
 import json
 import math
 from pathlib import Path
-from tools.foj_stage201_nexium_sd_actor_frame_check import inspect_image
 
 SCHEMA="foj.stage202.generated_sd_actor_endurance.v1"
 
@@ -132,6 +131,9 @@ def check_records(records, rss, cycles):
 
 
 def verify(folder:Path, cycles:int=6):
+    # Import Pillow only when processing actual emulator screenshots. Native
+    # host unit tests use the pure check_records() function without Pillow.
+    from tools.foj_stage201_nexium_sd_actor_frame_check import inspect_image
     names=labels(cycles)
     found={name:inspect_image(folder/f"endurance-{name}.png")
            for name in names}
