@@ -57,6 +57,7 @@ map object placement, original combat behavior, original terrain
 semantics or a playable PS3 conversion. Attribution of file provenance
 remains a separate, owner-private evidentiary task.
 
-Stage218 is stacked on Stage217 Draft PR #101. Merge Stage217 after its
-final CI passes, then retarget Stage218 to `main`, rerun independent
-checks and merge only when successful.
+Stage217 PR #101 has passed its CI and merged to `main` in commit
+`e63281450a6ce2fb322fdf920230efffc6c9eb50`. Stage218 now targets
+`main` and requires separate Python 3.11/3.13, strict C11 and Switch
+NRO checks before merging.
