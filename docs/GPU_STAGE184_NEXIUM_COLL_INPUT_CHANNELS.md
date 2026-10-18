@@ -33,13 +33,19 @@ fallback data. Eight new PNG references are created in CI.
 `tools/foj_stage184_coll_input_check.py` checks each of the eight
 **real NeXium guest PNG captures** against the corresponding C
 reference, locating the persistent red synthetic-data marker
-to account for window-border offsets. It samples hundreds of
-**non-background map pixels at known locations**, not just aggregate
-RGB counts, and requires substantial guest frame changes after
+to recover the viewport translation **and nearest-neighbor scale**.
+The first NeXium run exposed a ~96.3% framebuffer resize to leave
+room for the emulator's bottom status bar: the unscaled host C image
+and the real guest pixels cannot be compared at identical coordinates.
+The revised verifier uses the known 27-pixel-wide synthetic status
+rectangle to recover scale, then checks hundreds of source-derived
+**interior map pixels at corresponding transformed locations**, not
+just aggregate RGB counts. It keeps strict colors and requires
+substantial guest frame changes after
 presses. The sixth R press must restore channel 0 with the cursor
 and zoom preserved.
 
-Six invented-only regressions reject unresponsive controls,
+Seven invented-only regressions (including a scaled-window case) reject unresponsive controls,
 a wrong channel, missing synthetic status, a failed wrap or
 mismatched reference dimensions. These tests are not a substitute
 for the actual emulator guest run.
