@@ -76,6 +76,20 @@ typedef struct {
 bool foj_battle_forecast_attack(const FojBattle *battle,
                                 FojHeroAttackForecast *forecast);
 
+/* While A has selected the hero, preview each legal movement target by
+ * simulating the exact NEXT enemy turn on a temporary battle copy.
+ * This shows invented tactical danger only; COLL channels and PS3
+ * combat rules do not enter the calculation. */
+typedef struct {
+    uint8_t can_move[FOJ_HEIGHT][FOJ_WIDTH];
+    uint8_t incoming_damage[FOJ_HEIGHT][FOJ_WIDTH];
+    uint8_t enemy_x_after[FOJ_HEIGHT][FOJ_WIDTH];
+    uint8_t enemy_y_after[FOJ_HEIGHT][FOJ_WIDTH];
+} FojBattleThreatPreview;
+
+bool foj_battle_preview_movement_threat(const FojBattle *battle,
+                                       FojBattleThreatPreview *preview);
+
 void foj_battle_init(FojBattle *battle);
 void foj_battle_move_cursor(FojBattle *battle, int dx, int dy);
 FojBattleEvent foj_battle_confirm(FojBattle *battle);

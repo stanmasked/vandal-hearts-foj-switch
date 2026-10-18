@@ -227,6 +227,34 @@ static void test_movement_undo_marker_vanishes_after_B(void) {
     free(pixels);
 }
 
+static void test_selected_movement_threat_markers_and_cleanup(void) {
+    enum { WIDTH=1280, HEIGHT=720 };
+    uint32_t *pixels=calloc((size_t)WIDTH*HEIGHT,sizeof(*pixels));
+    assert(pixels);
+    FojBattle battle;
+    foj_battle_init(&battle);
+    assert(foj_battle_confirm(&battle)==FOJ_BATTLE_SELECTED);
+    const FojBattle before=battle;
+    foj_iso_render_battle(&battle,pixels,WIDTH,HEIGHT,WIDTH);
+    assert(memcmp(&before,&battle,sizeof(battle))==0);
+    int sx,sy;
+    foj_iso_project(WIDTH,HEIGHT,2,2,battle.map.cells[2][2].elevation,
+                    &sx,&sy);
+    const size_t safe=(size_t)(sy+11)*WIDTH+(size_t)(sx+13);
+    assert(pixels[safe]==UINT32_C(0xff829e3b));
+    foj_iso_project(WIDTH,HEIGHT,5,2,battle.map.cells[2][5].elevation,
+                    &sx,&sy);
+    const size_t atRisk=(size_t)(sy+11)*WIDTH+(size_t)(sx+9);
+    const size_t secondDamage=(size_t)(sy+11)*WIDTH+(size_t)(sx+15);
+    assert(pixels[atRisk]==UINT32_C(0xff508df4));
+    assert(pixels[secondDamage]==UINT32_C(0xff508df4));
+    assert(foj_battle_cancel(&battle)==FOJ_BATTLE_CANCELED);
+    foj_iso_render_battle(&battle,pixels,WIDTH,HEIGHT,WIDTH);
+    assert(pixels[safe]!=UINT32_C(0xff829e3b));
+    assert(pixels[atRisk]!=UINT32_C(0xff508df4));
+    free(pixels);
+}
+
 int main(void) {
     test_projection();
     test_render_and_reachable_highlights();
@@ -237,6 +265,7 @@ int main(void) {
     test_guard_indicator_and_cleanup_after_enemy_turn();
     test_hero_attack_forecast_ring_and_guard_conflict();
     test_movement_undo_marker_vanishes_after_B();
-    puts("Synthetic isometric renderer checks passed (nine scenarios)");
+    test_selected_movement_threat_markers_and_cleanup();
+    puts("Synthetic isometric renderer checks passed (ten scenarios)");
     return 0;
 }
