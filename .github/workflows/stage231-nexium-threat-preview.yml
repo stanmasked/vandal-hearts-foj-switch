@@ -41,7 +41,7 @@ jobs:
       - name: Publish generated-only guest executable
         uses: actions/upload-artifact@v4
         with:
-          name: foj-stage231-synthetic-replay-meter-nro
+          name: foj-stage231-synthetic-threat-nro
           path: build/foj-isometric-research.nro
           if-no-files-found: error
 
@@ -54,7 +54,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: foj-stage231-synthetic-replay-meter-nro
+          name: foj-stage231-synthetic-threat-nro
           path: nros
       - name: Install headless Vulkan and screenshot dependencies
         shell: bash
@@ -93,7 +93,7 @@ jobs:
           set -euo pipefail
           python3 -m unittest discover -s tests/emulator \
             -p 'test_stage231_threat_guest_check.py' -v
-      - name: Launch and press A then B then alternate A in actual guest
+      - name: Capture actual danger indicators in normal and guarded NeXium runs
         shell: bash
         run: |
           set -euo pipefail
@@ -110,7 +110,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m tools.foj_stage231_meter_guest_check \
+          python3 -m tools.foj_stage231_threat_guest_check \
             --initial runtime-evidence/threat-initial.png \
             --selected runtime-evidence/threat-selected.png \
             --cursor runtime-evidence/threat-cursor.png \
@@ -121,6 +121,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: foj-stage231-nexium-replay-meter-evidence
+          name: foj-stage231-nexium-threat-preview-evidence
           path: runtime-evidence/
           if-no-files-found: warn
