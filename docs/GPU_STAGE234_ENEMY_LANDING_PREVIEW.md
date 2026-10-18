@@ -31,10 +31,11 @@ risk display, and ensures moving the cursor to a blocked tile and
 cancelling selection remove the marker. Existing enemy forecast,
 hero HP/guard, replay meter and NeXium tests remain active.
 
-Stage234 is stacked on Stage233 PR #117. Stage233 must pass full
-independent real-NeXium and host CI and merge into `main` first.
-Then Stage234 must target `main` and pass a fresh independent
-full CI matrix before merging.
+Stage233 PR #117 passed Python 3.11/3.13, actual NeXium and COLL
+regressions, and merged into `main` at
+`3709d58ddfeb8e8c0df8bc04b99265f5ca8d7257`. Stage234 now
+targets `main` and must pass its own fresh full host, devkitA64,
+isometric-image and NeXium CI before merging.
 
 No original PS3 assets, proprietary map data, or physical Nintendo
 Switch gameplay are used or verified.
