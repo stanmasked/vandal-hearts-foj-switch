@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from tools.foj_stage165_sd_bundle import INPUTS, publish_bundle
 from tools.foj_stage166_hardware_observations import blank_template
@@ -164,6 +165,26 @@ class Stage175DownloadedArtifactTests(unittest.TestCase):
             directory.symlink_to(saved, target_is_directory=True)
             with self.assertRaises(ValueError):
                 verify_download(root, COMMIT, RUN)
+
+    def test_final_receipt_re_read_detects_late_change(self):
+        temp, root = self.prepare()
+        with temp:
+            from tools import foj_stage175_downloaded_artifact_audit as audit
+            original = audit._read_json
+            calls = [0]
+
+            def substituted(directory, relative):
+                value = original(directory, relative)
+                if relative == STAGE175:
+                    calls[0] += 1
+                    if calls[0] == 2:
+                        return dict(value, provenance="altered-between-passes")
+                return value
+
+            with patch.object(audit, "_read_json", side_effect=substituted):
+                with self.assertRaises(ValueError):
+                    audit.verify_download(root, COMMIT, RUN)
+            self.assertEqual(calls[0], 2)
 
     def test_existing_stage175_manifest_cannot_be_overwritten(self):
         temp, root = self.prepare()
