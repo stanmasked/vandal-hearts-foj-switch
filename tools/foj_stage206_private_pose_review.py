@@ -9,6 +9,7 @@ correct anatomical correspondence. Never upload generated overlays.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -20,10 +21,11 @@ from tools.foj_stage196_private_pose_observations import (
     align_observations,private_read,rejected
 )
 from tools.foj_stage203_private_actor_evidence import (
-    HEADER,W,H,IMAGE_BYTES
+    HEADER,W,H,IMAGE_BYTES,safe_destination
 )
 from tools.foj_stage204_private_frame_landmarks import (
-    inspect_landmarks,read_bindings,read_wire_frame,validate_bindings
+    inspect_landmarks,nearest_wire_distance,read_bindings,
+    read_wire_frame,validate_bindings
 )
 from tools.foj_stage205_private_source_png import (
     SIGNATURE,png_bytes,png_info,inspect_sources,file_name
@@ -175,11 +177,7 @@ def exclusive_write(path:Path,data:bytes):
 
 def create_review(observations,source_manifest,source_dir,
                   bindings,private_research_dir,output_root):
-    if output_root.exists() or output_root.is_symlink():
-        raise rejected()
-    if (not output_root.parent.is_dir() or
-        output_root.parent.is_symlink()):
-        raise rejected()
+    safe_destination(output_root)
     # Require both independent upstream checks before writing anything.
     source=inspect_sources(observations,source_manifest,source_dir)
     research=inspect_landmarks(
@@ -203,11 +201,15 @@ def create_review(observations,source_manifest,source_dir,
         created=True
         for i,(row,label) in enumerate(zip(rows,labels,strict=True)):
             src_data=png_bytes(source_dir/file_name(i))
+            if hashlib.sha256(src_data).hexdigest()!=source_manifest["frames"][i]["sha256"]:
+                raise rejected()
             original=png_image(src_data)
             research_pixels=read_wire_frame(
                 private_research_dir/(label+".ppm")
             )
             experimental=ppm_image(HEADER+research_pixels)
+            for point in row["landmarks"]:
+                nearest_wire_distance(research_pixels,point["experimental_xy"])
             marked={item["id"]:item for item in row["landmarks"]}
             for j,name in enumerate(names,1):
                 point=marked[name]
@@ -228,6 +230,10 @@ def create_review(observations,source_manifest,source_dir,
                 "source_resolution":[original[0],original[1]],
                 "research_resolution":[W,H],
             })
+        # Revalidate image and research-frame inputs after rendering to
+        # reject replacements during the local offline process.
+        inspect_sources(observations,source_manifest,source_dir)
+        inspect_landmarks(observations,bindings,private_research_dir)
         # Source landmark ID/numerical label key is private; don't print it.
         exclusive_write(
             output_root/"PRIVATE_landmark_number_key.json",
