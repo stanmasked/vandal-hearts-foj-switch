@@ -110,7 +110,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m tools.foj_stage233_threat_toggle_guest_check \
+          python3 -m tools.foj_stage235_landing_guest_check \
             --initial runtime-evidence/landing-initial.png \
             --selected runtime-evidence/landing-selected.png \
             --hovered runtime-evidence/landing-hovered.png \
