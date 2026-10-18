@@ -49,7 +49,8 @@ static void draw_scene(const FojBattle *battle, FojBattleEvent action) {
             if (state->cells[y][x].blocked) tile = '#';
             if (state->selected && reach[y][x] != FOJ_UNREACHABLE &&
                 !(x == state->hero_x && y == state->hero_y)) tile = '+';
-            if (x == state->enemy_x && y == state->enemy_y) tile = 'E';
+            if (battle->enemy_hp > 0 &&
+                x == state->enemy_x && y == state->enemy_y) tile = 'E';
             if (x == state->hero_x && y == state->hero_y) tile = 'H';
             printf("%c%c ", tile,
                    x == state->cursor_x && y == state->cursor_y ? '<' : ' ');
