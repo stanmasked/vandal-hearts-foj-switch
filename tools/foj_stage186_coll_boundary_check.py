@@ -57,8 +57,22 @@ def small_tile_source_agreement(frame, ref) -> tuple[float, int]:
             if gx < 0 or gy < 0 or gx >= frame.width or gy >= frame.height:
                 continue
             eligible += 1
-            seen = actual[gx, gy]
-            if max(abs(color[c] - seen[c]) for c in range(3)) <= 3:
+            # A nominal 4px source cell becomes ~3.85px after NeXium
+            # nearest-neighbor viewport scaling. Rounding can move its
+            # interior color one physical pixel; require a matching pixel
+            # within that one-pixel window, never search across tiles.
+            found = False
+            for oy in (-1, 0, 1):
+                for ox in (-1, 0, 1):
+                    xx, yy = gx + ox, gy + oy
+                    if 0 <= xx < frame.width and 0 <= yy < frame.height:
+                        seen = actual[xx, yy]
+                        if max(abs(color[c] - seen[c]) for c in range(3)) <= 3:
+                            found = True
+                            break
+                if found:
+                    break
+            if found:
                 agreed += 1
     if eligible < 150:
         raise ValueError("Too few valid non-background COLL cell pixels at boundary")
