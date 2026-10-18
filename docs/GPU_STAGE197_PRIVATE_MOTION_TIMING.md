@@ -40,8 +40,9 @@ The output distinguishes:
   boundary, residual is acceptable, uncertainty is small, and held-out
   frames improve relative to zero shift.
 - `no_clear_shift`: best shift is within one search step of zero.
-- `ambiguous`: boundary, declared timing uncertainty or a distinct
-  competing shift makes the estimate unreliable.
+- `ambiguous`: search boundary, declared timing uncertainty, absent
+  operator capture declaration, or a distinct competing shift makes
+  the estimate unreliable.
 - `unresolved_shape_disagreement`: even the best aligned shape
   differs too much under this experimental model.
 
