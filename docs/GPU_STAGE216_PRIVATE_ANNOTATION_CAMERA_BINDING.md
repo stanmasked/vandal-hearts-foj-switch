@@ -54,7 +54,9 @@ All images, source PNG hashes and human-made coordinates stay private.
   and correspondence geometry; changed/missing Stage205 source PNGs.
 - Operator metadata that does not declare both capture sequences recorded.
 - Pre-existing output receipt, malformed input schemas and symlinked
-  private JSON input files, including a symlinked receipt.
+  private JSON input files, including a symlinked receipt. Input digests
+  are read from a single no-follow descriptor, avoiding a separate
+  pathname lookup after checking the file type.
 - Any mutation of the receipt's raw bytes during verification, including
   semantically equivalent JSON formatting changes.
 
@@ -73,5 +75,6 @@ pixels, and generates invented source PNG files. It covers success,
 edited observations and frame labels, modified source PNG bytes,
 missing source frames, absent operator capture declarations, receipt
 overwrite prevention, receipt symlink substitution, mutation during
-verification, and stdout/stderr secrecy. It requires no original
+verification, descriptor-pinned digest reading and symlink rejection,
+and stdout/stderr secrecy. It requires no original
 PS3 media or private paths in the GitHub repository.
