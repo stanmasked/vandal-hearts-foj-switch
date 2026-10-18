@@ -23,11 +23,11 @@ controller events using keyboard defaults confirmed in the emulator's
 All six PNGs are imported from the running guest application window.
 Nothing is replaced by a host reference image. The verifier checks the
 invented CPU framebuffer's specific red enemy, blue hero, background
-and green victory-indicator palettes. It requires observable enemy HP
-loss after first X, hero HP loss after second Y, removal of the enemy
+and green victory-indicator palettes. It requires observable hero HP loss after both Y turns, enemy HP
+loss after first X without hero self-damage, removal of the enemy
 sprite, a victory banner and unchanged combat evidence after terminal Y.
 
-Nine independent generated-only fixture scenarios cover success and
+Eleven independent generated-only fixture scenarios cover success and
 false-positive rejection for absent attacks, absent damage, fake or
 missing victory, enemy still visible, changes after terminal Y, blank
 or mismatched guest frames. Artifacts include guest screenshots,
