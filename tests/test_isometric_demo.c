@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "tactical_demo.h"
 #include "isometric_demo.h"
@@ -178,6 +179,31 @@ static void test_guard_indicator_and_cleanup_after_enemy_turn(void) {
     free(pixels);
 }
 
+static void test_hero_attack_forecast_ring_and_guard_conflict(void) {
+    enum { WIDTH=1280, HEIGHT=720 };
+    const size_t count=(size_t)WIDTH*HEIGHT;
+    uint32_t *pixels=calloc(count,sizeof(*pixels));
+    assert(pixels);
+    FojBattle battle;
+    foj_battle_init(&battle);
+    battle.map.hero_x=5; battle.map.hero_y=2;
+    battle.map.enemy_x=6; battle.map.enemy_y=2;
+    battle.map.cursor_x=6; battle.map.cursor_y=2;
+    int sx,sy;
+    foj_iso_project(WIDTH,HEIGHT,battle.map.enemy_x,battle.map.enemy_y,
+                    battle.map.cells[battle.map.enemy_y][battle.map.enemy_x].elevation,
+                    &sx,&sy);
+    const size_t marker=(size_t)(sy-11)*WIDTH+(size_t)(sx+17);
+    const FojBattle before=battle;
+    foj_iso_render_battle(&battle,pixels,WIDTH,HEIGHT,WIDTH);
+    assert(pixels[marker]==UINT32_C(0xff5bd6f4));
+    assert(memcmp(&before,&battle,sizeof(battle))==0);
+    assert(foj_battle_guard(&battle)==FOJ_BATTLE_GUARDED);
+    foj_iso_render_battle(&battle,pixels,WIDTH,HEIGHT,WIDTH);
+    assert(pixels[marker]!=UINT32_C(0xff5bd6f4));
+    free(pixels);
+}
+
 int main(void) {
     test_projection();
     test_render_and_reachable_highlights();
@@ -186,6 +212,7 @@ int main(void) {
     test_battle_health_overlay_and_result_banner();
     test_enemy_forecast_marker_and_attack_warning();
     test_guard_indicator_and_cleanup_after_enemy_turn();
-    puts("Synthetic isometric renderer checks passed (seven scenarios)");
+    test_hero_attack_forecast_ring_and_guard_conflict();
+    puts("Synthetic isometric renderer checks passed (eight scenarios)");
     return 0;
 }
