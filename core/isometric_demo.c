@@ -189,7 +189,13 @@ void foj_iso_render_battle(const FojBattle *battle, uint32_t *pixels,
                            int width, int height, int stride_pixels) {
     if (!battle || !pixels || width <= 0 || height <= 0 ||
         stride_pixels < width) return;
-    foj_iso_render(&battle->map, pixels, width, height, stride_pixels);
+    FojDemo visual = battle->map;
+    if (battle->enemy_hp == 0) {
+        /* Hide the defeated synthetic enemy token on the final screen. */
+        visual.enemy_x = -1;
+        visual.enemy_y = -1;
+    }
+    foj_iso_render(&visual, pixels, width, height, stride_pixels);
     Canvas canvas = {pixels, width, height, stride_pixels};
     int x, y;
     if (foj_in_bounds(battle->map.hero_x, battle->map.hero_y)) {
@@ -199,7 +205,8 @@ void foj_iso_render_battle(const FojBattle *battle, uint32_t *pixels,
         hp_bar(&canvas, x, y, battle->hero_hp, FOJ_BATTLE_HERO_MAX_HP,
                rgb(95, 193, 244));
     }
-    if (foj_in_bounds(battle->map.enemy_x, battle->map.enemy_y)) {
+    if (battle->enemy_hp > 0 &&
+        foj_in_bounds(battle->map.enemy_x, battle->map.enemy_y)) {
         foj_iso_project(width, height, battle->map.enemy_x, battle->map.enemy_y,
             battle->map.cells[battle->map.enemy_y][battle->map.enemy_x].elevation,
             &x, &y);
