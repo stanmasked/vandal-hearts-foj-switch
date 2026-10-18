@@ -110,7 +110,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m tools.foj_stage226_undo_guest_check \
+          python3 -m tools.foj_stage227_victory_guest_check \
             --initial runtime-evidence/battle-initial.png \
             --after-turn1 runtime-evidence/battle-turn1.png \
             --after-hit1 runtime-evidence/battle-hit1.png \
