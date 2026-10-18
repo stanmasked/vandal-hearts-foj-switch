@@ -8,13 +8,14 @@ from pathlib import Path
 import stat
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from tools.foj_stage201_generated_sd import generated_actors
 from tools.foj_stage203_private_actor_evidence import conduct,HEADER
 from tools.foj_stage214_private_multicamera_preview import preview
 from tools.foj_stage215_private_camera_choice_lock import (
     SCHEMA,REPORT,camera_index,preview_witness,lock_choice,
-    verify_choice,main
+    verify_choice,staged_source_witness,main
 )
 
 
@@ -115,6 +116,43 @@ class Stage215PrivateLockTests(unittest.TestCase):
             second.unlink()
             with self.assertRaises(ValueError):
                 verify_choice(cameras,lock,final)
+
+    def test_staged_asset_hashes_read_from_one_no_follow_descriptor(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            staged=root/"private-switch-sd"/"switch/foj"
+            (staged/"rig").mkdir(parents=True)
+            (staged/"anims").mkdir()
+            (staged/"rig/preview.fojrm").write_bytes(b"local-synthetic-rig")
+            (staged/"anims/preview.banim").write_bytes(
+                b"local-synthetic-animation"
+            )
+            with patch.object(Path,"read_bytes",side_effect=AssertionError(
+                "source path must not be reopened through Path.read_bytes"
+            )):
+                record=staged_source_witness(root)
+            self.assertEqual(len(record["rig"]),64)
+            self.assertEqual(len(record["primary"]),64)
+            self.assertIsNone(record["secondary"])
+
+    def test_staged_symlink_and_fifo_are_not_accepted(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            staged=root/"private-switch-sd"/"switch/foj"
+            (staged/"rig").mkdir(parents=True)
+            (staged/"anims").mkdir()
+            (staged/"rig/preview.fojrm").write_bytes(b"made-up-rig")
+            primary=staged/"anims/preview.banim"
+            original=staged/"anims/owner-clip.banim"
+            original.write_bytes(b"made-up-primary")
+            primary.symlink_to(original)
+            with self.assertRaises(ValueError):
+                staged_source_witness(root)
+            primary.unlink()
+            if hasattr(__import__("os"),"mkfifo"):
+                __import__("os").mkfifo(primary)
+                with self.assertRaises(ValueError):
+                    staged_source_witness(root)
 
     def test_another_camera_does_not_match_locked_selection(self):
         with tempfile.TemporaryDirectory() as d:
