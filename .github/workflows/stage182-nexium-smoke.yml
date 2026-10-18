@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/stage182-nexium-smoke.yml'
       - 'tools/foj_stage182_nexium_frame_check.py'
+      - 'tests/emulator/**'
       - 'switch/**'
       - 'core/**'
   push:
@@ -86,6 +87,14 @@ jobs:
           test -n "$emu_bin"
           echo "NEXIUM_BIN=$emu_bin" >> "$GITHUB_ENV"
           ldd "$emu_bin" || true
+          mkdir -p runtime-evidence
+          sha256sum /tmp/nexium-linux.tar.gz | awk '{print $1"  nexium-linux-x86_64.tar.gz"}' > runtime-evidence/nexium-archive-sha256.txt
+
+      - name: Regression-test fail-closed guest screenshot classifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator -p 'test_stage182_frame_check.py' -v
 
       - name: Capture guest frames and emulated route selection
         shell: bash
