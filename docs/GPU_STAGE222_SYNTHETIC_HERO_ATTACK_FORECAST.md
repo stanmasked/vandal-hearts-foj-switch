@@ -46,8 +46,8 @@ included in this branch or its CI.
 
 ## Integration gate
 
-Stage222 is stacked after Stage221 PR #105, which follows Stage220
-PR #104. Complete the two predecessor merges first, then retarget
-Stage222 to `main` and require its independent Python 3.11/3.13,
-C/UBSan, NRO and generated image checks before merging. This is an
+Predecessor stages are integrated: Stage220 PR #104 and Stage221
+PR #105 have merged with `main` (Stage221 merge `d00e454b`).
+Stage222 now targets `main` and must pass independent Python 3.11/3.13,
+C/UBSan, NRO, NeXium and generated-image CI on its new head before merging. This is an
 experimental homebrew battle prototype, not a finished game port.
