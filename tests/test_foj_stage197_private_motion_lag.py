@@ -110,9 +110,9 @@ class Stage197PrivateTimingTests(unittest.TestCase):
 
     def test_insufficient_common_window_rejected(self):
         with self.assertRaises(ValueError):
-            compare(fixture(frames=8,max_shift=.2))
+            compare(fixture(frames=8),max_shift=.2)
         with self.assertRaises(ValueError):
-            compare(fixture(frames=10),max_shift=.30,step=.025)
+            compare(fixture(frames=8),max_shift=.30,step=.025)
 
     def test_no_matching_ids_between_frames_rejected(self):
         data=fixture()
