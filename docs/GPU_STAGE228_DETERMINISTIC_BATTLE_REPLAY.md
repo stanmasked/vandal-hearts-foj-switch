@@ -52,8 +52,7 @@ still a synthetic homebrew battle, not a completed remake.
 
 ## Integration gate
 
-Stage227 PR #111 passed CI and merged into main (dbc71eae). Stage228 follows it, and, which supplies independent
-guest-emulator full victory evidence. Merge Stage227 only after all
-latest-head CI succeeds; then retarget this PR to `main` and require
-fresh strict C11/UBSan, Switch NRO, guest NeXium and visual CI before
-merging Stage228.
+Stage227 PR #111 passed all independent checks and merged into `main`
+as commit `dbc71eae92bb80c1553712d20ba3c4e20f474097`. Stage228 now
+targets `main` and requires fresh strict C11/UBSan, Switch NRO,
+NeXium guest and visual checks on this branch before merging.
