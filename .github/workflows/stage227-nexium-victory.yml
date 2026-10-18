@@ -87,7 +87,7 @@ jobs:
             \( -name 'nexium-gui' -o -name 'nexium' \) -print -quit)"
           test -n "$binary"
           echo "NEXIUM_BIN=$binary" >> "$GITHUB_ENV"
-      - name: Regress screenshot verifier against nine synthetic cases
+      - name: Regress screenshot verifier against eleven synthetic cases
         shell: bash
         run: |
           set -euo pipefail
