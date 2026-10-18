@@ -60,9 +60,16 @@ def verify_victory(frames: tuple[Path, ...]) -> dict:
         if counts[i]["enemy"] > 20:
             raise ValueError("Enemy remains visibly alive after victory")
 
-    # Both Y turns must hurt the hero by the same synthetic two-HP hit.
+    # Each Y must visibly hurt the hero, including the first attack
+    # immediately after the approach. X cannot secretly hurt the hero.
+    initial_blue = counts[0]["hero"]
     turn1_blue = counts[1]["hero"]
+    hit1_blue = counts[2]["hero"]
     turn2_blue = counts[3]["hero"]
+    if not 20 <= initial_blue - turn1_blue <= 140:
+        raise ValueError("First actual enemy turn did not reduce blue HP")
+    if abs(turn1_blue - hit1_blue) > 5:
+        raise ValueError("Hero HP changed unexpectedly after own X attack")
     if not 20 <= turn1_blue - turn2_blue <= 140:
         raise ValueError("Second actual enemy turn did not reduce blue HP")
     # Between the two Y turns the X attack must reduce enemy red HP.
@@ -83,6 +90,7 @@ def verify_victory(frames: tuple[Path, ...]) -> dict:
         "frame_size": list(samples[0][0]),
         "actual_guest_screenshots": 6,
         "first_x_hit_reduced_enemy_hp": True,
+        "first_y_hit_reduced_hero_hp": True,
         "second_y_hit_reduced_hero_hp": True,
         "second_x_resulted_in_victory": True,
         "terminal_y_was_rejected": True,
