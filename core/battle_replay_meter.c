@@ -4,7 +4,8 @@
 
 /* Distinct from hero, enemy, guard, warning, win and replay-audit
  * colors so an actual guest screenshot can count controller events. */
-enum { FILLED_RGBA = 0xffe5a139u, EMPTY_RGBA = 0xff393129u };
+static const uint32_t FILLED_RGBA = UINT32_C(0xffe5a139);
+static const uint32_t EMPTY_RGBA = UINT32_C(0xff393129);
 
 bool foj_replay_render_meter(const FojBattleReplay *log,
                              uint32_t *pixels, int width, int height,
