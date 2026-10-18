@@ -12,7 +12,8 @@ controller events using keyboard defaults confirmed in the emulator's
 `controller_config.rs`:
 
 - Starting hero (1,2), enemy (6,3): save an initial screenshot
-- **A, Right×4, A:** move the hero to (5,2)
+- **A, Right×4, A:** move the hero to (5,2); capture
+  `battle-moved.png` before the first enemy attack
 - **Y:** enemy advances adjacent and hits hero; capture `battle-turn1.png`
 - **Right, X:** strike enemy once; capture `battle-hit1.png`
 - **Y:** receive a second enemy attack; capture `battle-turn2.png`
@@ -20,14 +21,16 @@ controller events using keyboard defaults confirmed in the emulator's
 - **Y:** attempt invalid post-victory action; capture
   `battle-terminal-y.png`
 
-All six PNGs are imported from the running guest application window.
+All seven PNGs are imported from the running guest application window.
 Nothing is replaced by a host reference image. The verifier checks the
 invented CPU framebuffer's specific red enemy, blue hero, background
-and green victory-indicator palettes. It requires observable hero HP loss after both Y turns, enemy HP
+and green victory-indicator palettes. It compares the same hero position before and after Y, avoiding a
+false HP difference caused by changing sprite occlusion during movement.
+It requires observable hero HP loss after both Y turns, enemy HP
 loss after first X without hero self-damage, removal of the enemy
 sprite, a victory banner and unchanged combat evidence after terminal Y.
 
-Eleven independent generated-only fixture scenarios cover success and
+Twelve independent generated-only fixture scenarios cover success and
 false-positive rejection for absent attacks, absent damage, fake or
 missing victory, enemy still visible, changes after terminal Y, blank
 or mismatched guest frames. Artifacts include guest screenshots,
