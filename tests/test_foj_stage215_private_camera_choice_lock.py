@@ -62,6 +62,55 @@ class Stage215PrivateLockTests(unittest.TestCase):
             )
             self.assertFalse(ok["original_animation_fidelity_verified"])
 
+    def test_final_staged_rig_tamper_rejected_even_if_ppms_unchanged(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            assets,cameras=self.setup_views(root)
+            lock=root/"private-lock.json"
+            lock_choice(cameras,1,lock)
+            final=root/"correct-final"
+            conduct(*assets,final,camera_yaw=-.65,
+                    camera_pitch=.4,camera_zoom=.86)
+            self.assertTrue(verify_choice(cameras,lock,final)[
+                "owner_private_choice_and_final_native_c_frames_exactly_match"
+            ])
+            rig=final/"private-switch-sd"/"switch/foj/rig/preview.fojrm"
+            changed=bytearray(rig.read_bytes())
+            changed[-1]^=1
+            rig.write_bytes(changed)
+            # No re-render: nine pixels still match, but inputs do not.
+            with self.assertRaises(ValueError):
+                verify_choice(cameras,lock,final)
+
+    def test_preview_staged_primary_tamper_after_lock_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            _,cameras=self.setup_views(root)
+            lock=root/"private-lock.json"
+            lock_choice(cameras,1,lock)
+            primary=(cameras/"private-switch-sd"/
+                     "switch/foj/anims/preview.banim")
+            changed=bytearray(primary.read_bytes())
+            changed[-1]^=1
+            primary.write_bytes(changed)
+            with self.assertRaises(ValueError):
+                preview_witness(cameras,1)
+
+    def test_final_missing_secondary_clip_rejected_with_same_frames(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            assets,cameras=self.setup_views(root)
+            lock=root/"private-lock.json"
+            lock_choice(cameras,1,lock)
+            final=root/"correct-final"
+            conduct(*assets,final,camera_yaw=-.65,
+                    camera_pitch=.4,camera_zoom=.86)
+            second=(final/"private-switch-sd"/
+                    "switch/foj/anims/preview_b.banim")
+            second.unlink()
+            with self.assertRaises(ValueError):
+                verify_choice(cameras,lock,final)
+
     def test_another_camera_does_not_match_locked_selection(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d)
