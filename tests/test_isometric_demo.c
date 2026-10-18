@@ -53,6 +53,31 @@ static void test_render_and_reachable_highlights(void) {
     free(pixels);
 }
 
+static void test_selected_route_overlay_and_cancel(void) {
+    const int width=1280,height=720;
+    const size_t count=(size_t)width*(size_t)height;
+    uint32_t *pixels=calloc(count,sizeof(*pixels));
+    assert(pixels);
+    FojDemo state;
+    foj_demo_init(&state);
+    state.cursor_x=3;
+    state.cursor_y=2;
+    state.selected=true;
+    foj_iso_render(&state,pixels,width,height,width);
+    int sx,sy;
+    foj_iso_project(width,height,2,2,state.cells[2][2].elevation,
+                    &sx,&sy);
+    const uint32_t marker=UINT32_C(0xff6ce1f8); /* RGBA gold route dot */
+    assert(pixels[(size_t)(sy-11)*width+(size_t)sx] == marker);
+    foj_iso_project(width,height,3,2,state.cells[2][3].elevation,
+                    &sx,&sy);
+    assert(pixels[(size_t)(sy-11)*width+(size_t)sx] == marker);
+    state.selected=false;
+    foj_iso_render(&state,pixels,width,height,width);
+    assert(pixels[(size_t)(sy-11)*width+(size_t)sx] != marker);
+    free(pixels);
+}
+
 static void test_tiny_canvas_and_padded_stride(void) {
     enum { WIDTH = 48, HEIGHT = 32, STRIDE = 53 };
     uint32_t pixels[HEIGHT * STRIDE];
@@ -77,6 +102,7 @@ int main(void) {
     test_projection();
     test_render_and_reachable_highlights();
     test_tiny_canvas_and_padded_stride();
+    test_selected_route_overlay_and_cancel();
     puts("Synthetic isometric renderer checks passed (three scenarios)");
     return 0;
 }
