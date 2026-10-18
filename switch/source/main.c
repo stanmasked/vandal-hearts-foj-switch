@@ -7,8 +7,49 @@
  */
 #include <switch.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+#include "coll_grid.h"
+#include "coll_battle_window.h"
 
 #include "tactical_battle.h"
+
+/* No COLL bytes are bundled in NRO or GitHub. A locally supplied
+ * CSV-like grid is used for an optional RAW inspection display only.
+ * Battle movement, height and attack rules remain entirely synthetic. */
+static FojCollGrid local_grid;
+static FojCollBattleWindow local_window;
+static bool has_local_window;
+
+static bool load_private_coll(void) {
+    const char *path = "sdmc:/switch/foj/maps/map1-1.coll";
+    FILE *file = fopen(path, "rb");
+    if (!file) return false;
+    bool loaded = false;
+    if (fseek(file, 0, SEEK_END) == 0) {
+        long length = ftell(file);
+        if (length > 0 && length <= FOJ_COLL_MAX_FILE_BYTES &&
+            fseek(file, 0, SEEK_SET) == 0) {
+            char *data = malloc((size_t)length);
+            if (data) {
+                if (fread(data, 1, (size_t)length, file) == (size_t)length &&
+                    foj_coll_parse(data, (size_t)length, &local_grid) ==
+                        FOJ_COLL_OK &&
+                    local_grid.width >= FOJ_WIDTH &&
+                    local_grid.height >= FOJ_HEIGHT) {
+                    loaded = foj_coll_battle_window(
+                        &local_grid,
+                        (local_grid.width - FOJ_WIDTH) / 2,
+                        (local_grid.height - FOJ_HEIGHT) / 2,
+                        &local_window);
+                }
+                free(data);
+            }
+        }
+    }
+    fclose(file);
+    return loaded;
+}
 
 static const char *status_label(FojBattleEvent action) {
     switch (action) {
@@ -26,7 +67,7 @@ static const char *status_label(FojBattleEvent action) {
     }
 }
 
-static void draw_scene(const FojBattle *battle, FojBattleEvent action) {
+static void draw_scene(const FojBattle *battle, FojBattleEvent action, int diagnostic_channel) {
     const FojDemo *state = &battle->map;
     uint8_t reach[FOJ_HEIGHT][FOJ_WIDTH];
     foj_reachability(state, reach);
@@ -39,6 +80,7 @@ static void draw_scene(const FojBattle *battle, FojBattleEvent action) {
     printf("SYNTHETIC MAP ONLY -- PS3 GAME NOT RUNNING\n\n");
     printf("D-Pad: cursor / A: select+move / X: attack\n");
     printf("B: cancel / Y: end turn / MINUS: restart / PLUS: exit\n");
+    printf("L/R: raw COLL diagnostic channel (0-5), if provided locally\n");
     printf("H hero, E enemy, # wall, 0-2 height\n");
     printf("+ reachable after selecting H, < cursor\n\n");
 
@@ -69,6 +111,27 @@ static void draw_scene(const FojBattle *battle, FojBattleEvent action) {
            state->hero_x, state->hero_y,
            state->cursor_x, state->cursor_y,
            state->selected ? "yes" : "no");
+    if (has_local_window && foj_in_bounds(state->cursor_x, state->cursor_y)) {
+        const int tx=state->cursor_x, ty=state->cursor_y;
+        if (diagnostic_channel < 4) {
+            float value=0.0f;
+            if (foj_coll_window_sample(&local_window,tx,ty,
+                                         (unsigned)diagnostic_channel,&value))
+                printf("LOCAL COLL RAW channel %d: (src %d,%d) = %.6g\n",
+                       diagnostic_channel,tx+local_window.source_x,
+                       ty+local_window.source_y,(double)value);
+        } else {
+            uint8_t value=0;
+            if (foj_coll_window_flag(&local_window,tx,ty,
+                                       (unsigned)(diagnostic_channel-4),&value))
+                printf("LOCAL COLL RAW flag %d: (src %d,%d) = %u\n",
+                       diagnostic_channel-4,tx+local_window.source_x,
+                       ty+local_window.source_y,(unsigned)value);
+        }
+        puts("RAW RESEARCH DATA ONLY; DOES NOT AFFECT MOVEMENT OR COMBAT.");
+    } else {
+        puts("No private COLL window loaded. All terrain remains SYNTHETIC.");
+    }
     consoleUpdate(NULL);
 }
 
@@ -77,6 +140,10 @@ int main(int argc, char **argv) {
     (void)argv;
 
     consoleInit(NULL);
+    has_local_window = load_private_coll();
+    if (!has_local_window && R_SUCCEEDED(fsdevMountSdmc()))
+        has_local_window = load_private_coll();
+    int diagnostic_channel = 0;
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);
     PadState pad;
     padInitializeDefault(&pad);
@@ -84,7 +151,7 @@ int main(int argc, char **argv) {
     FojBattle battle;
     foj_battle_init(&battle);
     FojBattleEvent last = FOJ_BATTLE_NO_ACTION;
-    draw_scene(&battle, last);
+    draw_scene(&battle, last, diagnostic_channel);
 
     while (appletMainLoop()) {
         padUpdate(&pad);
@@ -129,7 +196,15 @@ int main(int argc, char **argv) {
             last = FOJ_BATTLE_NO_ACTION;
             redraw = true;
         }
-        if (redraw) draw_scene(&battle, last);
+        if (pressed & HidNpadButton_R) {
+            diagnostic_channel = (diagnostic_channel + 1) % 6;
+            redraw = true;
+        }
+        if (pressed & HidNpadButton_L) {
+            diagnostic_channel = (diagnostic_channel + 5) % 6;
+            redraw = true;
+        }
+        if (redraw) draw_scene(&battle, last, diagnostic_channel);
         consoleUpdate(NULL);
     }
     consoleExit(NULL);
