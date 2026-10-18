@@ -204,6 +204,62 @@ class Stage211PrivateMultiwindowImageTests(unittest.TestCase):
                 ]),2)
             self.assertNotIn(d,stderr.getvalue())
 
+    def test_recheck_detects_source_replacement_during_multiwindow_run(self):
+        from unittest.mock import patch
+        from tools.foj_stage211_private_multisequence_image_binding import (
+            inspect_sources as original_inspect
+        )
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            observations,configuration=construct(root)
+            original=Path(configuration["windows"][0]["source_png_dir"])
+            first=original/"frame_000.png"
+            original_content=first.read_bytes()
+            invoked=[0]
+
+            def tampering_check(*args):
+                result=original_inspect(*args)
+                invoked[0]+=1
+                # After window zero was checked once, replace that
+                # image while the auditor inspects the other window.
+                if invoked[0]==2:
+                    first.write_bytes(png(seed=253))
+                return result
+
+            with patch(
+                "tools.foj_stage211_private_multisequence_image_binding.inspect_sources",
+                side_effect=tampering_check,
+            ):
+                with self.assertRaises(ValueError):
+                    verify(observations,configuration)
+            self.assertNotEqual(first.read_bytes(),original_content)
+
+    def test_recheck_detects_native_wireframe_replacement_mid_run(self):
+        from unittest.mock import patch
+        from tools.foj_stage211_private_multisequence_image_binding import (
+            inspect_landmarks as original_inspect
+        )
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            observations,configuration=construct(root)
+            native=Path(configuration["windows"][0]["research_frames_dir"])
+            first=native/"initial.ppm"
+            invoked=[0]
+
+            def tampering_check(*args):
+                result=original_inspect(*args)
+                invoked[0]+=1
+                if invoked[0]==2:
+                    first.write_bytes(b"invalid replacement")
+                return result
+
+            with patch(
+                "tools.foj_stage211_private_multisequence_image_binding.inspect_landmarks",
+                side_effect=tampering_check,
+            ):
+                with self.assertRaises(ValueError):
+                    verify(observations,configuration)
+
     def test_configuration_symlink_refused(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d)
