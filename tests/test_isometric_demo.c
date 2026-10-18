@@ -127,12 +127,41 @@ static void test_battle_health_overlay_and_result_banner(void) {
     free(pixels);
 }
 
+static void test_enemy_forecast_marker_and_attack_warning(void) {
+    enum { WIDTH=1280, HEIGHT=720 };
+    uint32_t *pixels=calloc((size_t)WIDTH*(size_t)HEIGHT,sizeof(*pixels));
+    assert(pixels);
+    FojBattle battle;
+    foj_battle_init(&battle);
+    FojEnemyTurnForecast projected;
+    assert(foj_battle_forecast_enemy_turn(&battle,&projected));
+    assert(projected.event==FOJ_BATTLE_ENEMY_MOVED);
+    foj_iso_render_battle(&battle,pixels,WIDTH,HEIGHT,WIDTH);
+    int sx,sy;
+    const int fx=projected.enemy_x_after, fy=projected.enemy_y_after;
+    foj_iso_project(WIDTH,HEIGHT,fx,fy,
+                    battle.map.cells[fy][fx].elevation,&sx,&sy);
+    assert(sx+5<WIDTH && sy-11>=0);
+    assert(pixels[(size_t)(sy-11)*WIDTH+(size_t)(sx+5)] ==
+           UINT32_C(0xff54aef8)); /* generated amber forecast ring */
+
+    battle.map.hero_x=5; battle.map.hero_y=2;
+    battle.map.enemy_x=6; battle.map.enemy_y=2;
+    foj_iso_render_battle(&battle,pixels,WIDTH,HEIGHT,WIDTH);
+    assert(pixels[0]==UINT32_C(0xff54aef8)); /* attack warning */
+    battle.outcome=FOJ_BATTLE_WON;
+    foj_iso_render_battle(&battle,pixels,WIDTH,HEIGHT,WIDTH);
+    assert(pixels[0]==UINT32_C(0xff7fb938)); /* victory beats warning */
+    free(pixels);
+}
+
 int main(void) {
     test_projection();
     test_render_and_reachable_highlights();
     test_tiny_canvas_and_padded_stride();
     test_selected_route_overlay_and_cancel();
     test_battle_health_overlay_and_result_banner();
-    puts("Synthetic isometric renderer checks passed (five scenarios)");
+    test_enemy_forecast_marker_and_attack_warning();
+    puts("Synthetic isometric renderer checks passed (six scenarios)");
     return 0;
 }

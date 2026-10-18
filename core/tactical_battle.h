@@ -44,6 +44,21 @@ typedef struct {
     FojBattleOutcome outcome;
 } FojBattle;
 
+/* A read-only forecast of pressing Y now. Uses the same deterministic
+ * enemy-turn rules as the real action, but never commits to the state.
+ * No source-game AI or original-game attack parameters are asserted. */
+typedef struct {
+    FojBattleEvent event;
+    int enemy_x_after;
+    int enemy_y_after;
+    uint8_t hero_hp_after;
+    uint16_t turn_after;
+    FojBattleOutcome outcome_after;
+} FojEnemyTurnForecast;
+
+bool foj_battle_forecast_enemy_turn(const FojBattle *battle,
+                                     FojEnemyTurnForecast *forecast);
+
 void foj_battle_init(FojBattle *battle);
 void foj_battle_move_cursor(FojBattle *battle, int dx, int dy);
 FojBattleEvent foj_battle_confirm(FojBattle *battle);
