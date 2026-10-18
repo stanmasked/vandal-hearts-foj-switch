@@ -25,12 +25,14 @@ on:
       - "tools/foj_stage173_private_json_snapshot.py"
       - "tools/foj_stage174_native_artifact_coherence.py"
       - "tools/foj_stage175_downloaded_artifact_audit.py"
+      - "tools/foj_stage178_sd_copy_preflight.py"
       - "tools/foj_stage176_fd_inventory_snapshot.py"
       - "tools/foj_fd_bound_reader.py"
       - "tests/test_foj_stage171_build_identity.py"
       - "tests/test_foj_stage173_private_json_snapshot.py"
       - "tests/test_foj_stage174_native_artifact_coherence.py"
       - "tests/test_foj_stage175_downloaded_artifact_audit.py"
+      - "tests/test_foj_stage178_sd_copy_preflight.py"
       - "tests/test_foj_stage176_fd_inventory_snapshot.py"
       - "tests/test_foj_stage170_cpu_visual_alignment.py"
       - "tests/test_foj_stage169_two_attempt_recovery.py"
@@ -59,12 +61,14 @@ on:
       - "tools/foj_stage173_private_json_snapshot.py"
       - "tools/foj_stage174_native_artifact_coherence.py"
       - "tools/foj_stage175_downloaded_artifact_audit.py"
+      - "tools/foj_stage178_sd_copy_preflight.py"
       - "tools/foj_stage176_fd_inventory_snapshot.py"
       - "tools/foj_fd_bound_reader.py"
       - "tests/test_foj_stage171_build_identity.py"
       - "tests/test_foj_stage173_private_json_snapshot.py"
       - "tests/test_foj_stage174_native_artifact_coherence.py"
       - "tests/test_foj_stage175_downloaded_artifact_audit.py"
+      - "tests/test_foj_stage178_sd_copy_preflight.py"
       - "tests/test_foj_stage176_fd_inventory_snapshot.py"
       - "tests/test_foj_stage170_cpu_visual_alignment.py"
       - "tests/test_foj_stage169_two_attempt_recovery.py"
@@ -172,6 +176,11 @@ jobs:
             --expected-run-id "$GITHUB_RUN_ID" --create-receipt
           python3 -m unittest discover -s tests -p 'test_foj_stage175_downloaded_artifact_audit.py' -v
           python3 -m unittest discover -s tests -p 'test_foj_stage176_fd_inventory_snapshot.py' -v
+      - name: Test offline six-file copied SD research tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_foj_stage178_sd_copy_preflight.py' -v
       - name: Upload SDK-built research binaries
         if: success()
         uses: actions/upload-artifact@v4
