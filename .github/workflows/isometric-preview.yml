@@ -30,6 +30,7 @@ jobs:
           mkdir -p build
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
             tools/render_isometric_preview.c core/isometric_demo.c core/tactical_demo.c \
+            core/tactical_battle.c \
             -o build/foj-render-isometric
       - name: Produce asset-free PNG reference
         run: |
