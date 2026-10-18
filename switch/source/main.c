@@ -91,6 +91,16 @@ static void draw_scene(const FojBattle *battle, FojBattleEvent action, int diagn
     } else {
         puts("Enemy forecast unavailable: battle already ended.");
     }
+    FojBattleThreatPreview threat;
+    if (foj_battle_preview_movement_threat(battle,&threat) &&
+        foj_in_bounds(state->cursor_x,state->cursor_y)) {
+        const int x=state->cursor_x, y=state->cursor_y;
+        if (threat.can_move[y][x])
+            printf("Move to cursor (%d,%d): next enemy damage %u HP\n",
+                   x,y,(unsigned)threat.incoming_damage[y][x]);
+        else
+            puts("Move to cursor: unavailable destination.");
+    }
     printf("Guard=%s\n",battle->guarded_this_turn ? "active":"off");
     FojHeroAttackForecast attack_view;
     if (foj_battle_forecast_attack(battle,&attack_view))
