@@ -255,6 +255,38 @@ static void test_selected_movement_threat_markers_and_cleanup(void) {
     free(pixels);
 }
 
+static void test_risk_preview_view_toggle_never_changes_battle(void) {
+    enum { WIDTH=1280, HEIGHT=720 };
+    const size_t count=(size_t)WIDTH*HEIGHT;
+    uint32_t *pixels=calloc(count,sizeof(*pixels));
+    uint32_t *hidden=calloc(count,sizeof(*hidden));
+    assert(pixels && hidden);
+    FojBattle battle;
+    foj_battle_init(&battle);
+    assert(foj_battle_confirm(&battle)==FOJ_BATTLE_SELECTED);
+    const FojBattle before=battle;
+    foj_iso_render_battle_options(&battle,pixels,WIDTH,HEIGHT,WIDTH,true);
+    foj_iso_render_battle_options(&battle,hidden,WIDTH,HEIGHT,WIDTH,false);
+    assert(memcmp(&before,&battle,sizeof(battle))==0);
+    int sx,sy;
+    foj_iso_project(WIDTH,HEIGHT,2,2,battle.map.cells[2][2].elevation,
+                    &sx,&sy);
+    const size_t marker=(size_t)(sy+11)*WIDTH+(size_t)(sx+13);
+    assert(pixels[marker]==UINT32_C(0xff829e3b));
+    assert(hidden[marker]!=UINT32_C(0xff829e3b));
+    /* Toggling off only suppresses risk glyphs, not battle HUD or hero. */
+    const uint64_t visible=fingerprint(pixels,count);
+    const uint64_t invisible=fingerprint(hidden,count);
+    assert(visible!=invisible);
+    foj_iso_render_battle_options(&battle,pixels,WIDTH,HEIGHT,WIDTH,false);
+    assert(memcmp(pixels,hidden,count*sizeof(*pixels))==0);
+    foj_iso_render_battle(&battle,pixels,WIDTH,HEIGHT,WIDTH);
+    assert(fingerprint(pixels,count)==visible);
+    assert(memcmp(&before,&battle,sizeof(battle))==0);
+    free(hidden);
+    free(pixels);
+}
+
 int main(void) {
     test_projection();
     test_render_and_reachable_highlights();
@@ -266,6 +298,7 @@ int main(void) {
     test_hero_attack_forecast_ring_and_guard_conflict();
     test_movement_undo_marker_vanishes_after_B();
     test_selected_movement_threat_markers_and_cleanup();
-    puts("Synthetic isometric renderer checks passed (ten scenarios)");
+    test_risk_preview_view_toggle_never_changes_battle();
+    puts("Synthetic isometric renderer checks passed (eleven scenarios)");
     return 0;
 }
