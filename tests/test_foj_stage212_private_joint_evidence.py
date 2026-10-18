@@ -153,6 +153,63 @@ class Stage212UnifiedEvidenceTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 review(obs,config)
 
+    def test_atomic_joint_audit_rejects_updated_png_and_manifest_midrun(self):
+        from unittest.mock import patch
+        from tools.foj_stage205_private_source_png import prepare
+        from tools.foj_stage212_private_joint_evidence import (
+            motion_audit as genuine_motion
+        )
+        with tempfile.TemporaryDirectory() as t:
+            obs,config=prepared(t)
+            folder=Path(config["windows"][0]["source_png_dir"])
+            manifest=Path(config["windows"][0]["source_manifest"])
+
+            def changed_after_motion(document):
+                result=genuine_motion(document)
+                # Both the PNG and the *valid* matching manifest are
+                # replaced between audits. The Stage211 summaries are
+                # identical, but raw-content witnesses must differ.
+                (folder/"frame_000.png").write_bytes(png(seed=207))
+                manifest.write_text(
+                    json.dumps(prepare(document["observations"][0],folder))
+                )
+                return result
+
+            with patch(
+                "tools.foj_stage212_private_joint_evidence.motion_audit",
+                side_effect=changed_after_motion
+            ):
+                with self.assertRaises(ValueError):
+                    review(obs,config)
+
+    def test_joint_audit_rejects_changed_wire_pixels_despite_same_labels(self):
+        from unittest.mock import patch
+        from tools.foj_stage212_private_joint_evidence import (
+            motion_audit as genuine_motion
+        )
+        from tools.foj_stage203_private_actor_evidence import HEADER
+        with tempfile.TemporaryDirectory() as t:
+            obs,config=prepared(t)
+            directory=Path(config["windows"][1]["research_frames_dir"])
+            frame=directory/"initial.ppm"
+
+            def changed_after_motion(document):
+                result=genuine_motion(document)
+                raw=bytearray(frame.read_bytes())
+                # First image row, far away from the operator's pose:
+                # this affects exact evidence identity but NOT wire
+                # proximity or native PPM layout.
+                raw[len(HEADER)+9]=(raw[len(HEADER)+9]+1)%256
+                frame.write_bytes(raw)
+                return result
+
+            with patch(
+                "tools.foj_stage212_private_joint_evidence.motion_audit",
+                side_effect=changed_after_motion
+            ):
+                with self.assertRaises(ValueError):
+                    review(obs,config)
+
     def test_unchanged_operator_inputs_not_mutated(self):
         with tempfile.TemporaryDirectory() as t:
             obs,config=prepared(t)
