@@ -124,24 +124,37 @@ FojBattleEvent foj_battle_attack(FojBattle *battle) {
     return FOJ_BATTLE_ATTACKED;
 }
 
+FojBattleEvent foj_battle_guard(FojBattle *battle) {
+    if (!battle || battle->outcome != FOJ_BATTLE_ONGOING ||
+        battle->attacked_this_turn || battle->map.selected)
+        return FOJ_BATTLE_REJECTED;
+    battle->attacked_this_turn = true;
+    battle->guarded_this_turn = true;
+    return FOJ_BATTLE_GUARDED;
+}
+
 FojBattleEvent foj_battle_end_turn(FojBattle *battle) {
     if (!battle || battle->outcome != FOJ_BATTLE_ONGOING)
         return FOJ_BATTLE_REJECTED;
+    const bool guarded = battle->guarded_this_turn;
     battle->map.selected = false;
     battle->moved_this_turn = false;
     battle->attacked_this_turn = false;
+    battle->guarded_this_turn = false;
     if (battle->turn_number < UINT16_MAX) ++battle->turn_number;
     bool advanced = false;
     if (!adjacent(&battle->map)) advanced = enemy_advance(&battle->map);
     if (!adjacent(&battle->map))
         return advanced ? FOJ_BATTLE_ENEMY_MOVED : FOJ_BATTLE_TURN_ENDED;
 
-    if (battle->hero_hp <= FOJ_BATTLE_ENEMY_DAMAGE) {
+    const uint8_t damage = guarded ?
+        FOJ_BATTLE_GUARDED_DAMAGE : FOJ_BATTLE_ENEMY_DAMAGE;
+    if (battle->hero_hp <= damage) {
         battle->hero_hp = 0;
         battle->outcome = FOJ_BATTLE_LOST;
         return FOJ_BATTLE_DEFEAT;
     }
-    battle->hero_hp -= FOJ_BATTLE_ENEMY_DAMAGE;
+    battle->hero_hp = (uint8_t)(battle->hero_hp - damage);
     return FOJ_BATTLE_ENEMY_ATTACKED;
 }
 
