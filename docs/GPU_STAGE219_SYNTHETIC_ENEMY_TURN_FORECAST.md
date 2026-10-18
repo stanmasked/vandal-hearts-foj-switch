@@ -53,6 +53,7 @@ No PS3 models, maps, animation clips or screenshots are committed. This
 feature is a gameplay-prototype usability step rather than a fidelity
 claim about Vandal Hearts: Flames of Judgment.
 
-Dependency: Stage218 PR #102 must pass and merge before Stage219 is
-retargeted to `main`. Keep Stage219 Draft until its own independent
-host and Switch CI also pass.
+Dependency satisfied: Stage218 PR #102 passed all eight workflows and
+merged into `main` at `96abfff15c4f70d8f793ccc786691285e0a8346c`.
+Stage219 targets `main`. Keep Stage219 Draft until independent Python
+3.11/3.13, host C/UBSan and Switch NRO workflows all pass.
