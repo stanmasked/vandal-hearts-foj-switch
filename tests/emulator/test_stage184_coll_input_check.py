@@ -61,6 +61,20 @@ class Stage184InputFrameTests(unittest.TestCase):
         self.assertFalse(receipt["physical_switch_execution_verified"])
         self.assertNotIn(str(self.root),str(receipt))
 
+    def test_nearest_neighbor_scaled_emulator_window_matches_unscaled_c(self):
+        # NeXium places a scaled guest framebuffer above desktop controls.
+        # Host C reference remains 1280x720. Simulate 96.3% guest scale.
+        for path in [self.prev, *self.captures.values()]:
+            with Image.open(path) as image:
+                scaled = image.convert("RGB").resize(
+                    (1232, 694), Image.Resampling.NEAREST)
+            window = Image.new("RGB", (1280, 720), (12, 17, 30))
+            window.paste(scaled, (24, 0))
+            window.save(path)
+        receipt = self.check()
+        self.assertEqual(len(receipt["host_c_reference_matches"]), 8)
+        self.assertFalse(receipt["physical_gpu_scanout_verified"])
+
     def test_static_cursor_screen_rejected(self):
         Image.open(self.prev).save(self.captures["cursor-right"])
         with self.assertRaises(ValueError):
