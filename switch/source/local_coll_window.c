@@ -9,6 +9,14 @@
  * Large grid is static to avoid exceeding the Switch main stack. */
 static FojCollGrid local_parsed_grid;
 
+/* Use a volatile byte view to ensure the temporary owner-provided COLL
+ * source and full parsed grid are cleared before returning to gameplay.
+ * Only the intentionally selected diagnostic 8x6 window is retained. */
+static void wipe_temporary(void *data, size_t count) {
+    volatile unsigned char *p = (volatile unsigned char *)data;
+    while (count-- > 0) *p++ = 0;
+}
+
 bool foj_local_coll_load_path(const char *path, FojCollBattleWindow *window) {
     if (!window) return false;
     memset(window, 0, sizeof(*window));
@@ -33,11 +41,13 @@ bool foj_local_coll_load_path(const char *path, FojCollBattleWindow *window) {
                             (h-FOJ_HEIGHT)/2, window);
                     }
                 }
+                wipe_temporary(data, (size_t)length);
                 free(data);
             }
         }
     }
     if (fclose(file) != 0) ok = false;
+    wipe_temporary(&local_parsed_grid, sizeof(local_parsed_grid));
     if (!ok) memset(window, 0, sizeof(*window));
     return ok;
 }
