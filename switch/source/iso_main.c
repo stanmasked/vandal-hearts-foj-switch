@@ -45,6 +45,8 @@ int main(int argc, char **argv) {
 
     FojBattle battle;
     foj_battle_init(&battle);
+    FojBattleThreatCache threat_cache;
+    foj_battle_threat_cache_init(&threat_cache);
     FojBattleReplay replay;
     foj_replay_init(&replay);
     bool replay_ok = true;
@@ -106,9 +108,10 @@ int main(int argc, char **argv) {
         u32 stride_bytes = 0;
         u32 *pixels = (u32 *)framebufferBegin(&framebuffer, &stride_bytes);
         if (pixels) {
-            foj_iso_render_battle_options(&battle, (uint32_t *)pixels,
+            foj_iso_render_battle_cached_options(&battle, (uint32_t *)pixels,
                 FB_WIDTH, FB_HEIGHT,
-                (int)(stride_bytes / sizeof(u32)),show_threat_preview);
+                (int)(stride_bytes / sizeof(u32)),show_threat_preview,
+                &threat_cache);
             if (raw_loaded && show_raw_window)
                 (void)foj_coll_battle_overlay(
                     &raw_window,(uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,
