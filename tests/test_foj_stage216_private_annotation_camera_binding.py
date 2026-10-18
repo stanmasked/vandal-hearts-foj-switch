@@ -23,7 +23,7 @@ from tools.foj_stage205_private_source_png import prepare
 from tools.foj_stage214_private_multicamera_preview import preview
 from tools.foj_stage215_private_camera_choice_lock import lock_choice
 from tools.foj_stage216_private_annotation_camera_binding import (
-    SCHEMA, REPORT, receipt, check, main, evidence_witness
+    SCHEMA, REPORT, receipt, check, main, evidence_witness, private_digest
 )
 
 
@@ -188,6 +188,21 @@ class Stage216AnnotationCameraTests(unittest.TestCase):
         ):
             with self.assertRaises(ValueError):
                 check(*self.args)
+
+    def test_private_digest_reads_from_one_open_file_descriptor(self):
+        # A lstat+Path.read_bytes implementation would be subject to
+        # pathname replacement between the two filesystem operations.
+        with patch.object(Path, "read_bytes", side_effect=AssertionError(
+            "unsafe second path traversal"
+        )):
+            observed = private_digest(self.observations)
+        self.assertEqual(len(observed), 64)
+
+    def test_private_digest_does_not_follow_symlinks(self):
+        alias = self.observations.with_name("observation-symlink.json")
+        alias.symlink_to(self.observations)
+        with self.assertRaises(ValueError):
+            private_digest(alias)
 
     def test_cli_does_not_expose_private_images_paths_or_hashes(self):
         flags = [
