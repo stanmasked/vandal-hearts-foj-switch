@@ -37,8 +37,8 @@ static void draw_scene(const FojBattle *battle, FojBattleEvent action) {
     printf("Independent Nintendo Switch research NRO\n");
     printf("========================================\n");
     printf("SYNTHETIC MAP ONLY -- PS3 GAME NOT RUNNING\n\n");
-    printf("D-Pad: move cursor / A: select or move\n");
-    printf("B: cancel selection / PLUS: exit\n");
+    printf("D-Pad: cursor / A: select+move / X: attack\n");
+    printf("B: cancel / Y: end turn / MINUS: restart / PLUS: exit\n");
     printf("H hero, E enemy, # wall, 0-2 height\n");
     printf("+ reachable after selecting H, < cursor\n\n");
 
