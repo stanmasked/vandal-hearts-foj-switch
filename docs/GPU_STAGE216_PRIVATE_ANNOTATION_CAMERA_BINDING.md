@@ -3,6 +3,10 @@
 This is an **owner-local repeatability guard**, not a recreation of original
 PS3 camera metadata or proof of original-game animation fidelity.
 
+Dependency status: Stage215 v2 is merged into `main`. Stage216 is
+reviewed and tested as a separate PR against that merged base; the
+Stage215 lock receipt format remains version 2.
+
 Stage215 v2 already pins the Stage214 preview sheet, selected yaw/pitch/zoom,
 all nine exact native C PPM frames, and the staged rig and BANIM byte hashes
 against Stage203. Stage216 adds the *specific annotation evidence* used with
