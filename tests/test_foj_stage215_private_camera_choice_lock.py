@@ -89,7 +89,7 @@ class Stage215PrivateLockTests(unittest.TestCase):
             lock=root/"private-lock.json"
             lock_choice(cameras,1,lock)
             final=root/"final"
-            conduct(*assets,final,camera_y=-.65,
+            conduct(*assets,final,camera_yaw=-.65,
                     camera_pitch=.4,camera_zoom=.86)
             primary=(cameras/"private-switch-sd"/
                      "switch/foj/anims/preview.banim")
