@@ -11,6 +11,7 @@ from pathlib import Path
 import stat
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from tests.test_foj_stage204_private_frame_landmarks import (
     landmarks_and_frames, WIRE
@@ -22,7 +23,7 @@ from tools.foj_stage205_private_source_png import prepare
 from tools.foj_stage214_private_multicamera_preview import preview
 from tools.foj_stage215_private_camera_choice_lock import lock_choice
 from tools.foj_stage216_private_annotation_camera_binding import (
-    SCHEMA, REPORT, receipt, check, main
+    SCHEMA, REPORT, receipt, check, main, evidence_witness
 )
 
 
@@ -170,6 +171,23 @@ class Stage216AnnotationCameraTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             check(*self.args)
         self.assertTrue(saved.is_file())
+
+    def test_receipt_changed_during_audit_is_rejected(self):
+        receipt(*self.args)
+        original=self.output.read_text(encoding="utf-8")
+
+        def change_receipt_mid_audit(*args):
+            witness=evidence_witness(*args)
+            # JSON parses to the same values, but its locked bytes changed.
+            self.output.write_text(original+" ",encoding="utf-8")
+            return witness
+
+        with patch(
+            "tools.foj_stage216_private_annotation_camera_binding."
+            "evidence_witness",side_effect=change_receipt_mid_audit
+        ):
+            with self.assertRaises(ValueError):
+                check(*self.args)
 
     def test_cli_does_not_expose_private_images_paths_or_hashes(self):
         flags = [
