@@ -204,7 +204,8 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
             frame_bindings:Path|None=None,
             source_png_manifest:Path|None=None,
             source_png_dir:Path|None=None,
-            review_overlays:bool=False):
+            review_overlays:bool=False,
+            view_temporal_audit:bool=False):
     safe_destination(output)
     # Strictly bounded source reads and independent source-coordinate
     # research math happen BEFORE creating ANY private output.
@@ -240,11 +241,11 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
         source_doc=private_read(source_png_manifest)
         # Validate BEFORE creating any owner-private output directory.
         inspect_sources(bound_annotations,source_doc,source_png_dir)
-    if review_overlays and (
+    if (review_overlays or view_temporal_audit) and (
         observations is None or source_png_manifest is None or
         source_png_dir is None or frame_bindings is None
     ):
-        raise ValueError("Two-sided review needs source PNG and native frame bindings")
+        raise ValueError("View audit needs both bound source and native frame evidence")
     if multiwindow is not None:
         evaluate(multi_read(multiwindow))
     old_umask=os.umask(0o077)
@@ -335,6 +336,23 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
                 "private_review_image_pairs":0,
                 "original_ps3_correspondences_human_verified":False,
             }
+        if view_temporal_audit:
+            from tools.foj_stage207_private_view_timing import inspect
+            view_report=inspect(bound_annotations)
+            protected_json(output/"private-view-temporal-audit.json",
+                           view_report)
+            view_status={
+                "private_view_temporal_audit_performed":True,
+                "private_image_plane_view_diagnosis":
+                    view_report["diagnosis"],
+                "ps3_camera_or_animation_verified":False,
+            }
+        else:
+            view_status={
+                "private_view_temporal_audit_performed":False,
+                "private_image_plane_view_diagnosis":"not_performed",
+                "ps3_camera_or_animation_verified":False,
+            }
         if multiwindow is None:
             multi={
                 "independent_windows_submitted":False,
@@ -367,6 +385,7 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
             **source_bind,
             **bound,
             **review_status,
+            **view_status,
             **multi,
             "asset_identity_authenticated_as_original_ps3":False,
             "original_game_animation_accuracy_verified":False,
@@ -405,6 +424,7 @@ def main(argv=None):
     parser.add_argument("--source-png-manifest",type=Path)
     parser.add_argument("--source-png-dir",type=Path)
     parser.add_argument("--review-overlays",action="store_true")
+    parser.add_argument("--view-temporal-audit",action="store_true")
     args=parser.parse_args(argv)
     try:
         result=conduct(
@@ -414,6 +434,7 @@ def main(argv=None):
             source_png_manifest=args.source_png_manifest,
             source_png_dir=args.source_png_dir,
             review_overlays=args.review_overlays,
+            view_temporal_audit=args.view_temporal_audit,
         )
     except (OSError,ValueError,TypeError,RuntimeError,
             subprocess.SubprocessError,OverflowError,IndexError,
