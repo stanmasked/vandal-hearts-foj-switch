@@ -213,6 +213,27 @@ void foj_iso_render_battle(const FojBattle *battle, uint32_t *pixels,
         hp_bar(&canvas, x, y, battle->enemy_hp, FOJ_BATTLE_ENEMY_MAX_HP,
                rgb(227, 82, 93));
     }
+    /* A small amber ring marks the enemy's NEXT cell, not its current
+     * position, and never changes tactical state or movement legality. */
+    FojEnemyTurnForecast forecast;
+    if (foj_battle_forecast_enemy_turn(battle, &forecast)) {
+        if (forecast.event == FOJ_BATTLE_ENEMY_MOVED &&
+            foj_in_bounds(forecast.enemy_x_after, forecast.enemy_y_after)) {
+            const int fx=forecast.enemy_x_after;
+            const int fy=forecast.enemy_y_after;
+            foj_iso_project(width, height, fx, fy,
+                            battle->map.cells[fy][fx].elevation, &x, &y);
+            disk(&canvas, x, y-11, 6, rgb(248, 174, 84));
+            disk(&canvas, x, y-11, 3, rgb(36, 47, 55));
+        }
+        if (forecast.event == FOJ_BATTLE_ENEMY_ATTACKED ||
+            forecast.event == FOJ_BATTLE_DEFEAT) {
+            /* Thin warning strip means ending the turn would hurt hero. */
+            for (int y0=0;y0<4 && y0<height;++y0)
+                for (int x0=0;x0<width;++x0)
+                    pixel(&canvas,x0,y0,rgb(248,174,84));
+        }
+    }
     if (battle->outcome != FOJ_BATTLE_ONGOING) {
         const uint32_t color = battle->outcome == FOJ_BATTLE_WON ?
             rgb(56, 185, 127) : rgb(210, 62, 74);
