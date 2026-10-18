@@ -24,9 +24,9 @@ BANIM_SRC := switch/source/banim_main.c core/banim_core.c
 OBJ_SRC := switch/source/obj_main.c core/obj_wireframe.c
 DDS_SRC := switch/source/dds_main.c core/dds_texture.c
 COLL_SRC := switch/source/coll_main.c core/coll_grid.c core/coll_view.c core/coll_iso_view.c
-ISO_SRC := switch/source/iso_main.c switch/source/local_coll_window.c core/tactical_demo.c core/tactical_battle.c core/isometric_demo.c core/coll_grid.c core/coll_battle_window.c core/coll_battle_overlay.c
-SRC := switch/source/main.c switch/source/local_coll_window.c core/tactical_demo.c core/tactical_battle.c core/coll_grid.c core/coll_battle_window.c
-HDR := core/tactical_demo.h core/tactical_battle.h core/coll_grid.h core/coll_battle_window.h core/coll_battle_overlay.h switch/source/local_coll_window.h
+ISO_SRC := switch/source/iso_main.c switch/source/local_coll_window.c core/tactical_demo.c core/tactical_battle.c core/battle_replay.c core/isometric_demo.c core/coll_grid.c core/coll_battle_window.c core/coll_battle_overlay.c
+SRC := switch/source/main.c switch/source/local_coll_window.c core/tactical_demo.c core/tactical_battle.c core/battle_replay.c core/coll_grid.c core/coll_battle_window.c
+HDR := core/tactical_demo.h core/tactical_battle.h core/battle_replay.h core/coll_grid.h core/coll_battle_window.h core/coll_battle_overlay.h switch/source/local_coll_window.h
 
 CFLAGS := -O2 -g -Wall -Wextra -Werror -fPIE -ffunction-sections -fdata-sections \
     -I$(DEVKITPRO)/libnx/include -Icore
