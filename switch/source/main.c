@@ -11,44 +11,18 @@
 
 #include "coll_grid.h"
 #include "coll_battle_window.h"
+#include "local_coll_window.h"
 
 #include "tactical_battle.h"
 
-/* No COLL bytes are bundled in NRO or GitHub. A locally supplied
- * CSV-like grid is used for an optional RAW inspection display only.
- * Battle movement, height and attack rules remain entirely synthetic. */
-static FojCollGrid local_grid;
+/* The local COLL crop is a research readout only. Gameplay stays
+ * invented and is completely independent of these six raw channels. */
 static FojCollBattleWindow local_window;
 static bool has_local_window;
 
 static bool load_private_coll(void) {
-    const char *path = "sdmc:/switch/foj/maps/map1-1.coll";
-    FILE *file = fopen(path, "rb");
-    if (!file) return false;
-    bool loaded = false;
-    if (fseek(file, 0, SEEK_END) == 0) {
-        long length = ftell(file);
-        if (length > 0 && length <= FOJ_COLL_MAX_FILE_BYTES &&
-            fseek(file, 0, SEEK_SET) == 0) {
-            char *data = malloc((size_t)length);
-            if (data) {
-                if (fread(data, 1, (size_t)length, file) == (size_t)length &&
-                    foj_coll_parse(data, (size_t)length, &local_grid) ==
-                        FOJ_COLL_OK &&
-                    local_grid.width >= FOJ_WIDTH &&
-                    local_grid.height >= FOJ_HEIGHT) {
-                    loaded = foj_coll_battle_window(
-                        &local_grid,
-                        (local_grid.width - FOJ_WIDTH) / 2,
-                        (local_grid.height - FOJ_HEIGHT) / 2,
-                        &local_window);
-                }
-                free(data);
-            }
-        }
-    }
-    fclose(file);
-    return loaded;
+    return foj_local_coll_load_path(
+        "sdmc:/switch/foj/maps/map1-1.coll", &local_window);
 }
 
 static const char *status_label(FojBattleEvent action) {
