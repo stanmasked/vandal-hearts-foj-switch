@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 from tools.foj_stage231_threat_guest_check import (
-    BACKGROUND, HERO, ENEMY, SAFE, DANGER, PIXELS, SIZE, check_preview,
+    BACKGROUND, HERO, ENEMY, SAFE, DANGER, SIZE, check_preview,
 )
 
 
@@ -19,11 +19,14 @@ def fixture(path: Path, selected: bool, *, guard: bool = False,
         brush.rectangle((580,210,609,239),fill=HERO)
         brush.rectangle((780,310,809,339),fill=ENEMY)
         if selected or stale:
+            # Real 1280x720 NeXium captures embed a slightly scaled
+            # guest viewport. Reproduce bounded tile signatures of
+            # 15 safe pixels, two 16-pixel danger ticks, and 1 on ZR.
             if not wrong_safe:
-                image.putpixel(PIXELS["safe"], SAFE)
-            image.putpixel(PIXELS["damage_one"],DANGER)
+                brush.rectangle((651,224,655,226),fill=SAFE)
+            brush.rectangle((804,310,807,313),fill=DANGER)
             if not guard or second_bar:
-                image.putpixel(PIXELS["damage_two"],DANGER)
+                brush.rectangle((810,310,813,313),fill=DANGER)
     image.save(path)
 
 
