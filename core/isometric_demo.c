@@ -224,6 +224,25 @@ void foj_iso_render_battle(const FojBattle *battle, uint32_t *pixels,
             for (int px=21;px<=27;++px)
                 pixel(&canvas,x+px,y+py,rgb(38,209,143));
     }
+    /* Preview the hero's X attack only when the real attack is legal.
+     * Gold outline = current target; gold bar below current red HP =
+     * enemy HP after the speculative hit. This does not commit damage. */
+    FojHeroAttackForecast attack_view;
+    if (foj_battle_forecast_attack(battle, &attack_view) &&
+        foj_in_bounds(battle->map.enemy_x, battle->map.enemy_y)) {
+        const int ax=battle->map.enemy_x, ay=battle->map.enemy_y;
+        foj_iso_project(width,height,ax,ay,
+                        battle->map.cells[ay][ax].elevation,&x,&y);
+        const uint32_t outline=rgb(244,214,91);
+        for (int dy=-17;dy<=17;++dy)
+            for (int dx=-17;dx<=17;++dx) {
+                const int radius2=dx*dx+dy*dy;
+                if (radius2>=225 && radius2<=289)
+                    pixel(&canvas,x+dx,y-11+dy,outline);
+            }
+        hp_bar(&canvas,x,y+8,attack_view.enemy_hp_after,
+               FOJ_BATTLE_ENEMY_MAX_HP,rgb(244,214,91));
+    }
     /* A small amber ring marks the enemy's NEXT cell, not its current
      * position, and never changes tactical state or movement legality. */
     FojEnemyTurnForecast forecast;
