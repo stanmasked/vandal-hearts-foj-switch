@@ -7,6 +7,7 @@
 
 #include "tactical_demo.h"
 #include "isometric_demo.h"
+#include "battle_replay.h"
 #include "coll_battle_overlay.h"
 #include "local_coll_window.h"
 
@@ -42,22 +43,56 @@ int main(int argc, char **argv) {
 
     FojBattle battle;
     foj_battle_init(&battle);
+    FojBattleReplay replay;
+    foj_replay_init(&replay);
+    bool replay_ok = true;
     while (appletMainLoop()) {
         padUpdate(&pad);
         const u64 pressed = padGetButtonsDown(&pad);
 
         if (pressed & HidNpadButton_Plus) break;
-        if (pressed & HidNpadButton_Up) foj_battle_move_cursor(&battle, 0, -1);
-        if (pressed & HidNpadButton_Down) foj_battle_move_cursor(&battle, 0, 1);
-        if (pressed & HidNpadButton_Left) foj_battle_move_cursor(&battle, -1, 0);
-        if (pressed & HidNpadButton_Right) foj_battle_move_cursor(&battle, 1, 0);
-        if (pressed & HidNpadButton_A) (void)foj_battle_confirm(&battle);
-        if (pressed & HidNpadButton_B) (void)foj_battle_cancel(&battle);
-
-        if (pressed & HidNpadButton_X) (void)foj_battle_attack(&battle);
-        if (pressed & HidNpadButton_ZR) (void)foj_battle_guard(&battle);
-        if (pressed & HidNpadButton_Y) (void)foj_battle_end_turn(&battle);
-        if (pressed & HidNpadButton_Minus) foj_battle_init(&battle);
+        bool battle_input = false;
+        if (pressed & HidNpadButton_Up) {
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_UP,NULL);
+            battle_input = true;
+        }
+        if (pressed & HidNpadButton_Down) {
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_DOWN,NULL);
+            battle_input = true;
+        }
+        if (pressed & HidNpadButton_Left) {
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_LEFT,NULL);
+            battle_input = true;
+        }
+        if (pressed & HidNpadButton_Right) {
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_RIGHT,NULL);
+            battle_input = true;
+        }
+        if (pressed & HidNpadButton_A) {
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_A,NULL);
+            battle_input = true;
+        }
+        if (pressed & HidNpadButton_B) {
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_B,NULL);
+            battle_input = true;
+        }
+        if (pressed & HidNpadButton_X) {
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_X,NULL);
+            battle_input = true;
+        }
+        if (pressed & HidNpadButton_ZR) {
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_ZR,NULL);
+            battle_input = true;
+        }
+        if (pressed & HidNpadButton_Y) {
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_Y,NULL);
+            battle_input = true;
+        }
+        if (pressed & HidNpadButton_Minus) {
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_RESET,NULL);
+            battle_input = true;
+        }
+        if (battle_input) replay_ok = foj_replay_matches(&replay,&battle);
         /* Only change diagnostic presentation, never combat/pathfinding. */
         if (pressed & HidNpadButton_L) raw_channel=(raw_channel+5u)%6u;
         if (pressed & HidNpadButton_R) raw_channel=(raw_channel+1u)%6u;
@@ -73,6 +108,18 @@ int main(int argc, char **argv) {
                     &raw_window,(uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,
                     (int)(stride_bytes / sizeof(u32)),
                     battle.map.cursor_x,battle.map.cursor_y,raw_channel);
+            /* 8x8 guest-only audit indicator. Green = replay identical,
+             * red = mismatch, amber = input log reached safe capacity.
+             * Never interferes with synthetic battle state or COLL values. */
+            /* Unique colors, disjoint from hero, guard, enemy and win
+             * evidence palettes used by Stage223–227 guest classifiers. */
+            const u32 audit_color = !replay_ok ? 0xff3838ffu :
+                replay.count >= FOJ_REPLAY_MAX_INPUTS ?
+                    0xff2ab6ffu : 0xff44e630u;
+            const int pixel_stride = (int)(stride_bytes / sizeof(u32));
+            for (int iy=12;iy<20;++iy)
+                for (int ix=12;ix<20;++ix)
+                    pixels[iy*pixel_stride+ix] = audit_color;
         }
         framebufferEnd(&framebuffer);
     }
