@@ -18,7 +18,7 @@ from tools.check_local_rig_clip_set import inspect_clip_set, bounded_read
 from tools.check_local_rig_pair import MAX_RIG_FILE, MAX_ANIM_FILE
 from tools.decode_rig_banim import parse_banim, sample_local_pose
 from tools.export_local_rigmesh import HEADER, BONE, SECTION, VERTEX, INFLUENCE
-from tests.test_foj_stage190_skin_matrix_contract import expected
+from tools.foj_stage195_pose_geometry import predict_vertices
 
 SCHEMA="foj.stage195.private_pose_envelope.v1"
 LABELS=("start","midpoint","end")
@@ -81,7 +81,7 @@ def inspect_pose_envelope(rig: bytes,primary: bytes,
     bind,vertices=rig_geometry(rig)
     if len(bind)!=intake["bone_count"] or len(vertices)!=intake["vertex_count"]:
         raise ValueError("Private model changed after intake")
-    _,reference=expected(bind,bind,vertices)
+    reference=predict_vertices(bind,bind,vertices)
     rest=[v[0] for v in vertices]
     bind_rms,bind_max=metrics(rest,reference)
     # The expected bind-world * inverse(bind-world) identity is a property
@@ -97,7 +97,7 @@ def inspect_pose_envelope(rig: bytes,primary: bytes,
             poses=sample_local_pose(clip,when)
             animated=[(b[0],p.rotation_xyzw,p.translation_xyz)
                       for b,p in zip(bind,poses,strict=True)]
-            _palette,moved=expected(bind,animated,vertices)
+            moved=predict_vertices(bind,animated,vertices)
             rms,maximum=metrics(rest,moved)
             values.append({
                 "sample":label,
