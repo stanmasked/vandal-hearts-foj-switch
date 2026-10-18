@@ -141,6 +141,13 @@ class Stage211PrivateMultiwindowImageTests(unittest.TestCase):
             self.assertFalse(r["operator_declared_distinct_actions"])
             self.assertFalse(r["authentic_ps3_gameplay_verified"])
 
+    def test_unrecognized_independence_declaration_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            obs,config=construct(Path(d))
+            obs["motion_independence_declaration"]="verified_by_software"
+            with self.assertRaises(ValueError):
+                verify(obs,config)
+
     def test_reject_window_count_and_wrong_schema(self):
         with tempfile.TemporaryDirectory() as d:
             obs,config=construct(Path(d))
