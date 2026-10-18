@@ -216,6 +216,105 @@ class Stage204FrameBindingTests(unittest.TestCase):
             with self.assertRaises(OSError):
                 inspect_landmarks(obs,manifest,root)
 
+    def test_stage203_new_bundle_rejects_binding_without_observations(self):
+        from tools.foj_stage203_private_actor_evidence import conduct
+        from tools.foj_stage201_generated_sd import generated_actors
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t)
+            rig,a,b=generated_actors()
+            sources=[root/x for x in ("model.fojrm","clip_a.banim","clip_b.banim")]
+            for path,contents in zip(sources,(rig,a,b),strict=True):
+                path.write_bytes(contents)
+            dest=root/"must-not-be-created"
+            with self.assertRaises(ValueError):
+                conduct(*sources,dest,frame_bindings=root/"not-provided.json")
+            self.assertFalse(dest.exists())
+
+    def test_stage203_rejects_false_binding_and_cleans_private_render(self):
+        from tools.foj_stage203_private_actor_evidence import conduct
+        from tools.foj_stage201_generated_sd import generated_actors
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t)
+            rig,a,b=generated_actors()
+            sources=[root/x for x in ("model.fojrm","clip_a.banim","clip_b.banim")]
+            for path,contents in zip(sources,(rig,a,b),strict=True):
+                path.write_bytes(contents)
+            obs,manifest=landmarks_and_frames()
+            # Deliberately mark visible image locations in the top-left
+            # even though the synthetic native model renders centrally.
+            locations=((.05,.04),(.17,.06),(.10,.22),(.23,.18),(.06,.27))
+            for frame in obs["frames"]:
+                for point,xy in zip(frame["landmarks"],locations):
+                    point["experimental_xy"]=list(xy)
+            annotated=root/"locally-invented-observations.json"
+            bound=root/"synthetic-frame-binding.json"
+            annotated.write_text(json.dumps(obs))
+            bound.write_text(json.dumps(manifest))
+            dest=root/"rejected-new-private-output"
+            with self.assertRaises(ValueError):
+                conduct(*sources,dest,observations=annotated,
+                        frame_bindings=bound)
+            self.assertFalse(dest.exists())
+
+    def test_real_native_renderer_synthetic_frame_binding_succeeds(self):
+        from tools.foj_stage203_private_actor_evidence import conduct
+        from tools.foj_stage201_generated_sd import generated_actors
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t)
+            rig,a,b=generated_actors()
+            sources=[root/x for x in ("model.fojrm","clip_a.banim","clip_b.banim")]
+            for path,contents in zip(sources,(rig,a,b),strict=True):
+                path.write_bytes(contents)
+            baseline=root/"first-native-pass"
+            conduct(*sources,baseline)
+            obs,manifest=landmarks_and_frames()
+            # Only tests use automatically selected wirepoints. The
+            # actual private PS3 workflow requires human annotation.
+            for row,label in zip(obs["frames"],manifest["frame_labels"]):
+                raw=(baseline/"private-frames"/(label+".ppm")).read_bytes()
+                pixel=raw[len(HEADER):]
+                candidates=[
+                    (x,y) for y in range(0,H) for x in range(0,W)
+                    if pixel[(y*W+x)*3:(y*W+x+1)*3]==WIRE
+                ]
+                self.assertGreater(len(candidates),20)
+                # Greedy farthest-point sampling: choose an extended
+                # noncollinear portion of the invented native rig lines.
+                chosen=[candidates[0]]
+                while len(chosen)<5:
+                    point=max(
+                        candidates,
+                        key=lambda p:min((p[0]-q[0])**2+(p[1]-q[1])**2
+                                         for q in chosen)
+                    )
+                    self.assertNotIn(point,chosen)
+                    chosen.append(point)
+                for mark,point in zip(
+                    sorted(row["landmarks"],key=lambda v:v["id"]),chosen
+                ):
+                    x,y=point
+                    mark["experimental_xy"]=[x/(W-1),y/(H-1)]
+                    mark["ps3_xy"]=[x/(W-1),y/(H-1)]
+            annotations=root/"invented-local-marks.json"
+            bindings=root/"invented-local-bindings.json"
+            annotations.write_text(json.dumps(obs))
+            bindings.write_text(json.dumps(manifest))
+            final=root/"final-private-native-bundle"
+            result=conduct(*sources,final,observations=annotations,
+                           frame_bindings=bindings)
+            self.assertTrue(result["research_landmarks_bound_to_native_frames"])
+            self.assertFalse(
+                result["original_ps3_capture_authenticated_by_frame_binding"]
+            )
+            record=json.loads(
+                (final/"private-research-frame-audit.json").read_text()
+            )
+            self.assertTrue(
+                record["research_landmarks_near_actual_native_ppm_wire"]
+            )
+            self.assertEqual(record["stage203_named_frames_bound"],3)
+            self.assertFalse(record["original_game_pose_accuracy_verified"])
+
     def test_cli_success_and_failure_never_echo_private_paths(self):
         with tempfile.TemporaryDirectory() as t:
             root=Path(t)
