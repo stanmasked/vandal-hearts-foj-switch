@@ -1,4 +1,4 @@
-name: Stage 182 NeXium NRO guest framebuffer smoke
+name: Stage 183 NeXium COLL Y roundtrip guest checks
 
 on:
   workflow_dispatch:
@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/stage182-nexium-smoke.yml'
       - 'tools/foj_stage182_nexium_frame_check.py'
+      - 'tools/foj_stage183_coll_y_frame_check.py'
+      - 'tools/foj_stage183_coll_mode_reference.c'
       - 'tests/emulator/**'
       - 'switch/**'
       - 'core/**'
@@ -14,6 +16,8 @@ on:
     paths:
       - '.github/workflows/stage182-nexium-smoke.yml'
       - 'tools/foj_stage182_nexium_frame_check.py'
+      - 'tools/foj_stage183_coll_y_frame_check.py'
+      - 'tools/foj_stage183_coll_mode_reference.c'
       - 'switch/**'
       - 'core/**'
 
@@ -96,6 +100,30 @@ jobs:
           set -euo pipefail
           python3 -m unittest discover -s tests/emulator -p 'test_stage182_frame_check.py' -v
 
+      - name: Compile native C reference screens for both generated COLL modes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-evidence
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tools/foj_stage183_coll_mode_reference.c \
+            core/coll_view.c core/coll_iso_view.c -lm \
+            -o /tmp/foj-stage183-coll-reference
+          /tmp/foj-stage183-coll-reference heatmap runtime-evidence/ref-coll-heat.ppm
+          /tmp/foj-stage183-coll-reference isometric runtime-evidence/ref-coll-iso.ppm
+          python3 tools/ppm_to_png.py runtime-evidence/ref-coll-heat.ppm \
+            runtime-evidence/ref-coll-heat.png
+          python3 tools/ppm_to_png.py runtime-evidence/ref-coll-iso.ppm \
+            runtime-evidence/ref-coll-iso.png
+          rm runtime-evidence/ref-coll-heat.ppm runtime-evidence/ref-coll-iso.ppm
+
+      - name: Regress classifier against seven synthetic negative/positive scenarios
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage183_coll_y_frame_check.py' -v
+
       - name: Capture guest frames and emulated route selection
         shell: bash
         run: |
@@ -106,7 +134,7 @@ jobs:
           export VK_ICD_FILENAMES="$icd"
 
           capture() {
-            export NRO="$1" SHOT="$2" ROUTE="$3" INPUT="$4" LOG="$5"
+            export NRO="$1" SHOT="$2" ROUTE="$3" INPUT="$4" LOG="$5" BACK="${6:-}"
             test -s "$NRO"
             timeout --kill-after=5s 110s xvfb-run -a -s "-screen 0 1280x720x24" bash -c '
               set -euo pipefail
@@ -143,8 +171,25 @@ jobs:
                 done
                 timeout --kill-after=2s 10s import -window "$window" "$ROUTE"
               fi
+              if [ "$INPUT" = "2" ]; then
+                # Confirmed in NeXium source controller_config.rs:
+                # default Switch Y = keyboard Z. Record both transitions.
+                timeout --kill-after=1s 3s xdotool windowfocus --sync "$window" || true
+                for stage in first second; do
+                  timeout --kill-after=1s 3s xdotool keydown --window "$window" z
+                  sleep 0.18
+                  timeout --kill-after=1s 3s xdotool keyup --window "$window" z
+                  sleep 0.65
+                  if [ "$stage" = "first" ]; then
+                    timeout --kill-after=2s 10s import -window "$window" "$ROUTE"
+                  else
+                    timeout --kill-after=2s 10s import -window "$window" "$BACK"
+                  fi
+                done
+              fi
               test -s "$SHOT"
               if [ "$INPUT" = "1" ]; then test -s "$ROUTE"; fi
+              if [ "$INPUT" = "2" ]; then test -s "$ROUTE" && test -s "$BACK"; fi
               kill -INT "$pid" 2>/dev/null || true
               sleep 1
               kill -KILL "$pid" 2>/dev/null || true
@@ -159,8 +204,9 @@ jobs:
 
           capture "nros/foj-coll-map-research.nro" \
             "runtime-evidence/coll-synthetic.png" \
-            "runtime-evidence/unused.png" \
-            "0" "runtime-evidence/coll.log"
+            "runtime-evidence/coll-isometric-after-y.png" \
+            "2" "runtime-evidence/coll.log" \
+            "runtime-evidence/coll-heat-return-after-y.png"
 
       - name: Reject fake, blank, static or missing guest output
         shell: bash
@@ -172,10 +218,22 @@ jobs:
             --coll runtime-evidence/coll-synthetic.png \
             --report runtime-evidence/stage182-emulator-receipt.json
 
+      - name: Verify actual Y roundtrip versus independent portable C screenshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/foj_stage183_coll_y_frame_check.py \
+            --heat runtime-evidence/coll-synthetic.png \
+            --iso runtime-evidence/coll-isometric-after-y.png \
+            --restored runtime-evidence/coll-heat-return-after-y.png \
+            --reference-heat runtime-evidence/ref-coll-heat.png \
+            --reference-iso runtime-evidence/ref-coll-iso.png \
+            --output runtime-evidence/stage183-coll-y-guest-receipt.json
+
       - name: Preserve screenshots, analysis and sanitized startup logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: foj-stage182-nexium-runtime-evidence
+          name: foj-stage183-nexium-coll-y-runtime-evidence
           path: runtime-evidence/
           if-no-files-found: warn
