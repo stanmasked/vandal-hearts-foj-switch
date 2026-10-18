@@ -10,9 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
-import stat
 from typing import Any
 
 from tools.foj_fd_bound_reader import open_regular_beneath
@@ -22,6 +20,7 @@ from tools.foj_stage171_build_identity import read_receipt
 from tools.foj_stage174_native_artifact_coherence import (
     _stable_loose_bytes, verify_native_outputs,
 )
+from tools.foj_stage176_fd_inventory_snapshot import snapshot_inventory
 
 SCHEMA = "foj-stage175-five-published-native-binaries-v1"
 STAGE171 = "build/foj-stage171-ci-build-receipt.json"
@@ -70,43 +69,12 @@ def _read_json(root: Path, relative: str) -> dict[str, Any]:
         raise _bad() from None
 
 
-def _check_downloaded_inventory(root: Path) -> None:
-    """Reject unknown paths and symbolic links in the downloaded payload.
-
-    The artifact is expected to hold exactly the published research files;
-    no private directory enumeration or external paths are included in reports.
-    """
-    seen_files: set[str] = set()
-    seen_dirs: set[str] = set()
-    count = 0
-    pending: list[tuple[Path, str]] = [(root, "")]
+def _check_downloaded_inventory(root: Path) -> tuple:
+    """Get a complete, no-follow inventory to compare around the byte audit."""
     try:
-        while pending:
-            parent, prefix = pending.pop()
-            with os.scandir(parent) as entries:
-                for entry in entries:
-                    count += 1
-                    if count > 24:
-                        raise _bad()
-                    if entry.name in (".", "..") or "/" in entry.name:
-                        raise _bad()
-                    relative = prefix + entry.name
-                    meta = entry.stat(follow_symlinks=False)
-                    if stat.S_ISDIR(meta.st_mode):
-                        if relative not in OUTPUT_DIRS or relative in seen_dirs:
-                            raise _bad()
-                        seen_dirs.add(relative)
-                        pending.append((Path(entry.path), relative + "/"))
-                    elif stat.S_ISREG(meta.st_mode):
-                        if relative not in OUTPUT_FILES or relative in seen_files:
-                            raise _bad()
-                        seen_files.add(relative)
-                    else:
-                        raise _bad()
-    except (OSError, ValueError):
+        return snapshot_inventory(root, OUTPUT_FILES, OUTPUT_DIRS)
+    except ValueError:
         raise _bad() from None
-    if seen_files != OUTPUT_FILES or seen_dirs != OUTPUT_DIRS:
-        raise _bad()
 
 
 def build_five_receipt(root: Path, expected_commit: str, expected_run_id: int) -> dict[str, Any]:
@@ -161,10 +129,11 @@ def create_receipt(root: Path, expected_commit: str, expected_run_id: int) -> No
 
 def verify_download(root: Path, expected_commit: str, expected_run_id: int) -> None:
     """Independently re-read the downloaded artifact rather than the build tree."""
-    _check_downloaded_inventory(root)
+    before = _check_downloaded_inventory(root)
     claimed = _read_json(root, STAGE175)
     actual = build_five_receipt(root, expected_commit, expected_run_id)
-    if claimed != actual:
+    after = _check_downloaded_inventory(root)
+    if claimed != actual or before != after:
         raise _bad()
 
 
