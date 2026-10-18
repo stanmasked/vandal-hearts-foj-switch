@@ -178,3 +178,21 @@ bool foj_battle_forecast_enemy_turn(const FojBattle *battle,
     forecast->outcome_after = imagined.outcome;
     return true;
 }
+
+bool foj_battle_forecast_attack(const FojBattle *battle,
+                                FojHeroAttackForecast *forecast) {
+    if (!forecast) return false;
+    memset(forecast, 0, sizeof(*forecast));
+    if (!battle || battle->outcome != FOJ_BATTLE_ONGOING) return false;
+
+    /* Only a copy may receive the speculative attack. This guarantees
+     * guard, elevation, cursor and used-attack checks match the X action. */
+    FojBattle predicted = *battle;
+    const FojBattleEvent event = foj_battle_attack(&predicted);
+    if (event != FOJ_BATTLE_ATTACKED && event != FOJ_BATTLE_VICTORY)
+        return false;
+    forecast->event = event;
+    forecast->enemy_hp_after = predicted.enemy_hp;
+    forecast->outcome_after = predicted.outcome;
+    return true;
+}
