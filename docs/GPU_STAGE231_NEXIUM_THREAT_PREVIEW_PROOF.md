@@ -36,8 +36,8 @@ Stage231 contains no original PS3 code, assets, maps or combat rules.
 The predicted movement and damage are purely from the existing
 synthetic test encounter; no physical Nintendo Switch test is implied.
 
-This PR depends on Stage230 PR #114, and in turn Stage229 PR #113.
-Both predecessors must pass their respective latest-head CI matrices
-and merge with `main` in order, after which this branch must target
-`main` and successfully complete fresh independent NeXium guest
-screenshots, strict C/Python host tests and NRO validation.
+Stage229 PR #113 and Stage230 PR #114 passed their respective latest-head
+CI matrices and merged with `main`. Stage230 was merged as
+`719af4fb3e6b4d28b414fd843c49394e12ec5115`. Stage231 now targets
+`main` and must independently pass the complete new guest NeXium,
+strict C/Python, NRO and generated renderer tests before merging.
