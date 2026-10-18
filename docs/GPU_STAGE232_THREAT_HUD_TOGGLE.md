@@ -35,10 +35,10 @@ that the safe marker is present by default, disappears when OFF,
 reappears when toggled ON, and that both draw variants leave the
 entire `FojBattle` state byte-for-byte unchanged.
 
-Stage232 depends on Stage231 PR #115, which must pass its actual
-guest screenshot evidence CI and merge into `main` first. Then this
-PR must target `main` and pass independent host, devkitA64 and
-NeXium CI before merging.
+Stage231 PR #115 passed independent host, NeXium and COLL checks
+and merged into `main` as `b0806177d6c059f955db547c81451640445fbd08`.
+Stage232 now targets `main` and requires a fresh full host,
+devkitA64, isometric-render and NeXium CI matrix before merging.
 
 Everything remains a synthetic homebrew research prototype, not the
 original Vandal Hearts: Flames of Judgment battle implementation.
