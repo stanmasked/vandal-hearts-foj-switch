@@ -146,4 +146,23 @@ void foj_iso_render(const FojDemo *state, uint32_t *pixels,
             }
         }
     }
+
+    /* Final overlay so subsequent terrain faces cannot hide the route.
+     * This is a synthetic *preview*: moving still requires pressing A.
+     * Only intermediate/destination cells get markers; the hero is
+     * already visible as a blue token. */
+    if (state->selected) {
+        FojRoute route;
+        if (foj_demo_preview_route(state,state->cursor_x,state->cursor_y,
+                                   &route)) {
+            for (unsigned step=1u;step<route.count;++step) {
+                const int x=route.x[step],y=route.y[step];
+                int sx,sy;
+                foj_iso_project(width,height,x,y,
+                                state->cells[y][x].elevation,&sx,&sy);
+                disk(&c,sx,sy-11,6,rgb(36,47,55));
+                disk(&c,sx,sy-11,4,rgb(248,225,108));
+            }
+        }
+    }
 }
