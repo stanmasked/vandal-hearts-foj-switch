@@ -33,7 +33,9 @@ cannot become an original FoJ mission simply by placing a COLL on SD.
 The console and isometric research NROs now share one bounded,
 local-only file loader in `switch/source/local_coll_window.[ch]`. It
 parses at most 1 MiB through the existing validated COLl grammar and keeps
-only the centered raw window in memory. Invalid, missing or undersized
+only the centered raw window in memory. The temporary source-byte
+buffer and the full parsed grid are explicitly wiped from RAM after
+extracting that window. Invalid, missing or undersized
 files have no effect: the panel is absent and the synthetic battle still
 operates. The loaded bytes are never bundled in NROs, committed to GitHub
 or transmitted by a CI workflow.
