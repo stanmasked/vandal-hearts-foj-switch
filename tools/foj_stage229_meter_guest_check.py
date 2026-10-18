@@ -32,7 +32,9 @@ def verify_meter(frames: tuple[Path, Path, Path, Path]) -> dict:
     if not (values[1] > values[0] and values[2] > values[1]
             and values[3] > values[2]):
         raise ValueError("Replay meter failed to advance for A/B inputs")
-    scale = values[3] / EXPECTED_INPUTS[3]
+    # Infer display scaling from the first nonzero count, not the final
+    # count (whose manipulation is one of the attacks being detected).
+    scale = values[1] / EXPECTED_INPUTS[1]
     if not 6 <= scale <= 40:
         raise ValueError("Replay meter display has implausible pixel scale")
     for i, count in enumerate(EXPECTED_INPUTS[1:], 1):
