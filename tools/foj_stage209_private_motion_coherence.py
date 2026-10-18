@@ -120,7 +120,7 @@ def inspect(observations):
     # neighboring interframe displacement estimates. This only
     # *suggests* where a human should inspect original/research images.
     suspect_middle=sum(
-        index in mismatch_indices and index+1 in mismatch_indices
+        index-1 in mismatch_indices and index in mismatch_indices
         for index in range(1,len(observations["frames"])-1)
     )
     both_reported=validity["operator_declared_both_captures_recorded"]
