@@ -37,10 +37,9 @@ mechanics and never reads user-owned PS3 resources.
 
 ## Dependencies
 
-Stage227 builds on Stage226 PR #110, which proves actual guest B-move
-undo. Keep this change in Draft and stacked until Stage226 passes
-independent CI and merges with `main`. Then retarget Stage227 to
-`main`, trigger a fresh complete host/NRO/NeXium test and merge only
-if each check passes. Neither a successful emulator pass nor the
+Stage226 PR #110 passed all independent checks and merged with `main`
+at `c83ff2482e4625f4f80e872c5b10228894596987`. Stage227 now
+targets `main` and must pass fresh independent Python 3.11/3.13,
+NRO and actual NeXium screenshot checks on its new head before merging. Neither a successful emulator pass nor the
 fictional synthetic battle establishes physical Switch compatibility,
 authentic Vandal Hearts: Flames of Judgment gameplay, or a finished port.
