@@ -37,13 +37,15 @@ attacks.
 
 ## Tests and privacy
 
-Three additional generated-only tests confirm:
+Four additional generated-only tests confirm:
 
 1. Forecasts match several actual committed turns without mutating the
    input state.
 2. Lethal enemy attacks are forecast accurately, and terminal or null
    requests reject safely.
 3. Disconnected enemies and saturated turn counters remain deterministic.
+4. The preview recalculates after a four-tile hero move and matches the
+   actual next enemy attack without consuming any player actions.
 
 An additional isometric test checks the destination ring, imminent-attack
 warning, and victory-indicator precedence. The existing Stage217 strict
