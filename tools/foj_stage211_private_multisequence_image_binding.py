@@ -53,6 +53,7 @@ def verify(observations,config):
     source_fingerprints=set()
     count=0
     same_frame=False
+    validated_windows=[]
     # Validate all windows before any positive status, and never
     # authenticate capture independence from paths or separate hashes.
     for doc,binding in zip(windows,config["windows"],strict=True):
@@ -79,6 +80,19 @@ def verify(observations,config):
             same_frame=True
         source_fingerprints.update(frame_hashes)
         count+=len(frame_hashes)
+        validated_windows.append((
+            doc,source_manifest,original,research_manifest,research
+        ))
+    # Re-read EVERY owner's source PNG and named research PPM after all
+    # windows were examined. This detects files replaced during a
+    # multiwindow run. Never cache a path-only "success" receipt.
+    for doc,manifest,source_dir,frame_binding,research_dir in validated_windows:
+        if inspect_sources(doc,manifest,source_dir)[
+            "source_png_frames_locally_bound"
+        ]!=inspect_landmarks(doc,frame_binding,research_dir)[
+            "stage203_named_frames_bound"
+        ]:
+            raise rejected()
     # A cross-window replay of a byte-identical PNG is a hard failure
     # for independent evidence, even when file names and timestamps
     # differ. Genuine repeated static images can therefore be
@@ -88,6 +102,7 @@ def verify(observations,config):
         "windows_verified":len(windows),
         "source_png_frames_checked":count,
         "research_ppm_frames_bound":count,
+        "all_window_source_and_research_images_rechecked":True,
         "source_pngs_distinct_across_windows":not same_frame,
         "operator_declared_distinct_actions":(
             observations["motion_independence_declaration"]==
