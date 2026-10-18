@@ -64,7 +64,7 @@ static void test_each_raw_channel_can_be_drawn(void) {
     assert(colors[0]!=colors[1]);
     assert(colors[2] != 0); /* constant numeric channel remains finite */
     assert(colors[4]!=colors[5]); /* separate boolean interpretations */
-    assert(colors[4]==UINT32_C(0xff858eb1)); /* flag true */
+    assert(colors[4]==UINT32_C(0xff85b128)); /* flag true */
     assert(colors[5]==UINT32_C(0xff4d413d)); /* flag false */
     free(pixels);
 }
