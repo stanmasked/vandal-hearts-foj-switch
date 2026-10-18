@@ -8,6 +8,7 @@
 #include "tactical_demo.h"
 #include "isometric_demo.h"
 #include "battle_replay.h"
+#include "battle_replay_meter.h"
 #include "coll_battle_overlay.h"
 #include "local_coll_window.h"
 
@@ -117,6 +118,8 @@ int main(int argc, char **argv) {
                 replay.count >= FOJ_REPLAY_MAX_INPUTS ?
                     0xff2ab6ffu : 0xff44e630u;
             const int pixel_stride = (int)(stride_bytes / sizeof(u32));
+            (void)foj_replay_render_meter(&replay, (uint32_t *)pixels,
+                                          FB_WIDTH, FB_HEIGHT, pixel_stride);
             for (int iy=12;iy<20;++iy)
                 for (int ix=12;ix<20;++ix)
                     pixels[iy*pixel_stride+ix] = audit_color;
