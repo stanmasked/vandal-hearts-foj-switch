@@ -76,33 +76,53 @@ def _check_downloaded_inventory(root: Path) -> None:
     The artifact is expected to hold exactly the published research files;
     no private directory enumeration or external paths are included in reports.
     """
+    # Anchor every directory descent at its already-open parent.
+    # os.scandir(path) alone could follow an ancestor replaced by a
+    # symlink after the earlier inventory pass.
+    flags = (os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) |
+             getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0))
+    if not getattr(os, "O_NOFOLLOW", 0) or not getattr(os, "O_DIRECTORY", 0):
+        raise _bad()
     seen_files: set[str] = set()
     seen_dirs: set[str] = set()
     count = 0
-    pending: list[tuple[Path, str]] = [(root, "")]
+
+    def descend(fd: int, prefix: str) -> None:
+        nonlocal count
+        with os.scandir(fd) as entries:
+            for entry in entries:
+                count += 1
+                if count > 24 or entry.name in (".", "..") or "/" in entry.name:
+                    raise _bad()
+                relative = prefix + entry.name
+                meta = entry.stat(follow_symlinks=False)
+                if stat.S_ISDIR(meta.st_mode):
+                    if relative not in OUTPUT_DIRS or relative in seen_dirs:
+                        raise _bad()
+                    seen_dirs.add(relative)
+                    child = os.open(entry.name, flags, dir_fd=fd)
+                    try:
+                        opened = os.fstat(child)
+                        if (not stat.S_ISDIR(opened.st_mode) or
+                                (opened.st_dev, opened.st_ino) !=
+                                (meta.st_dev, meta.st_ino)):
+                            raise _bad()
+                        descend(child, relative + "/")
+                    finally:
+                        os.close(child)
+                elif stat.S_ISREG(meta.st_mode):
+                    if relative not in OUTPUT_FILES or relative in seen_files:
+                        raise _bad()
+                    seen_files.add(relative)
+                else:
+                    raise _bad()
+
     try:
-        while pending:
-            parent, prefix = pending.pop()
-            with os.scandir(parent) as entries:
-                for entry in entries:
-                    count += 1
-                    if count > 24:
-                        raise _bad()
-                    if entry.name in (".", "..") or "/" in entry.name:
-                        raise _bad()
-                    relative = prefix + entry.name
-                    meta = entry.stat(follow_symlinks=False)
-                    if stat.S_ISDIR(meta.st_mode):
-                        if relative not in OUTPUT_DIRS or relative in seen_dirs:
-                            raise _bad()
-                        seen_dirs.add(relative)
-                        pending.append((Path(entry.path), relative + "/"))
-                    elif stat.S_ISREG(meta.st_mode):
-                        if relative not in OUTPUT_FILES or relative in seen_files:
-                            raise _bad()
-                        seen_files.add(relative)
-                    else:
-                        raise _bad()
+        root_fd = os.open(root, flags)
+        try:
+            descend(root_fd, "")
+        finally:
+            os.close(root_fd)
     except (OSError, ValueError):
         raise _bad() from None
     if seen_files != OUTPUT_FILES or seen_dirs != OUTPUT_DIRS:
@@ -165,6 +185,10 @@ def verify_download(root: Path, expected_commit: str, expected_run_id: int) -> N
     claimed = _read_json(root, STAGE175)
     actual = build_five_receipt(root, expected_commit, expected_run_id)
     if claimed != actual:
+        raise _bad()
+    # Detect ordinary file-set substitutions during the content audit.
+    _check_downloaded_inventory(root)
+    if _read_json(root, STAGE175) != claimed:
         raise _bad()
 
 
