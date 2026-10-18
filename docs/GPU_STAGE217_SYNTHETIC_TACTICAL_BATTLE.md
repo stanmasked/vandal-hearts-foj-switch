@@ -11,7 +11,8 @@ Two existing Nintendo Switch research NROs now share
 - `foj-switch-research.nro`: console-grid version with turn, HP and action
   messages.
 - `foj-isometric-research.nro`: rendered board, movable character/enemy
-  tokens, health bars and a victory/defeat color strip.
+  tokens, health bars, removal of the defeated enemy token and a
+  victory/defeat color strip.
 
 Controller bindings: D-pad moves the grid cursor; A selects the hero and
 confirms movement; B cancels selection; X attacks the enemy under the
@@ -35,10 +36,11 @@ assets attached to these state changes yet.
 
 ## Validation
 
-`tests/test_tactical_battle.c` covers seven generated-only scenarios:
+`tests/test_tactical_battle.c` covers eight generated-only scenarios:
 selection and once-per-turn movement, attack cooldown and victory,
 invalid targets/heights, repeatable enemy behavior, defeat/reset,
-inaccessible terrain with saturated turn counter, and null-safety.
+inaccessible terrain with saturated turn counter, null-safety,
+and a complete initial-position-to-victory controller-style playthrough.
 
 `tests/test_isometric_demo.c` also compares the original generated map
 with HP overlays and validates distinct victory/defeat result strips.
