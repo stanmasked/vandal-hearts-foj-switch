@@ -17,6 +17,7 @@ from pathlib import Path
 import stat
 import sys
 
+from tools.check_local_rig_pair import MAX_RIG_FILE,MAX_ANIM_FILE
 from tools.foj_stage196_private_pose_observations import (
     only_keys,private_read,rejected
 )
@@ -29,7 +30,7 @@ from tools.foj_stage214_private_multicamera_preview import (
     MIN_VIEWS,MAX_VIEWS,PREVIEW_FRAME,safe_frame_pixels
 )
 
-SCHEMA="foj.stage215.private_camera_lock.v1"
+SCHEMA="foj.stage215.private_camera_lock.v2"
 REPORT="foj.stage215.private_camera_lock_check.v1"
 MAX_CONTACT_SHEET_BYTES=4_200_000
 SHA_KEYS=("initial","play_025","paused","fade_0","fade_025",
@@ -93,6 +94,34 @@ def bound_private_ppm(path:Path):
     return raw
 
 
+def staged_source_witness(root:Path):
+    """Private hashes bind the exact native C input bytes across both runs.
+
+    Never include private source paths or content in public CLI output.
+    Reject symlinks (including dangling links), directories and files
+    larger than the original local-intake limits.
+    """
+    staged=root/"private-switch-sd"/"switch/foj"
+    def digest(path:Path,limit:int):
+        st=path.lstat()
+        if (not stat.S_ISREG(st.st_mode) or path.is_symlink()
+            or not 1<=st.st_size<=limit):
+            raise rejected()
+        raw=path.read_bytes()
+        if len(raw)!=st.st_size:
+            raise rejected()
+        return hashlib.sha256(raw).hexdigest()
+    optional=staged/"anims/preview_b.banim"
+    return {
+        "rig":digest(staged/"rig/preview.fojrm",MAX_RIG_FILE),
+        "primary":digest(staged/"anims/preview.banim",MAX_ANIM_FILE),
+        "secondary":(
+            digest(optional,MAX_ANIM_FILE)
+            if optional.exists() or optional.is_symlink() else None
+        ),
+    }
+
+
 def preview_witness(preview_root:Path,chosen:int):
     if not preview_root.is_dir() or preview_root.is_symlink():
         raise rejected()
@@ -147,6 +176,7 @@ def preview_witness(preview_root:Path,chosen:int):
         "preview_sheet_sha256_private":
             hashlib.sha256(content).hexdigest(),
         "native_frame_sha256_private":frame_sha,
+        "staged_source_sha256_private":staged_source_witness(preview_root),
         "owner_selected_camera_not_automatically_ranked":True,
         "original_ps3_camera_authenticated":False,
         "original_game_animation_fidelity_verified":False,
@@ -180,6 +210,7 @@ def verify_choice(preview_root:Path,lock_file:Path,stage203_root:Path):
         "schema","view_index",
         "camera_yaw_radians","camera_pitch_radians","camera_zoom_factor",
         "preview_sheet_sha256_private","native_frame_sha256_private",
+        "staged_source_sha256_private",
         "owner_selected_camera_not_automatically_ranked",
         "original_ps3_camera_authenticated",
         "original_game_animation_fidelity_verified"
@@ -214,6 +245,8 @@ def verify_choice(preview_root:Path,lock_file:Path,stage203_root:Path):
         lock["camera_zoom_factor"]
     )
     if camera!=selected_camera:
+        raise rejected()
+    if staged_source_witness(stage203_root)!=lock["staged_source_sha256_private"]:
         raise rejected()
     frames=stage203_root/"private-frames"
     render_evidence(
