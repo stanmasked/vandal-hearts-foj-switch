@@ -42,15 +42,33 @@ FIELDS = {
 
 
 def private_digest(path: Path) -> str:
-    """Hash strictly bounded regular JSON; no symlinks or path disclosure."""
-    st = path.lstat()
-    if (not stat.S_ISREG(st.st_mode) or path.is_symlink()
-        or not 1 <= st.st_size <= MAX_BYTES):
-        raise rejected()
-    raw = path.read_bytes()
-    if len(raw) != st.st_size:
-        raise rejected()
-    return hashlib.sha256(raw).hexdigest()
+    """Hash bounded private bytes from one descriptor, without link traversal.
+
+    Opening first and validating the descriptor avoids the lstat/read race:
+    an attacker must not be able to swap a checked regular file for a
+    symlink to a different local resource before the contents are read.
+    O_NONBLOCK prevents waiting on a substituted FIFO before fstat rejects it.
+    """
+    fd = -1
+    try:
+        fd = os.open(
+            path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) |
+            getattr(os, "O_NONBLOCK", 0)
+        )
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or not 1 <= st.st_size <= MAX_BYTES:
+            raise rejected()
+        with os.fdopen(fd, "rb") as stream:
+            fd = -1
+            raw = stream.read(MAX_BYTES + 1)
+        if len(raw) != st.st_size:
+            raise rejected()
+        return hashlib.sha256(raw).hexdigest()
+    except (OSError, ValueError):
+        raise rejected() from None
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 def evidence_witness(preview_root: Path, camera_lock: Path,
