@@ -83,6 +83,63 @@ void foj_reachability(const FojDemo *state,
     }
 }
 
+bool foj_demo_preview_route(const FojDemo *state, int target_x, int target_y,
+                            FojRoute *route) {
+    if (!route) return false;
+    memset(route, 0, sizeof(*route));
+    if (!state || !foj_in_bounds(state->hero_x, state->hero_y) ||
+        !foj_in_bounds(target_x, target_y) ||
+        (target_x == state->hero_x && target_y == state->hero_y))
+        return false;
+
+    uint8_t distances[FOJ_HEIGHT][FOJ_WIDTH];
+    foj_reachability(state, distances);
+    const uint8_t distance = distances[target_y][target_x];
+    if (distance == FOJ_UNREACHABLE || distance > FOJ_MOVE_BUDGET)
+        return false;
+
+    int x = target_x, y = target_y;
+    unsigned index = (unsigned)distance;
+    route->count = (uint8_t)(index + 1u);
+    /* One stable tie-break order for backtracking equal-length routes:
+     * north, east, south, west. No heap allocation or unbounded loops. */
+    static const int dx[4] = {0, 1, 0, -1};
+    static const int dy[4] = {-1, 0, 1, 0};
+    while (index > 0u) {
+        route->x[index] = (uint8_t)x;
+        route->y[index] = (uint8_t)y;
+        bool found = false;
+        for (int d = 0; d < 4; ++d) {
+            const int px = x + dx[d], py = y + dy[d];
+            if (!foj_in_bounds(px, py) ||
+                distances[py][px] != (uint8_t)(index - 1u))
+                continue;
+            const int height_delta =
+                (int)state->cells[py][px].elevation -
+                (int)state->cells[y][x].elevation;
+            if (height_delta < -FOJ_MAX_STEP_HEIGHT ||
+                height_delta > FOJ_MAX_STEP_HEIGHT)
+                continue;
+            x = px;
+            y = py;
+            found = true;
+            break;
+        }
+        if (!found) {
+            memset(route, 0, sizeof(*route));
+            return false;
+        }
+        --index;
+    }
+    route->x[0] = (uint8_t)x;
+    route->y[0] = (uint8_t)y;
+    if (x != state->hero_x || y != state->hero_y) {
+        memset(route, 0, sizeof(*route));
+        return false;
+    }
+    return true;
+}
+
 FojAction foj_press_a(FojDemo *state) {
     if (!state->selected) {
         if (state->cursor_x == state->hero_x &&
