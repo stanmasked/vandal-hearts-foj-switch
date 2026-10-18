@@ -87,7 +87,7 @@ jobs:
             \( -name 'nexium-gui' -o -name 'nexium' \) -print -quit)"
           test -n "$binary"
           echo "NEXIUM_BIN=$binary" >> "$GITHUB_ENV"
-      - name: Regress screenshot verifier against eleven synthetic cases
+      - name: Regress screenshot verifier against twelve synthetic cases
         shell: bash
         run: |
           set -euo pipefail
@@ -112,6 +112,7 @@ jobs:
           set -euo pipefail
           python3 -m tools.foj_stage227_victory_guest_check \
             --initial runtime-evidence/battle-initial.png \
+            --moved runtime-evidence/battle-moved.png \
             --after-turn1 runtime-evidence/battle-turn1.png \
             --after-hit1 runtime-evidence/battle-hit1.png \
             --after-turn2 runtime-evidence/battle-turn2.png \
