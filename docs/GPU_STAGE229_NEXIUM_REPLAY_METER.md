@@ -46,7 +46,10 @@ not physical Switch operation or completed porting.
 
 ## Integration gate
 
-Stage229 is stacked on Stage228 PR #112. Require all twelve Stage228
-latest-head workflows to succeed and merge it to `main` first.
-Then retarget Stage229 to `main` and require fresh independent
-strict C11/UBSan, NeXium and Switch NRO checks before merging.
+Stage228 PR #112 passed all twelve independent checks and merged into
+`main` at `e8c8998a47a0926203f59eb74f79ff9cb02e8537`.
+Stage229 now targets `main`; the meter and NeXium evidence require
+fresh independent strict C11/UBSan, NRO and emulator verification.
+The first guest run revealed that NeXium's own performance overlay
+obscured the initial upper-left meter. The meter was relocated beyond
+that overlay without weakening pixel-count requirements.
