@@ -40,7 +40,8 @@ Inherited strict C11, UBSan, Python and research Switch NRO workflows
 cover these changes. No original game assets, keys or user-supplied
 private maps are checked into GitHub.
 
-Stage225 is stacked on Stage224 PR #108. That dependency must pass its
-own actual-guest NeXium protection checks and merge before Stage225 is
-retargeted to `main` and independently tested. This is still invented
+Stage224 PR #108 passed Python 3.11/3.13, guest NeXium ZR protection
+and inherited COLL checks; it merged into `main` as `444cde1147665c002a8818590660aa1c671583a9`.
+Stage225 now targets `main` and requires independent C/Python 3.11/3.13,
+NRO, generated renderer and emulator CI before merging. This is still invented
 synthetic combat, not a completed port.
