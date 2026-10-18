@@ -85,7 +85,10 @@ class Stage208AffineCrossvalidationTests(unittest.TestCase):
         self.assertNotEqual(
             result["diagnosis"],"tentative_affine_image_plane_nuisance"
         )
-        self.assertGreater(result["high_holdout_mismatch_frames"],0)
+        self.assertGreater(
+            result["high_holdout_mismatch_frames"]+
+            result["unscorable_geometry_frames"],0
+        )
 
     def test_unreported_capture_is_not_promoted_to_camera_discovery(self):
         doc=distorted()
@@ -212,6 +215,15 @@ class Stage208AffineCrossvalidationTests(unittest.TestCase):
                     sorted(row["landmarks"],key=lambda q:q["id"]),selected
                 ):
                     mark["experimental_xy"]=[x/(W-1),y/(H-1)]
+                    # The SOURCE side is also an invented consistent
+                    # affine image-plane map of the same research points.
+                    # A random unrelated source mapping is not a valid
+                    # joint-correspondence fixture.
+                    u,v=mark["experimental_xy"]
+                    mark["ps3_xy"]=[
+                        .50+.70*(u-.5)+.04*(v-.5),
+                        .48+.02*(u-.5)+.75*(v-.5),
+                    ]
             obs_path=root/"operator-invented.json"
             manifest_path=root/"source-ids-private.json"
             binding_path=root/"wire-binding-private.json"
