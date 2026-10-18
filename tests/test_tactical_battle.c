@@ -121,6 +121,27 @@ static void test_impassable_enemy_and_turn_saturation(void) {
     assert(b.hero_hp==FOJ_BATTLE_HERO_MAX_HP);
 }
 
+static void test_full_controller_style_playthrough_to_victory(void) {
+    FojBattle b;
+    foj_battle_init(&b);
+    assert(foj_battle_confirm(&b)==FOJ_BATTLE_SELECTED);
+    for (int x=0;x<4;++x) foj_battle_move_cursor(&b,1,0);
+    assert(b.map.cursor_x==5 && b.map.cursor_y==2);
+    assert(foj_battle_confirm(&b)==FOJ_BATTLE_MOVED);
+    assert(b.map.hero_x==5 && b.map.hero_y==2);
+    assert(foj_battle_end_turn(&b)==FOJ_BATTLE_ENEMY_ATTACKED);
+    assert(b.map.enemy_x==6 && b.map.enemy_y==2);
+    assert(b.hero_hp==6);
+    foj_battle_move_cursor(&b,1,0);
+    assert(foj_battle_attack(&b)==FOJ_BATTLE_ATTACKED);
+    assert(b.enemy_hp==3);
+    assert(foj_battle_end_turn(&b)==FOJ_BATTLE_ENEMY_ATTACKED);
+    assert(b.hero_hp==4);
+    assert(foj_battle_attack(&b)==FOJ_BATTLE_VICTORY);
+    assert(b.outcome==FOJ_BATTLE_WON);
+    assert(foj_battle_end_turn(&b)==FOJ_BATTLE_REJECTED);
+}
+
 static void test_null_arguments(void) {
     foj_battle_init(NULL);
     foj_battle_move_cursor(NULL,1,0);
@@ -137,7 +158,8 @@ int main(void) {
     test_enemy_moves_and_attacks_deterministically();
     test_defeat_and_reset();
     test_impassable_enemy_and_turn_saturation();
+    test_full_controller_style_playthrough_to_victory();
     test_null_arguments();
-    puts("Stage217 synthetic tactical battle: seven scenarios passed");
+    puts("Stage217 synthetic tactical battle: eight scenarios passed");
     return 0;
 }
