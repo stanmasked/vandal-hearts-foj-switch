@@ -39,7 +39,7 @@ class Stage227VictoryScreenshotTests(unittest.TestCase):
     def fixture(self) -> None:
         screenshot(self.frames[0], hero_hp=8, enemy_hp=6)
         screenshot(self.frames[1], hero_hp=8, enemy_hp=6)
-        screenshot(self.frames[3], hero_hp=6, enemy_hp=6)
+        screenshot(self.frames[2], hero_hp=6, enemy_hp=6)
         screenshot(self.frames[3], hero_hp=6, enemy_hp=3)
         screenshot(self.frames[4], hero_hp=4, enemy_hp=3)
         screenshot(self.frames[5], hero_hp=4, enemy_hp=0, win=True)
@@ -51,7 +51,7 @@ class Stage227VictoryScreenshotTests(unittest.TestCase):
         self.assertTrue(result["terminal_y_was_rejected"])
 
     def test_first_x_does_not_reduce_enemy_hp(self) -> None:
-        screenshot(self.frames[2], hero_hp=6, enemy_hp=6)
+        screenshot(self.frames[3], hero_hp=6, enemy_hp=6)
         with self.assertRaises(ValueError):
             verify_victory(self.frames)
 
