@@ -40,6 +40,7 @@ synthetic research NRO*. It does not establish correct original PS3
 enemy AI, authentic animations or mission assets, physical Nintendo
 Switch behavior, or a playable port of the commercial title.
 
-Dependencies: Stage221 PR #105 and Stage222 PR #106 must merge before
-retargeting this PR to `main`. Require a fresh independent NeXium run
-after retargeting and before merging Stage223.
+Dependencies satisfied: Stage221 PR #105 and Stage222 PR #106 have
+merged into `main` (Stage222 merge `3215c978`). Stage223 now targets
+`main` and requires an independent NeXium run and Python 3.11/3.13
+verification against that main branch before merging.
