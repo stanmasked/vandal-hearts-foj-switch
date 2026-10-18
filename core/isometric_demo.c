@@ -185,9 +185,12 @@ static void hp_bar(Canvas *canvas, int cx, int cy, unsigned hp,
     }
 }
 
-void foj_iso_render_battle_options(const FojBattle *battle, uint32_t *pixels,
-                                   int width, int height, int stride_pixels,
-                                   bool show_threat_preview) {
+void foj_iso_render_battle_cached_options(const FojBattle *battle,
+                                          uint32_t *pixels,
+                                          int width, int height,
+                                          int stride_pixels,
+                                          bool show_threat_preview,
+                                          FojBattleThreatCache *cache) {
     if (!battle || !pixels || width <= 0 || height <= 0 ||
         stride_pixels < width) return;
     FojDemo visual = battle->map;
@@ -204,7 +207,7 @@ void foj_iso_render_battle_options(const FojBattle *battle, uint32_t *pixels,
      * copies for each reachable cell; retain no PS3 terrain semantics. */
     FojBattleThreatPreview danger;
     if (show_threat_preview &&
-        foj_battle_preview_movement_threat(battle,&danger)) {
+        foj_battle_preview_movement_threat_cached(cache,battle,&danger)) {
         for (int dy=0;dy<FOJ_HEIGHT;++dy) {
             for (int dx=0;dx<FOJ_WIDTH;++dx) {
                 if (!danger.can_move[dy][dx]) continue;
@@ -327,6 +330,14 @@ void foj_iso_render_battle_options(const FojBattle *battle, uint32_t *pixels,
             for (int x0 = 0; x0 < width; ++x0)
                 pixel(&canvas, x0, y0, color);
     }
+}
+
+/* Preserve all established entry points and framebuffer contracts. */
+void foj_iso_render_battle_options(const FojBattle *battle, uint32_t *pixels,
+                                   int width, int height, int stride_pixels,
+                                   bool show_threat_preview) {
+    foj_iso_render_battle_cached_options(battle,pixels,width,height,
+                                         stride_pixels,show_threat_preview,NULL);
 }
 
 /* Keep the original signature and defaults for all existing game code. */

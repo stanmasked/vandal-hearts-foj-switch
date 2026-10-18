@@ -90,6 +90,23 @@ typedef struct {
 bool foj_battle_preview_movement_threat(const FojBattle *battle,
                                        FojBattleThreatPreview *preview);
 
+/* Optional caller-owned cache for an entire selected-movement risk map.
+ * Only cursor_x/y may change between hits; all other game/terrain fields
+ * are part of the key. No globals or stale predictions across turns.
+ * Counters are instrumentation: one calculation for each cache miss. */
+typedef struct {
+    bool valid;
+    FojBattle key;
+    FojBattleThreatPreview preview;
+    uint32_t calculations;
+    uint32_t hits;
+} FojBattleThreatCache;
+
+void foj_battle_threat_cache_init(FojBattleThreatCache *cache);
+bool foj_battle_preview_movement_threat_cached(FojBattleThreatCache *cache,
+                                               const FojBattle *battle,
+                                               FojBattleThreatPreview *preview);
+
 void foj_battle_init(FojBattle *battle);
 void foj_battle_move_cursor(FojBattle *battle, int dx, int dy);
 FojBattleEvent foj_battle_confirm(FojBattle *battle);

@@ -111,6 +111,45 @@ bool foj_battle_preview_movement_threat(const FojBattle *battle,
     return true;
 }
 
+/* Stage237: keep the source of truth in the existing simulation.
+ * A cached threat matrix depends on the entire board and battle state,
+ * but not the hover cursor. Replay inputs always modify FojBattle, not
+ * this optional presentation cache. */
+void foj_battle_threat_cache_init(FojBattleThreatCache *cache) {
+    if (cache) memset(cache, 0, sizeof(*cache));
+}
+
+bool foj_battle_preview_movement_threat_cached(FojBattleThreatCache *cache,
+                                               const FojBattle *battle,
+                                               FojBattleThreatPreview *preview) {
+    if (!cache) return foj_battle_preview_movement_threat(battle, preview);
+    if (!preview) return false;
+    if (!battle || battle->outcome != FOJ_BATTLE_ONGOING ||
+        !battle->map.selected || battle->moved_this_turn ||
+        !foj_in_bounds(battle->map.hero_x,battle->map.hero_y) ||
+        !foj_in_bounds(battle->map.enemy_x,battle->map.enemy_y)) {
+        cache->valid = false;
+        return foj_battle_preview_movement_threat(battle, preview);
+    }
+    FojBattle key = *battle;
+    key.map.cursor_x = 0;
+    key.map.cursor_y = 0;
+    if (cache->valid && memcmp(&key, &cache->key, sizeof(key)) == 0) {
+        *preview = cache->preview;
+        ++cache->hits;
+        return true;
+    }
+    if (!foj_battle_preview_movement_threat(battle, preview)) {
+        cache->valid = false;
+        return false;
+    }
+    cache->key = key;
+    cache->preview = *preview;
+    cache->valid = true;
+    ++cache->calculations;
+    return true;
+}
+
 void foj_battle_init(FojBattle *battle) {
     if (!battle) return;
     memset(battle, 0, sizeof(*battle));
