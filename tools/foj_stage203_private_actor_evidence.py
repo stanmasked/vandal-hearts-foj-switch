@@ -205,7 +205,8 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
             source_png_manifest:Path|None=None,
             source_png_dir:Path|None=None,
             review_overlays:bool=False,
-            view_temporal_audit:bool=False):
+            view_temporal_audit:bool=False,
+            affine_crosscheck:bool=False):
     safe_destination(output)
     # Strictly bounded source reads and independent source-coordinate
     # research math happen BEFORE creating ANY private output.
@@ -241,7 +242,7 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
         source_doc=private_read(source_png_manifest)
         # Validate BEFORE creating any owner-private output directory.
         inspect_sources(bound_annotations,source_doc,source_png_dir)
-    if (review_overlays or view_temporal_audit) and (
+    if (review_overlays or view_temporal_audit or affine_crosscheck) and (
         observations is None or source_png_manifest is None or
         source_png_dir is None or frame_bindings is None
     ):
@@ -353,6 +354,25 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
                 "private_image_plane_view_diagnosis":"not_performed",
                 "ps3_camera_or_animation_verified":False,
             }
+        if affine_crosscheck:
+            from tools.foj_stage208_private_affine_crosscheck import compare
+            affine_result=compare(bound_annotations)
+            protected_json(
+                output/"private-affine-crossvalidation.json",
+                affine_result
+            )
+            affine_status={
+                "private_affine_model_crosscheck_performed":True,
+                "private_affine_crosscheck_diagnosis":
+                    affine_result["diagnosis"],
+                "original_ps3_camera_verified_by_affine":False,
+            }
+        else:
+            affine_status={
+                "private_affine_model_crosscheck_performed":False,
+                "private_affine_crosscheck_diagnosis":"not_performed",
+                "original_ps3_camera_verified_by_affine":False,
+            }
         if multiwindow is None:
             multi={
                 "independent_windows_submitted":False,
@@ -386,6 +406,7 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
             **bound,
             **review_status,
             **view_status,
+            **affine_status,
             **multi,
             "asset_identity_authenticated_as_original_ps3":False,
             "original_game_animation_accuracy_verified":False,
@@ -425,6 +446,7 @@ def main(argv=None):
     parser.add_argument("--source-png-dir",type=Path)
     parser.add_argument("--review-overlays",action="store_true")
     parser.add_argument("--view-temporal-audit",action="store_true")
+    parser.add_argument("--affine-crosscheck",action="store_true")
     args=parser.parse_args(argv)
     try:
         result=conduct(
@@ -435,6 +457,7 @@ def main(argv=None):
             source_png_dir=args.source_png_dir,
             review_overlays=args.review_overlays,
             view_temporal_audit=args.view_temporal_audit,
+            affine_crosscheck=args.affine_crosscheck,
         )
     except (OSError,ValueError,TypeError,RuntimeError,
             subprocess.SubprocessError,OverflowError,IndexError,
