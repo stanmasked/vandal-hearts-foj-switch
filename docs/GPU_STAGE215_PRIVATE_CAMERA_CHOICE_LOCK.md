@@ -11,7 +11,8 @@ Stage215 adds an owner-local selection lock and a **nine-state
 byte-for-byte verification** against the final Stage203 native
 research render. It checks that the actual C-produced wireframe
 geometry, *not just metadata or yaw/pitch/zoom text*, matches the
-operator's chosen Stage214 candidate.
+operator's chosen Stage214 candidate. Stage215 also pins the
+exact staged rig and BANIM bytes across both runs.
 
 ## Owner-local workflow
 
@@ -36,7 +37,8 @@ It validates the view index, exact camera coordinates, nine expected
 PPM state images, pause/reset invariants and default C-host rig
 state. Then it creates a new mode-0600 **private** lock containing
 the selected camera and SHA-256 for its nine native frames and the
-sheet. These hashes and the camera parameters are **never printed**.
+sheet, as well as SHA-256 hashes of the staged rig and BANIM files.
+These hashes and camera parameters are **never printed**.
 
 The choice is operator-supplied, not selected using image-plane
 fidelity scores or backfitted to the observation data.
@@ -77,8 +79,11 @@ contact-sheet bytes, original view metadata, and all original nine
 PPM frames, and independently reads Stage203's private
 `private-research-camera.json`. It requires exactly the locked
 camera and the **same pixels** in every Stage203 research frame.
+It also requires byte-identical staged rig/BANIM input files, including
+the presence or absence of the optional second clip.
 
-A changed view, altered pixel, swapped research frame, edited
+A modified staged rig or clip, missing optional secondary clip,
+changed view, altered pixel, swapped research frame, edited
 camera manifest, wrong zoom or different actor/animation rendering
 causes the audit to fail. Files and previous locks are never
 overwritten or copied into public CI.
@@ -86,8 +91,12 @@ overwritten or copied into public CI.
 Once verified, perform Stage204/205 image-binding and Stage206
 anatomical visual review against the *final* locked Stage203 frames.
 Do not change research projection or clip playback between
-camera-selection and manual landmark annotation. If the view must
+camera-selection and manual landmark annotation. If the view or source assets must
 change, start with a **new private Stage214 preview and new lock**.
+
+**Lock schema v2:** v1 private lock files lack source-asset hashes and
+will be rejected. Create a fresh owner-private Stage214 preview and
+lock rather than modifying the old record.
 
 ## Privacy and provenance
 
@@ -111,6 +120,7 @@ are byte-identical for the selected candidate.
 generated-only FOJRM001/BANIM files and actual production C
 rendering in Stage214 and Stage203. It tests a correct nine-frame
 match, wrong camera refusal, altered preview/final PPM pixels,
-tampered view metadata, exact view index ordering, existing lock
+tampered view metadata, changes to staged input bytes,
+secondary-clip removal, exact view index ordering, existing lock
 protection, private file permissions and CLI path/hash secrecy.
 No commercial PS3 game media enters the repository or Actions.
