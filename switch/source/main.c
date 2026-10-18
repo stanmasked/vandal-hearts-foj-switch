@@ -99,8 +99,10 @@ static void draw_scene(const FojBattle *battle, FojBattleEvent action, int diagn
         foj_in_bounds(state->cursor_x,state->cursor_y)) {
         const int x=state->cursor_x, y=state->cursor_y;
         if (threat.can_move[y][x])
-            printf("Move to cursor (%d,%d): next enemy damage %u HP\n",
-                   x,y,(unsigned)threat.incoming_damage[y][x]);
+            printf("Move to (%d,%d): damage %u HP, enemy next (%u,%u)\n",
+                   x,y,(unsigned)threat.incoming_damage[y][x],
+                   (unsigned)threat.enemy_x_after[y][x],
+                   (unsigned)threat.enemy_y_after[y][x]);
         else
             puts("Move to cursor: unavailable destination.");
     }
