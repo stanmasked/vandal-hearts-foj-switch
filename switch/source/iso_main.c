@@ -7,8 +7,12 @@
 
 #include "tactical_demo.h"
 #include "isometric_demo.h"
+#include "coll_battle_overlay.h"
+#include "local_coll_window.h"
 
 enum { FB_WIDTH = 1280, FB_HEIGHT = 720 };
+
+static FojCollBattleWindow raw_window;
 
 int main(int argc, char **argv) {
     (void)argc;
@@ -29,6 +33,13 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    const char *local_path = "sdmc:/switch/foj/maps/map1-1.coll";
+    bool raw_loaded=foj_local_coll_load_path(local_path,&raw_window);
+    if (!raw_loaded && R_SUCCEEDED(fsdevMountSdmc()))
+        raw_loaded=foj_local_coll_load_path(local_path,&raw_window);
+    unsigned raw_channel=0;
+    bool show_raw_window=true;
+
     FojBattle battle;
     foj_battle_init(&battle);
     while (appletMainLoop()) {
@@ -47,12 +58,21 @@ int main(int argc, char **argv) {
         if (pressed & HidNpadButton_ZR) (void)foj_battle_guard(&battle);
         if (pressed & HidNpadButton_Y) (void)foj_battle_end_turn(&battle);
         if (pressed & HidNpadButton_Minus) foj_battle_init(&battle);
+        /* Only change diagnostic presentation, never combat/pathfinding. */
+        if (pressed & HidNpadButton_L) raw_channel=(raw_channel+5u)%6u;
+        if (pressed & HidNpadButton_R) raw_channel=(raw_channel+1u)%6u;
+        if (pressed & HidNpadButton_ZL) show_raw_window=!show_raw_window;
 
         u32 stride_bytes = 0;
         u32 *pixels = (u32 *)framebufferBegin(&framebuffer, &stride_bytes);
         if (pixels) {
             foj_iso_render_battle(&battle, (uint32_t *)pixels, FB_WIDTH, FB_HEIGHT,
                            (int)(stride_bytes / sizeof(u32)));
+            if (raw_loaded && show_raw_window)
+                (void)foj_coll_battle_overlay(
+                    &raw_window,(uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,
+                    (int)(stride_bytes / sizeof(u32)),
+                    battle.map.cursor_x,battle.map.cursor_y,raw_channel);
         }
         framebufferEnd(&framebuffer);
     }
