@@ -33,16 +33,17 @@ class Stage227VictoryScreenshotTests(unittest.TestCase):
         work = tempfile.TemporaryDirectory()
         self.addCleanup(work.cleanup)
         self.frames = tuple(Path(work.name)/f"capture-{i}.png"
-                            for i in range(6))
+                            for i in range(7))
         self.fixture()
 
     def fixture(self) -> None:
         screenshot(self.frames[0], hero_hp=8, enemy_hp=6)
-        screenshot(self.frames[1], hero_hp=6, enemy_hp=6)
-        screenshot(self.frames[2], hero_hp=6, enemy_hp=3)
-        screenshot(self.frames[3], hero_hp=4, enemy_hp=3)
-        screenshot(self.frames[4], hero_hp=4, enemy_hp=0, win=True)
+        screenshot(self.frames[1], hero_hp=8, enemy_hp=6)
+        screenshot(self.frames[3], hero_hp=6, enemy_hp=6)
+        screenshot(self.frames[3], hero_hp=6, enemy_hp=3)
+        screenshot(self.frames[4], hero_hp=4, enemy_hp=3)
         screenshot(self.frames[5], hero_hp=4, enemy_hp=0, win=True)
+        screenshot(self.frames[6], hero_hp=4, enemy_hp=0, win=True)
 
     def test_valid_synthetic_full_playthrough(self) -> None:
         result = verify_victory(self.frames)
@@ -55,47 +56,52 @@ class Stage227VictoryScreenshotTests(unittest.TestCase):
             verify_victory(self.frames)
 
     def test_second_y_does_not_hurt_hero(self) -> None:
-        screenshot(self.frames[3], hero_hp=6, enemy_hp=3)
+        screenshot(self.frames[4], hero_hp=6, enemy_hp=3)
         with self.assertRaises(ValueError):
             verify_victory(self.frames)
 
     def test_first_y_does_not_hurt_hero(self) -> None:
-        screenshot(self.frames[1], hero_hp=8, enemy_hp=6)
+        screenshot(self.frames[2], hero_hp=8, enemy_hp=6)
+        with self.assertRaises(ValueError):
+            verify_victory(self.frames)
+
+    def test_moved_frame_must_show_pre_enemy_full_hp(self) -> None:
+        screenshot(self.frames[1], hero_hp=6, enemy_hp=6)
         with self.assertRaises(ValueError):
             verify_victory(self.frames)
 
     def test_hero_loses_hp_during_own_attack(self) -> None:
-        screenshot(self.frames[2], hero_hp=4, enemy_hp=3)
+        screenshot(self.frames[3], hero_hp=4, enemy_hp=3)
         with self.assertRaises(ValueError):
             verify_victory(self.frames)
 
     def test_victory_green_strip_missing(self) -> None:
-        screenshot(self.frames[4], hero_hp=4, enemy_hp=0)
+        screenshot(self.frames[5], hero_hp=4, enemy_hp=0)
         with self.assertRaises(ValueError):
             verify_victory(self.frames)
 
     def test_enemy_not_removed_on_victory(self) -> None:
-        screenshot(self.frames[4], hero_hp=4, enemy_hp=3, win=True)
+        screenshot(self.frames[5], hero_hp=4, enemy_hp=3, win=True)
         with self.assertRaises(ValueError):
             verify_victory(self.frames)
 
     def test_early_fake_victory_is_rejected(self) -> None:
-        screenshot(self.frames[2], hero_hp=6, enemy_hp=3, win=True)
+        screenshot(self.frames[3], hero_hp=6, enemy_hp=3, win=True)
         with self.assertRaises(ValueError):
             verify_victory(self.frames)
 
     def test_terminal_turn_changes_hp(self) -> None:
-        screenshot(self.frames[5], hero_hp=2, enemy_hp=0, win=True)
+        screenshot(self.frames[6], hero_hp=2, enemy_hp=0, win=True)
         with self.assertRaises(ValueError):
             verify_victory(self.frames)
 
     def test_blank_guest_frame(self) -> None:
-        screenshot(self.frames[1], empty=True)
+        screenshot(self.frames[2], empty=True)
         with self.assertRaises(ValueError):
             verify_victory(self.frames)
 
     def test_mismatched_screen_dimensions(self) -> None:
-        Image.new("RGB", (810, 530), PALETTE["background"]).save(self.frames[5])
+        Image.new("RGB", (810, 530), PALETTE["background"]).save(self.frames[6])
         with self.assertRaises(ValueError):
             verify_victory(self.frames)
 
