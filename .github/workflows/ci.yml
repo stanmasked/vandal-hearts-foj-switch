@@ -219,6 +219,24 @@ jobs:
             core/tactical_demo.c -lm -o /tmp/foj_coll_window_ubsan
           /tmp/foj_coll_window_ubsan
 
+      - name: Stage221 host COLL panel and shared private-loader tests
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore -Iswitch/source \
+            tests/test_coll_battle_overlay.c core/coll_battle_overlay.c \
+            core/coll_battle_window.c switch/source/local_coll_window.c \
+            core/coll_grid.c core/tactical_demo.c -lm \
+            -o /tmp/foj_stage221_panel
+          /tmp/foj_stage221_panel
+      - name: Stage221 diagnostic bounds and local loader UBSan
+        run: |
+          cc -std=c11 -O1 -g -fsanitize=undefined -fno-omit-frame-pointer \
+            -Icore -Iswitch/source \
+            tests/test_coll_battle_overlay.c core/coll_battle_overlay.c \
+            core/coll_battle_window.c switch/source/local_coll_window.c \
+            core/coll_grid.c core/tactical_demo.c -lm \
+            -o /tmp/foj_stage221_panel_ubsan
+          /tmp/foj_stage221_panel_ubsan
+
       - name: Check COLL parser with address and undefined-behavior sanitizers
         run: |
           cc -std=c11 -O1 -g -fsanitize=address,undefined \
