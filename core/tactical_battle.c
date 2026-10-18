@@ -77,6 +77,8 @@ void foj_battle_init(FojBattle *battle) {
     foj_demo_init(&battle->map);
     battle->hero_hp = FOJ_BATTLE_HERO_MAX_HP;
     battle->enemy_hp = FOJ_BATTLE_ENEMY_MAX_HP;
+    battle->previous_hero_x = (uint8_t)battle->map.hero_x;
+    battle->previous_hero_y = (uint8_t)battle->map.hero_y;
     battle->turn_number = 1;
     battle->outcome = FOJ_BATTLE_ONGOING;
 }
@@ -90,9 +92,13 @@ FojBattleEvent foj_battle_confirm(FojBattle *battle) {
     if (!battle || battle->outcome != FOJ_BATTLE_ONGOING)
         return FOJ_BATTLE_REJECTED;
     if (battle->moved_this_turn) return FOJ_BATTLE_REJECTED;
+    const int previous_x = battle->map.hero_x;
+    const int previous_y = battle->map.hero_y;
     FojAction action = foj_press_a(&battle->map);
     if (action == FOJ_ACTION_SELECTED) return FOJ_BATTLE_SELECTED;
     if (action == FOJ_ACTION_MOVED) {
+        battle->previous_hero_x = (uint8_t)previous_x;
+        battle->previous_hero_y = (uint8_t)previous_y;
         battle->moved_this_turn = true;
         return FOJ_BATTLE_MOVED;
     }
@@ -103,8 +109,23 @@ FojBattleEvent foj_battle_confirm(FojBattle *battle) {
 FojBattleEvent foj_battle_cancel(FojBattle *battle) {
     if (!battle || battle->outcome != FOJ_BATTLE_ONGOING)
         return FOJ_BATTLE_REJECTED;
-    return foj_press_b(&battle->map) == FOJ_ACTION_CANCELED ?
-           FOJ_BATTLE_CANCELED : FOJ_BATTLE_NO_ACTION;
+    if (battle->map.selected)
+        return foj_press_b(&battle->map) == FOJ_ACTION_CANCELED ?
+               FOJ_BATTLE_CANCELED : FOJ_BATTLE_REJECTED;
+    if (!battle->moved_this_turn) return FOJ_BATTLE_NO_ACTION;
+    if (battle->attacked_this_turn || battle->guarded_this_turn)
+        return FOJ_BATTLE_REJECTED;
+    const int px = battle->previous_hero_x;
+    const int py = battle->previous_hero_y;
+    if (!foj_in_bounds(px, py) || battle->map.cells[py][px].blocked ||
+        (battle->map.enemy_x == px && battle->map.enemy_y == py))
+        return FOJ_BATTLE_REJECTED;
+    battle->map.hero_x = px;
+    battle->map.hero_y = py;
+    battle->map.cursor_x = px;
+    battle->map.cursor_y = py;
+    battle->moved_this_turn = false;
+    return FOJ_BATTLE_MOVE_UNDONE;
 }
 
 FojBattleEvent foj_battle_attack(FojBattle *battle) {
@@ -139,6 +160,8 @@ FojBattleEvent foj_battle_end_turn(FojBattle *battle) {
     const bool guarded = battle->guarded_this_turn;
     battle->map.selected = false;
     battle->moved_this_turn = false;
+    battle->previous_hero_x = (uint8_t)battle->map.hero_x;
+    battle->previous_hero_y = (uint8_t)battle->map.hero_y;
     battle->attacked_this_turn = false;
     battle->guarded_this_turn = false;
     if (battle->turn_number < UINT16_MAX) ++battle->turn_number;
