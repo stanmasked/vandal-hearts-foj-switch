@@ -129,6 +129,32 @@ static void test_shared_loader_rejects_bad_files_and_preserves_raw_bytes(void) {
     assert(!foj_local_coll_load_path(pathname,NULL));
 }
 
+static void test_tight_canvas_and_padded_stride_safety(void) {
+    /* Panel requires exactly 210x190 pixels, and should never touch
+     * either unused stride padding or pixels after the last scanline. */
+    enum { TIGHT_W=210, TIGHT_H=190, PADDED_STRIDE=219, GUARD=32 };
+    uint32_t pixels[TIGHT_H*PADDED_STRIDE+GUARD];
+    synthetic_window();
+    for (size_t i=0;i<sizeof(pixels)/sizeof(pixels[0]);++i)
+        pixels[i]=UINT32_C(0x12345678);
+    assert(foj_coll_battle_overlay(&window,pixels,TIGHT_W,TIGHT_H,
+                                    PADDED_STRIDE,FOJ_WIDTH-1,FOJ_HEIGHT-1,5));
+    assert(pixels[(size_t)16*PADDED_STRIDE]!=UINT32_C(0x12345678));
+    for (int y=0;y<TIGHT_H;++y)
+        for (int x=TIGHT_W;x<PADDED_STRIDE;++x)
+            assert(pixels[(size_t)y*PADDED_STRIDE+(size_t)x]==
+                   UINT32_C(0x12345678));
+    for (size_t i=(size_t)TIGHT_H*PADDED_STRIDE;
+         i<sizeof(pixels)/sizeof(pixels[0]);++i)
+        assert(pixels[i]==UINT32_C(0x12345678));
+    const uint32_t original=pixels[0];
+    assert(!foj_coll_battle_overlay(&window,pixels,TIGHT_W-1,TIGHT_H,
+                                     PADDED_STRIDE,0,0,0));
+    assert(!foj_coll_battle_overlay(&window,pixels,TIGHT_W,TIGHT_H-1,
+                                     PADDED_STRIDE,0,0,0));
+    assert(pixels[0]==original);
+}
+
 static void test_full_fifty_by_fifty_center_and_file_bound(void) {
     char pathname[]="/tmp/foj221-full-coll-XXXXXX";
     int fd=mkstemp(pathname);
@@ -164,6 +190,7 @@ int main(void) {
     test_invalid_input_does_not_touch_canvas();
     test_shared_loader_rejects_bad_files_and_preserves_raw_bytes();
     test_full_fifty_by_fifty_center_and_file_bound();
-    puts("Stage221 synthetic COLL panel: five test scenarios passed");
+    test_tight_canvas_and_padded_stride_safety();
+    puts("Stage221 synthetic COLL panel: six test scenarios passed");
     return 0;
 }
