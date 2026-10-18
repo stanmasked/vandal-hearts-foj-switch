@@ -26,10 +26,16 @@ def colors(path: Path) -> tuple[tuple[int, int], dict[str, int]]:
     if not (800 <= image.width <= 4096 and 500 <= image.height <= 2160):
         raise ValueError("Guest framebuffer dimensions out of bounds")
     counts = {name: 0 for name in PALETTE}
-    for pixel in image.getdata():
+    # Most synthetic frames have very few distinct palette colors. Use
+    # Pillow's bounded native histogram instead of scanning each pixel in
+    # Python, with a safe fallback for unusually noisy emulator captures.
+    histogram = image.getcolors(maxcolors=65536)
+    samples = histogram if histogram is not None else (
+        (1, color) for color in image.getdata())
+    for amount, pixel in samples:
         for name, rgb in PALETTE.items():
             if all(abs(int(pixel[i]) - rgb[i]) <= 10 for i in range(3)):
-                counts[name] += 1
+                counts[name] += amount
     return image.size, counts
 
 
