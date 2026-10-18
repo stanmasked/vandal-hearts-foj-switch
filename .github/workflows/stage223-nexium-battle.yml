@@ -1,0 +1,154 @@
+name: Stage 223 NeXium synthetic tactical enemy turns
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/stage223-nexium-battle.yml'
+      - 'tools/foj_stage223_battle_guest_check.py'
+      - 'tests/emulator/test_stage223_battle_guest_check.py'
+      - 'core/**'
+      - 'switch/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stage223-nexium-battle.yml'
+      - 'tools/foj_stage223_battle_guest_check.py'
+      - 'tests/emulator/test_stage223_battle_guest_check.py'
+      - 'core/**'
+      - 'switch/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compile interactive 8x6 battle NRO
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and validate playable synthetic isometric homebrew
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f switch/Makefile build/foj-isometric-research.nro
+          python3 tools/validate_nro.py build/foj-isometric-research.nro
+      - name: Upload invented battlefield executable for NeXium
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage223-synthetic-battle-nro
+          path: build/foj-isometric-research.nro
+          if-no-files-found: error
+
+  nexium:
+    name: Verify two actual guest Y-driven enemy moves
+    runs-on: ubuntu-26.04
+    needs: build
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: foj-stage223-synthetic-battle-nro
+          path: nros
+      - name: Install headless NeXium graphical dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl jq xvfb xauth xdotool imagemagick python3-pil \
+            libgtk-3-0t64 libasound2t64 libudev1 libxkbcommon0 libxkbcommon-x11-0 \
+            libx11-xcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 \
+            libxcb-randr0 libxcb-render0 libxcb-shape0 libxcb-xkb1 \
+            libvulkan1 mesa-vulkan-drivers
+      - name: Download pinned NeXium nightly and record archive digest
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-evidence /tmp/nexium
+          json="$(curl -fsSL --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/nexium-emu/nexium-nightly/releases/tags/nightly)"
+          url="$(printf '%s' "$json" | jq -r \
+            '.assets[] | select(.name == "nexium-linux-x86_64.tar.gz") | .browser_download_url')"
+          test -n "$url"
+          curl -fL --retry 3 --retry-all-errors "$url" -o /tmp/nexium-linux.tar.gz
+          sha256sum /tmp/nexium-linux.tar.gz \
+            > runtime-evidence/nexium-nightly-archive.sha256
+          tar -xzf /tmp/nexium-linux.tar.gz -C /tmp/nexium
+          binary="$(find /tmp/nexium -type f -executable \
+            \( -name 'nexium-gui' -o -name 'nexium' \) -print -quit)"
+          test -n "$binary"
+          echo "NEXIUM_BIN=$binary" >> "$GITHUB_ENV"
+      - name: Validate strict guest screenshot classifier on invented fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage223_battle_guest_check.py' -v
+      - name: Execute actual isometric battle NRO and press Y twice
+        shell: bash
+        run: |
+          set -euo pipefail
+          icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 -name 'lvp_icd*.json' -print -quit)"
+          test -n "$icd"
+          export VK_ICD_FILENAMES="$icd"
+          export FOJ_NRO="$GITHUB_WORKSPACE/nros/foj-isometric-research.nro"
+          export FOJ_EVIDENCE_DIR="$GITHUB_WORKSPACE/runtime-evidence"
+          test -s "$FOJ_NRO"
+          timeout --kill-after=5s 230s xvfb-run -a \
+            -s "-screen 0 1280x720x24" bash -c '
+              set -euo pipefail
+              "$NEXIUM_BIN" "$FOJ_NRO" >"$FOJ_EVIDENCE_DIR/guest.log" 2>&1 &
+              guest=$!
+              trap "kill -KILL $guest 2>/dev/null || true" EXIT
+              for n in $(seq 1 30); do
+                sleep 1
+                status="$(ps -o stat= -p "$guest" 2>/dev/null | tr -d " " || true)"
+                if [ -z "$status" ] || [[ "$status" == Z* ]]; then
+                  tail -n 60 "$FOJ_EVIDENCE_DIR/guest.log" >&2
+                  exit 1
+                fi
+              done
+              window="$(xdotool search --onlyvisible --name "NeXium" 2>/dev/null | tail -n 1 || true)"
+              test -n "$window"
+              timeout --kill-after=2s 10s import -window "$window" \
+                "$FOJ_EVIDENCE_DIR/battle-initial.png"
+              timeout --kill-after=1s 3s xdotool windowfocus --sync "$window" || true
+              # NeXium controller_config.rs default maps Switch Y to Z.
+              for turn in 1 2; do
+                timeout --kill-after=1s 3s xdotool keydown --window "$window" z
+                sleep 0.18
+                timeout --kill-after=1s 3s xdotool keyup --window "$window" z
+                sleep 0.75
+                kill -0 "$guest"
+                timeout --kill-after=2s 10s import -window "$window" \
+                  "$FOJ_EVIDENCE_DIR/battle-turn-$turn.png"
+              done
+              kill -INT "$guest" 2>/dev/null || true
+              sleep 1
+              kill -KILL "$guest" 2>/dev/null || true
+              wait "$guest" 2>/dev/null || true
+            '
+      - name: Demand three actual screenshots showing two enemy moves
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage223_battle_guest_check \
+            --initial runtime-evidence/battle-initial.png \
+            --turn1 runtime-evidence/battle-turn-1.png \
+            --turn2 runtime-evidence/battle-turn-2.png \
+            --report runtime-evidence/stage223-synthetic-battle-receipt.json
+      - name: Preserve generated-only emulator screenshots and receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage223-nexium-battle-evidence
+          path: runtime-evidence/
+          if-no-files-found: warn
