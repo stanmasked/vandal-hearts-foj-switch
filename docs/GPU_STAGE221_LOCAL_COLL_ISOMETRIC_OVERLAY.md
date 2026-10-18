@@ -47,7 +47,8 @@ samples, boolean flags, screen dimensions and stride before drawing.
 
 Generated-only C tests cover panel markers and buffer padding, numeric
 versus boolean channels, rejection of invalid/nonfinite inputs, and the
-shared file loader with a synthetic 8×6 COLL fixture. GitHub Actions runs
+shared file loader with synthetic 8×6 and 50×50 COLL fixtures, including
+correct centered coordinates and refusal of files larger than 1 MiB. GitHub Actions runs
 strict C11 tests, UBSan, research NRO compilation and the existing
 isometric image preview pipeline. Existing PNG preview artifacts remain
 synthetic because no real game data is uploaded to CI.
