@@ -1,0 +1,137 @@
+name: Stage 201 NeXium generated SD rigged actor
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/stage201-nexium-sd-rigged-actor.yml'
+      - 'tools/foj_stage201_*'
+      - 'tests/test_foj_stage201_generated_sd.py'
+      - 'tests/emulator/test_stage201_generated_sd_frame_check.py'
+      - 'tools/foj_stage200_prepare_private_sd.py'
+      - 'switch/**'
+      - 'core/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stage201-nexium-sd-rigged-actor.yml'
+      - 'tools/foj_stage201_*'
+      - 'tests/test_foj_stage201_generated_sd.py'
+      - 'tests/emulator/test_stage201_generated_sd_frame_check.py'
+      - 'tools/foj_stage200_prepare_private_sd.py'
+      - 'switch/**'
+      - 'core/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compile the actual SD-data-capable rigged-actor NRO
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and verify actual original-data-capable NRO
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f switch/Makefile build/foj-rigged-actor-research.nro
+          python3 tools/validate_nro.py build/foj-rigged-actor-research.nro
+      - name: Upload compiled executable only; never an SD image
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage201-actor-research-nro
+          path: build/foj-rigged-actor-research.nro
+          if-no-files-found: error
+
+  nexium:
+    name: Run actor NRO against generated-only virtual SD in NeXium
+    needs: build
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: foj-stage201-actor-research-nro
+          path: nros
+      - name: Install display/Vulkan and generated screenshot dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl jq xvfb xauth xdotool imagemagick python3-pil \
+            libgtk-3-0t64 libasound2t64 libudev1 libxkbcommon0 libxkbcommon-x11-0 \
+            libx11-xcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 \
+            libxcb-randr0 libxcb-render0 libxcb-shape0 libxcb-xkb1 \
+            libvulkan1 mesa-vulkan-drivers
+      - name: Retrieve tested NeXium nightly and record binary SHA-256
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-evidence /tmp/nexium
+          json="$(curl -fsSL --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/nexium-emu/nexium-nightly/releases/tags/nightly)"
+          asset="$(printf '%s' "$json" | jq -r \
+            '.assets[] | select(.name == "nexium-linux-x86_64.tar.gz") | .browser_download_url')"
+          test -n "$asset"
+          curl -fL --retry 3 --retry-all-errors "$asset" -o /tmp/nexium-linux.tar.gz
+          tar -xzf /tmp/nexium-linux.tar.gz -C /tmp/nexium
+          bin="$(find /tmp/nexium -type f -executable \
+            \( -name 'nexium-gui' -o -name 'nexium' \) -print -quit)"
+          test -n "$bin"
+          echo "NEXIUM_BIN=$bin" >> "$GITHUB_ENV"
+          sha256sum /tmp/nexium-linux.tar.gz > runtime-evidence/nexium-archive.sha256
+      - name: Test synthetic SD generator and fail-closed pixel validator
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_foj_stage201_generated_sd.py' -v
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage201_generated_sd_frame_check.py' -v
+      - name: Prepare isolated emulator-owned virtual SD; generated-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/stage201-only-generated-nexium"
+          test ! -e "$root"
+          python3 -m tools.foj_stage201_generated_sd --data-root "$root" \
+            > runtime-evidence/generated-input-receipt.json
+          test -s "$root/sdmc/switch/foj/rig/preview.fojrm"
+          test -s "$root/sdmc/switch/foj/anims/preview.banim"
+          test -s "$root/sdmc/switch/foj/anims/preview_b.banim"
+          echo "NEXIUM_DATA_ROOT=$root" >> "$GITHUB_ENV"
+      - name: Run actual compiled actor NRO with isolated SD and guest input
+        shell: bash
+        run: |
+          set -euo pipefail
+          icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 \
+            -name 'lvp_icd*.json' -print -quit)"
+          test -n "$icd"
+          export VK_ICD_FILENAMES="$icd"
+          export FOJ_NRO="$GITHUB_WORKSPACE/nros/foj-rigged-actor-research.nro"
+          export FOJ_EVIDENCE_DIR="$GITHUB_WORKSPACE/runtime-evidence"
+          test -s "$FOJ_NRO"
+          timeout --kill-after=5s 240s xvfb-run -a -s "-screen 0 1280x720x24" \
+            bash tools/foj_stage201_nexium_sd_actor_drive.sh
+      - name: Require SD asset markers, actual wire motion, pause and fade
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage201_nexium_sd_actor_frame_check \
+            --evidence runtime-evidence \
+            --report runtime-evidence/stage201-generated-guest-receipt.json
+      - name: Preserve ONLY synthetic guest screenshots and counts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage201-generated-only-guest-evidence
+          path: runtime-evidence/
+          if-no-files-found: warn
