@@ -24,9 +24,9 @@ BANIM_SRC := switch/source/banim_main.c core/banim_core.c
 OBJ_SRC := switch/source/obj_main.c core/obj_wireframe.c
 DDS_SRC := switch/source/dds_main.c core/dds_texture.c
 COLL_SRC := switch/source/coll_main.c core/coll_grid.c core/coll_view.c core/coll_iso_view.c
-ISO_SRC := switch/source/iso_main.c core/tactical_demo.c core/isometric_demo.c
-SRC := switch/source/main.c core/tactical_demo.c
-HDR := core/tactical_demo.h
+ISO_SRC := switch/source/iso_main.c core/tactical_demo.c core/tactical_battle.c core/isometric_demo.c
+SRC := switch/source/main.c core/tactical_demo.c core/tactical_battle.c
+HDR := core/tactical_demo.h core/tactical_battle.h
 
 CFLAGS := -O2 -g -Wall -Wextra -Werror -fPIE -ffunction-sections -fdata-sections \
     -I$(DEVKITPRO)/libnx/include -Icore

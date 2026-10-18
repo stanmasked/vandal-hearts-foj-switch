@@ -98,11 +98,41 @@ static void test_tiny_canvas_and_padded_stride(void) {
     assert(pixels[0] == UINT32_C(0x12345678));
 }
 
+static void test_battle_health_overlay_and_result_banner(void) {
+    const int width=1280, height=720;
+    const size_t count=(size_t)width*(size_t)height;
+    uint32_t *pixels=calloc(count,sizeof(*pixels));
+    assert(pixels);
+    FojBattle battle;
+    foj_battle_init(&battle);
+
+    foj_iso_render(&battle.map,pixels,width,height,width);
+    uint64_t without_hud=fingerprint(pixels,count);
+    foj_iso_render_battle(&battle,pixels,width,height,width);
+    uint64_t healthy=fingerprint(pixels,count);
+    assert(healthy!=without_hud);
+
+    battle.hero_hp=1;
+    battle.enemy_hp=3;
+    foj_iso_render_battle(&battle,pixels,width,height,width);
+    assert(fingerprint(pixels,count)!=healthy);
+
+    battle.outcome=FOJ_BATTLE_WON;
+    foj_iso_render_battle(&battle,pixels,width,height,width);
+    assert(pixels[0]==UINT32_C(0xff7fb938)); /* generated win strip */
+
+    battle.outcome=FOJ_BATTLE_LOST;
+    foj_iso_render_battle(&battle,pixels,width,height,width);
+    assert(pixels[0]==UINT32_C(0xff4a3ed2)); /* generated loss strip */
+    free(pixels);
+}
+
 int main(void) {
     test_projection();
     test_render_and_reachable_highlights();
     test_tiny_canvas_and_padded_stride();
     test_selected_route_overlay_and_cancel();
-    puts("Synthetic isometric renderer checks passed (three scenarios)");
+    test_battle_health_overlay_and_result_banner();
+    puts("Synthetic isometric renderer checks passed (five scenarios)");
     return 0;
 }
