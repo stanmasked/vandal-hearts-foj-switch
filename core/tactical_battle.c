@@ -144,3 +144,24 @@ FojBattleEvent foj_battle_end_turn(FojBattle *battle) {
     battle->hero_hp -= FOJ_BATTLE_ENEMY_DAMAGE;
     return FOJ_BATTLE_ENEMY_ATTACKED;
 }
+
+bool foj_battle_forecast_enemy_turn(const FojBattle *battle,
+                                     FojEnemyTurnForecast *forecast) {
+    if (!forecast) return false;
+    memset(forecast, 0, sizeof(*forecast));
+    if (!battle || battle->outcome != FOJ_BATTLE_ONGOING)
+        return false;
+
+    /* Single code path for real turn and prediction. Keeping the copy
+     * local prevents accidentally resetting action flags in the game. */
+    FojBattle imagined = *battle;
+    const FojBattleEvent action = foj_battle_end_turn(&imagined);
+    if (action == FOJ_BATTLE_REJECTED) return false;
+    forecast->event = action;
+    forecast->enemy_x_after = imagined.map.enemy_x;
+    forecast->enemy_y_after = imagined.map.enemy_y;
+    forecast->hero_hp_after = imagined.hero_hp;
+    forecast->turn_after = imagined.turn_number;
+    forecast->outcome_after = imagined.outcome;
+    return true;
+}
