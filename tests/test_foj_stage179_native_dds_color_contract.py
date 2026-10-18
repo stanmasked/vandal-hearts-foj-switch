@@ -72,6 +72,24 @@ class Stage179NativeDdsColorContractTests(unittest.TestCase):
                 results.append(hashlib.sha256(native.stdout).hexdigest())
         self.assertNotEqual(results[0], results[1])
 
+    def test_all_64_texels_match_independent_checkerboard_reference(self):
+        palettes = (
+            ((255, 215, 70, 255), (240, 45, 30, 255)),
+            ((70, 235, 220, 255), (35, 95, 235, 255)),
+        )
+        for slot, palette in enumerate(palettes):
+            with self.subTest(slot=slot):
+                expected = bytes(
+                    channel
+                    for y in range(8)
+                    for x in range(8)
+                    for channel in palette[(x//2 + y//2) % 2]
+                )
+                self.assertEqual(len(expected), PIXELS)
+                self.assertEqual(generated_dds(slot)[HEADER:], expected)
+                self.assertEqual(self.decode(generated_dds(slot)).stdout,
+                                 expected)
+
     def test_native_bgra_conversion_matches_unmodified_rgba_reference(self):
         for slot in (0, 1):
             with self.subTest(slot=slot):
