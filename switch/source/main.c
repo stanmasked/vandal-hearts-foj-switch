@@ -29,6 +29,7 @@ static const char *status_label(FojBattleEvent action) {
     switch (action) {
         case FOJ_BATTLE_SELECTED: return "Hero selected";
         case FOJ_BATTLE_MOVED: return "Hero moved";
+        case FOJ_BATTLE_MOVE_UNDONE: return "Hero move undone";
         case FOJ_BATTLE_CANCELED: return "Selection canceled";
         case FOJ_BATTLE_ATTACKED: return "Attack hit!";
         case FOJ_BATTLE_GUARDED: return "Guard stance set";
@@ -54,7 +55,8 @@ static void draw_scene(const FojBattle *battle, FojBattleEvent action, int diagn
     printf("========================================\n");
     printf("SYNTHETIC MAP ONLY -- PS3 GAME NOT RUNNING\n\n");
     printf("D-Pad: cursor / A: select+move / X: attack\n");
-    printf("B: cancel / Y: end turn / MINUS: restart / PLUS: exit\n");
+    printf("B: cancel selection / undo move before attack or guard\n");
+    printf("Y: end turn / MINUS: restart / PLUS: exit\n");
     printf("ZR: guard (uses attack, reduces next enemy hit)\n");
     printf("L/R: raw COLL diagnostic channel (0-5), if provided locally\n");
     printf("H hero, E enemy, # wall, 0-2 height\n");
@@ -93,6 +95,8 @@ static void draw_scene(const FojBattle *battle, FojBattleEvent action, int diagn
         printf("If X now: enemy HP -> %u, %s\n",
                (unsigned)attack_view.enemy_hp_after,
                status_label(attack_view.event));
+    if (battle->moved_this_turn && !battle->attacked_this_turn)
+        puts("B can undo your previous move.");
     printf("Move used=%s Attack used=%s\n",
            battle->moved_this_turn ? "yes":"no",
            battle->attacked_this_turn ? "yes":"no");
