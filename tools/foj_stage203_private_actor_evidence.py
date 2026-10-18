@@ -203,7 +203,8 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
             multiwindow:Path|None=None,
             frame_bindings:Path|None=None,
             source_png_manifest:Path|None=None,
-            source_png_dir:Path|None=None):
+            source_png_dir:Path|None=None,
+            review_overlays:bool=False):
     safe_destination(output)
     # Strictly bounded source reads and independent source-coordinate
     # research math happen BEFORE creating ANY private output.
@@ -239,6 +240,11 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
         source_doc=private_read(source_png_manifest)
         # Validate BEFORE creating any owner-private output directory.
         inspect_sources(bound_annotations,source_doc,source_png_dir)
+    if review_overlays and (
+        observations is None or source_png_manifest is None or
+        source_png_dir is None or frame_bindings is None
+    ):
+        raise ValueError("Two-sided review needs source PNG and native frame bindings")
     if multiwindow is not None:
         evaluate(multi_read(multiwindow))
     old_umask=os.umask(0o077)
@@ -311,6 +317,24 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
                 "research_landmarks_bound_to_native_frames":True,
                 "original_ps3_capture_authenticated_by_frame_binding":False,
             }
+        if review_overlays:
+            from tools.foj_stage206_private_pose_review import create_review
+            review=create_review(
+                bound_annotations,source_doc,source_png_dir,
+                read_bindings(frame_bindings),frames,
+                output/"private-two-sided-review"
+            )
+            review_status={
+                "private_two_sided_review_images_created":True,
+                "private_review_image_pairs":review["review_pair_count"],
+                "original_ps3_correspondences_human_verified":False,
+            }
+        else:
+            review_status={
+                "private_two_sided_review_images_created":False,
+                "private_review_image_pairs":0,
+                "original_ps3_correspondences_human_verified":False,
+            }
         if multiwindow is None:
             multi={
                 "independent_windows_submitted":False,
@@ -342,6 +366,7 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
             **observed,
             **source_bind,
             **bound,
+            **review_status,
             **multi,
             "asset_identity_authenticated_as_original_ps3":False,
             "original_game_animation_accuracy_verified":False,
@@ -379,6 +404,7 @@ def main(argv=None):
     parser.add_argument("--frame-bindings",type=Path)
     parser.add_argument("--source-png-manifest",type=Path)
     parser.add_argument("--source-png-dir",type=Path)
+    parser.add_argument("--review-overlays",action="store_true")
     args=parser.parse_args(argv)
     try:
         result=conduct(
@@ -387,6 +413,7 @@ def main(argv=None):
             frame_bindings=args.frame_bindings,
             source_png_manifest=args.source_png_manifest,
             source_png_dir=args.source_png_dir,
+            review_overlays=args.review_overlays,
         )
     except (OSError,ValueError,TypeError,RuntimeError,
             subprocess.SubprocessError,OverflowError,IndexError,
