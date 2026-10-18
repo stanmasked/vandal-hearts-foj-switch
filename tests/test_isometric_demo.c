@@ -204,6 +204,29 @@ static void test_hero_attack_forecast_ring_and_guard_conflict(void) {
     free(pixels);
 }
 
+static void test_movement_undo_marker_vanishes_after_B(void) {
+    enum { WIDTH=1280, HEIGHT=720 };
+    uint32_t *pixels=calloc((size_t)WIDTH*HEIGHT,sizeof(*pixels));
+    assert(pixels);
+    FojBattle b;
+    foj_battle_init(&b);
+    assert(foj_battle_confirm(&b)==FOJ_BATTLE_SELECTED);
+    foj_battle_move_cursor(&b,1,0);
+    assert(foj_battle_confirm(&b)==FOJ_BATTLE_MOVED);
+    int px,py;
+    foj_iso_project(WIDTH,HEIGHT,b.map.hero_x,b.map.hero_y,
+                    b.map.cells[b.map.hero_y][b.map.hero_x].elevation,
+                    &px,&py);
+    foj_iso_render_battle(&b,pixels,WIDTH,HEIGHT,WIDTH);
+    assert(pixels[(size_t)(py-13)*WIDTH+(size_t)(px-26)]==
+           UINT32_C(0xffc9f171));
+    assert(foj_battle_cancel(&b)==FOJ_BATTLE_MOVE_UNDONE);
+    foj_iso_render_battle(&b,pixels,WIDTH,HEIGHT,WIDTH);
+    assert(pixels[(size_t)(py-13)*WIDTH+(size_t)(px-26)]!=
+           UINT32_C(0xffc9f171));
+    free(pixels);
+}
+
 int main(void) {
     test_projection();
     test_render_and_reachable_highlights();
@@ -213,6 +236,7 @@ int main(void) {
     test_enemy_forecast_marker_and_attack_warning();
     test_guard_indicator_and_cleanup_after_enemy_turn();
     test_hero_attack_forecast_ring_and_guard_conflict();
-    puts("Synthetic isometric renderer checks passed (eight scenarios)");
+    test_movement_undo_marker_vanishes_after_B();
+    puts("Synthetic isometric renderer checks passed (nine scenarios)");
     return 0;
 }

@@ -25,6 +25,7 @@ typedef enum {
     FOJ_BATTLE_NO_ACTION = 0,
     FOJ_BATTLE_SELECTED,
     FOJ_BATTLE_MOVED,
+    FOJ_BATTLE_MOVE_UNDONE,
     FOJ_BATTLE_CANCELED,
     FOJ_BATTLE_ATTACKED,
     FOJ_BATTLE_GUARDED,
@@ -41,6 +42,8 @@ typedef struct {
     uint8_t hero_hp;
     uint8_t enemy_hp;
     bool moved_this_turn;
+    uint8_t previous_hero_x;
+    uint8_t previous_hero_y;
     bool attacked_this_turn;
     bool guarded_this_turn;
     uint16_t turn_number;
@@ -76,6 +79,7 @@ bool foj_battle_forecast_attack(const FojBattle *battle,
 void foj_battle_init(FojBattle *battle);
 void foj_battle_move_cursor(FojBattle *battle, int dx, int dy);
 FojBattleEvent foj_battle_confirm(FojBattle *battle);
+/* B cancels a selection, or undoes a move before attack/guard/Y. */
 FojBattleEvent foj_battle_cancel(FojBattle *battle);
 FojBattleEvent foj_battle_attack(FojBattle *battle);
 /* Guard consumes the hero's attack for this turn, not their move. */

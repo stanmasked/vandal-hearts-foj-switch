@@ -363,6 +363,105 @@ static void test_hero_forecast_obeys_guard_and_elevation_constraints(void) {
     assert(b.enemy_hp==FOJ_BATTLE_ENEMY_MAX_HP);
 }
 
+static void test_undo_movement_restores_budget_and_cursor(void) {
+    FojBattle b;
+    foj_battle_init(&b);
+    assert(foj_battle_cancel(&b)==FOJ_BATTLE_NO_ACTION);
+    assert(foj_battle_confirm(&b)==FOJ_BATTLE_SELECTED);
+    foj_battle_move_cursor(&b,1,0);
+    assert(foj_battle_cancel(&b)==FOJ_BATTLE_CANCELED);
+    assert(b.map.hero_x==1 && b.map.hero_y==2);
+    /* Cancel clears selection but deliberately keeps the inspected cursor. */
+    assert(b.map.cursor_x==2 && b.map.cursor_y==2);
+    foj_battle_move_cursor(&b,-1,0);
+    assert(foj_battle_confirm(&b)==FOJ_BATTLE_SELECTED);
+    foj_battle_move_cursor(&b,1,0);
+    assert(foj_battle_confirm(&b)==FOJ_BATTLE_MOVED);
+    assert(b.moved_this_turn && b.previous_hero_x==1 &&
+           b.previous_hero_y==2);
+    assert(b.map.hero_x==2 && b.map.hero_y==2);
+    assert(foj_battle_cancel(&b)==FOJ_BATTLE_MOVE_UNDONE);
+    assert(!b.moved_this_turn && !b.map.selected);
+    assert(b.map.hero_x==1 && b.map.hero_y==2);
+    assert(b.map.cursor_x==1 && b.map.cursor_y==2);
+    assert(foj_battle_cancel(&b)==FOJ_BATTLE_NO_ACTION);
+    assert(foj_battle_confirm(&b)==FOJ_BATTLE_SELECTED);
+    foj_battle_move_cursor(&b,1,0);
+    foj_battle_move_cursor(&b,1,0);
+    assert(foj_battle_confirm(&b)==FOJ_BATTLE_MOVED);
+    assert(b.map.hero_x==3 && b.map.hero_y==2);
+}
+
+static void test_undo_refuses_after_guard_attack_or_end_turn(void) {
+    FojBattle b;
+    foj_battle_init(&b);
+    assert(foj_battle_confirm(&b)==FOJ_BATTLE_SELECTED);
+    for(int i=0;i<4;++i)foj_battle_move_cursor(&b,1,0);
+    assert(foj_battle_confirm(&b)==FOJ_BATTLE_MOVED);
+    assert(foj_battle_guard(&b)==FOJ_BATTLE_GUARDED);
+    FojBattle saved=b;
+    assert(foj_battle_cancel(&b)==FOJ_BATTLE_REJECTED);
+    assert(memcmp(&saved,&b,sizeof(b))==0);
+    assert(foj_battle_end_turn(&b)==FOJ_BATTLE_ENEMY_ATTACKED);
+    assert(!b.moved_this_turn);
+    assert(foj_battle_cancel(&b)==FOJ_BATTLE_NO_ACTION);
+    assert(b.map.hero_x==5 && b.map.hero_y==2);
+    foj_battle_move_cursor(&b,1,0);
+    assert(foj_battle_attack(&b)==FOJ_BATTLE_ATTACKED);
+    assert(foj_battle_cancel(&b)==FOJ_BATTLE_NO_ACTION);
+    foj_battle_init(&b);
+    b.map.hero_x=5; b.map.hero_y=2;
+    b.map.enemy_x=6; b.map.enemy_y=2;
+    b.map.cursor_x=6; b.map.cursor_y=2;
+    b.moved_this_turn=true;
+    b.previous_hero_x=4;
+    b.previous_hero_y=2;
+    assert(foj_battle_attack(&b)==FOJ_BATTLE_ATTACKED);
+    saved=b;
+    assert(foj_battle_cancel(&b)==FOJ_BATTLE_REJECTED);
+    assert(memcmp(&saved,&b,sizeof(b))==0);
+}
+
+static void test_undo_refuses_invalid_snapshot_and_post_battle(void) {
+    FojBattle b;
+    foj_battle_init(&b);
+    b.moved_this_turn=true;
+    b.previous_hero_x=FOJ_WIDTH;
+    b.previous_hero_y=0;
+    FojBattle before=b;
+    assert(foj_battle_cancel(&b)==FOJ_BATTLE_REJECTED);
+    assert(memcmp(&b,&before,sizeof(b))==0);
+    b.previous_hero_x=2;
+    b.previous_hero_y=1; /* synthetic blocked tile */
+    before=b;
+    assert(foj_battle_cancel(&b)==FOJ_BATTLE_REJECTED);
+    assert(memcmp(&b,&before,sizeof(b))==0);
+    b.outcome=FOJ_BATTLE_WON;
+    assert(foj_battle_cancel(&b)==FOJ_BATTLE_REJECTED);
+    assert(foj_battle_cancel(NULL)==FOJ_BATTLE_REJECTED);
+}
+
+static void test_undo_forecast_reverts_to_original_position(void) {
+    FojBattle b;
+    foj_battle_init(&b);
+    FojEnemyTurnForecast baseline;
+    assert(foj_battle_forecast_enemy_turn(&b,&baseline));
+    assert(foj_battle_confirm(&b)==FOJ_BATTLE_SELECTED);
+    for (int i=0;i<4;++i)foj_battle_move_cursor(&b,1,0);
+    assert(foj_battle_confirm(&b)==FOJ_BATTLE_MOVED);
+    FojEnemyTurnForecast moved;
+    assert(foj_battle_forecast_enemy_turn(&b,&moved));
+    assert(moved.hero_hp_after < baseline.hero_hp_after);
+    assert(foj_battle_cancel(&b)==FOJ_BATTLE_MOVE_UNDONE);
+    FojEnemyTurnForecast restored;
+    const FojBattle before=b;
+    assert(foj_battle_forecast_enemy_turn(&b,&restored));
+    assert(memcmp(&before,&b,sizeof(b))==0);
+    assert(restored.hero_hp_after==baseline.hero_hp_after);
+    assert(restored.enemy_x_after==baseline.enemy_x_after);
+    assert(restored.enemy_y_after==baseline.enemy_y_after);
+}
+
 static void test_null_arguments(void) {
     foj_battle_init(NULL);
     foj_battle_move_cursor(NULL,1,0);
@@ -391,7 +490,11 @@ int main(void) {
     test_hero_attack_forecast_matches_real_attack_without_mutation();
     test_hero_attack_forecast_victory_and_bad_targets();
     test_hero_forecast_obeys_guard_and_elevation_constraints();
+    test_undo_movement_restores_budget_and_cursor();
+    test_undo_refuses_after_guard_attack_or_end_turn();
+    test_undo_refuses_invalid_snapshot_and_post_battle();
+    test_undo_forecast_reverts_to_original_position();
     test_null_arguments();
-    puts("Stage217 synthetic tactical battle: nineteen scenarios passed");
+    puts("Stage217 synthetic tactical battle: twenty-three scenarios passed");
     return 0;
 }

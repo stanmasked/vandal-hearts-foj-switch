@@ -213,6 +213,17 @@ void foj_iso_render_battle(const FojBattle *battle, uint32_t *pixels,
         hp_bar(&canvas, x, y, battle->enemy_hp, FOJ_BATTLE_ENEMY_MAX_HP,
                rgb(227, 82, 93));
     }
+    /* Mint arrow mark: B can still undo this uncommitted hero move. */
+    if (battle->moved_this_turn && !battle->attacked_this_turn &&
+        battle->outcome == FOJ_BATTLE_ONGOING &&
+        foj_in_bounds(battle->map.hero_x, battle->map.hero_y)) {
+        const int hx=battle->map.hero_x, hy=battle->map.hero_y;
+        foj_iso_project(width,height,hx,hy,
+                        battle->map.cells[hy][hx].elevation,&x,&y);
+        for (int dx=-29;dx<=-22;++dx)
+            for (int dy=-16;dy<=-10;++dy)
+                pixel(&canvas,x+dx,y+dy,rgb(113,241,201));
+    }
     if (battle->guarded_this_turn &&
         battle->outcome == FOJ_BATTLE_ONGOING &&
         foj_in_bounds(battle->map.hero_x, battle->map.hero_y)) {
