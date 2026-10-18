@@ -91,6 +91,10 @@ void foj_coll_iso_render(const FojCollGrid *grid,uint32_t *pixels,
                 if (value<minimum)minimum=value;
                 if (value>maximum)maximum=value;
             }
+    } else {
+        for (int y=0;y<grid->height;++y)
+            for (int x=0;x<grid->width;++x)
+                if (grid->flags[y][x][channel-4]>1u)return;
     }
 
     Canvas canvas={pixels,width,height,stride};
@@ -116,7 +120,6 @@ void foj_coll_iso_render(const FojCollGrid *grid,uint32_t *pixels,
                           179u-(unsigned)(norm*101.0));
             } else {
                 const unsigned flag=grid->flags[y][x][channel-4];
-                if (flag>1u)return;
                 face=flag?rgba(217,97,112):rgba(53,89,103);
             }
             Point top,right,bottom,left;
