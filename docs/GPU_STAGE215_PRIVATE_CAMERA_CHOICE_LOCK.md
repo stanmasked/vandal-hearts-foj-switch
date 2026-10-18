@@ -38,6 +38,8 @@ PPM state images, pause/reset invariants and default C-host rig
 state. Then it creates a new mode-0600 **private** lock containing
 the selected camera and SHA-256 for its nine native frames and the
 sheet, as well as SHA-256 hashes of the staged rig and BANIM files.
+The asset digests use a single no-follow file descriptor per file and
+reject symlinks, nonregular nodes and out-of-bounds file lengths.
 These hashes and camera parameters are **never printed**.
 
 The choice is operator-supplied, not selected using image-plane
@@ -120,7 +122,8 @@ are byte-identical for the selected candidate.
 generated-only FOJRM001/BANIM files and actual production C
 rendering in Stage214 and Stage203. It tests a correct nine-frame
 match, wrong camera refusal, altered preview/final PPM pixels,
-tampered view metadata, changes to staged input bytes,
+tampered view metadata, descriptor-pinned asset hashing,
+symlink/FIFO rejection, changes to staged input bytes,
 secondary-clip removal, exact view index ordering, existing lock
 protection, private file permissions and CLI path/hash secrecy.
 No commercial PS3 game media enters the repository or Actions.
