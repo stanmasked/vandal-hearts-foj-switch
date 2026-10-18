@@ -29,6 +29,9 @@ foj-rejoined.zip
 *.FOJRM
 *.dds
 *.DDS
+# Private screenshot evidence from the Stage 200 actor host smoke
+*.ppm
+*.PPM
 
 # Binary builds, temporary analysis and machine state
 build/
