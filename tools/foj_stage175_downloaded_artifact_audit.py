@@ -135,6 +135,11 @@ def verify_download(root: Path, expected_commit: str, expected_run_id: int) -> N
     after = _check_downloaded_inventory(root)
     if claimed != actual or before != after:
         raise _bad()
+    # The inventory equality checks metadata, but re-reading this
+    # unsigned final receipt also detects an ordinary same-size rewrite
+    # performed between the first parse and the end of verification.
+    if _read_json(root, STAGE175) != claimed:
+        raise _bad()
 
 
 def main() -> int:
