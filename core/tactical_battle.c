@@ -71,6 +71,46 @@ static bool enemy_advance(FojDemo *map) {
     return false;
 }
 
+bool foj_battle_preview_movement_threat(const FojBattle *battle,
+                                       FojBattleThreatPreview *preview) {
+    if (!preview) return false;
+    memset(preview, 0, sizeof(*preview));
+    if (!battle || battle->outcome != FOJ_BATTLE_ONGOING ||
+        !battle->map.selected || battle->moved_this_turn ||
+        !foj_in_bounds(battle->map.hero_x, battle->map.hero_y) ||
+        !foj_in_bounds(battle->map.enemy_x, battle->map.enemy_y))
+        return false;
+    /* Uses the normal four-step route validator, then the actual Y
+     * action (on a copy). No approximate threat radius or second AI. */
+    for (int y=0;y<FOJ_HEIGHT;++y) {
+        for (int x=0;x<FOJ_WIDTH;++x) {
+            FojRoute route;
+            if ((x==battle->map.hero_x && y==battle->map.hero_y) ||
+                (x==battle->map.enemy_x && y==battle->map.enemy_y) ||
+                !foj_demo_preview_route(&battle->map,x,y,&route))
+                continue;
+            FojBattle imagined=*battle;
+            imagined.map.hero_x=x;
+            imagined.map.hero_y=y;
+            imagined.map.selected=false;
+            imagined.moved_this_turn=true;
+            imagined.previous_hero_x=(uint8_t)battle->map.hero_x;
+            imagined.previous_hero_y=(uint8_t)battle->map.hero_y;
+            const uint8_t health=imagined.hero_hp;
+            const FojBattleEvent result=foj_battle_end_turn(&imagined);
+            if (result==FOJ_BATTLE_REJECTED ||
+                !foj_in_bounds(imagined.map.enemy_x,imagined.map.enemy_y))
+                continue;
+            preview->can_move[y][x]=1;
+            preview->incoming_damage[y][x]=(uint8_t)
+                (health-imagined.hero_hp);
+            preview->enemy_x_after[y][x]=(uint8_t)imagined.map.enemy_x;
+            preview->enemy_y_after[y][x]=(uint8_t)imagined.map.enemy_y;
+        }
+    }
+    return true;
+}
+
 void foj_battle_init(FojBattle *battle) {
     if (!battle) return;
     memset(battle, 0, sizeof(*battle));
