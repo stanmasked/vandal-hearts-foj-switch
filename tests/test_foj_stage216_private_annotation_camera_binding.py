@@ -162,6 +162,15 @@ class Stage216AnnotationCameraTests(unittest.TestCase):
             receipt(*self.args)
         self.assertEqual(self.output.read_bytes(), original)
 
+    def test_symlinked_binding_receipt_cannot_be_reverified(self):
+        receipt(*self.args)
+        saved=self.output.with_name("saved-owner-receipt.json")
+        self.output.rename(saved)
+        self.output.symlink_to(saved)
+        with self.assertRaises(ValueError):
+            check(*self.args)
+        self.assertTrue(saved.is_file())
+
     def test_cli_does_not_expose_private_images_paths_or_hashes(self):
         flags = [
             "--preview-root", str(self.previews),
