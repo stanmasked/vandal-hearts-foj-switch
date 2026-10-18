@@ -39,8 +39,10 @@ All images, source PNG hashes and human-made coordinates stay private.
    must already exist and the native frames, selected camera, asset files,
    annotated coordinates, frame-label manifest, source PNG manifest and
    original PNG image bytes must still match. The tool never overwrites the
-   previous receipt. For a legitimate change, start a new private evidence
-   comparison and create a different receipt.
+   previous receipt. The tool also pins the receipt's own raw bytes for
+   the whole revalidation and rejects an in-flight replacement, even one
+   that only alters JSON whitespace. For a legitimate change, create a
+   new private comparison with a different receipt.
 
 ### Rejection cases
 
@@ -52,7 +54,9 @@ All images, source PNG hashes and human-made coordinates stay private.
   and correspondence geometry; changed/missing Stage205 source PNGs.
 - Operator metadata that does not declare both capture sequences recorded.
 - Pre-existing output receipt, malformed input schemas and symlinked
-  private JSON input files.
+  private JSON input files, including a symlinked receipt.
+- Any mutation of the receipt's raw bytes during verification, including
+  semantically equivalent JSON formatting changes.
 
 All public console messages are aggregate status only; the private lock
 contains exact file hashes and is **not for GitHub, public CI, logs or
@@ -68,5 +72,6 @@ renderer, synthesizes test-only landmarks directly from visible wire
 pixels, and generates invented source PNG files. It covers success,
 edited observations and frame labels, modified source PNG bytes,
 missing source frames, absent operator capture declarations, receipt
-overwrite prevention and stdout/stderr secrecy. It requires no original
+overwrite prevention, receipt symlink substitution, mutation during
+verification, and stdout/stderr secrecy. It requires no original
 PS3 media or private paths in the GitHub repository.
