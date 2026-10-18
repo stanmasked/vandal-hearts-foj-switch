@@ -64,6 +64,7 @@ class Stage202EnduranceChecks(unittest.TestCase):
     def test_frozen_animation_does_not_count_as_endurance(self):
         for cycle in range(1,7):
             self.records[f"a-step-{cycle:02d}"]=self.records["baseline"]
+            self.records[f"a-paused-{cycle:02d}"]=self.records["baseline"]
         with self.assertRaisesRegex(ValueError,"stopped moving"):
             check_records(self.records,self.memory,6)
 
