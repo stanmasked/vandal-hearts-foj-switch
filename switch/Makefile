@@ -17,7 +17,7 @@ SKIN_TARGET := build/foj-skinning-research
 ACTOR_TARGET := build/foj-rigged-actor-research
 TEX_ACTOR_TARGET := build/foj-textured-actor-research
 TEX_ACTOR_SRC := switch/source/textured_actor_main.c core/rigmesh_io.c core/skeletal_skin.c core/banim_core.c core/dds_texture.c core/textured_triangles.c core/material_table.c
-ACTOR_SRC := switch/source/rigged_actor_main.c core/rigmesh_io.c core/skeletal_skin.c core/banim_core.c core/obj_wireframe.c
+ACTOR_SRC := switch/source/rigged_actor_main.c core/rigged_actor_session.c core/anim_player.c core/rigmesh_io.c core/skeletal_skin.c core/banim_core.c core/obj_wireframe.c
 ANIM_SRC := switch/source/anim_player_main.c core/anim_player.c core/banim_core.c core/skeletal_skin.c core/obj_wireframe.c
 SKIN_SRC := switch/source/skinning_main.c core/skeletal_skin.c core/banim_core.c core/obj_wireframe.c
 BANIM_SRC := switch/source/banim_main.c core/banim_core.c
@@ -111,7 +111,7 @@ $(SKIN_TARGET).nacp: | build
 $(SKIN_TARGET).nro: $(SKIN_TARGET).elf $(SKIN_TARGET).nacp
 	$(ELF2NRO) $< $@ --nacp=$(SKIN_TARGET).nacp
 
-$(ACTOR_TARGET).elf: $(ACTOR_SRC) core/rigmesh_io.h core/skeletal_skin.h core/banim_core.h core/obj_wireframe.h | build
+$(ACTOR_TARGET).elf: $(ACTOR_SRC) core/rigged_actor_session.h core/anim_player.h core/rigmesh_io.h core/skeletal_skin.h core/banim_core.h core/obj_wireframe.h | build
 	$(CC) $(CFLAGS) $(LDFLAGS) $(ACTOR_SRC) -o $@ -lnx -lm
 
 $(ACTOR_TARGET).nacp: | build
