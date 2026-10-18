@@ -99,7 +99,7 @@ static void draw_status(uint32_t *p,int stride,const FojAnimPlayer *player,
                         const FojAnimClip *a) {
     /* Unambiguous pixels independent of clock speed or emulator UI.
      * ABGR little-endian framebuffer; distinct markers are synthetic only.
-     * red=synthetic, cyan=A, orange=B, green=paused, magenta=playing,
+     * HUD-safe red=synthetic, cyan=A, orange=B, green=paused, magenta=playing,
      * yellow=transition plus four incremental fade progress bars. */
     const uint32_t red=UINT32_C(0xff0000ff);
     const uint32_t cyan=UINT32_C(0xffffff00);
@@ -107,7 +107,7 @@ static void draw_status(uint32_t *p,int stride,const FojAnimPlayer *player,
     const uint32_t green=UINT32_C(0xff00ff00);
     const uint32_t magenta=UINT32_C(0xffff00ff);
     const uint32_t yellow=UINT32_C(0xff00ffff);
-    rectangle(p,stride,24,24,52,52,red);
+    rectangle(p,stride,300,24,52,52,red);
     rectangle(p,stride,1100,24,52,52,player->active==a?cyan:orange);
     rectangle(p,stride,1200,24,52,52,player->paused?green:magenta);
     if (player->incoming) {
@@ -115,7 +115,7 @@ static void draw_status(uint32_t *p,int stride,const FojAnimPlayer *player,
         const float alpha=player->fade_elapsed/player->fade_duration;
         for (int i=0;i<4;++i)
             if (alpha>=.24f+.25f*i)
-                rectangle(p,stride,120+60*i,36,40,30,yellow);
+                rectangle(p,stride,390+60*i,36,40,30,yellow);
     }
 }
 
