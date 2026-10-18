@@ -1,0 +1,168 @@
+name: Stage 224 NeXium guarded vs normal damage
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/stage224-nexium-guard.yml'
+      - 'tools/foj_stage224_guard_guest_check.py'
+      - 'tests/emulator/test_stage224_guard_guest_check.py'
+      - 'core/**'
+      - 'switch/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stage224-nexium-guard.yml'
+      - 'tools/foj_stage224_guard_guest_check.py'
+      - 'tests/emulator/test_stage224_guard_guest_check.py'
+      - 'core/**'
+      - 'switch/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build actual 8x6 synthetic battle NRO
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and validate interactive battle NRO
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f switch/Makefile build/foj-isometric-research.nro
+          python3 tools/validate_nro.py build/foj-isometric-research.nro
+      - name: Upload homebrew for emulator
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage224-synthetic-guard-nro
+          path: build/foj-isometric-research.nro
+          if-no-files-found: error
+
+  nexium:
+    name: Verify real guest ZR mitigates next enemy attack
+    runs-on: ubuntu-26.04
+    needs: build
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: foj-stage224-synthetic-guard-nro
+          path: nros
+      - name: Install Xvfb software Vulkan and screenshot dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl jq xvfb xauth xdotool imagemagick python3-pil \
+            libgtk-3-0t64 libasound2t64 libudev1 libxkbcommon0 libxkbcommon-x11-0 \
+            libx11-xcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 \
+            libxcb-randr0 libxcb-render0 libxcb-shape0 libxcb-xkb1 \
+            libvulkan1 mesa-vulkan-drivers
+      - name: Download pinned NeXium nightly with receipt
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/nexium runtime-evidence
+          json="$(curl -fsSL --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/nexium-emu/nexium-nightly/releases/tags/nightly)"
+          url="$(printf '%s' "$json" | jq -r \
+            '.assets[] | select(.name == "nexium-linux-x86_64.tar.gz") | .browser_download_url')"
+          test -n "$url"
+          curl -fL --retry 3 --retry-all-errors "$url" -o /tmp/nexium-linux.tar.gz
+          sha256sum /tmp/nexium-linux.tar.gz > runtime-evidence/nexium-archive.sha256
+          tar -xzf /tmp/nexium-linux.tar.gz -C /tmp/nexium
+          bin="$(find /tmp/nexium -type f -executable \
+            \( -name 'nexium-gui' -o -name 'nexium' \) -print -quit)"
+          test -n "$bin"
+          echo "NEXIUM_BIN=$bin" >> "$GITHUB_ENV"
+      - name: Regress classifier on seven asset-free synthetic cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage224_guard_guest_check.py' -v
+      - name: Run guarded and normal battle from independent guest starts
+        shell: bash
+        run: |
+          set -euo pipefail
+          icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 -name 'lvp_icd*.json' -print -quit)"
+          test -n "$icd"
+          export VK_ICD_FILENAMES="$icd"
+          export FOJ_NRO="$GITHUB_WORKSPACE/nros/foj-isometric-research.nro"
+          export FOJ_EVIDENCE_DIR="$GITHUB_WORKSPACE/runtime-evidence"
+          test -s "$FOJ_NRO"
+          timeout --kill-after=5s 420s xvfb-run -a \
+            -s "-screen 0 1280x720x24" bash -c '
+              set -euo pipefail
+              press() {
+                timeout --kill-after=1s 3s xdotool keydown --window "$window" "$1"
+                sleep 0.15
+                timeout --kill-after=1s 3s xdotool keyup --window "$window" "$1"
+                sleep 0.35
+              }
+              capture_run() {
+                local mode="$1"
+                "$NEXIUM_BIN" "$FOJ_NRO" >"$FOJ_EVIDENCE_DIR/$mode.log" 2>&1 &
+                local pid=$!
+                for i in $(seq 1 30); do
+                  sleep 1
+                  local status
+                  status="$(ps -o stat= -p "$pid" 2>/dev/null | tr -d " " || true)"
+                  if [ -z "$status" ] || [[ "$status" == Z* ]]; then
+                    tail -n 60 "$FOJ_EVIDENCE_DIR/$mode.log" >&2
+                    return 1
+                  fi
+                done
+                window="$(xdotool search --onlyvisible --name "NeXium" 2>/dev/null | tail -n 1 || true)"
+                test -n "$window"
+                timeout --kill-after=1s 3s xdotool windowfocus --sync "$window" || true
+                # Verified keys from earlier NeXium source: A=c,
+                # DRight=Right, ZR=t, Y=z.
+                press c
+                for step in 1 2 3 4; do press Right; done
+                press c
+                sleep 0.5
+                if [ "$mode" = guarded ]; then
+                  press t
+                  sleep 0.4
+                  timeout --kill-after=2s 10s import -window "$window" \
+                    "$FOJ_EVIDENCE_DIR/guard-active.png"
+                fi
+                press z
+                sleep 0.7
+                timeout --kill-after=2s 10s import -window "$window" \
+                  "$FOJ_EVIDENCE_DIR/$mode-end.png"
+                kill -INT "$pid" 2>/dev/null || true
+                sleep 1
+                kill -KILL "$pid" 2>/dev/null || true
+                wait "$pid" 2>/dev/null || true
+              }
+              capture_run normal
+              capture_run guarded
+            '
+      - name: Require active guard plus extra HP on emulated guest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage224_guard_guest_check \
+            --active runtime-evidence/guard-active.png \
+            --guarded runtime-evidence/guarded-end.png \
+            --normal runtime-evidence/normal-end.png \
+            --report runtime-evidence/stage224-guard-nexium-receipt.json
+      - name: Save synthetic frames and emulator evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage224-nexium-guard-evidence
+          path: runtime-evidence/
+          if-no-files-found: warn
