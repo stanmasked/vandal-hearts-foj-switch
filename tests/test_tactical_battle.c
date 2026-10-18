@@ -371,6 +371,9 @@ static void test_undo_movement_restores_budget_and_cursor(void) {
     foj_battle_move_cursor(&b,1,0);
     assert(foj_battle_cancel(&b)==FOJ_BATTLE_CANCELED);
     assert(b.map.hero_x==1 && b.map.hero_y==2);
+    /* Cancel clears selection but deliberately keeps the inspected cursor. */
+    assert(b.map.cursor_x==2 && b.map.cursor_y==2);
+    foj_battle_move_cursor(&b,-1,0);
     assert(foj_battle_confirm(&b)==FOJ_BATTLE_SELECTED);
     foj_battle_move_cursor(&b,1,0);
     assert(foj_battle_confirm(&b)==FOJ_BATTLE_MOVED);
