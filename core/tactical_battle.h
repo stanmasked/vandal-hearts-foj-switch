@@ -11,7 +11,8 @@ enum {
     FOJ_BATTLE_HERO_MAX_HP = 8,
     FOJ_BATTLE_ENEMY_MAX_HP = 6,
     FOJ_BATTLE_HERO_DAMAGE = 3,
-    FOJ_BATTLE_ENEMY_DAMAGE = 2
+    FOJ_BATTLE_ENEMY_DAMAGE = 2,
+    FOJ_BATTLE_GUARDED_DAMAGE = 1
 };
 
 typedef enum {
@@ -26,6 +27,7 @@ typedef enum {
     FOJ_BATTLE_MOVED,
     FOJ_BATTLE_CANCELED,
     FOJ_BATTLE_ATTACKED,
+    FOJ_BATTLE_GUARDED,
     FOJ_BATTLE_ENEMY_MOVED,
     FOJ_BATTLE_ENEMY_ATTACKED,
     FOJ_BATTLE_TURN_ENDED,
@@ -40,6 +42,7 @@ typedef struct {
     uint8_t enemy_hp;
     bool moved_this_turn;
     bool attacked_this_turn;
+    bool guarded_this_turn;
     uint16_t turn_number;
     FojBattleOutcome outcome;
 } FojBattle;
@@ -64,6 +67,8 @@ void foj_battle_move_cursor(FojBattle *battle, int dx, int dy);
 FojBattleEvent foj_battle_confirm(FojBattle *battle);
 FojBattleEvent foj_battle_cancel(FojBattle *battle);
 FojBattleEvent foj_battle_attack(FojBattle *battle);
+/* Guard consumes the hero's attack for this turn, not their move. */
+FojBattleEvent foj_battle_guard(FojBattle *battle);
 FojBattleEvent foj_battle_end_turn(FojBattle *battle);
 
 #endif

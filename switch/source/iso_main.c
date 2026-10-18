@@ -44,6 +44,7 @@ int main(int argc, char **argv) {
         if (pressed & HidNpadButton_B) (void)foj_battle_cancel(&battle);
 
         if (pressed & HidNpadButton_X) (void)foj_battle_attack(&battle);
+        if (pressed & HidNpadButton_ZR) (void)foj_battle_guard(&battle);
         if (pressed & HidNpadButton_Y) (void)foj_battle_end_turn(&battle);
         if (pressed & HidNpadButton_Minus) foj_battle_init(&battle);
 
