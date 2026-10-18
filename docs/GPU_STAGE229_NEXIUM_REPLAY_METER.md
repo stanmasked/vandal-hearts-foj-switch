@@ -7,11 +7,12 @@ history produces the identical state. Stage229 adds independent
 
 ## Visible input history
 
-The isometric research NRO has a small pixel-only bar from x=28–155,
+The isometric research NRO has a small pixel-only bar from x=256–383,
 y=12–19, displaying all 128 possible command positions. One colored
 vertical pixel-column represents one recorded input; the remainder are
 a dark neutral shade. The original green/red/amber replay verification
-square remains independent.
+square remains independent at x=240–247. Both elements sit outside
+NeXium's built-in performance overlay near the top-left screen corner.
 
 A standalone `core/battle_replay_meter.[ch]` module validates canvas
 width, height, stride and command-count bounds before drawing. It
