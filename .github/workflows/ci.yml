@@ -216,6 +216,22 @@ jobs:
             -o /tmp/foj228_battle_replay_ubsan
           /tmp/foj228_battle_replay_ubsan
 
+      - name: Stage236 exhaustive movement preview vs actual replay (C11)
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tests/test_battle_threat_replay_parity.c core/battle_replay.c \
+            core/tactical_battle.c core/tactical_demo.c \
+            -o /tmp/foj236_threat_replay_parity
+          /tmp/foj236_threat_replay_parity
+      - name: Stage236 movement forecast parity (UBSan)
+        run: |
+          cc -std=c11 -O1 -g -fsanitize=undefined \
+            -fno-omit-frame-pointer -Icore \
+            tests/test_battle_threat_replay_parity.c core/battle_replay.c \
+            core/tactical_battle.c core/tactical_demo.c \
+            -o /tmp/foj236_threat_replay_parity_ubsan
+          /tmp/foj236_threat_replay_parity_ubsan
+
       - name: Compile portable FoJ COLL parser under strict C11 flags
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
