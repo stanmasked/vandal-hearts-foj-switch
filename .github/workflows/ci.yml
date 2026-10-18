@@ -186,6 +186,20 @@ jobs:
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
             tests/test_tactical_demo.c core/tactical_demo.c -o /tmp/foj_tactics_tests
           /tmp/foj_tactics_tests
+      - name: Compile and run Stage217 synthetic battle turns
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tests/test_tactical_battle.c core/tactical_battle.c \
+            core/tactical_demo.c -o /tmp/foj_battle_tests
+          /tmp/foj_battle_tests
+      - name: Check synthetic battle turn safety with UBSan
+        run: |
+          cc -std=c11 -O1 -g -fsanitize=undefined \
+            -fno-omit-frame-pointer -Icore \
+            tests/test_tactical_battle.c core/tactical_battle.c \
+            core/tactical_demo.c -o /tmp/foj_battle_ubsan
+          /tmp/foj_battle_ubsan
+
       - name: Compile portable FoJ COLL parser under strict C11 flags
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
@@ -228,7 +242,7 @@ jobs:
       - name: Compile and run isometric rendering tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
-            tests/test_isometric_demo.c core/isometric_demo.c core/tactical_demo.c \
+            tests/test_isometric_demo.c core/isometric_demo.c core/tactical_demo.c core/tactical_battle.c \
             -o /tmp/foj_iso_tests
           /tmp/foj_iso_tests
 
