@@ -62,6 +62,17 @@ typedef struct {
 bool foj_battle_forecast_enemy_turn(const FojBattle *battle,
                                      FojEnemyTurnForecast *forecast);
 
+/* Non-committing X-action forecast: uses the exact attack rules on a
+ * temporary copy, not a second damage or attack-range implementation. */
+typedef struct {
+    FojBattleEvent event;
+    uint8_t enemy_hp_after;
+    FojBattleOutcome outcome_after;
+} FojHeroAttackForecast;
+
+bool foj_battle_forecast_attack(const FojBattle *battle,
+                                FojHeroAttackForecast *forecast);
+
 void foj_battle_init(FojBattle *battle);
 void foj_battle_move_cursor(FojBattle *battle, int dx, int dy);
 FojBattleEvent foj_battle_confirm(FojBattle *battle);
