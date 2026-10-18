@@ -14,5 +14,11 @@ void foj_iso_render(const FojDemo *state, uint32_t *pixels,
 /* Same synthetic terrain, plus HP bars and battle-result strip. */
 void foj_iso_render_battle(const FojBattle *battle, uint32_t *pixels,
                            int width, int height, int stride_pixels);
+/* Same battle result and damage visuals, but optional movement-risk hint.
+ * This presentation option must never change FojBattle or replay history. */
+void foj_iso_render_battle_options(const FojBattle *battle, uint32_t *pixels,
+                                   int width, int height, int stride_pixels,
+                                   bool show_threat_preview);
+
 
 #endif

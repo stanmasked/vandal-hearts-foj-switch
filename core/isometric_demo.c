@@ -185,8 +185,9 @@ static void hp_bar(Canvas *canvas, int cx, int cy, unsigned hp,
     }
 }
 
-void foj_iso_render_battle(const FojBattle *battle, uint32_t *pixels,
-                           int width, int height, int stride_pixels) {
+void foj_iso_render_battle_options(const FojBattle *battle, uint32_t *pixels,
+                                   int width, int height, int stride_pixels,
+                                   bool show_threat_preview) {
     if (!battle || !pixels || width <= 0 || height <= 0 ||
         stride_pixels < width) return;
     FojDemo visual = battle->map;
@@ -202,7 +203,8 @@ void foj_iso_render_battle(const FojBattle *battle, uint32_t *pixels,
      * selection. Resolve the exact same enemy Y action on temporary
      * copies for each reachable cell; retain no PS3 terrain semantics. */
     FojBattleThreatPreview danger;
-    if (foj_battle_preview_movement_threat(battle,&danger)) {
+    if (show_threat_preview &&
+        foj_battle_preview_movement_threat(battle,&danger)) {
         for (int dy=0;dy<FOJ_HEIGHT;++dy) {
             for (int dx=0;dx<FOJ_WIDTH;++dx) {
                 if (!danger.can_move[dy][dx]) continue;
@@ -309,4 +311,10 @@ void foj_iso_render_battle(const FojBattle *battle, uint32_t *pixels,
             for (int x0 = 0; x0 < width; ++x0)
                 pixel(&canvas, x0, y0, color);
     }
+}
+
+/* Keep the original signature and defaults for all existing game code. */
+void foj_iso_render_battle(const FojBattle *battle, uint32_t *pixels,
+                           int width, int height, int stride_pixels) {
+    foj_iso_render_battle_options(battle,pixels,width,height,stride_pixels,true);
 }

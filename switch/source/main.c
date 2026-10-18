@@ -45,7 +45,7 @@ static const char *status_label(FojBattleEvent action) {
 }
 
 static void draw_scene(const FojBattle *battle, FojBattleEvent action, int diagnostic_channel,
-                       const FojBattleReplay *replay) {
+                       const FojBattleReplay *replay, bool show_threat_preview) {
     const FojDemo *state = &battle->map;
     uint8_t reach[FOJ_HEIGHT][FOJ_WIDTH];
     foj_reachability(state, reach);
@@ -60,6 +60,8 @@ static void draw_scene(const FojBattle *battle, FojBattleEvent action, int diagn
     printf("B: cancel selection / undo move before attack or guard\n");
     printf("Y: end turn / MINUS: restart / PLUS: exit\n");
     printf("ZR: guard (uses attack, reduces next enemy hit)\n");
+    printf("Right stick: toggle movement danger preview (%s)\n",
+           show_threat_preview ? "ON" : "OFF");
     printf("L/R: raw COLL diagnostic channel (0-5), if provided locally\n");
     printf("H hero, E enemy, # wall, 0-2 height\n");
     printf("+ reachable after selecting H, < cursor\n\n");
@@ -92,7 +94,8 @@ static void draw_scene(const FojBattle *battle, FojBattleEvent action, int diagn
         puts("Enemy forecast unavailable: battle already ended.");
     }
     FojBattleThreatPreview threat;
-    if (foj_battle_preview_movement_threat(battle,&threat) &&
+    if (show_threat_preview &&
+        foj_battle_preview_movement_threat(battle,&threat) &&
         foj_in_bounds(state->cursor_x,state->cursor_y)) {
         const int x=state->cursor_x, y=state->cursor_y;
         if (threat.can_move[y][x])
@@ -161,8 +164,9 @@ int main(int argc, char **argv) {
     foj_battle_init(&battle);
     FojBattleReplay replay;
     foj_replay_init(&replay);
+    bool show_threat_preview=true;
     FojBattleEvent last = FOJ_BATTLE_NO_ACTION;
-    draw_scene(&battle, last, diagnostic_channel, &replay);
+    draw_scene(&battle, last, diagnostic_channel, &replay, show_threat_preview);
 
     while (appletMainLoop()) {
         padUpdate(&pad);
@@ -210,6 +214,10 @@ int main(int argc, char **argv) {
             (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_RESET,&last);
             redraw = true;
         }
+        if (pressed & HidNpadButton_StickR) {
+            show_threat_preview = !show_threat_preview;
+            redraw = true;
+        }
         if (pressed & HidNpadButton_R) {
             diagnostic_channel = (diagnostic_channel + 1) % 6;
             redraw = true;
@@ -218,7 +226,7 @@ int main(int argc, char **argv) {
             diagnostic_channel = (diagnostic_channel + 5) % 6;
             redraw = true;
         }
-        if (redraw) draw_scene(&battle, last, diagnostic_channel, &replay);
+        if (redraw) draw_scene(&battle, last, diagnostic_channel, &replay, show_threat_preview);
         consoleUpdate(NULL);
     }
     consoleExit(NULL);
