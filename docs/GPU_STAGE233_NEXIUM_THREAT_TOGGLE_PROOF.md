@@ -29,10 +29,11 @@ unexpected gameplay inputs, blank or wrong-size frames.
 
 ## Integration and scope
 
-Stage233 is stacked on Stage232 PR #116, which itself follows Stage231
-PR #115. Merge the predecessors only after their complete latest-head
-CI passes, then retarget this PR to `main` and require fresh
-independent devkitA64, host and real NeXium checks before merging.
+Stage231 PR #115 and Stage232 PR #116 passed all their independent
+checks and merged into `main`. Stage232 merge was
+`08e3f20dcf31c8f77599e885d1280403f76618e6`.
+Stage233 now targets `main` and requires fresh independent devkitA64,
+host and real NeXium proof on its own latest head before merging.
 
 This proves only a view toggle in the invented 8×6 homebrew simulation,
 not original PS3 gameplay, assets or physical Nintendo Switch execution.
