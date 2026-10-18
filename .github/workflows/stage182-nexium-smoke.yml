@@ -1,4 +1,4 @@
-name: Stage 185 NeXium COLL reversible guest controls
+name: Stage 186 NeXium COLL cursor and zoom limits
 
 on:
   workflow_dispatch:
@@ -9,6 +9,7 @@ on:
       - 'tools/foj_stage183_coll_y_frame_check.py'
       - 'tools/foj_stage184_coll_input_check.py'
       - 'tools/foj_stage185_coll_reverse_check.py'
+      - 'tools/foj_stage186_coll_boundary_check.py'
       - 'tools/foj_stage183_coll_mode_reference.c'
       - 'tests/emulator/**'
       - 'switch/**'
@@ -21,6 +22,7 @@ on:
       - 'tools/foj_stage183_coll_y_frame_check.py'
       - 'tools/foj_stage184_coll_input_check.py'
       - 'tools/foj_stage185_coll_reverse_check.py'
+      - 'tools/foj_stage186_coll_boundary_check.py'
       - 'tools/foj_stage183_coll_mode_reference.c'
       - 'switch/**'
       - 'core/**'
@@ -144,12 +146,40 @@ jobs:
           ch0 26 25 14 0
           COLL_STATES
 
+      - name: Regress generated-only COLL edge and zoom verifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage186_coll_boundary_check.py' -v
+
       - name: Regress six-channel screenshot checker against synthetic mutations
         shell: bash
         run: |
           set -euo pipefail
           python3 -m unittest discover -s tests/emulator \
             -p 'test_stage184_coll_input_check.py' -v
+
+      - name: Generate six exact C heatmap references for COLL edges and zoom bounds
+        shell: bash
+        run: |
+          set -euo pipefail
+          while read -r state cx cy tile; do
+            /tmp/foj-stage183-coll-reference heatmap \
+              "runtime-evidence/ref-coll-$state.ppm" \
+              "$cx" "$cy" "$tile" 0
+            python3 tools/ppm_to_png.py \
+              "runtime-evidence/ref-coll-$state.ppm" \
+              "runtime-evidence/ref-coll-$state.png"
+            rm "runtime-evidence/ref-coll-$state.ppm"
+          done <<'COLL_BOUNDS'
+          left-edge 0 25 12
+          top-edge 0 0 12
+          min-zoom 0 0 4
+          max-zoom 0 0 30
+          right-edge 49 0 30
+          bottom-edge 49 49 30
+          COLL_BOUNDS
 
       - name: Regress classifier against seven synthetic negative/positive scenarios
         shell: bash
@@ -170,7 +200,7 @@ jobs:
           capture() {
             export NRO="$1" SHOT="$2" ROUTE="$3" INPUT="$4" LOG="$5" BACK="${6:-}"
             test -s "$NRO"
-            timeout --kill-after=5s 110s xvfb-run -a -s "-screen 0 1280x720x24" bash -c '
+            timeout --kill-after=5s 300s xvfb-run -a -s "-screen 0 1280x720x24" bash -c '
               set -euo pipefail
               "$NEXIUM_BIN" "$NRO" >"$LOG" 2>&1 &
               pid=$!
@@ -246,6 +276,28 @@ jobs:
                   timeout --kill-after=2s 10s import -window "$window" \
                     "runtime-evidence/coll-$state.png"
                 done
+                # Clamped COLL cursor and zoom boundaries. NeXium's
+                # default keys Left/Up/Right/Down and R=ZL, T=ZR.
+                # Repeated key events (not a held key) exercise the
+                # actual guest PadState button-down edges.
+                for item in "Left left-edge 40" \
+                            "Up top-edge 40" \
+                            "r min-zoom 10" \
+                            "t max-zoom 20" \
+                            "Right right-edge 65" \
+                            "Down bottom-edge 65"; do
+                  read -r key state count <<< "$item"
+                  timeout --kill-after=2s 90s xdotool key --clearmodifiers \
+                    --repeat "$count" --delay 280 --window "$window" "$key"
+                  sleep 0.75
+                  timeout --kill-after=2s 10s import -window "$window" \
+                    "runtime-evidence/coll-$state.png"
+                  timeout --kill-after=2s 15s xdotool key --clearmodifiers \
+                    --repeat 4 --delay 350 --window "$window" "$key"
+                  sleep 0.75
+                  timeout --kill-after=2s 10s import -window "$window" \
+                    "runtime-evidence/coll-$state-repeat.png"
+                done
               fi
               test -s "$SHOT"
               if [ "$INPUT" = "1" ]; then test -s "$ROUTE"; fi
@@ -306,10 +358,18 @@ jobs:
             --evidence runtime-evidence \
             --report runtime-evidence/stage185-coll-reverse-guest-receipt.json
 
+      - name: Verify real NeXium COLL cursor and zoom extrema and repeated no-op input
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage186_coll_boundary_check \
+            --evidence runtime-evidence \
+            --report runtime-evidence/stage186-coll-bounds-guest-receipt.json
+
       - name: Preserve screenshots, analysis and sanitized startup logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: foj-stage185-nexium-coll-reversible-evidence
+          name: foj-stage186-nexium-coll-bounds-evidence
           path: runtime-evidence/
           if-no-files-found: warn
