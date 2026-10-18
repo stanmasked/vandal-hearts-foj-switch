@@ -1,0 +1,121 @@
+name: Stage 193 NeXium synthetic animation playback
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/stage193-nexium-animation.yml'
+      - 'tools/foj_stage193_nexium_drive.sh'
+      - 'tools/foj_stage193_animation_frame_check.py'
+      - 'tests/emulator/test_stage193_animation_frame_check.py'
+      - 'switch/**'
+      - 'core/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stage193-nexium-animation.yml'
+      - 'tools/foj_stage193_nexium_drive.sh'
+      - 'tools/foj_stage193_animation_frame_check.py'
+      - 'tests/emulator/test_stage193_animation_frame_check.py'
+      - 'switch/**'
+      - 'core/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compile real controller-linked synthetic animation NRO
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and validate homebrew NRO
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f switch/Makefile build/foj-animated-actor-research.nro
+          python3 tools/validate_nro.py build/foj-animated-actor-research.nro
+      - name: Upload generated-only NRO
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage193-animated-actor-nro
+          path: build/foj-animated-actor-research.nro
+          if-no-files-found: error
+
+  nexium:
+    name: Verify guest play/pause/crossfade screenshots in NeXium
+    needs: build
+    runs-on: ubuntu-26.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: foj-stage193-animated-actor-nro
+          path: nros
+      - name: Install headless display, Vulkan and screenshot dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl jq xvfb xauth xdotool imagemagick python3-pil \
+            libgtk-3-0t64 libasound2t64 libudev1 libxkbcommon0 libxkbcommon-x11-0 \
+            libx11-xcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 \
+            libxcb-randr0 libxcb-render0 libxcb-shape0 libxcb-xkb1 \
+            libvulkan1 mesa-vulkan-drivers
+      - name: Fetch pinned NeXium nightly and record checksum
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-evidence /tmp/nexium
+          json="$(curl -fsSL --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/nexium-emu/nexium-nightly/releases/tags/nightly)"
+          asset="$(printf '%s' "$json" | jq -r \
+            '.assets[] | select(.name == "nexium-linux-x86_64.tar.gz") | .browser_download_url')"
+          test -n "$asset"
+          curl -fL --retry 3 --retry-all-errors "$asset" -o /tmp/nexium-linux.tar.gz
+          tar -xzf /tmp/nexium-linux.tar.gz -C /tmp/nexium
+          bin="$(find /tmp/nexium -type f -executable \
+            \( -name 'nexium-gui' -o -name 'nexium' \) -print -quit)"
+          test -n "$bin"
+          echo "NEXIUM_BIN=$bin" >> "$GITHUB_ENV"
+          sha256sum /tmp/nexium-linux.tar.gz > runtime-evidence/nexium-archive.sha256
+      - name: Test fail-closed guest screenshot verifier on invented fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage193_animation_frame_check.py' -v
+      - name: Launch NRO and capture actual emulated input frames
+        shell: bash
+        run: |
+          set -euo pipefail
+          icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 -name 'lvp_icd*.json' -print -quit)"
+          test -n "$icd"
+          export VK_ICD_FILENAMES="$icd"
+          export FOJ_NRO="$GITHUB_WORKSPACE/nros/foj-animated-actor-research.nro"
+          export FOJ_EVIDENCE_DIR="$GITHUB_WORKSPACE/runtime-evidence"
+          test -s "$FOJ_NRO"
+          timeout --kill-after=5s 230s xvfb-run -a -s "-screen 0 1280x720x24" \
+            bash tools/foj_stage193_nexium_drive.sh
+      - name: Require actual changed geometry, still pause and visible crossfade
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage193_animation_frame_check \
+            --evidence runtime-evidence \
+            --report runtime-evidence/stage193-animation-guest-receipt.json
+      - name: Preserve synthetic guest screenshots and sanitized receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage193-nexium-animation-evidence
+          path: runtime-evidence/
+          if-no-files-found: warn
