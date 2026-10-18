@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from tools.foj_stage165_sd_bundle import INPUTS, publish_bundle
 from tools.foj_stage166_hardware_observations import blank_template
@@ -164,6 +165,39 @@ class Stage175DownloadedArtifactTests(unittest.TestCase):
             directory.symlink_to(saved, target_is_directory=True)
             with self.assertRaises(ValueError):
                 verify_download(root, COMMIT, RUN)
+
+    def test_file_added_mid_audit_is_rejected_by_second_inventory(self):
+        temp, root = self.prepare()
+        with temp:
+            from tools import foj_stage175_downloaded_artifact_audit as audit
+            original = audit.build_five_receipt
+
+            def inject(*args, **kwargs):
+                result = original(*args, **kwargs)
+                (root / "unlisted-after-audit.txt").write_text("unexpected")
+                return result
+
+            with patch.object(audit, "build_five_receipt", side_effect=inject):
+                with self.assertRaises(ValueError):
+                    audit.verify_download(root, COMMIT, RUN)
+
+    def test_receipt_changed_mid_audit_is_rejected_by_second_read(self):
+        temp, root = self.prepare()
+        with temp:
+            from tools import foj_stage175_downloaded_artifact_audit as audit
+            original = audit.build_five_receipt
+
+            def alter(*args, **kwargs):
+                result = original(*args, **kwargs)
+                target = root / STAGE175
+                altered = json.loads(target.read_text())
+                altered["provenance"] = "changed-after-first-read"
+                target.write_text(json.dumps(altered), encoding="utf-8")
+                return result
+
+            with patch.object(audit, "build_five_receipt", side_effect=alter):
+                with self.assertRaises(ValueError):
+                    audit.verify_download(root, COMMIT, RUN)
 
     def test_existing_stage175_manifest_cannot_be_overwritten(self):
         temp, root = self.prepare()
