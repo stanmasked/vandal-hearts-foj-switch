@@ -200,7 +200,8 @@ def observations_if_any(path:Path|None,folder:Path):
 
 def conduct(rig:Path,primary:Path,secondary:Path|None,
             output:Path,*,observations:Path|None=None,
-            multiwindow:Path|None=None):
+            multiwindow:Path|None=None,
+            frame_bindings:Path|None=None):
     safe_destination(output)
     # Strictly bounded source reads and independent source-coordinate
     # research math happen BEFORE creating ANY private output.
@@ -211,9 +212,21 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
     envelope=inspect_pose_envelope(
         rig_bytes,primary_bytes,secondary_bytes
     )
-    # Reject bad private operator input before starting native rendering.
+    # Optional Stage204 binding refuses manually entered research points
+    # unless they touch the genuine local C-rendered PPM silhouettes.
+    # Import late to avoid dependency cycles between the two tools.
+    if frame_bindings is not None and observations is None:
+        raise ValueError("Frame bindings require operator observations")
+    bound_annotations=None
     if observations is not None:
-        align_observations(private_read(observations))
+        bound_annotations=private_read(observations)
+        align_observations(bound_annotations)
+    if frame_bindings is not None:
+        from tools.foj_stage204_private_frame_landmarks import (
+            read_bindings, validate_bindings
+        )
+        validate_bindings(read_bindings(frame_bindings),
+                          len(bound_annotations["frames"]))
     if multiwindow is not None:
         evaluate(multi_read(multiwindow))
     old_umask=os.umask(0o077)
@@ -250,6 +263,24 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
         protected_json(output/"private-pose-envelope.json",envelope)
         protected_json(output/"private-render-evidence.json",frame_report)
         observed=observations_if_any(observations,output)
+        if frame_bindings is None:
+            bound={
+                "research_landmarks_bound_to_native_frames":False,
+                "original_ps3_capture_authenticated_by_frame_binding":False,
+            }
+        else:
+            from tools.foj_stage204_private_frame_landmarks import (
+                inspect_landmarks, read_bindings
+            )
+            bound_report=inspect_landmarks(
+                bound_annotations,read_bindings(frame_bindings),frames
+            )
+            protected_json(output/"private-research-frame-audit.json",
+                           bound_report)
+            bound={
+                "research_landmarks_bound_to_native_frames":True,
+                "original_ps3_capture_authenticated_by_frame_binding":False,
+            }
         if multiwindow is None:
             multi={
                 "independent_windows_submitted":False,
@@ -279,6 +310,7 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
             "secondary_motion_observed_in_private_frames":
                 frame_report["secondary_fade_motion_observed"],
             **observed,
+            **bound,
             **multi,
             "asset_identity_authenticated_as_original_ps3":False,
             "original_game_animation_accuracy_verified":False,
@@ -313,11 +345,13 @@ def main(argv=None):
     parser.add_argument("--output-root",required=True,type=Path)
     parser.add_argument("--observations",type=Path)
     parser.add_argument("--multiwindow",type=Path)
+    parser.add_argument("--frame-bindings",type=Path)
     args=parser.parse_args(argv)
     try:
         result=conduct(
             args.rig,args.primary,args.secondary,args.output_root,
             observations=args.observations,multiwindow=args.multiwindow,
+            frame_bindings=args.frame_bindings,
         )
     except (OSError,ValueError,TypeError,RuntimeError,
             subprocess.SubprocessError,OverflowError,IndexError,
