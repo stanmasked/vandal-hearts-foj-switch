@@ -103,14 +103,27 @@ def staged_source_witness(root:Path):
     """
     staged=root/"private-switch-sd"/"switch/foj"
     def digest(path:Path,limit:int):
-        st=path.lstat()
-        if (not stat.S_ISREG(st.st_mode) or path.is_symlink()
-            or not 1<=st.st_size<=limit):
-            raise rejected()
-        raw=path.read_bytes()
-        if len(raw)!=st.st_size:
-            raise rejected()
-        return hashlib.sha256(raw).hexdigest()
+        # Read from a single no-follow descriptor: a pathname swap between
+        # lstat() and read_bytes() must not redirect a checked local asset.
+        # Nonblocking open prevents hanging on a substituted FIFO.
+        fd=-1
+        try:
+            fd=os.open(path,os.O_RDONLY | getattr(os,"O_NOFOLLOW",0)
+                       | getattr(os,"O_NONBLOCK",0))
+            st=os.fstat(fd)
+            if not stat.S_ISREG(st.st_mode) or not 1<=st.st_size<=limit:
+                raise rejected()
+            with os.fdopen(fd,"rb") as stream:
+                fd=-1
+                raw=stream.read(limit+1)
+            if len(raw)!=st.st_size:
+                raise rejected()
+            return hashlib.sha256(raw).hexdigest()
+        except (OSError,ValueError):
+            raise rejected() from None
+        finally:
+            if fd>=0:
+                os.close(fd)
     optional=staged/"anims/preview_b.banim"
     return {
         "rig":digest(staged/"rig/preview.fojrm",MAX_RIG_FILE),
