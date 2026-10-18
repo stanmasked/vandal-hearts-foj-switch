@@ -91,10 +91,10 @@ static void test_invalid_input_does_not_touch_canvas(void) {
     free(pixels);
 }
 
-static void write_generated_coll(FILE *file) {
-    assert(fputs("8,6,0,0,1,1,\n",file)>=0);
-    for (int y=0;y<FOJ_HEIGHT;++y)
-        for (int x=0;x<FOJ_WIDTH;++x)
+static void write_generated_coll(FILE *file, int width, int height) {
+    assert(fprintf(file,"%d,%d,0,0,1,1,\n",width,height)>0);
+    for (int y=0;y<height;++y)
+        for (int x=0;x<width;++x)
             assert(fprintf(file,"%d,%d,%d,%d,0,0,%s,%s,\n",
                            x,y,x,y,(x+y)%2?"true":"false",
                            x==y?"true":"false")>0);
@@ -106,7 +106,7 @@ static void test_shared_loader_rejects_bad_files_and_preserves_raw_bytes(void) {
     assert(fd>=0);
     FILE *file=fdopen(fd,"wb");
     assert(file);
-    write_generated_coll(file);
+    write_generated_coll(file,FOJ_WIDTH,FOJ_HEIGHT);
     assert(fclose(file)==0);
     FojCollBattleWindow selected;
     assert(foj_local_coll_load_path(pathname,&selected));
@@ -129,11 +129,41 @@ static void test_shared_loader_rejects_bad_files_and_preserves_raw_bytes(void) {
     assert(!foj_local_coll_load_path(pathname,NULL));
 }
 
+static void test_full_fifty_by_fifty_center_and_file_bound(void) {
+    char pathname[]="/tmp/foj221-full-coll-XXXXXX";
+    int fd=mkstemp(pathname);
+    assert(fd>=0);
+    FILE *file=fdopen(fd,"wb");
+    assert(file);
+    write_generated_coll(file,50,50);
+    assert(fclose(file)==0);
+    FojCollBattleWindow crop;
+    assert(foj_local_coll_load_path(pathname,&crop));
+    assert(crop.source_width==50 && crop.source_height==50);
+    assert(crop.source_x==21 && crop.source_y==22);
+    assert(crop.raw[0][0][0]==21.0f);
+    assert(crop.raw[0][0][1]==22.0f);
+    assert(crop.raw[FOJ_HEIGHT-1][FOJ_WIDTH-1][0]==28.0f);
+    assert(crop.raw[FOJ_HEIGHT-1][FOJ_WIDTH-1][1]==27.0f);
+
+    file=fopen(pathname,"wb");
+    assert(file);
+    unsigned char junk[4096];
+    memset(junk,'X',sizeof(junk));
+    for (int n=0;n<257;++n)
+        assert(fwrite(junk,1,sizeof(junk),file)==sizeof(junk));
+    assert(fclose(file)==0);
+    assert(!foj_local_coll_load_path(pathname,&crop));
+    assert(crop.source_width==0);
+    assert(unlink(pathname)==0);
+}
+
 int main(void) {
     test_diagnostic_panel_is_read_only();
     test_each_raw_channel_can_be_drawn();
     test_invalid_input_does_not_touch_canvas();
     test_shared_loader_rejects_bad_files_and_preserves_raw_bytes();
-    puts("Stage221 synthetic COLL panel: four test scenarios passed");
+    test_full_fifty_by_fifty_center_and_file_bound();
+    puts("Stage221 synthetic COLL panel: five test scenarios passed");
     return 0;
 }
