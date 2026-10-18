@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from PIL import Image
+from PIL import Image, ImageDraw
 from tools.foj_stage231_threat_guest_check import (
     read_frame, bounded_color_count, REGIONS, SAFE, DANGER, HERO, ENEMY,
 )
@@ -14,8 +14,19 @@ METER=(57,161,229)
 SCHEMA="foj-stage233-neXium-visual-threat-toggle-v1"
 
 
-def count_near(frame: Image.Image, target: tuple[int,int,int]) -> int:
-    palette=frame.getcolors(maxcolors=65536)
+def count_near(frame: Image.Image, target: tuple[int,int,int],
+               *, exclude_risk_tiles: bool = False) -> int:
+    # A risk glyph can overlap a unit sprite by a few pixels in the
+    # isometric projection. Mask those two bounded glyph regions in
+    # ALL frames before comparing stable unit silhouettes. Otherwise
+    # a correct visual toggle looks like a changed enemy.
+    sample = frame
+    if exclude_risk_tiles:
+        sample = frame.copy()
+        brush = ImageDraw.Draw(sample)
+        for left,right,top,bottom in REGIONS.values():
+            brush.rectangle((left,top,right-1,bottom-1), fill=(0,0,0))
+    palette=sample.getcolors(maxcolors=65536)
     if palette is None:
         raise ValueError("Unbounded emulator palette")
     return sum(n for n,rgb in palette
@@ -26,8 +37,8 @@ def verify_toggle(files: tuple[Path,Path,Path,Path]) -> dict:
     screenshots=[read_frame(path) for path in files]
     safe=[bounded_color_count(im,REGIONS["safe"],SAFE) for im in screenshots]
     damage=[bounded_color_count(im,REGIONS["danger"],DANGER) for im in screenshots]
-    hero=[count_near(im,HERO) for im in screenshots]
-    enemy=[count_near(im,ENEMY) for im in screenshots]
+    hero=[count_near(im,HERO,exclude_risk_tiles=True) for im in screenshots]
+    enemy=[count_near(im,ENEMY,exclude_risk_tiles=True) for im in screenshots]
     meter=[count_near(im,METER) for im in screenshots]
     if safe[0] or damage[0]:
         raise ValueError(f"Threat preview visible before hero selection: {safe}/{damage}")
