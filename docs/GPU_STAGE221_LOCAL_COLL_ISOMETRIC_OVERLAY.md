@@ -50,8 +50,12 @@ versus boolean channels, rejection of invalid/nonfinite inputs, and the
 shared file loader with synthetic 8×6 and 50×50 COLL fixtures, including
 correct centered coordinates and refusal of files larger than 1 MiB. GitHub Actions runs
 strict C11 tests, UBSan, research NRO compilation and the existing
-isometric image preview pipeline. Existing PNG preview artifacts remain
-synthetic because no real game data is uploaded to CI.
+isometric image preview pipeline. The isometric-preview workflow also generates a dedicated
+`foj-battle-coll-panel-generated-preview` PNG artifact by composing the
+actual portable battle renderer with 48 **invented** raw channel values.
+This checks panel integration visibly without accessing owner assets.
+All PNG preview artifacts remain synthetic because no real game data is
+uploaded to CI.
 
 ## Dependencies and limitations
 
