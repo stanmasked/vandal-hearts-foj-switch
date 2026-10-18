@@ -462,6 +462,82 @@ static void test_undo_forecast_reverts_to_original_position(void) {
     assert(restored.enemy_y_after==baseline.enemy_y_after);
 }
 
+static void test_threat_matrix_matches_actual_enemy_turn_without_mutation(void) {
+    FojBattle battle;
+    foj_battle_init(&battle);
+    assert(foj_battle_confirm(&battle)==FOJ_BATTLE_SELECTED);
+    FojBattleThreatPreview danger;
+    const FojBattle original=battle;
+    assert(foj_battle_preview_movement_threat(&battle,&danger));
+    assert(memcmp(&original,&battle,sizeof(battle))==0);
+    assert(danger.can_move[2][2] && danger.incoming_damage[2][2]==0);
+    assert(danger.can_move[2][5] && danger.incoming_damage[2][5]==2);
+    assert(danger.enemy_x_after[2][5]==6 && danger.enemy_y_after[2][5]==2);
+    assert(!danger.can_move[1][2] && !danger.can_move[3][2]);
+    assert(!danger.can_move[3][6] && !danger.can_move[2][1]);
+    int considered=0, dangerous=0, safe=0;
+    for(int y=0;y<FOJ_HEIGHT;++y)
+        for(int x=0;x<FOJ_WIDTH;++x) {
+            FojRoute route;
+            bool eligible=foj_demo_preview_route(&battle.map,x,y,&route);
+            assert((danger.can_move[y][x]!=0)==eligible);
+            if(!eligible)continue;
+            ++considered;
+            FojBattle imagined=battle;
+            imagined.map.hero_x=x;
+            imagined.map.hero_y=y;
+            imagined.map.selected=false;
+            imagined.moved_this_turn=true;
+            FojBattleEvent event=foj_battle_end_turn(&imagined);
+            assert(event!=FOJ_BATTLE_REJECTED);
+            assert((int)danger.incoming_damage[y][x]==
+                   FOJ_BATTLE_HERO_MAX_HP-imagined.hero_hp);
+            assert(danger.enemy_x_after[y][x]==imagined.map.enemy_x);
+            assert(danger.enemy_y_after[y][x]==imagined.map.enemy_y);
+            if(danger.incoming_damage[y][x])++dangerous;
+            else ++safe;
+        }
+    assert(considered>=5 && dangerous>0 && safe>0);
+    assert(memcmp(&original,&battle,sizeof(battle))==0);
+}
+
+static void test_threat_map_respects_guard_and_lethal_hp(void) {
+    FojBattle b;
+    foj_battle_init(&b);
+    assert(foj_battle_guard(&b)==FOJ_BATTLE_GUARDED);
+    assert(foj_battle_confirm(&b)==FOJ_BATTLE_SELECTED);
+    FojBattleThreatPreview danger;
+    assert(foj_battle_preview_movement_threat(&b,&danger));
+    assert(danger.can_move[2][5] && danger.incoming_damage[2][5]==1);
+    assert(b.hero_hp==FOJ_BATTLE_HERO_MAX_HP && b.guarded_this_turn);
+    b.hero_hp=1;
+    assert(foj_battle_preview_movement_threat(&b,&danger));
+    assert(danger.incoming_damage[2][5]==1);
+    assert(b.hero_hp==1 && b.outcome==FOJ_BATTLE_ONGOING);
+}
+
+static void test_threat_invalid_and_unselected_fail_closed(void) {
+    FojBattle b;
+    FojBattleThreatPreview out;
+    foj_battle_init(&b);
+    memset(&out,0xff,sizeof(out));
+    assert(!foj_battle_preview_movement_threat(&b,&out));
+    FojBattleThreatPreview empty={0};
+    assert(memcmp(&out,&empty,sizeof(out))==0);
+    assert(!foj_battle_preview_movement_threat(NULL,&out));
+    assert(!foj_battle_preview_movement_threat(&b,NULL));
+    assert(foj_battle_confirm(&b)==FOJ_BATTLE_SELECTED);
+    b.moved_this_turn=true;
+    assert(!foj_battle_preview_movement_threat(&b,&out));
+    b.moved_this_turn=false;
+    b.outcome=FOJ_BATTLE_WON;
+    assert(!foj_battle_preview_movement_threat(&b,&out));
+    b.outcome=FOJ_BATTLE_ONGOING;
+    b.map.enemy_x=-1;
+    assert(!foj_battle_preview_movement_threat(&b,&out));
+    assert(memcmp(&out,&empty,sizeof(out))==0);
+}
+
 static void test_null_arguments(void) {
     foj_battle_init(NULL);
     foj_battle_move_cursor(NULL,1,0);
@@ -494,7 +570,10 @@ int main(void) {
     test_undo_refuses_after_guard_attack_or_end_turn();
     test_undo_refuses_invalid_snapshot_and_post_battle();
     test_undo_forecast_reverts_to_original_position();
+    test_threat_matrix_matches_actual_enemy_turn_without_mutation();
+    test_threat_map_respects_guard_and_lethal_hp();
+    test_threat_invalid_and_unselected_fail_closed();
     test_null_arguments();
-    puts("Stage217 synthetic tactical battle: twenty-three scenarios passed");
+    puts("Stage217 synthetic tactical battle: twenty-six scenarios passed");
     return 0;
 }
