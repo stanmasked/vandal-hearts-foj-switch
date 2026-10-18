@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -90,9 +91,21 @@ def compile_host(executable:Path):
         raise ValueError("Native research compiler rejected source")
 
 
-def run_native(executable:Path,sd_root:Path,output:Path):
+def validated_camera(yaw,pitch,zoom):
+    values=(yaw,pitch,zoom)
+    if any(type(x) not in (int,float) or not math.isfinite(x) for x in values):
+        raise ValueError("Invalid research-viewer camera")
+    if not (-3.1415926<=yaw<=3.1415926 and
+            -1.4<=pitch<=1.4 and .25<=zoom<=3.):
+        raise ValueError("Research-viewer camera outside bounded limits")
+    return tuple(float(x) for x in values)
+
+
+def run_native(executable:Path,sd_root:Path,output:Path,*,camera):
+    yaw,pitch,zoom=validated_camera(*camera)
     result=subprocess.run(
-        [str(executable),str(sd_root),str(output)],
+        [str(executable),str(sd_root),str(output),
+         format(yaw,".9g"),format(pitch,".9g"),format(zoom,".9g")],
         cwd=ROOT,capture_output=True,timeout=45,check=False,
     )
     if result.returncode!=0 or result.stderr:
@@ -207,8 +220,12 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
             review_overlays:bool=False,
             view_temporal_audit:bool=False,
             affine_crosscheck:bool=False,
-            interframe_coherence:bool=False):
+            interframe_coherence:bool=False,
+            camera_yaw:float=.5,
+            camera_pitch:float=.2,
+            camera_zoom:float=1.):
     safe_destination(output)
+    camera=validated_camera(camera_yaw,camera_pitch,camera_zoom)
     # Strictly bounded source reads and independent source-coordinate
     # research math happen BEFORE creating ANY private output.
     rig_bytes=bounded_read(rig,MAX_RIG_FILE)
@@ -274,7 +291,7 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
         compile_host(executable)
         frames=output/"private-frames"
         frames.mkdir(mode=0o700)
-        native=run_native(executable,sd,frames)
+        native=run_native(executable,sd,frames,camera=camera)
         frame_report=render_evidence(
             frames,secondary=secondary_bytes is not None
         )
@@ -284,6 +301,16 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
             raise ValueError("Native and Python resource intake disagree")
         protected_json(output/"private-pose-envelope.json",envelope)
         protected_json(output/"private-render-evidence.json",frame_report)
+        protected_json(output/"private-research-camera.json",{
+            "schema":"foj.stage213.private_research_projection.v1",
+            "yaw_radians":camera[0],
+            "pitch_radians":camera[1],
+            "zoom_factor":camera[2],
+            "operator_adjustable_research_projection":True,
+            "camera_parameters_supplied_to_native_c_render":True,
+            "original_ps3_camera_authenticated":False,
+            "source_game_view_equivalence_verified":False,
+        })
         observed=observations_if_any(observations,output)
         if source_doc is None:
             source_bind={
@@ -416,6 +443,9 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
             "private_frames":frame_report["private_frames_count"],
             "secondary_clip_staged":stage["secondary_clip_accepted"],
             "private_host_render_succeeded":True,
+            "research_camera_customized":camera!=(.5,.2,1.),
+            "native_research_camera_parameters_recorded_privately":True,
+            "source_game_camera_match_verified":False,
             "research_bind_identity_checked":True,
             "primary_motion_observed_in_private_frames":
                 frame_report["primary_pose_motion_observed"],
@@ -469,6 +499,9 @@ def main(argv=None):
     parser.add_argument("--view-temporal-audit",action="store_true")
     parser.add_argument("--affine-crosscheck",action="store_true")
     parser.add_argument("--interframe-coherence",action="store_true")
+    parser.add_argument("--camera-yaw",type=float,default=.5)
+    parser.add_argument("--camera-pitch",type=float,default=.2)
+    parser.add_argument("--camera-zoom",type=float,default=1.)
     args=parser.parse_args(argv)
     try:
         result=conduct(
@@ -481,6 +514,9 @@ def main(argv=None):
             view_temporal_audit=args.view_temporal_audit,
             affine_crosscheck=args.affine_crosscheck,
             interframe_coherence=args.interframe_coherence,
+            camera_yaw=args.camera_yaw,
+            camera_pitch=args.camera_pitch,
+            camera_zoom=args.camera_zoom,
         )
     except (OSError,ValueError,TypeError,RuntimeError,
             subprocess.SubprocessError,OverflowError,IndexError,

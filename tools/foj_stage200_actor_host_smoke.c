@@ -9,6 +9,7 @@
 #include "obj_wireframe.h"
 
 #include <math.h>
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,6 +20,17 @@ static const char *LABELS[STATES]={
     "initial","play_025","paused","fade_0","fade_025",
     "fade_050","fade_075","fade_done","reset"
 };
+
+static int parse_camera_float(const char *text,float lo,float hi,float *out) {
+    if (!text || !out || !*text)return 0;
+    char *end=NULL;
+    errno=0;
+    float value=strtof(text,&end);
+    if (errno || end==text || *end || !isfinite(value) ||
+        value<lo || value>hi)return 0;
+    *out=value;
+    return 1;
+}
 
 static int make_path(char *out,const char *root,const char *tail) {
     int used=snprintf(out,MAX_PATH,"%s/%s",root,tail);
@@ -107,7 +119,8 @@ static FojObjMesh *create_wire(const FojRigMesh *rig) {
 static int render(const char *directory,const char *state,
                   const FojRigMesh *rig,const FojActorSession *session,
                   FojObjMesh *wire,float *xyz,uint32_t *pixels,
-                  unsigned *wire_count) {
+                  unsigned *wire_count,
+                  float yaw,float pitch,float zoom) {
     if(foj_actor_deform(session,xyz,rig->vertex_count*3)
        !=FOJ_ACTOR_OK)return 0;
     for(size_t i=0;i<rig->vertex_count;++i) {
@@ -118,7 +131,7 @@ static int render(const char *directory,const char *state,
             xyz[3*i],xyz[3*i+1],xyz[3*i+2]
         };
     }
-    foj_obj_wireframe(wire,pixels,W,H,W,.5f,.2f,1.f);
+    foj_obj_wireframe(wire,pixels,W,H,W,yaw,pitch,zoom);
     unsigned lines=0;
     for(int i=0;i<W*H;++i)
         if(pixels[i]==UINT32_C(0xffbde4da))++lines;
@@ -147,8 +160,17 @@ static int render(const char *directory,const char *state,
 }
 
 int main(int argc,char **argv) {
-    if(argc!=3){
-        fputs("usage: actor-smoke <private-sd-root> <private-output-dir>\n",stderr);
+    if(argc!=3 && argc!=6){
+        fputs("usage: actor-smoke <private-sd-root> <private-output-dir> [yaw pitch zoom]\n",stderr);
+        return 2;
+    }
+    float yaw=.5f,pitch=.2f,zoom=1.f;
+    if(argc==6 && (
+        !parse_camera_float(argv[3],-3.1415927f,3.1415927f,&yaw) ||
+        !parse_camera_float(argv[4],-1.4f,1.4f,&pitch) ||
+        !parse_camera_float(argv[5],.25f,3.f,&zoom)
+    )) {
+        fputs("Private camera parameters rejected.\n",stderr);
         return 2;
     }
     FojRigMesh rig={0};
@@ -169,22 +191,22 @@ int main(int argc,char **argv) {
     xyz=malloc(rig.vertex_count*3*sizeof(float));
     pixels=malloc((size_t)W*H*sizeof(uint32_t));
     if(!wire || !xyz || !pixels)goto done;
-    if(!render(argv[2],LABELS[0],&rig,&actor,wire,xyz,pixels,&counts[0]))
+    if(!render(argv[2],LABELS[0],&rig,&actor,wire,xyz,pixels,&counts[0],yaw,pitch,zoom))
         goto done;
     if(foj_player_pause(&actor.player,0)!=FOJ_PLAYER_OK ||
        foj_player_advance(&actor.player,.25f)!=FOJ_PLAYER_OK ||
        foj_player_pause(&actor.player,1)!=FOJ_PLAYER_OK)goto done;
-    if(!render(argv[2],LABELS[1],&rig,&actor,wire,xyz,pixels,&counts[1]))
+    if(!render(argv[2],LABELS[1],&rig,&actor,wire,xyz,pixels,&counts[1],yaw,pitch,zoom))
         goto done;
     if(foj_player_advance(&actor.player,.25f)!=FOJ_PLAYER_OK)
         goto done;
-    if(!render(argv[2],LABELS[2],&rig,&actor,wire,xyz,pixels,&counts[2]))
+    if(!render(argv[2],LABELS[2],&rig,&actor,wire,xyz,pixels,&counts[2],yaw,pitch,zoom))
         goto done;
     if(foj_actor_reset(&actor)!=FOJ_ACTOR_OK)goto done;
     if(secondary) {
         if(foj_actor_switch(&actor,.5f)!=FOJ_ACTOR_OK)goto done;
     }
-    if(!render(argv[2],LABELS[3],&rig,&actor,wire,xyz,pixels,&counts[3]))
+    if(!render(argv[2],LABELS[3],&rig,&actor,wire,xyz,pixels,&counts[3],yaw,pitch,zoom))
         goto done;
     for(int step=1;step<=4;++step) {
         if(foj_player_pause(&actor.player,0)!=FOJ_PLAYER_OK ||
@@ -192,10 +214,10 @@ int main(int argc,char **argv) {
            foj_player_pause(&actor.player,1)!=FOJ_PLAYER_OK)
            goto done;
         if(!render(argv[2],LABELS[3+step],&rig,&actor,wire,xyz,
-                   pixels,&counts[3+step]))goto done;
+                   pixels,&counts[3+step],yaw,pitch,zoom))goto done;
     }
     if(foj_actor_reset(&actor)!=FOJ_ACTOR_OK)goto done;
-    if(!render(argv[2],LABELS[8],&rig,&actor,wire,xyz,pixels,&counts[8]))
+    if(!render(argv[2],LABELS[8],&rig,&actor,wire,xyz,pixels,&counts[8],yaw,pitch,zoom))
         goto done;
 
     printf("{\"schema\":\"foj.stage200.local_actor_host_smoke.v1\","
