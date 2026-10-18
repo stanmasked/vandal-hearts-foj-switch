@@ -14,6 +14,7 @@
 #include "local_coll_window.h"
 
 #include "tactical_battle.h"
+#include "battle_replay.h"
 
 /* The local COLL crop is a research readout only. Gameplay stays
  * invented and is completely independent of these six raw channels. */
@@ -43,7 +44,8 @@ static const char *status_label(FojBattleEvent action) {
     }
 }
 
-static void draw_scene(const FojBattle *battle, FojBattleEvent action, int diagnostic_channel) {
+static void draw_scene(const FojBattle *battle, FojBattleEvent action, int diagnostic_channel,
+                       const FojBattleReplay *replay) {
     const FojDemo *state = &battle->map;
     uint8_t reach[FOJ_HEIGHT][FOJ_WIDTH];
     foj_reachability(state, reach);
@@ -97,7 +99,10 @@ static void draw_scene(const FojBattle *battle, FojBattleEvent action, int diagn
                status_label(attack_view.event));
     if (battle->moved_this_turn && !battle->attacked_this_turn)
         puts("B can undo your previous move.");
-    printf("Move used=%s Attack used=%s\n",
+    printf("Input replay: %u/%u, %s\n",
+           (unsigned)replay->count, FOJ_REPLAY_MAX_INPUTS,
+           foj_replay_matches(replay, battle) ? "VERIFIED" : "MISMATCH");
+        printf("Move used=%s Attack used=%s\n",
            battle->moved_this_turn ? "yes":"no",
            battle->attacked_this_turn ? "yes":"no");
     printf("\nStatus: %s\n", status_label(action));
@@ -144,8 +149,10 @@ int main(int argc, char **argv) {
 
     FojBattle battle;
     foj_battle_init(&battle);
+    FojBattleReplay replay;
+    foj_replay_init(&replay);
     FojBattleEvent last = FOJ_BATTLE_NO_ACTION;
-    draw_scene(&battle, last, diagnostic_channel);
+    draw_scene(&battle, last, diagnostic_channel, &replay);
 
     while (appletMainLoop()) {
         padUpdate(&pad);
@@ -154,44 +161,43 @@ int main(int argc, char **argv) {
         bool redraw = false;
 
         if (pressed & HidNpadButton_Up) {
-            foj_battle_move_cursor(&battle, 0, -1);
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_UP,&last);
             redraw = true;
         }
         if (pressed & HidNpadButton_Down) {
-            foj_battle_move_cursor(&battle, 0, 1);
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_DOWN,&last);
             redraw = true;
         }
         if (pressed & HidNpadButton_Left) {
-            foj_battle_move_cursor(&battle, -1, 0);
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_LEFT,&last);
             redraw = true;
         }
         if (pressed & HidNpadButton_Right) {
-            foj_battle_move_cursor(&battle, 1, 0);
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_RIGHT,&last);
             redraw = true;
         }
         if (pressed & HidNpadButton_A) {
-            last = foj_battle_confirm(&battle);
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_A,&last);
             redraw = true;
         }
         if (pressed & HidNpadButton_B) {
-            last = foj_battle_cancel(&battle);
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_B,&last);
             redraw = true;
         }
         if (pressed & HidNpadButton_X) {
-            last = foj_battle_attack(&battle);
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_X,&last);
             redraw = true;
         }
         if (pressed & HidNpadButton_ZR) {
-            last = foj_battle_guard(&battle);
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_ZR,&last);
             redraw = true;
         }
         if (pressed & HidNpadButton_Y) {
-            last = foj_battle_end_turn(&battle);
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_Y,&last);
             redraw = true;
         }
         if (pressed & HidNpadButton_Minus) {
-            foj_battle_init(&battle);
-            last = FOJ_BATTLE_NO_ACTION;
+            (void)foj_replay_record(&replay,&battle,FOJ_REPLAY_RESET,&last);
             redraw = true;
         }
         if (pressed & HidNpadButton_R) {
@@ -202,7 +208,7 @@ int main(int argc, char **argv) {
             diagnostic_channel = (diagnostic_channel + 5) % 6;
             redraw = true;
         }
-        if (redraw) draw_scene(&battle, last, diagnostic_channel);
+        if (redraw) draw_scene(&battle, last, diagnostic_channel, &replay);
         consoleUpdate(NULL);
     }
     consoleExit(NULL);
