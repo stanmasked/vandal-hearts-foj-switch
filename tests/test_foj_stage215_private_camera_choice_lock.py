@@ -85,16 +85,21 @@ class Stage215PrivateLockTests(unittest.TestCase):
     def test_preview_staged_primary_tamper_after_lock_rejected(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d)
-            _,cameras=self.setup_views(root)
+            assets,cameras=self.setup_views(root)
             lock=root/"private-lock.json"
             lock_choice(cameras,1,lock)
+            final=root/"final"
+            conduct(*assets,final,camera_y=-.65,
+                    camera_pitch=.4,camera_zoom=.86)
             primary=(cameras/"private-switch-sd"/
                      "switch/foj/anims/preview.banim")
             changed=bytearray(primary.read_bytes())
             changed[-1]^=1
             primary.write_bytes(changed)
+            # The witness recomputes a new digest; only verification
+            # against the previously written lock can reject drift.
             with self.assertRaises(ValueError):
-                preview_witness(cameras,1)
+                verify_choice(cameras,lock,final)
 
     def test_final_missing_secondary_clip_rejected_with_same_frames(self):
         with tempfile.TemporaryDirectory() as d:
