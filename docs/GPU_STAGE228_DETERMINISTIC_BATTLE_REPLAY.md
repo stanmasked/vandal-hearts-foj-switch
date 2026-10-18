@@ -52,7 +52,7 @@ still a synthetic homebrew battle, not a completed remake.
 
 ## Integration gate
 
-Stage228 depends on Stage227 PR #111, which supplies independent
+Stage227 PR #111 passed CI and merged into main (dbc71eae). Stage228 follows it, and, which supplies independent
 guest-emulator full victory evidence. Merge Stage227 only after all
 latest-head CI succeeds; then retarget this PR to `main` and require
 fresh strict C11/UBSan, Switch NRO, guest NeXium and visual CI before
