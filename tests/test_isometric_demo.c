@@ -287,6 +287,41 @@ static void test_risk_preview_view_toggle_never_changes_battle(void) {
     free(pixels);
 }
 
+static void test_cursor_enemy_landing_marker_is_read_only_and_optional(void) {
+    enum { WIDTH=1280, HEIGHT=720 };
+    uint32_t *pixels=calloc((size_t)WIDTH*HEIGHT,sizeof(*pixels));
+    assert(pixels);
+    FojBattle b;
+    foj_battle_init(&b);
+    assert(foj_battle_confirm(&b)==FOJ_BATTLE_SELECTED);
+    foj_battle_move_cursor(&b,1,0); /* destination (2,2) */
+    FojBattleThreatPreview risk;
+    assert(foj_battle_preview_movement_threat(&b,&risk));
+    assert(risk.can_move[2][2]);
+    const int ex=risk.enemy_x_after[2][2];
+    const int ey=risk.enemy_y_after[2][2];
+    assert(foj_in_bounds(ex,ey));
+    int sx,sy;
+    foj_iso_project(WIDTH,HEIGHT,ex,ey,b.map.cells[ey][ex].elevation,&sx,&sy);
+    const size_t pixel_index=(size_t)(sy-30)*WIDTH+(size_t)(sx+22);
+    const FojBattle initial=b;
+    foj_iso_render_battle_options(&b,pixels,WIDTH,HEIGHT,WIDTH,true);
+    assert(pixels[pixel_index]==UINT32_C(0xffec7fb9));
+    assert(memcmp(&initial,&b,sizeof(b))==0);
+    foj_iso_render_battle_options(&b,pixels,WIDTH,HEIGHT,WIDTH,false);
+    assert(pixels[pixel_index]!=UINT32_C(0xffec7fb9));
+    foj_iso_render_battle_options(&b,pixels,WIDTH,HEIGHT,WIDTH,true);
+    assert(pixels[pixel_index]==UINT32_C(0xffec7fb9));
+    foj_battle_move_cursor(&b,0,-1); /* blocked (2,1) */
+    assert(b.map.cursor_x==2 && b.map.cursor_y==1);
+    foj_iso_render_battle_options(&b,pixels,WIDTH,HEIGHT,WIDTH,true);
+    assert(pixels[pixel_index]!=UINT32_C(0xffec7fb9));
+    assert(foj_battle_cancel(&b)==FOJ_BATTLE_CANCELED);
+    foj_iso_render_battle_options(&b,pixels,WIDTH,HEIGHT,WIDTH,true);
+    assert(pixels[pixel_index]!=UINT32_C(0xffec7fb9));
+    free(pixels);
+}
+
 int main(void) {
     test_projection();
     test_render_and_reachable_highlights();
@@ -299,6 +334,7 @@ int main(void) {
     test_movement_undo_marker_vanishes_after_B();
     test_selected_movement_threat_markers_and_cleanup();
     test_risk_preview_view_toggle_never_changes_battle();
-    puts("Synthetic isometric renderer checks passed (eleven scenarios)");
+    test_cursor_enemy_landing_marker_is_read_only_and_optional();
+    puts("Synthetic isometric renderer checks passed (twelve scenarios)");
     return 0;
 }

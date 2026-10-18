@@ -226,6 +226,22 @@ void foj_iso_render_battle_options(const FojBattle *battle, uint32_t *pixels,
                 }
             }
         }
+        /* Cursor-targeted enemy destination marker. Coordinates come
+         * from the SAME simulated Y turn as risk ticks; no second AI.
+         * Purple 6x6 tab is intentionally above the destination so
+         * danger/guard/hp HUD and NeXium palette tests stay separate. */
+        const int cx=battle->map.cursor_x, cy=battle->map.cursor_y;
+        if (foj_in_bounds(cx,cy) && danger.can_move[cy][cx]) {
+            const int ex=danger.enemy_x_after[cy][cx];
+            const int ey=danger.enemy_y_after[cy][cx];
+            if (foj_in_bounds(ex,ey)) {
+                foj_iso_project(width,height,ex,ey,
+                                battle->map.cells[ey][ex].elevation,&x,&y);
+                for (int py=-32;py<=-27;++py)
+                    for (int px=20;px<=25;++px)
+                        pixel(&canvas,x+px,y+py,rgb(185,127,236));
+            }
+        }
     }
     if (foj_in_bounds(battle->map.hero_x, battle->map.hero_y)) {
         foj_iso_project(width, height, battle->map.hero_x, battle->map.hero_y,
