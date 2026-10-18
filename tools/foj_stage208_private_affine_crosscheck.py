@@ -100,6 +100,7 @@ def compare(observations):
     base=align_observations(observations)
     frames=observations["frames"]
     normal_cv,affine_cv,stretch,affine_sign=[],[],[],[]
+    unscorable=0
     for item in frames:
         _ta,_tb,_names,reference,experimental=points_and_times(item)
         n=len(reference)
@@ -108,55 +109,98 @@ def compare(observations):
             # three training points and can interpolate rather than test.
             raise rejected()
         radius=centered(reference)[2]
-        affine_full,ratio,sign=affine_parameters(reference,experimental)
-        _=affine_full
+        try:
+            affine_full,ratio,sign=affine_parameters(reference,experimental)
+            _=affine_full
+            square_sim=square_affine=0.
+            for heldout in range(n):
+                refs=reference[:heldout]+reference[heldout+1:]
+                exps=experimental[:heldout]+experimental[heldout+1:]
+                options=[]
+                for mirror in (False,True):
+                    try:
+                        transform,cost=similarity_parameters(
+                            refs,exps,mirror=mirror
+                        )
+                    except ValueError:
+                        # Only one reflected option may be singular or
+                        # implausible on a badly annotated held-out fold.
+                        continue
+                    options.append((cost,transform))
+                if not options:
+                    raise rejected()
+                # Pick a model using only the TRAINING landmarks.
+                _cost,predictor=min(options,key=lambda item:item[0])
+                aff,_,_=affine_parameters(refs,exps)
+                square_sim+=math.dist(predictor(experimental[heldout]),
+                                      reference[heldout])**2
+                square_affine+=math.dist(aff(experimental[heldout]),
+                                         reference[heldout])**2
+            sim=math.sqrt(square_sim/n)/radius
+            aff=math.sqrt(square_affine/n)/radius
+        except ValueError:
+            # Badly labelled or nearly singular geometry is an
+            # UNRESOLVED frame. Never manufacture a low residual or
+            # treat the remaining frames as proof of an affine camera.
+            normal_cv.append(None)
+            affine_cv.append(None)
+            unscorable+=1
+            continue
+        normal_cv.append(sim)
+        affine_cv.append(aff)
         stretch.append(ratio)
         affine_sign.append(sign)
-        square_sim=square_affine=0.
-        for heldout in range(n):
-            refs=reference[:heldout]+reference[heldout+1:]
-            exps=experimental[:heldout]+experimental[heldout+1:]
-            normal,ncost=similarity_parameters(refs,exps)
-            mirrored,mcost=similarity_parameters(refs,exps,mirror=True)
-            # Select handedness using only TRAINING landmarks.
-            predictor=mirrored if mcost+1.e-12<ncost else normal
-            aff,_,_=affine_parameters(refs,exps)
-            square_sim+=math.dist(predictor(experimental[heldout]),
-                                  reference[heldout])**2
-            square_affine+=math.dist(aff(experimental[heldout]),
-                                     reference[heldout])**2
-        normal_cv.append(math.sqrt(square_sim/n)/radius)
-        affine_cv.append(math.sqrt(square_affine/n)/radius)
-    poor=sum(min(s,a)>.18 for s,a in zip(normal_cv,affine_cv))
+    valid=[(s,a) for s,a in zip(normal_cv,affine_cv)
+           if s is not None and a is not None]
+    poor=sum(min(s,a)>.18 for s,a in valid)
     better=sum(
         s>=.05 and a+.012<.75*s and a<.18
-        for s,a in zip(normal_cv,affine_cv)
+        for s,a in valid
     )
     required=math.ceil(.6*len(frames))
     if not base["operator_declared_both_captures_recorded"]:
         status="operator_capture_not_declared"
+    elif unscorable:
+        status="unresolved_unscorable_geometry"
     elif poor:
         status="unresolved_projection_or_landmark_conflict"
     elif better>=required:
         status="tentative_affine_image_plane_nuisance"
-    elif statistics.median(normal_cv)<=.10 and better==0:
+    elif statistics.median(s for s,a in valid)<=.10 and better==0:
         status="two_d_similarity_sufficient"
     else:
         status="projection_model_ambiguous"
+    def round_nullable(values,ndigits):
+        return [round(x,ndigits) if x is not None else None
+                for x in values]
     return {
         "schema":SCHEMA,
         "frames_evaluated":len(frames),
         "landmarks_per_frame":base["landmarks_per_frame"],
         "holdout_method":"leave_one_landmark_out_training_only",
-        "similarity_holdout_rms_per_frame":[round(x,6) for x in normal_cv],
-        "affine_holdout_rms_per_frame":[round(x,6) for x in affine_cv],
-        "median_similarity_holdout_rms":round(statistics.median(normal_cv),6),
-        "median_affine_holdout_rms":round(statistics.median(affine_cv),6),
-        "median_affine_anisotropy_ratio":round(statistics.median(stretch),4),
-        "max_affine_anisotropy_ratio":round(max(stretch),4),
-        "affine_orientation_sign_consistent":len(set(affine_sign))==1,
+        "similarity_holdout_rms_per_frame":round_nullable(normal_cv,6),
+        "affine_holdout_rms_per_frame":round_nullable(affine_cv,6),
+        "median_similarity_holdout_rms":(
+            round(statistics.median(s for s,a in valid),6)
+            if valid else None
+        ),
+        "median_affine_holdout_rms":(
+            round(statistics.median(a for s,a in valid),6)
+            if valid else None
+        ),
+        "median_affine_anisotropy_ratio":(
+            round(statistics.median(stretch),4) if stretch else None
+        ),
+        "max_affine_anisotropy_ratio":(
+            round(max(stretch),4) if stretch else None
+        ),
+        "affine_orientation_sign_consistent":(
+            bool(affine_sign) and len(set(affine_sign))==1
+            and not unscorable
+        ),
         "affine_validation_improving_frames":better,
         "high_holdout_mismatch_frames":poor,
+        "unscorable_geometry_frames":unscorable,
         "diagnosis":status,
         "both_capture_recordings_operator_declared":
             base["operator_declared_both_captures_recorded"],
@@ -169,7 +213,8 @@ def compare(observations):
         "warning":(
             "Cross-validated affine benefit can arise from perspective, "
             "camera, pose, mislabeled landmarks or other 2D distortion. "
-            "It is not proof of the original PS3 camera or skeletal math. "
+            "Unscorable/ill-conditioned frames veto positive conclusions. "
+            "This is not proof of original PS3 camera or skeletal math. "
             "Even small holdout errors do not verify original-game assets."
         ),
     }
