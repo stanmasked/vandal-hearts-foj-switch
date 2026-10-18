@@ -1,4 +1,4 @@
-name: Stage 184 NeXium COLL six-channel guest input
+name: Stage 185 NeXium COLL reversible guest controls
 
 on:
   workflow_dispatch:
@@ -8,6 +8,7 @@ on:
       - 'tools/foj_stage182_nexium_frame_check.py'
       - 'tools/foj_stage183_coll_y_frame_check.py'
       - 'tools/foj_stage184_coll_input_check.py'
+      - 'tools/foj_stage185_coll_reverse_check.py'
       - 'tools/foj_stage183_coll_mode_reference.c'
       - 'tests/emulator/**'
       - 'switch/**'
@@ -19,6 +20,7 @@ on:
       - 'tools/foj_stage182_nexium_frame_check.py'
       - 'tools/foj_stage183_coll_y_frame_check.py'
       - 'tools/foj_stage184_coll_input_check.py'
+      - 'tools/foj_stage185_coll_reverse_check.py'
       - 'tools/foj_stage183_coll_mode_reference.c'
       - 'switch/**'
       - 'core/**'
@@ -232,6 +234,18 @@ jobs:
                   timeout --kill-after=2s 10s import -window "$window" \
                     "runtime-evidence/coll-$state.png"
                 done
+                # Following six R presses, reverse raw channel, zoom and
+                # cursor using NeXium source-proven Q=L, R=ZL, Left=DLeft.
+                for item in "q reverse-l" "e return-r" \
+                            "r reverse-zl" "Left reverse-left"; do
+                  read -r key state <<< "$item"
+                  timeout --kill-after=1s 3s xdotool keydown --window "$window" "$key"
+                  sleep 0.18
+                  timeout --kill-after=1s 3s xdotool keyup --window "$window" "$key"
+                  sleep 0.55
+                  timeout --kill-after=2s 10s import -window "$window" \
+                    "runtime-evidence/coll-$state.png"
+                done
               fi
               test -s "$SHOT"
               if [ "$INPUT" = "1" ]; then test -s "$ROUTE"; fi
@@ -284,10 +298,18 @@ jobs:
             --evidence runtime-evidence \
             --report runtime-evidence/stage184-coll-input-guest-receipt.json
 
+      - name: Verify opposite L/R, ZL and DLeft actions on actual NeXium guest frames
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage185_coll_reverse_check \
+            --evidence runtime-evidence \
+            --report runtime-evidence/stage185-coll-reverse-guest-receipt.json
+
       - name: Preserve screenshots, analysis and sanitized startup logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: foj-stage184-nexium-coll-input-evidence
+          name: foj-stage185-nexium-coll-reversible-evidence
           path: runtime-evidence/
           if-no-files-found: warn
