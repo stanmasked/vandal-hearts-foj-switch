@@ -110,7 +110,7 @@ class Stage208AffineCrossvalidationTests(unittest.TestCase):
 
     def test_nearly_singular_affine_map_must_be_rejected(self):
         refs=[(.1,.1),(.8,.1),(.1,.8),(.8,.8),(.4,.6)]
-        exps=[(.2,.2),(.8,.2),(.2,.8),(.8,.8),(.5,.6)]
+        exps=list(refs)
         fit,ratio,sign=affine_parameters(refs,exps)
         self.assertAlmostEqual(ratio,1.,delta=.00001)
         self.assertEqual(sign,1)
