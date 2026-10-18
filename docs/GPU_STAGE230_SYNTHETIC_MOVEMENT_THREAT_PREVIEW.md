@@ -38,9 +38,10 @@ rejection of invalid/terminal input. A renderer regression checks
 safe/risky exact marker colors, source-state non-mutation and cleanup
 on B deselection.
 
-Stage230 follows Stage229 PR #113; after that stage passes independent
-CI and merges into `main`, retarget this PR to `main` and require a
-fresh full CI matrix including devkitA64, C11/UBSan, generated image
-rendering and NeXium guest checks.
+Stage229 PR #113 passed all 13 workflows and merged into `main`
+at commit `353ec64f2495f7f851bac2f868a4da6c01f56caf`. Stage230
+now targets `main` and requires a new independent CI matrix covering
+devkitA64, strict C11/UBSan, rendering, and guest NeXium checks before
+the feature can be merged.
 
 No proprietary PS3 assets, map file bytes or game software are included.
