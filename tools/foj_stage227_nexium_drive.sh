@@ -38,6 +38,7 @@ capture battle-initial
 tap c
 for step in 1 2 3 4; do tap Right; done
 tap c
+capture battle-moved
 tap z
 capture battle-turn1
 tap Right
