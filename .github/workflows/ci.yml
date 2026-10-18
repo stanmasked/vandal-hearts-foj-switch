@@ -198,6 +198,21 @@ jobs:
             tests/test_coll_grid.c core/coll_grid.c -lm -o /tmp/foj_coll_sanitized
           /tmp/foj_coll_sanitized
 
+      - name: Validate six raw COLL columns as a separate isometric diagnostic plot
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tests/test_coll_iso_view.c core/coll_iso_view.c \
+            -lm -o /tmp/foj_coll_iso
+          /tmp/foj_coll_iso
+
+      - name: Check COLL isometric projection with UBSan
+        run: |
+          cc -std=c11 -O1 -g -fsanitize=undefined \
+            -fno-omit-frame-pointer -Icore \
+            tests/test_coll_iso_view.c core/coll_iso_view.c \
+            -lm -o /tmp/foj_coll_iso_ubsan
+          /tmp/foj_coll_iso_ubsan
+
       - name: Compile user-local COLL validator CLI
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
