@@ -200,6 +200,22 @@ jobs:
             core/tactical_demo.c -o /tmp/foj_battle_ubsan
           /tmp/foj_battle_ubsan
 
+      - name: Stage228 reproducible battle inputs with strict C11
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tests/test_battle_replay.c core/battle_replay.c \
+            core/tactical_battle.c core/tactical_demo.c \
+            -o /tmp/foj228_battle_replay
+          /tmp/foj228_battle_replay
+      - name: Stage228 replay boundary checks with UBSan
+        run: |
+          cc -std=c11 -O1 -g -fsanitize=undefined \
+            -fno-omit-frame-pointer -Icore \
+            tests/test_battle_replay.c core/battle_replay.c \
+            core/tactical_battle.c core/tactical_demo.c \
+            -o /tmp/foj228_battle_replay_ubsan
+          /tmp/foj228_battle_replay_ubsan
+
       - name: Compile portable FoJ COLL parser under strict C11 flags
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
