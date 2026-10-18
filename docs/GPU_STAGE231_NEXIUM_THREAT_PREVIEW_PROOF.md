@@ -22,11 +22,15 @@ DRight=`Right`. With the original generated hero (1,2), enemy
 - Fresh guest, ZR then A: guarded threat preview keeps tile (2,2)
   safe and reduces tile (5,2) from two orange ticks to one
 
-The verifier demands the actual 1280×720 guest framebuffer, presence
-of the synthetic hero/enemy/background, then checks three precise
-post-projection pixels across all five frames. Each is compared within
-a ten-unit RGB tolerance; static screens, missing hero, early overlays,
-missing warnings, stale overlays and unchanged ZR mitigation fail.
+The verifier requires the actual 1280×720 NeXium screenshot and
+synthetic hero/enemy/background. Since NeXium scales the guest inside a
+letterboxed window, it counts the teal and orange marker pixels within
+two small, bounded screen regions around the relevant tiles, rather
+than sampling unscaled framebuffer coordinates. These bounds and the
+observed 15/32/16 pixel signatures were calibrated against genuine
+failed-run PNG artifacts, not guessed or weakened globally. It still
+rejects static screens, missing units, early, absent or stale overlays,
+and any failure to reduce two predicted orange HP ticks to one with ZR.
 Eight generated-only positive and negative PNG tests regress these
 requirements without relying on the emulator.
 
