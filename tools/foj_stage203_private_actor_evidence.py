@@ -225,8 +225,9 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
         sd=output/"private-switch-sd"
         # Source inputs may be changed by other software mid-run. Check
         # exact byte-for-byte identity, but emit NO hashes, bytes or names.
-        if (sd/"switch/foj/rig/preview.fojrm").read_bytes()!=rig_bytes or (
-            sd/"switch/foj/anims/preview.banim").read_bytes()!=primary_bytes
+        if (
+            (sd/"switch/foj/rig/preview.fojrm").read_bytes()!=rig_bytes or
+            (sd/"switch/foj/anims/preview.banim").read_bytes()!=primary_bytes
         ):
             raise ValueError("Local resource changed during evidence capture")
         if secondary_bytes is not None and (
