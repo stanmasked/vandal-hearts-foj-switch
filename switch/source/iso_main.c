@@ -121,7 +121,7 @@ int main(int argc, char **argv) {
             (void)foj_replay_render_meter(&replay, (uint32_t *)pixels,
                                           FB_WIDTH, FB_HEIGHT, pixel_stride);
             for (int iy=12;iy<20;++iy)
-                for (int ix=12;ix<20;++ix)
+                for (int ix=240;ix<248;++ix)
                     pixels[iy*pixel_stride+ix] = audit_color;
         }
         framebufferEnd(&framebuffer);
