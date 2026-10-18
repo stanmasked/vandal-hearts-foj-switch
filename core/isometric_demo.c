@@ -166,3 +166,51 @@ void foj_iso_render(const FojDemo *state, uint32_t *pixels,
         }
     }
 }
+
+/* The overlay is deliberately primitive and uses only generated geometry.
+ * Its health bars are readable without a font, textures, or PS3 assets. */
+static void hp_bar(Canvas *canvas, int cx, int cy, unsigned hp,
+                   unsigned maximum, uint32_t color) {
+    if (hp > maximum) hp = maximum;
+    const int left = cx - 21;
+    const int top = cy - 47;
+    const int filled = (int)((hp * 40u) / maximum);
+    for (int y = 0; y < 7; ++y) {
+        for (int x = 0; x < 42; ++x) {
+            uint32_t shade = rgb(15, 22, 29);
+            if (y >= 1 && y <= 5 && x >= 1 && x <= filled)
+                shade = color;
+            pixel(canvas, left + x, top + y, shade);
+        }
+    }
+}
+
+void foj_iso_render_battle(const FojBattle *battle, uint32_t *pixels,
+                           int width, int height, int stride_pixels) {
+    if (!battle || !pixels || width <= 0 || height <= 0 ||
+        stride_pixels < width) return;
+    foj_iso_render(&battle->map, pixels, width, height, stride_pixels);
+    Canvas canvas = {pixels, width, height, stride_pixels};
+    int x, y;
+    if (foj_in_bounds(battle->map.hero_x, battle->map.hero_y)) {
+        foj_iso_project(width, height, battle->map.hero_x, battle->map.hero_y,
+            battle->map.cells[battle->map.hero_y][battle->map.hero_x].elevation,
+            &x, &y);
+        hp_bar(&canvas, x, y, battle->hero_hp, FOJ_BATTLE_HERO_MAX_HP,
+               rgb(95, 193, 244));
+    }
+    if (foj_in_bounds(battle->map.enemy_x, battle->map.enemy_y)) {
+        foj_iso_project(width, height, battle->map.enemy_x, battle->map.enemy_y,
+            battle->map.cells[battle->map.enemy_y][battle->map.enemy_x].elevation,
+            &x, &y);
+        hp_bar(&canvas, x, y, battle->enemy_hp, FOJ_BATTLE_ENEMY_MAX_HP,
+               rgb(227, 82, 93));
+    }
+    if (battle->outcome != FOJ_BATTLE_ONGOING) {
+        const uint32_t color = battle->outcome == FOJ_BATTLE_WON ?
+            rgb(56, 185, 127) : rgb(210, 62, 74);
+        for (int y0 = 0; y0 < 8 && y0 < height; ++y0)
+            for (int x0 = 0; x0 < width; ++x0)
+                pixel(&canvas, x0, y0, color);
+    }
+}
