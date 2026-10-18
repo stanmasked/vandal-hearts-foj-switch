@@ -63,8 +63,8 @@ uploaded to CI.
 
 ## Dependencies and limitations
 
-Stage221 depends on Stage220 PR #104; Stage220 in turn depends on Stage219
-PR #103. Merge and independently verify earlier stages in order before
-retargeting Stage221 to `main`. Console emulator/NRO compilation and host
+Stage219 PR #103 and Stage220 PR #104 passed their independent checks
+and merged into `main` (Stage220 merge `4c1d0e23`). Stage221 now targets
+`main` and must pass a separate full CI matrix before merging. Console emulator/NRO compilation and host
 tests do not prove physical Switch operation, original battle fidelity
 or publisher provenance of an owner-local source file.
