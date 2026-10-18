@@ -8,19 +8,26 @@
 #include <switch.h>
 #include <stdio.h>
 
-#include "tactical_demo.h"
+#include "tactical_battle.h"
 
-static const char *status_label(FojAction action) {
+static const char *status_label(FojBattleEvent action) {
     switch (action) {
-        case FOJ_ACTION_SELECTED: return "Unit selected";
-        case FOJ_ACTION_MOVED: return "Move accepted";
-        case FOJ_ACTION_REJECTED: return "Move rejected";
-        case FOJ_ACTION_CANCELED: return "Selection canceled";
-        default: return "Move cursor to H, press A";
+        case FOJ_BATTLE_SELECTED: return "Hero selected";
+        case FOJ_BATTLE_MOVED: return "Hero moved";
+        case FOJ_BATTLE_CANCELED: return "Selection canceled";
+        case FOJ_BATTLE_ATTACKED: return "Attack hit!";
+        case FOJ_BATTLE_ENEMY_MOVED: return "Enemy advanced";
+        case FOJ_BATTLE_ENEMY_ATTACKED: return "Enemy attacked!";
+        case FOJ_BATTLE_TURN_ENDED: return "Turn ended";
+        case FOJ_BATTLE_VICTORY: return "Victory (synthetic)";
+        case FOJ_BATTLE_DEFEAT: return "Defeat (synthetic)";
+        case FOJ_BATTLE_REJECTED: return "Illegal action";
+        default: return "Select hero with A";
     }
 }
 
-static void draw_scene(const FojDemo *state, FojAction action) {
+static void draw_scene(const FojBattle *battle, FojBattleEvent action) {
+    const FojDemo *state = &battle->map;
     uint8_t reach[FOJ_HEIGHT][FOJ_WIDTH];
     foj_reachability(state, reach);
 
@@ -49,6 +56,13 @@ static void draw_scene(const FojDemo *state, FojAction action) {
         }
         printf("\n");
     }
+    printf("\nTurn %u | Hero HP %u/%u | Enemy HP %u/%u\n",
+           (unsigned)battle->turn_number, (unsigned)battle->hero_hp,
+           FOJ_BATTLE_HERO_MAX_HP, (unsigned)battle->enemy_hp,
+           FOJ_BATTLE_ENEMY_MAX_HP);
+    printf("Move used=%s Attack used=%s\n",
+           battle->moved_this_turn ? "yes":"no",
+           battle->attacked_this_turn ? "yes":"no");
     printf("\nStatus: %s\n", status_label(action));
     printf("Hero=(%d,%d) Cursor=(%d,%d) Selected=%s\n",
            state->hero_x, state->hero_y,
@@ -66,10 +80,10 @@ int main(int argc, char **argv) {
     PadState pad;
     padInitializeDefault(&pad);
 
-    FojDemo state;
-    foj_demo_init(&state);
-    FojAction last = FOJ_ACTION_NONE;
-    draw_scene(&state, last);
+    FojBattle battle;
+    foj_battle_init(&battle);
+    FojBattleEvent last = FOJ_BATTLE_NO_ACTION;
+    draw_scene(&battle, last);
 
     while (appletMainLoop()) {
         padUpdate(&pad);
@@ -78,30 +92,43 @@ int main(int argc, char **argv) {
         bool redraw = false;
 
         if (pressed & HidNpadButton_Up) {
-            foj_move_cursor(&state, 0, -1);
+            foj_battle_move_cursor(&battle, 0, -1);
             redraw = true;
         }
         if (pressed & HidNpadButton_Down) {
-            foj_move_cursor(&state, 0, 1);
+            foj_battle_move_cursor(&battle, 0, 1);
             redraw = true;
         }
         if (pressed & HidNpadButton_Left) {
-            foj_move_cursor(&state, -1, 0);
+            foj_battle_move_cursor(&battle, -1, 0);
             redraw = true;
         }
         if (pressed & HidNpadButton_Right) {
-            foj_move_cursor(&state, 1, 0);
+            foj_battle_move_cursor(&battle, 1, 0);
             redraw = true;
         }
         if (pressed & HidNpadButton_A) {
-            last = foj_press_a(&state);
+            last = foj_battle_confirm(&battle);
             redraw = true;
         }
         if (pressed & HidNpadButton_B) {
-            last = foj_press_b(&state);
+            last = foj_battle_cancel(&battle);
             redraw = true;
         }
-        if (redraw) draw_scene(&state, last);
+        if (pressed & HidNpadButton_X) {
+            last = foj_battle_attack(&battle);
+            redraw = true;
+        }
+        if (pressed & HidNpadButton_Y) {
+            last = foj_battle_end_turn(&battle);
+            redraw = true;
+        }
+        if (pressed & HidNpadButton_Minus) {
+            foj_battle_init(&battle);
+            last = FOJ_BATTLE_NO_ACTION;
+            redraw = true;
+        }
+        if (redraw) draw_scene(&battle, last);
         consoleUpdate(NULL);
     }
     consoleExit(NULL);
