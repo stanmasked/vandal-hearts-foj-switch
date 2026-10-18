@@ -5,8 +5,9 @@ samples and two boolean fields each. The exact in-game semantics of these
 fields remain unverified.
 
 This stage adds a portable C loader and a third native Switch NRO to display
-the six channels as a **diagnostic 2D heatmap**. It is not the original game's
-3D map renderer or battle engine.
+the six channels as a **diagnostic 2D heatmap**, with an optional separate
+isometric **data visualization** added in stage 181. Neither mode is the
+original game's 3D map renderer or battle engine.
 
 ## Three independently compiled Switch programs
 
@@ -31,12 +32,39 @@ Green is not proof of publisher authenticity.
 | --- | --- |
 | D-pad | Move grid cursor |
 | R / L | Change among six source-data channels |
+| Y | Toggle raw 2D heatmap / diagnostic isometric data plot |
 | ZR / ZL | Zoom in / out |
 | Plus | Exit homebrew |
 
 Channels 0–3 show individual raw numeric columns, normalized from blue to
 yellow. Channels 4–5 show the two raw boolean columns (red = true).
 Do not interpret these channels as authentic movement or collision rules yet.
+
+### Stage 181 — visual-only COLL isometric diagnostic
+
+The optional Y-selected view projects up to 64×64 COLL records into
+isometric diamonds centered on the current cursor. For raw numeric
+channels 0–3, the renderer independently normalizes the selected
+column's values and raises the diamond **only as a visual bar chart**
+(up to 32 screen pixels). The normalized offset is **not verified PS3
+terrain elevation, combat height, distance, a physics property or a
+collision rule**. A constant numeric channel produces flat diamonds.
+The two raw boolean channels 4–5 show **flat** colored diamonds:
+red marks a true flag, blue-grey marks false.
+
+The gold cursor outline and six-channel indicator remain visible
+regardless of mode. L/R changes the observed raw column, D-pad moves
+the same grid cursor, and ZL/ZR change display zoom. The source COLL
+bytes and the invented tactical map of the separate isometric demo
+are never changed or joined into combat logic.
+
+Implementation is in `core/coll_iso_view.c`; generated tests cover
+all six channels on a 50×50 grid, clipping, padded framebuffer
+strides, constant or extreme finite numeric values, rejection of
+non-finite selected values, and invalid flag contents.
+
+Native compilation in CI still does **not** prove a real console has
+shown this view or establish the meaning of the PS3 numeric samples.
 
 ## Locally prepare a map from your own PS3 archive
 
