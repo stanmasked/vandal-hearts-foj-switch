@@ -59,6 +59,16 @@ class Stage227VictoryScreenshotTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             verify_victory(self.frames)
 
+    def test_first_y_does_not_hurt_hero(self) -> None:
+        screenshot(self.frames[1], hero_hp=8, enemy_hp=6)
+        with self.assertRaises(ValueError):
+            verify_victory(self.frames)
+
+    def test_hero_loses_hp_during_own_attack(self) -> None:
+        screenshot(self.frames[2], hero_hp=4, enemy_hp=3)
+        with self.assertRaises(ValueError):
+            verify_victory(self.frames)
+
     def test_victory_green_strip_missing(self) -> None:
         screenshot(self.frames[4], hero_hp=4, enemy_hp=0)
         with self.assertRaises(ValueError):
