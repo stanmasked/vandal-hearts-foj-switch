@@ -213,6 +213,17 @@ void foj_iso_render_battle(const FojBattle *battle, uint32_t *pixels,
         hp_bar(&canvas, x, y, battle->enemy_hp, FOJ_BATTLE_ENEMY_MAX_HP,
                rgb(227, 82, 93));
     }
+    if (battle->guarded_this_turn &&
+        battle->outcome == FOJ_BATTLE_ONGOING &&
+        foj_in_bounds(battle->map.hero_x, battle->map.hero_y)) {
+        const int hx=battle->map.hero_x, hy=battle->map.hero_y;
+        foj_iso_project(width, height, hx, hy,
+                        battle->map.cells[hy][hx].elevation, &x, &y);
+        /* Bright mint marker beside the hero: guarding is active until Y. */
+        for (int py=-15;py<=-9;++py)
+            for (int px=21;px<=27;++px)
+                pixel(&canvas,x+px,y+py,rgb(38,209,143));
+    }
     /* A small amber ring marks the enemy's NEXT cell, not its current
      * position, and never changes tactical state or movement legality. */
     FojEnemyTurnForecast forecast;
