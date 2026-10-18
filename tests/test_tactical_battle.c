@@ -203,6 +203,27 @@ static void test_forecast_immobile_enemy_and_saturated_clock(void) {
     assert(view.hero_hp_after==b.hero_hp);
 }
 
+static void test_forecast_refreshes_after_hero_reposition(void) {
+    FojBattle battle;
+    foj_battle_init(&battle);
+    FojEnemyTurnForecast initial;
+    assert(foj_battle_forecast_enemy_turn(&battle,&initial));
+    assert(initial.event==FOJ_BATTLE_ENEMY_MOVED);
+    assert(foj_battle_confirm(&battle)==FOJ_BATTLE_SELECTED);
+    for (int i=0;i<4;++i) foj_battle_move_cursor(&battle,1,0);
+    assert(foj_battle_confirm(&battle)==FOJ_BATTLE_MOVED);
+    FojEnemyTurnForecast updated;
+    const FojBattle untouched=battle;
+    assert(foj_battle_forecast_enemy_turn(&battle,&updated));
+    assert(memcmp(&untouched,&battle,sizeof(battle))==0);
+    assert(updated.event==FOJ_BATTLE_ENEMY_ATTACKED);
+    assert(updated.hero_hp_after==FOJ_BATTLE_HERO_MAX_HP-
+                                  FOJ_BATTLE_ENEMY_DAMAGE);
+    assert(updated.enemy_x_after==6 && updated.enemy_y_after==2);
+    assert(foj_battle_end_turn(&battle)==updated.event);
+    assert(battle.hero_hp==updated.hero_hp_after);
+}
+
 static void test_null_arguments(void) {
     foj_battle_init(NULL);
     foj_battle_move_cursor(NULL,1,0);
@@ -223,7 +244,8 @@ int main(void) {
     test_forecast_is_pure_and_matches_actual_turns();
     test_forecast_defeat_no_mutation_and_nulls();
     test_forecast_immobile_enemy_and_saturated_clock();
+    test_forecast_refreshes_after_hero_reposition();
     test_null_arguments();
-    puts("Stage217 synthetic tactical battle: eleven scenarios passed");
+    puts("Stage217 synthetic tactical battle: twelve scenarios passed");
     return 0;
 }
