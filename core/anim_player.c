@@ -167,7 +167,13 @@ FojPlayerStatus foj_player_palette(const FojAnimPlayer *player,
                 value=value*(1.f-weight)+incoming[i].translation_xyz[axis]*weight;
             pose[i].translation_xyz[axis]=value;
         }
-        if (player->incoming) {
+        /* The exact endpoints are identity operations. Bypassing an
+         * unnecessary normalize+slerp avoids a visible frame discontinuity
+         * at the moment a fade begins or ends. */
+        if (player->incoming && weight >= 1.f) {
+            memcpy(pose[i].rotation_xyzw,incoming[i].quat_xyzw,
+                   sizeof(pose[i].rotation_xyzw));
+        } else if (player->incoming && weight > 0.f) {
             if (!mixed_rotation(current[i].quat_xyzw,
                                 incoming[i].quat_xyzw,weight,
                                 pose[i].rotation_xyzw))
