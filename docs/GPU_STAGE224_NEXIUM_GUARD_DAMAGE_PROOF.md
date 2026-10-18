@@ -41,6 +41,7 @@ execution.
 
 ## Integration gate
 
-Stage224 depends on Stage223 PR #107. Require Stage223 to pass all
-checks on `main` and merge; only then retarget Stage224 to `main`
-and require its independent Python and guest NeXium checks.
+Stage223 PR #107 passed independent checks and merged into `main` at
+`c1f6cc9bdce6600bf4242b65a8bd2bbdc2b9af7e`. Stage224 now targets
+`main` and must pass its own Python 3.11/3.13 and actual NeXium guest
+screenshots again on this new base before merging.
