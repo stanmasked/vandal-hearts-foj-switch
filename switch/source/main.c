@@ -57,6 +57,7 @@ static const char *status_label(FojBattleEvent action) {
         case FOJ_BATTLE_MOVED: return "Hero moved";
         case FOJ_BATTLE_CANCELED: return "Selection canceled";
         case FOJ_BATTLE_ATTACKED: return "Attack hit!";
+        case FOJ_BATTLE_GUARDED: return "Guard stance set";
         case FOJ_BATTLE_ENEMY_MOVED: return "Enemy advanced";
         case FOJ_BATTLE_ENEMY_ATTACKED: return "Enemy attacked!";
         case FOJ_BATTLE_TURN_ENDED: return "Turn ended";
@@ -80,6 +81,7 @@ static void draw_scene(const FojBattle *battle, FojBattleEvent action, int diagn
     printf("SYNTHETIC MAP ONLY -- PS3 GAME NOT RUNNING\n\n");
     printf("D-Pad: cursor / A: select+move / X: attack\n");
     printf("B: cancel / Y: end turn / MINUS: restart / PLUS: exit\n");
+    printf("ZR: guard (uses attack, reduces next enemy hit)\n");
     printf("L/R: raw COLL diagnostic channel (0-5), if provided locally\n");
     printf("H hero, E enemy, # wall, 0-2 height\n");
     printf("+ reachable after selecting H, < cursor\n\n");
@@ -111,6 +113,7 @@ static void draw_scene(const FojBattle *battle, FojBattleEvent action, int diagn
     } else {
         puts("Enemy forecast unavailable: battle already ended.");
     }
+    printf("Guard=%s\n",battle->guarded_this_turn ? "active":"off");
     printf("Move used=%s Attack used=%s\n",
            battle->moved_this_turn ? "yes":"no",
            battle->attacked_this_turn ? "yes":"no");
@@ -193,6 +196,10 @@ int main(int argc, char **argv) {
         }
         if (pressed & HidNpadButton_X) {
             last = foj_battle_attack(&battle);
+            redraw = true;
+        }
+        if (pressed & HidNpadButton_ZR) {
+            last = foj_battle_guard(&battle);
             redraw = true;
         }
         if (pressed & HidNpadButton_Y) {
