@@ -138,6 +138,9 @@ def receipt(preview_root: Path, camera_lock: Path, stage203_root: Path,
 def check(preview_root: Path, camera_lock: Path, stage203_root: Path,
           observations: Path, frame_bindings: Path, source_manifest: Path,
           source_dir: Path, output: Path) -> dict:
+    # A receipt must be a real owner-local file, never a symlink alias.
+    # Reject malformed/oversized records before parsing their JSON.
+    private_digest(output)
     prior = private_read(output)
     only_keys(prior, FIELDS)
     witness = evidence_witness(
