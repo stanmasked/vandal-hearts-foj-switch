@@ -31,9 +31,9 @@ checksum; original game assets remain entirely private.
 
 ## Integration
 
-Stage235 depends on Stage234 PR #118. After Stage234's fresh
-independent matrix passes and is merged to `main`, retarget this
-PR to `main` and run its own complete host and real NeXium checks
-before merging.
+Stage234 PR #118 passed all 15 independent GitHub Actions checks and
+merged into `main` at `53c60b0a2dae185348d437d31e0e246546b0a4cd`.
+Stage235 now targets `main`; independent fresh host, NRO and real
+NeXium checks must pass on the latest head before integration.
 
 No physical Nintendo Switch or original PS3 mechanics are verified.
