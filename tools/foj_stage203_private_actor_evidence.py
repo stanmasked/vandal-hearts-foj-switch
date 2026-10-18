@@ -206,7 +206,8 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
             source_png_dir:Path|None=None,
             review_overlays:bool=False,
             view_temporal_audit:bool=False,
-            affine_crosscheck:bool=False):
+            affine_crosscheck:bool=False,
+            interframe_coherence:bool=False):
     safe_destination(output)
     # Strictly bounded source reads and independent source-coordinate
     # research math happen BEFORE creating ANY private output.
@@ -242,7 +243,8 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
         source_doc=private_read(source_png_manifest)
         # Validate BEFORE creating any owner-private output directory.
         inspect_sources(bound_annotations,source_doc,source_png_dir)
-    if (review_overlays or view_temporal_audit or affine_crosscheck) and (
+    if (review_overlays or view_temporal_audit or affine_crosscheck or
+        interframe_coherence) and (
         observations is None or source_png_manifest is None or
         source_png_dir is None or frame_bindings is None
     ):
@@ -373,6 +375,24 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
                 "private_affine_crosscheck_diagnosis":"not_performed",
                 "original_ps3_camera_verified_by_affine":False,
             }
+        if interframe_coherence:
+            from tools.foj_stage209_private_motion_coherence import inspect
+            motion_report=inspect(bound_annotations)
+            protected_json(
+                output/"private-interframe-coherence.json",motion_report
+            )
+            motion_status={
+                "private_interframe_motion_coherence_performed":True,
+                "private_interframe_motion_diagnosis":
+                    motion_report["diagnosis"],
+                "original_ps3_motion_verified_by_interframe":False,
+            }
+        else:
+            motion_status={
+                "private_interframe_motion_coherence_performed":False,
+                "private_interframe_motion_diagnosis":"not_performed",
+                "original_ps3_motion_verified_by_interframe":False,
+            }
         if multiwindow is None:
             multi={
                 "independent_windows_submitted":False,
@@ -407,6 +427,7 @@ def conduct(rig:Path,primary:Path,secondary:Path|None,
             **review_status,
             **view_status,
             **affine_status,
+            **motion_status,
             **multi,
             "asset_identity_authenticated_as_original_ps3":False,
             "original_game_animation_accuracy_verified":False,
@@ -447,6 +468,7 @@ def main(argv=None):
     parser.add_argument("--review-overlays",action="store_true")
     parser.add_argument("--view-temporal-audit",action="store_true")
     parser.add_argument("--affine-crosscheck",action="store_true")
+    parser.add_argument("--interframe-coherence",action="store_true")
     args=parser.parse_args(argv)
     try:
         result=conduct(
@@ -458,6 +480,7 @@ def main(argv=None):
             review_overlays=args.review_overlays,
             view_temporal_audit=args.view_temporal_audit,
             affine_crosscheck=args.affine_crosscheck,
+            interframe_coherence=args.interframe_coherence,
         )
     except (OSError,ValueError,TypeError,RuntimeError,
             subprocess.SubprocessError,OverflowError,IndexError,
