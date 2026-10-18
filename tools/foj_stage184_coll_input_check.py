@@ -30,7 +30,7 @@ def load(path: Path) -> Image.Image:
     return frame
 
 
-def anchor(frame: Image.Image) -> tuple[int, int]:
+def anchor(frame: Image.Image) -> tuple[float, int, int]:
     """Locate only the top-right synthetic status rectangle, not map pixels."""
     xs = []
     ys = []
@@ -43,26 +43,36 @@ def anchor(frame: Image.Image) -> tuple[int, int]:
                 ys.append(y)
     if len(xs) < 250 or max(xs) - min(xs) < 20 or max(ys) - min(ys) < 14:
         raise ValueError("Actual guest frame lacks the synthetic COLL status marker")
-    return min(xs) - 1235, min(ys) - 16
+    # NeXium scales the nominal 1280x720 guest framebuffer to fit above
+    # its desktop status bar, by default ~26/27 = 96.3%. Use the observed
+    # red fallback-marker width (27 pixels in the native framebuffer)
+    # to recover its nearest-neighbor transform, rather than assuming
+    # x/y offsets alone. The value 27 is from status_marker() in NRO C.
+    scale = (max(xs) - min(xs) + 1) / 27.0
+    if not 0.85 <= scale <= 1.02:
+        raise ValueError("Unexpected emulator guest viewport scaling")
+    return scale, min(xs) - round(1235 * scale), min(ys) - round(16 * scale)
 
 
 def source_pixel_agreement(frame: Image.Image, ref: Image.Image) -> tuple[float, int]:
     if ref.size != (1280, 720):
         raise ValueError("Incorrect portable C reference resolution")
-    shift_x, shift_y = anchor(frame)
+    scale, shift_x, shift_y = anchor(frame)
     guest = frame.load()
     expected = ref.load()
     checked = 0
     agreed = 0
-    # Spread tests across the visible drawn 50x50 map. Exclude dark
-    # background, HUD, and marker-only regions: they are too easy to
-    # match without rendering the correct grid/channel.
+    # Compare source-derived map *interior* texels, not the background
+    # or tile-edge pixels which nearest-neighbor scaling can shift.
+    # Retain strict per-pixel color checks after undoing guest scaling.
     for y in range(85, 660, 7):
         for x in range(120, 1170, 7):
             rgb = expected[x, y]
-            if rgb == BACKGROUND:
+            if (rgb == BACKGROUND or rgb != expected[x-2, y] or
+                    rgb != expected[x+2, y] or rgb != expected[x, y-2] or
+                    rgb != expected[x, y+2]):
                 continue
-            gx, gy = x + shift_x, y + shift_y
+            gx, gy = round(x * scale + shift_x), round(y * scale + shift_y)
             if gx < 0 or gy < 0 or gx >= frame.width or gy >= frame.height:
                 continue
             checked += 1
