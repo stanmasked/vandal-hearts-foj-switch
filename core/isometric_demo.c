@@ -198,6 +198,33 @@ void foj_iso_render_battle(const FojBattle *battle, uint32_t *pixels,
     foj_iso_render(&visual, pixels, width, height, stride_pixels);
     Canvas canvas = {pixels, width, height, stride_pixels};
     int x, y;
+    /* Destination danger is advisory and exists only during A movement
+     * selection. Resolve the exact same enemy Y action on temporary
+     * copies for each reachable cell; retain no PS3 terrain semantics. */
+    FojBattleThreatPreview danger;
+    if (foj_battle_preview_movement_threat(battle,&danger)) {
+        for (int dy=0;dy<FOJ_HEIGHT;++dy) {
+            for (int dx=0;dx<FOJ_WIDTH;++dx) {
+                if (!danger.can_move[dy][dx]) continue;
+                foj_iso_project(width,height,dx,dy,
+                                battle->map.cells[dy][dx].elevation,&x,&y);
+                const int incoming=danger.incoming_damage[dy][dx];
+                if (incoming==0) {
+                    for (int yy=0;yy<4;++yy)
+                        for (int xx=0;xx<6;++xx)
+                            pixel(&canvas,x+11+xx,y+10+yy,
+                                  rgb(59,158,130));
+                } else {
+                    const int bars=incoming>4 ? 4 : incoming;
+                    for (int bar=0;bar<bars;++bar)
+                        for (int yy=0;yy<4;++yy)
+                            for (int xx=0;xx<4;++xx)
+                                pixel(&canvas,x+8+bar*6+xx,y+10+yy,
+                                      rgb(244,141,80));
+                }
+            }
+        }
+    }
     if (foj_in_bounds(battle->map.hero_x, battle->map.hero_y)) {
         foj_iso_project(width, height, battle->map.hero_x, battle->map.hero_y,
             battle->map.cells[battle->map.hero_y][battle->map.hero_x].elevation,
