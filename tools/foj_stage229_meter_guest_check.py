@@ -36,7 +36,9 @@ def verify_meter(frames: tuple[Path, Path, Path, Path]) -> dict:
     # count (whose manipulation is one of the attacks being detected).
     scale = values[1] / EXPECTED_INPUTS[1]
     if not 6 <= scale <= 40:
-        raise ValueError("Replay meter display has implausible pixel scale")
+        raise ValueError(
+            "Replay meter display has implausible pixel scale: "
+            f"guest counts={values}, first-step scale={scale:.3f}")
     for i, count in enumerate(EXPECTED_INPUTS[1:], 1):
         if abs(values[i] - scale * count) > max(5, scale * 0.35):
             raise ValueError(f"Wrong replay command count in frame {i}")
