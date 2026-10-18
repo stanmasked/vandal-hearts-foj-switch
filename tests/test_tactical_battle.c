@@ -142,6 +142,67 @@ static void test_full_controller_style_playthrough_to_victory(void) {
     assert(foj_battle_end_turn(&b)==FOJ_BATTLE_REJECTED);
 }
 
+static void test_forecast_is_pure_and_matches_actual_turns(void) {
+    FojBattle b;
+    foj_battle_init(&b);
+    for (int i=0;i<4;++i) {
+        FojBattle before=b;
+        FojEnemyTurnForecast view;
+        assert(foj_battle_forecast_enemy_turn(&b,&view));
+        assert(memcmp(&before,&b,sizeof(b))==0);
+        FojBattleEvent played=foj_battle_end_turn(&b);
+        assert(view.event==played);
+        assert(view.enemy_x_after==b.map.enemy_x);
+        assert(view.enemy_y_after==b.map.enemy_y);
+        assert(view.hero_hp_after==b.hero_hp);
+        assert(view.turn_after==b.turn_number);
+        assert(view.outcome_after==b.outcome);
+    }
+}
+
+static void test_forecast_defeat_no_mutation_and_nulls(void) {
+    FojBattle b;
+    foj_battle_init(&b);
+    b.hero_hp=2;
+    b.map.hero_x=5; b.map.hero_y=2;
+    b.map.enemy_x=6; b.map.enemy_y=2;
+    b.map.selected=true;
+    b.moved_this_turn=true;
+    FojBattle before=b;
+    FojEnemyTurnForecast view;
+    assert(foj_battle_forecast_enemy_turn(&b,&view));
+    assert(memcmp(&before,&b,sizeof(b))==0);
+    assert(view.event==FOJ_BATTLE_DEFEAT);
+    assert(view.hero_hp_after==0);
+    assert(view.outcome_after==FOJ_BATTLE_LOST);
+    assert(view.turn_after==2);
+    assert(b.hero_hp==2 && b.map.selected);
+    assert(foj_battle_end_turn(&b)==view.event);
+    memset(&view,0x55,sizeof(view));
+    assert(!foj_battle_forecast_enemy_turn(&b,&view));
+    assert(view.hero_hp_after==0 && view.turn_after==0);
+    assert(!foj_battle_forecast_enemy_turn(NULL,&view));
+    assert(!foj_battle_forecast_enemy_turn(&before,NULL));
+}
+
+static void test_forecast_immobile_enemy_and_saturated_clock(void) {
+    FojBattle b;
+    foj_battle_init(&b);
+    for(int y=0;y<FOJ_HEIGHT;++y)
+        for(int x=0;x<FOJ_WIDTH;++x)
+            if ((x!=b.map.hero_x || y!=b.map.hero_y) &&
+                (x!=b.map.enemy_x || y!=b.map.enemy_y))
+                b.map.cells[y][x].blocked=true;
+    b.turn_number=UINT16_MAX;
+    FojEnemyTurnForecast view;
+    assert(foj_battle_forecast_enemy_turn(&b,&view));
+    assert(view.event==FOJ_BATTLE_TURN_ENDED);
+    assert(view.turn_after==UINT16_MAX);
+    assert(view.enemy_x_after==b.map.enemy_x);
+    assert(view.enemy_y_after==b.map.enemy_y);
+    assert(view.hero_hp_after==b.hero_hp);
+}
+
 static void test_null_arguments(void) {
     foj_battle_init(NULL);
     foj_battle_move_cursor(NULL,1,0);
@@ -159,7 +220,10 @@ int main(void) {
     test_defeat_and_reset();
     test_impassable_enemy_and_turn_saturation();
     test_full_controller_style_playthrough_to_victory();
+    test_forecast_is_pure_and_matches_actual_turns();
+    test_forecast_defeat_no_mutation_and_nulls();
+    test_forecast_immobile_enemy_and_saturated_clock();
     test_null_arguments();
-    puts("Stage217 synthetic tactical battle: eight scenarios passed");
+    puts("Stage217 synthetic tactical battle: eleven scenarios passed");
     return 0;
 }
