@@ -68,6 +68,14 @@ For **every** window, the tool calls:
   only* across all windows to flag a **byte-for-byte screenshot replay**
   even if names or operator timestamps have been changed.
 
+After inspecting every window, the tool **reopens every source PNG and
+research PPM** and checks them again against their original private
+binding manifests. If files were changed during processing, the whole
+audit fails rather than silently relying on an earlier pass. This
+narrows a local replacement race but cannot prevent changes that occur
+after the audit finishes.
+
+
 A repeated source PNG makes the diagnosis
 `duplicate_source_png_between_windows` and prohibits treating the
 windows as verified independent image samples. This includes some
