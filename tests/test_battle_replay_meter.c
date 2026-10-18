@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-enum { W=156, H=20, STRIDE=161, SENTINEL=19 };
+enum { W=384, H=20, STRIDE=389, SENTINEL=19 };
 static uint32_t pixels[STRIDE*H+SENTINEL];
 static const uint32_t GREEN=UINT32_C(0xffe5a139);
 static const uint32_t EMPTY=UINT32_C(0xff393129);
