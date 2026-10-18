@@ -41,7 +41,8 @@ maps and independently implemented mechanics. This is **not**
 verification of original PS3 tactical rules or of physical Switch
 gameplay; the user-owned package and extracted resources stay private.
 
-Stage236 is stacked after Stage235 PR #119. The real guest enemy landing
-proof must pass its latest independent main-based CI and merge first.
-Then Stage236 should target `main` and run all tests again before it
-can be merged.
+Stage235 PR #119 passed independent research, guest NeXium and COLL
+checks and merged into `main` as
+`977423e61e52ce2822c178d756c1af39d0fd1a10`. Stage236 now
+targets `main` and must pass fresh exhaustive C11/UBSan, host tests,
+Switch NRO and NeXium CI on its latest head before integration.
