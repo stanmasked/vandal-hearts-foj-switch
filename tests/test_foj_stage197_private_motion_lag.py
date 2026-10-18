@@ -142,6 +142,14 @@ class Stage197PrivateTimingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             compare(doc)
 
+    def test_unreported_capture_must_not_receive_tentative_status(self):
+        document=fixture(lag=.15)
+        document["ps3_observation"]["capture_recorded"]=False
+        result=compare(document)
+        self.assertFalse(result["both_capture_recordings_operator_declared"])
+        self.assertEqual(result["diagnosis"],"ambiguous")
+        self.assertFalse(result["original_ps3_capture_authenticated"])
+
     def test_uncertainty_downgrades_tentative_to_ambiguous(self):
         doc=fixture(lag=.15)
         doc["ps3_observation"]["timing_uncertainty_seconds"]=.08
