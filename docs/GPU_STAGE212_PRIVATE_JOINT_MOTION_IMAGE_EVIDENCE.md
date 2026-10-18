@@ -34,10 +34,17 @@ or raw landmark coordinates. **Even the aggregate report is private.**
 The program checks every window's source PNG bytes and research PPM
 landmarks, computes the motion consistency audit against **the same
 in-memory observation document**, and then checks the source and
-research images again to narrow file-replacement races. An input
-file changed after the operation finishes is not protected by this
-method; a secure owner-controlled storage and independently captured
-media are still required for stronger provenance.
+research images again to narrow file-replacement races. In addition
+to the Stage211 rechecks, Stage212 computes a private in-memory digest
+of **the actual source PNG bytes, research PPM pixels, source-manifest
+metadata and research-frame binding metadata**, and requires the exact
+same digest after Stage210 finishes. The digest is **never logged or
+included in the report**. This catches even a valid replacement of a
+source image and its matching manifest, or a change to unused PPM
+pixels that leaves landmark proximity unchanged. An input file changed
+after the operation finishes is not protected by this method; secure
+owner-controlled storage and independently captured media are still
+required for stronger provenance.
 
 The combination will only reach
 `tentative_joint_local_2d_consistency_only` if *all* of these hold:
@@ -80,7 +87,8 @@ PNG source images and synthetic PPM wire-mark frames. It verifies a
 two-sided coherent case, duplicate PNGs with independently changing
 motion, identical motion with distinct PNGs, missing operator
 declarations, static sequences, corrupted sources or landmarks,
-nonmutation of private input, and path-free CLI success/failure.
+nonmutation of private input, two forms of concurrent image/manifest
+replacement, and path-free CLI success/failure.
 
 The Stage210 and Stage211 components also have their own separate
 synthetic test suites. Public CI exercises **generated-only data**;
