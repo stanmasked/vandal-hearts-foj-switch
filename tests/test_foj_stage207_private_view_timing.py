@@ -171,6 +171,64 @@ class Stage207ViewTiming(unittest.TestCase):
                 conduct(*assets,output,view_temporal_audit=True)
             self.assertFalse(output.exists())
 
+    def test_full_generated_c_frames_and_source_pngs_enable_private_audit(self):
+        from tests.test_foj_stage205_private_source_png import fixtures
+        from tools.foj_stage203_private_actor_evidence import HEADER,W,H
+        from tools.foj_stage204_private_frame_landmarks import WIRE
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            obs,binding,source,source_lock=fixtures(root)
+            rig,a,b=generated_actors()
+            assets=[root/n for n in ("rig.fojrm","clip_a.banim","clip_b.banim")]
+            for path,raw in zip(assets,(rig,a,b),strict=True):
+                path.write_bytes(raw)
+            native=root/"first-native-pass"
+            conduct(*assets,native)
+            # Generated model pixels only, never game artwork. Associate
+            # each operator mark with a distinct visible research wire.
+            for row,label in zip(obs["frames"],binding["frame_labels"]):
+                raw=(native/"private-frames"/(label+".ppm")).read_bytes()
+                body=raw[len(HEADER):]
+                candidates=[
+                    (x,y) for y in range(H) for x in range(W)
+                    if body[(y*W+x)*3:(y*W+x+1)*3]==WIRE
+                ]
+                self.assertGreater(len(candidates),20)
+                chosen=[candidates[0]]
+                while len(chosen)<5:
+                    farthest=max(
+                        candidates,key=lambda p:min(
+                            (p[0]-q[0])**2+(p[1]-q[1])**2 for q in chosen
+                        )
+                    )
+                    self.assertNotIn(farthest,chosen)
+                    chosen.append(farthest)
+                for mark,(x,y) in zip(
+                    sorted(row["landmarks"],key=lambda v:v["id"]),chosen
+                ):
+                    mark["experimental_xy"]=[x/(W-1),y/(H-1)]
+            annotations=root/"invented-observations.json"
+            source_manifest=root/"invented-private-png-manifest.json"
+            frame_binding=root/"invented-native-frame-binding.json"
+            annotations.write_text(json.dumps(obs))
+            source_manifest.write_text(json.dumps(source_lock))
+            frame_binding.write_text(json.dumps(binding))
+            final=root/"private-view-evidence"
+            report=conduct(
+                *assets,final,observations=annotations,
+                source_png_dir=source,source_png_manifest=source_manifest,
+                frame_bindings=frame_binding,view_temporal_audit=True
+            )
+            self.assertTrue(report["private_view_temporal_audit_performed"])
+            self.assertTrue(report["source_png_captures_content_bound"])
+            self.assertTrue(report["research_landmarks_bound_to_native_frames"])
+            self.assertFalse(report["ps3_camera_or_animation_verified"])
+            stored=json.loads(
+                (final/"private-view-temporal-audit.json").read_text()
+            )
+            self.assertEqual(stored["schema"],SCHEMA)
+            self.assertFalse(stored["gameplay_animation_fidelity_verified"])
+
     def test_cannot_create_provenance_from_metadata_missing_capture(self):
         doc=fixture(lag=0)
         doc["experimental_observation"]["capture_recorded"]=False
