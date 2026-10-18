@@ -150,7 +150,7 @@ def compare(document, *, max_shift=.2, step=.025):
     time_precision_ok=uncertainty<=max(2*step,.025)
     if not good_fit:
         status="unresolved_shape_disagreement"
-    elif ambiguous or at_edge or not time_precision_ok:
+    elif ambiguous or at_edge or not time_precision_ok or not claimed:
         status="ambiguous"
     elif abs(shift)<=step:
         status="no_clear_shift"
