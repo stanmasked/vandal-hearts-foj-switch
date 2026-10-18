@@ -138,16 +138,19 @@ def receipt(preview_root: Path, camera_lock: Path, stage203_root: Path,
 def check(preview_root: Path, camera_lock: Path, stage203_root: Path,
           observations: Path, frame_bindings: Path, source_manifest: Path,
           source_dir: Path, output: Path) -> dict:
-    # A receipt must be a real owner-local file, never a symlink alias.
-    # Reject malformed/oversized records before parsing their JSON.
-    private_digest(output)
+    # Pin the private receipt itself throughout verification. A replacement
+    # with a still-valid receipt must not be accepted after the earlier read.
+    # Check link status and a bounded raw-byte digest on both sides.
+    before_receipt = private_digest(output)
     prior = private_read(output)
     only_keys(prior, FIELDS)
+    if private_digest(output) != before_receipt:
+        raise rejected()
     witness = evidence_witness(
         preview_root, camera_lock, stage203_root, observations,
         frame_bindings, source_manifest, source_dir
     )
-    if prior != witness:
+    if prior != witness or private_digest(output) != before_receipt:
         raise rejected()
     return public_result(witness, "annotation_camera_binding_reverified")
 
