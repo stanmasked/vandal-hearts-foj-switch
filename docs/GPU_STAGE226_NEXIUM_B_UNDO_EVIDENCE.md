@@ -29,6 +29,7 @@ invented homebrew combat**, not original PS3 rules or execution on a
 physical Nintendo Switch. Game data, PS3 assets and COLL files are
 never committed to this repository or passed through CI.
 
-Stage226 is stacked after Stage225 PR #109. Stage225 must merge only
-after full independent checks; retarget this PR to `main` and require
-fresh Python 3.11/3.13, homebrew NRO and NeXium evidence before merging.
+Stage225 PR #109 passed all ten workflows and merged with `main`
+at `189b1a0fe5772df70090266faff462924114c174`. Stage226 now targets
+`main` and requires a fresh independent Python 3.11/3.13, NRO and
+NeXium guest evidence run before merging.
