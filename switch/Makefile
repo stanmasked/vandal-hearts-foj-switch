@@ -129,7 +129,7 @@ $(TEX_ACTOR_TARGET).nacp: | build
 $(TEX_ACTOR_TARGET).nro: $(TEX_ACTOR_TARGET).elf $(TEX_ACTOR_TARGET).nacp
 	$(ELF2NRO) $< $@ --nacp=$(TEX_ACTOR_TARGET).nacp
 
-verify: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(OBJ_TARGET).nro $(BANIM_TARGET).nro $(SKIN_TARGET).nro $(ACTOR_TARGET).nro $(TEX_ACTOR_TARGET).nro
+verify: $(TARGET).nro $(ISO_TARGET).nro $(COLL_TARGET).nro $(DDS_TARGET).nro $(OBJ_TARGET).nro $(BANIM_TARGET).nro $(SKIN_TARGET).nro $(ANIM_TARGET).nro $(ACTOR_TARGET).nro $(TEX_ACTOR_TARGET).nro
 	python3 tools/validate_nro.py $(TARGET).nro
 	python3 tools/validate_nro.py $(ISO_TARGET).nro
 	python3 tools/validate_nro.py $(COLL_TARGET).nro
