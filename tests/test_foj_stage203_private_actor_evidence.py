@@ -91,7 +91,7 @@ class Stage203PrivateActorEvidence(unittest.TestCase):
     def test_incompatible_second_clip_rejected_before_writing(self):
         with tempfile.TemporaryDirectory() as td:
             rig,a,b=self.assets(td)
-            bad=bytearray(b)
+            bad=bytearray(b.read_bytes())
             struct.pack_into("<H",bad,11+5+66+1,0xffff)
             b.write_bytes(bad)
             out=Path(td)/"denied"
