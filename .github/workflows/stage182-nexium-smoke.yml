@@ -276,7 +276,7 @@ jobs:
                   timeout --kill-after=2s 10s import -window "$window" \
                     "runtime-evidence/coll-$state.png"
                 done
-                # Clamped COLL cursor and zoom boundaries. NeXium's
+                # Clamped COLL cursor and zoom boundaries. Emulator
                 # default keys Left/Up/Right/Down and R=ZL, T=ZR.
                 # Repeated key events (not a held key) exercise the
                 # actual guest PadState button-down edges.
