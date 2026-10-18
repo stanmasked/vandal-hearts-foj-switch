@@ -48,18 +48,31 @@ static int write_ppm(const char *path,const uint32_t *pixels) {
     return okay;
 }
 int main(int argc,char **argv) {
-    if (argc!=3||(strcmp(argv[1],"heatmap")!=0&&
-                  strcmp(argv[1],"isometric")!=0)) {
-        fputs("Usage: coll-mode-reference heatmap|isometric OUTPUT.ppm\n",stderr);
+    if ((argc!=3&&argc!=7)||
+        (strcmp(argv[1],"heatmap")!=0&&
+         strcmp(argv[1],"isometric")!=0)) {
+        fputs("Usage: coll-mode-reference heatmap|isometric OUTPUT.ppm [x y tile channel]\n",stderr);
         return 2;
+    }
+    int cx=25,cy=25,tile=12,channel=0;
+    if (argc==7) {
+        char extra=0;
+        if (sscanf(argv[3],"%d%c",&cx,&extra)!=1||
+            sscanf(argv[4],"%d%c",&cy,&extra)!=1||
+            sscanf(argv[5],"%d%c",&tile,&extra)!=1||
+            sscanf(argv[6],"%d%c",&channel,&extra)!=1||
+            cx<0||cx>=50||cy<0||cy>=50||
+            tile<4||tile>30||channel<0||channel>5)return 2;
     }
     make_synthetic_map();
     uint32_t *pixels=calloc((size_t)FB_WIDTH*FB_HEIGHT,sizeof(uint32_t));
     if (!pixels)return 3;
     if (strcmp(argv[1],"heatmap")==0)
-        foj_coll_render(&map,pixels,FB_WIDTH,FB_HEIGHT,FB_WIDTH,25,25,12,0);
+        foj_coll_render(&map,pixels,FB_WIDTH,FB_HEIGHT,FB_WIDTH,
+                        cx,cy,tile,channel);
     else
-        foj_coll_iso_render(&map,pixels,FB_WIDTH,FB_HEIGHT,FB_WIDTH,25,25,12,0);
+        foj_coll_iso_render(&map,pixels,FB_WIDTH,FB_HEIGHT,FB_WIDTH,
+                            cx,cy,tile,channel);
     fallback_status(pixels);
     const int result=write_ppm(argv[2],pixels)?0:4;
     free(pixels);
