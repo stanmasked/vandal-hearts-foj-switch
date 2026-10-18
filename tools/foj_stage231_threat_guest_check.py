@@ -15,13 +15,14 @@ HERO = (95, 193, 244)
 ENEMY = (227, 82, 93)
 SIZE = (1280, 720)
 
-# Shared core/isometric_demo.c projection for generated tile coordinates.
-# Tile (2,2), elevation1 -> (640,222); tile (5,2), elevation1 -> (802,312).
-# Markers are deliberately drawn after terrain and path previews.
-PIXELS = {"safe": (653, 233), "damage_one": (811, 323),
-          "damage_two": (817, 323)}
-SCHEMA = "foj-stage231-nexium-generated-attack-risk-guest-v1"
-
+# NeXium captures the 1280x720 guest inside a slightly letterboxed GUI
+# viewport, not at unscaled framebuffer coordinates. Inspect bounded tile
+# neighborhoods, never exact raw-frame pixel addresses. Bounds are from
+# genuine Stage231 guest captures and reject unrelated palette matches.
+# Each rectangle is (left, right_exclusive, top, bottom_exclusive).
+REGIONS = {"safe": (643, 663, 214, 242),
+           "danger": (797, 824, 297, 334)}
+SCHEMA = "foj-stage231-nexium-generated-attack-risk-guest-v2"
 
 def read_frame(path: Path) -> Image.Image:
     with Image.open(path) as source:
@@ -43,28 +44,38 @@ def close(rgb: tuple[int, ...], expected: tuple[int, ...]) -> bool:
     return all(abs(rgb[i]-expected[i]) <= 10 for i in range(3))
 
 
+def bounded_color_count(frame: Image.Image, region: tuple[int, int, int, int],
+                        target: tuple[int, int, int]) -> int:
+    left, right, top, bottom = region
+    return sum(close(frame.getpixel((x, y)), target)
+               for y in range(top, bottom) for x in range(left, right))
+
+
 def check_preview(frames: tuple[Path, Path, Path, Path, Path]) -> dict:
-    initial, selected, cursor, cancelled, guarded = [read_frame(x) for x in frames]
-    details = {
-        name: [image.getpixel(xy) for image in
-               (initial, selected, cursor, cancelled, guarded)]
-        for name, xy in PIXELS.items()
+    images = [read_frame(path) for path in frames]
+    samples = {
+        "safe": [bounded_color_count(image, REGIONS["safe"], SAFE)
+                 for image in images],
+        "damage": [bounded_color_count(image, REGIONS["danger"], DANGER)
+                   for image in images],
     }
-    for marker, rgb in (("safe", SAFE), ("damage_one", DANGER),
-                        ("damage_two", DANGER)):
-        sampled = details[marker]
-        if close(sampled[0], rgb):
-            raise ValueError("Risk marker present before selecting hero")
-        if not close(sampled[1], rgb) or not close(sampled[2], rgb):
-            raise ValueError(f"Risk marker {marker} not stable under cursor movement")
-        if close(sampled[3], rgb):
-            raise ValueError("Risk marker survived B deselection")
-    if not close(details["safe"][4], SAFE):
-        raise ValueError("Guarding unexpectedly removed safe preview")
-    if not close(details["damage_one"][4], DANGER):
-        raise ValueError("Guarding unexpectedly erased all predicted damage")
-    if close(details["damage_two"][4], DANGER):
-        raise ValueError("Guarding did not reduce two orange HP ticks to one")
+    safe, damage = samples["safe"], samples["damage"]
+    if safe[0] or damage[0]:
+        raise ValueError(f"Unexpected risk marker before selection: {samples}")
+    if safe[3] or damage[3]:
+        raise ValueError(f"Stale risk marker after B cancellation: {samples}")
+    if not (10 <= safe[1] <= 36 and 10 <= safe[2] <= 36 and
+            10 <= safe[4] <= 36):
+        raise ValueError(f"Safe tile not visible in guest: {samples}")
+    if abs(safe[1] - safe[2]) > 3 or abs(safe[1] - safe[4]) > 3:
+        raise ValueError(f"Safe overlay changes under cursor or guard: {samples}")
+    if not (24 <= damage[1] <= 48 and 24 <= damage[2] <= 48):
+        raise ValueError(f"Two-HP danger bars missing before guard: {samples}")
+    if abs(damage[1] - damage[2]) > 3:
+        raise ValueError(f"Danger display changed with cursor movement: {samples}")
+    if not (12 <= damage[4] <= 24 and
+            abs(damage[1] - 2 * damage[4]) <= 4):
+        raise ValueError(f"Guard did not halve two-HP danger: {samples}")
     return {
         "schema": SCHEMA,
         "emulator": "NeXium",
@@ -74,7 +85,7 @@ def check_preview(frames: tuple[Path, Path, Path, Path, Path]) -> dict:
         "cursor_does_not_remove_preview": True,
         "cancel_clears_preview": True,
         "guard_reduces_expected_damage_to_one_hp": True,
-        "samples": details,
+        "samples": samples,
         "original_ps3_assets_used": False,
         "original_foj_ai_verified": False,
         "physical_switch_tested": False,
