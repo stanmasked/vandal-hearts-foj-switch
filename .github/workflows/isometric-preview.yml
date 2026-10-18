@@ -6,6 +6,7 @@ on:
       - 'core/**'
       - 'tools/render_isometric_preview.c'
       - 'tools/render_coll_isometric_preview.c'
+      - 'tools/render_battle_coll_panel_preview.c'
       - 'tools/ppm_to_png.py'
       - '.github/workflows/isometric-preview.yml'
   pull_request:
@@ -13,6 +14,7 @@ on:
       - 'core/**'
       - 'tools/render_isometric_preview.c'
       - 'tools/render_coll_isometric_preview.c'
+      - 'tools/render_battle_coll_panel_preview.c'
       - 'tools/ppm_to_png.py'
       - '.github/workflows/isometric-preview.yml'
   workflow_dispatch:
@@ -43,6 +45,22 @@ jobs:
             -lm -o build/foj-render-coll-isometric
           build/foj-render-coll-isometric build/foj-coll-isometric-generated.ppm
           python3 tools/ppm_to_png.py build/foj-coll-isometric-generated.ppm build/foj-coll-isometric-generated.png
+      - name: Build and render generated battle with raw COLL observation panel
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
+            tools/render_battle_coll_panel_preview.c \
+            core/coll_battle_overlay.c core/isometric_demo.c \
+            core/tactical_demo.c core/tactical_battle.c -lm \
+            -o build/foj-render-battle-coll-panel
+          build/foj-render-battle-coll-panel build/foj-battle-coll-panel-generated.ppm
+          python3 tools/ppm_to_png.py build/foj-battle-coll-panel-generated.ppm build/foj-battle-coll-panel-generated.png
+      - name: Upload generated battle and raw COLL panel visual reference
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-battle-coll-panel-generated-preview
+          path: build/foj-battle-coll-panel-generated.png
+          if-no-files-found: error
+
       - name: Upload generated-only COLL isometric visual reference
         uses: actions/upload-artifact@v4
         with:
