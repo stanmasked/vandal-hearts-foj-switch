@@ -103,6 +103,14 @@ static void draw_scene(const FojBattle *battle, FojBattleEvent action, int diagn
            (unsigned)battle->turn_number, (unsigned)battle->hero_hp,
            FOJ_BATTLE_HERO_MAX_HP, (unsigned)battle->enemy_hp,
            FOJ_BATTLE_ENEMY_MAX_HP);
+    FojEnemyTurnForecast forecast;
+    if (foj_battle_forecast_enemy_turn(battle, &forecast)) {
+        printf("If Y now: enemy -> (%d,%d), hero HP -> %u, %s\n",
+               forecast.enemy_x_after, forecast.enemy_y_after,
+               (unsigned)forecast.hero_hp_after, status_label(forecast.event));
+    } else {
+        puts("Enemy forecast unavailable: battle already ended.");
+    }
     printf("Move used=%s Attack used=%s\n",
            battle->moved_this_turn ? "yes":"no",
            battle->attacked_this_turn ? "yes":"no");
