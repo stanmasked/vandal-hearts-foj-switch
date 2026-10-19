@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
             /* Stage238: guest-visible, noninteractive cache diagnostics.
              * Left 8x8: gray=invalid, cyan=first matrix calculation,
              * gold=second, magenta=unexpected further recalculations.
-             * Right 8x8: mint=at least one genuine cache hit.
+             * Right 8x8: mint=at least one genuine cache hit; violet=no hits.
              * This is display-only: no tactical input reads these tiles.
              * Distinct colors avoid the Stage223-235 evidence palettes. */
             const u32 cache_generation_color = !threat_cache.valid ?
@@ -142,7 +142,7 @@ int main(int argc, char **argv) {
                 0xffdccb29u : threat_cache.calculations == 2u ?
                 0xff40b2e7u : 0xffbe47e5u;
             const u32 cache_hit_color = threat_cache.hits > 0u ?
-                0xff88df34u : 0xff6a594du;
+                0xff88df34u : 0xffc42472u;
             for (int iy=12;iy<20;++iy) {
                 for (int ix=256;ix<264;++ix)
                     pixels[iy*pixel_stride+ix] = cache_generation_color;
