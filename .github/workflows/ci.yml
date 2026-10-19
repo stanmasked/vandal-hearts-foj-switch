@@ -248,6 +248,34 @@ jobs:
             -o /tmp/foj237_threat_cache_ubsan
           /tmp/foj237_threat_cache_ubsan
 
+      - name: Stage239 measure host forecast costs (monotonic C11 / GCC)
+        run: |
+          set -euo pipefail
+          mkdir -p timing-evidence
+          cc -std=c11 -O2 -D_POSIX_C_SOURCE=200809L \
+            -Wall -Wextra -Werror -pedantic -Icore \
+            tests/test_battle_threat_cost.c core/tactical_battle.c \
+            core/tactical_demo.c -o /tmp/foj239_host_cost
+          /tmp/foj239_host_cost \
+            --report timing-evidence/stage239-cost-py${{ matrix.python }}.json
+          python3 -m json.tool \
+            timing-evidence/stage239-cost-py${{ matrix.python }}.json \
+            >/dev/null
+      - name: Stage239 forecast cost harness (UBSan correctness)
+        run: |
+          set -euo pipefail
+          cc -std=c11 -O1 -g -fsanitize=undefined \
+            -fno-omit-frame-pointer -D_POSIX_C_SOURCE=200809L -Icore \
+            tests/test_battle_threat_cost.c core/tactical_battle.c \
+            core/tactical_demo.c -o /tmp/foj239_host_cost_ubsan
+          /tmp/foj239_host_cost_ubsan --report /tmp/foj239_ubsan_report.json
+      - name: Archive Stage239 measured CI host costs
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage239-host-threat-cost-py${{ matrix.python }}
+          path: timing-evidence/
+          if-no-files-found: error
+
       - name: Compile portable FoJ COLL parser under strict C11 flags
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \
