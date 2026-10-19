@@ -15,7 +15,7 @@ FIRST = (41, 203, 220)
 SECOND = (231, 178, 64)
 OVERFLOW = (229, 71, 190)
 HIT = (52, 223, 136)
-NO_HIT = (77, 89, 106)
+NO_HIT = (114, 36, 196)
 STATES = (
     "initial", "selected", "hovered", "hidden", "restored",
     "cancelled", "guarded", "guard_hovered", "ended",
