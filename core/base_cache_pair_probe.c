@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <stddef.h>
 #include <string.h>
+#include "battle_scene_key.h"
 
 void foj_base_pair_init(FojBasePairProbe *probe) {
     if (!probe) return;
@@ -64,7 +65,7 @@ bool foj_base_pair_step(FojBasePairProbe *probe,
        height>INT_MAX/(int)sizeof(uint32_t)/width ||
        probe->failed) return false;
     if(!probe->key_valid || probe->show_preview!=show_preview ||
-       memcmp(&probe->scene_key,battle,sizeof(*battle))!=0) {
+       !foj_battle_scene_key_equal(&probe->scene_key,battle)) {
         foj_base_pair_init(probe);
         probe->scene_key=*battle;
         probe->show_preview=show_preview;
