@@ -8,10 +8,9 @@ import copy
 import hashlib
 import unittest
 
-from tools.foj_stage238_cache_guest_check import STATES
-from tools.foj_stage241_render_guest_check import SCHEMA as STAGE241_SCHEMA
 from tools.foj_stage242_repeat_guest_check import (
-    SCHEMA, check_receipt, summarize_reports,
+    SCHEMA, STATES, INPUT_SCHEMA as STAGE241_SCHEMA,
+    check_receipt, summarize_reports,
 )
 
 NRO_SHA = "a" * 64
