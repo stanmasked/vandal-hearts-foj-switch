@@ -9,6 +9,7 @@ NACPTOOL := $(DEVKITPRO)/tools/bin/nacptool
 TARGET := build/foj-switch-research
 ISO_TARGET := build/foj-isometric-research
 ISO_PAIR_TARGET := build/foj-isometric-inprocess-pair
+ISO_FULL_PAIR_TARGET := build/foj-isometric-full-render-pair
 ISO_UNCACHED_TARGET := build/foj-isometric-research-uncached
 COLL_TARGET := build/foj-coll-map-research
 DDS_TARGET := build/foj-dds-texture-research
@@ -65,6 +66,14 @@ $(ISO_PAIR_TARGET).elf: $(ISO_SRC) core/threat_pair_probe.c $(HDR) core/isometri
 	$(CC) $(CFLAGS) -DFOJ_STAGE244_PAIRED_PROBE=1 $(LDFLAGS) $(ISO_SRC) core/threat_pair_probe.c -o $@ -lnx -lm
 
 $(ISO_PAIR_TARGET).nro: $(ISO_PAIR_TARGET).elf $(ISO_TARGET).nacp
+	$(ELF2NRO) $< $@ --nacp=$(ISO_TARGET).nacp
+
+# Stage245 generated-only full-software-render paired guest. Normal/default
+# NRO keeps its original rendering code and contains no extra raster passes.
+$(ISO_FULL_PAIR_TARGET).elf: $(ISO_SRC) core/render_pair_probe.c $(HDR) core/isometric_demo.h core/render_pair_probe.h | build
+	$(CC) $(CFLAGS) -DFOJ_STAGE245_RENDER_PAIR=1 $(LDFLAGS) $(ISO_SRC) core/render_pair_probe.c -o $@ -lnx -lm
+
+$(ISO_FULL_PAIR_TARGET).nro: $(ISO_FULL_PAIR_TARGET).elf $(ISO_TARGET).nacp
 	$(ELF2NRO) $< $@ --nacp=$(ISO_TARGET).nacp
 
 # Stage243 A/B build: compile the same guest code with just the cache gate
