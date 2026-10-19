@@ -90,6 +90,35 @@ static void test_invalid_clock_fails_closed(void) {
     assert(!foj_threat_pair_probe_step(&meter,&battle,NULL,NULL));
 }
 
+static void test_corrupted_private_cache_fails_parity(void) {
+    FojBattle battle;
+    select_hero(&battle);
+    FojThreatPairProbe meter;
+    foj_threat_pair_probe_init(&meter);
+    FakeClock clock={0,1600};
+    assert(foj_threat_pair_probe_step(&meter,&battle,next_tick,&clock));
+    assert(meter.experimental_cache.valid);
+    /* Model an erroneous stale forecast inside the *private test cache*.
+     * A direct uncached call must detect the mismatch immediately. */
+    meter.experimental_cache.preview.incoming_damage[0][0]^=1u;
+    assert(!foj_threat_pair_probe_step(&meter,&battle,next_tick,&clock));
+    assert(meter.failed && !meter.parity_ok && !meter.ready);
+}
+
+static void test_nanosecond_overflow_window_rejected(void) {
+    FojBattle battle;
+    select_hero(&battle);
+    FojThreatPairProbe meter;
+    foj_threat_pair_probe_init(&meter);
+    /* Per forecast: 0x01000000ns, greater than the 24-bit HUD maximum. */
+    FakeClock clock={0,(uint64_t)FOJ_PAIR_PROBE_REPEATS*
+                          (FOJ_PAIR_PROBE_MAX_NS+1u)};
+    for (int n=0;n<FOJ_PAIR_PROBE_WINDOW-1;n++)
+        assert(foj_threat_pair_probe_step(&meter,&battle,next_tick,&clock));
+    assert(!foj_threat_pair_probe_step(&meter,&battle,next_tick,&clock));
+    assert(meter.failed && !meter.ready);
+}
+
 static void test_bounded_nanosecond_output(void) {
     FojBattle battle;
     select_hero(&battle);
@@ -125,6 +154,8 @@ int main(void) {
     test_warm_equal_forecasts_32_pairs();
     test_invalid_gameplay_and_key_invalidation();
     test_invalid_clock_fails_closed();
+    test_corrupted_private_cache_fails_parity();
+    test_nanosecond_overflow_window_rejected();
     test_bounded_nanosecond_output();
     return EXIT_SUCCESS;
 }
