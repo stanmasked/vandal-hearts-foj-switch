@@ -19,6 +19,21 @@ static uint64_t frozen(void *opaque) {
     ++c->calls;
     return 7;
 }
+static uint64_t one_tick_quantized(void *opaque) {
+    /* AArch64 system clock may quantize a skipped conditional block
+     * to zero elapsed ticks. Whole raster must still have advanced. */
+    Clock *c=(Clock *)opaque;
+    const uint64_t stamps[5]={100,200,200,200,400};
+    assert(c->calls<5);
+    return stamps[c->calls++];
+}
+static uint64_t reversed_tick(void *opaque) {
+    Clock *c=(Clock *)opaque;
+    const uint64_t stamps[5]={100,300,299,400,500};
+    assert(c->calls<5);
+    return stamps[c->calls++];
+}
+
 static uint32_t *image(void) {
     uint32_t *pixels=calloc((size_t)W*H,sizeof(uint32_t));
     assert(pixels);
@@ -66,6 +81,27 @@ static void bad_clock_and_no_extra_production_ticks(void) {
     foj_iso_render_battle_profiled(&battle,pixels,W,H,W,true,NULL,
                                    NULL,NULL,&receipt);
     assert(!receipt.valid);
+    free(pixels);
+}
+
+static void quantized_subphase_is_not_clock_failure(void) {
+    FojBattle battle;
+    foj_battle_init(&battle);
+    uint32_t *pixels=image();
+    Clock clock={0,0,0};
+    FojIsoPhaseReceipt receipt;
+    foj_iso_render_battle_profiled(&battle,pixels,W,H,W,false,NULL,
+                                   one_tick_quantized,&clock,&receipt);
+    assert(receipt.valid && clock.calls==5);
+    assert(receipt.terrain_ns==100);
+    assert(receipt.threat_compute_ns==0);
+    assert(receipt.threat_paint_ns==0);
+    assert(receipt.battle_hud_ns==200);
+    assert(receipt.whole_raster_ns==300);
+    clock.calls=0;
+    foj_iso_render_battle_profiled(&battle,pixels,W,H,W,false,NULL,
+                                   reversed_tick,&clock,&receipt);
+    assert(!receipt.valid && clock.calls==5);
     free(pixels);
 }
 
@@ -139,6 +175,7 @@ int main(void) {
     verify_scene(true,true);
     verify_scene(true,false);
     bad_clock_and_no_extra_production_ticks();
+    quantized_subphase_is_not_clock_failure();
     meter_window_and_pixel_contract();
     meter_rejects_incomplete_or_forged_receipts();
     return EXIT_SUCCESS;
