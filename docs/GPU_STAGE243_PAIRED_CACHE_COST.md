@@ -78,6 +78,25 @@ uncached win is still reported. A/B order is reversed mid-experiment
 to reduce drift confounding, but four guest boots still cannot eliminate
 runner scheduling noise or establish a confidence interval.
 
+## Baseline drift control
+
+The real four-guest A–B–B–A artifact from run 39281551213 can be
+decoded offline after fixing the mode-tile coordinate. Its first
+comparison shows nonzero uncached-minus-cached timing differences in
+the initial, hidden, cancelled and ended scenes, where the movement
+threat forecast is not used at all. This confirms guest execution
+variation is still present even with ABBA sequencing.
+
+The Stage243 JSON report now explicitly includes
+`no_forecast_control_difference_us`,
+`baseline_guest_drift_observed`, and
+`causal_cache_speedup_verified=false`.
+These negative controls are **not** used to automatically adjust or
+subtract experimental numbers: one cannot assume timing drift is a
+constant across distinct scenes or sequential guest processes. No
+speedup inference or minimum-threshold gate is allowed from these
+data alone.
+
 ## Measurement limits
 
 Each decoded microsecond value is the latest **32-frame mean** of
