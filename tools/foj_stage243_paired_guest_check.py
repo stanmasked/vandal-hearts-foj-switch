@@ -24,7 +24,11 @@ from tools.foj_stage241_render_guest_check import (
 SCHEMA = "foj-stage243-guest-abba-cached-render-v1"
 ORDER = ("cached_first", "uncached_first", "uncached_second", "cached_second")
 ROLES = ("cached", "uncached", "uncached", "cached")
-MODE_X, MODE_Y = 520, (13, 15, 17)
+# Stage243 first real ABBA guest artifact (Actions 39281551213) shows the
+# 8x8 AArch64 framebuffer tile at GUI x515..519 (not at x520):
+# NeXium shifts/crops this HUD region by seven pixels. Use *interior*
+# x=516..518, all of y=13,15,17; requiring 9 exact color reads.
+MODE_X, MODE_Y = (516, 517, 518), (13, 15, 17)
 MODE_CACHED = (17, 207, 241)
 MODE_UNCACHED = (238, 94, 21)
 # Screenshots in NeXium show framebuffer at 1280x720 plus an ~8px x offset.
@@ -66,7 +70,7 @@ def inspect_sequence(folder: Path, role: str) -> dict:
     opposite = MODE_UNCACHED if role == "cached" else MODE_CACHED
     for state, path in zip(STATES, paths):
         im = read_frame(path)
-        samples = [im.getpixel((MODE_X, y)) for y in MODE_Y]
+        samples = [im.getpixel((x, y)) for x in MODE_X for y in MODE_Y]
         if not all(close(p, expected_color) for p in samples) or any(
                 close(p, opposite) for p in samples):
             raise ValueError(f"{state}: wrong cached/uncached guest NRO mode tile: {samples}")
