@@ -14,6 +14,20 @@
 #include "coll_battle_overlay.h"
 #include "local_coll_window.h"
 
+#ifndef FOJ_STAGE245_RENDER_PAIR
+#define FOJ_STAGE245_RENDER_PAIR 0
+#endif
+#if FOJ_STAGE245_RENDER_PAIR != 0 && FOJ_STAGE245_RENDER_PAIR != 1
+#error "Stage245 software-render control must be 0 or 1"
+#endif
+#if FOJ_STAGE245_RENDER_PAIR
+#include "render_pair_probe.h"
+static uint64_t foj_stage245_guest_now_ns(void *unused) {
+    (void)unused;
+    return armTicksToNs(armGetSystemTick());
+}
+#endif
+
 #ifndef FOJ_STAGE244_PAIRED_PROBE
 #define FOJ_STAGE244_PAIRED_PROBE 0
 #endif
@@ -72,6 +86,23 @@ _Static_assert(FOJ_PAIR_PROBE_STATUS_X+8 <= FB_WIDTH,
                "Stage244 diagnostic leaves the framebuffer");
 #endif
 
+#if FOJ_STAGE245_RENDER_PAIR
+_Static_assert(FOJ_RENDER_PAIR_CACHED_X >= FOJ_PAIR_MODE_X+FOJ_PAIR_MODE_SIZE,
+               "Stage245 bar overlaps Stage243 build identity");
+_Static_assert(FOJ_RENDER_PAIR_UNCACHED_X >=
+               FOJ_RENDER_PAIR_CACHED_X+FOJ_RENDER_PAIR_BITS*FOJ_RENDER_PAIR_BAR_STEP,
+               "Stage245 cached/uncached bars overlap");
+_Static_assert(FOJ_RENDER_PAIR_STATUS_X >=
+               FOJ_RENDER_PAIR_UNCACHED_X+FOJ_RENDER_PAIR_BITS*FOJ_RENDER_PAIR_BAR_STEP,
+               "Stage245 status overlaps its barcodes");
+_Static_assert(FOJ_RENDER_PAIR_STATUS_X+8 <= FB_WIDTH,
+               "Stage245 telemetry exceeds framebuffer");
+/* These two private buffers are never passed to the visible game
+ * presentation path. They allow byte-identical whole-raster parity. */
+static uint32_t foj_stage245_cached_pixels[FB_WIDTH*FB_HEIGHT];
+static uint32_t foj_stage245_uncached_pixels[FB_WIDTH*FB_HEIGHT];
+#endif
+
 static FojCollBattleWindow raw_window;
 
 int main(int argc, char **argv) {
@@ -107,6 +138,10 @@ int main(int argc, char **argv) {
     foj_battle_threat_cache_init(&threat_cache);
     FojRenderCostMeter render_cost;
     foj_render_cost_meter_init(&render_cost);
+#if FOJ_STAGE245_RENDER_PAIR
+    FojRenderPairProbe render_pair_probe;
+    foj_render_pair_init(&render_pair_probe);
+#endif
 #if FOJ_STAGE244_PAIRED_PROBE
     FojThreatPairProbe within_guest_probe;
     foj_threat_pair_probe_init(&within_guest_probe);
@@ -250,6 +285,18 @@ int main(int argc, char **argv) {
                 for (int xx=FOJ_PAIR_MODE_X;
                          xx<FOJ_PAIR_MODE_X+FOJ_PAIR_MODE_SIZE; ++xx)
                     pixels[yy*pixel_stride+xx] = pair_color;
+#if FOJ_STAGE245_RENDER_PAIR
+            /* Two *complete* CPU rasterizations from the same battle
+             * state. Only the optional research NRO executes these extra
+             * passes. The real framebuffer and production cache cannot
+             * be affected; alternate order and check exact pixel parity. */
+            (void)foj_render_pair_step(&render_pair_probe,&battle,
+                show_threat_preview,foj_stage245_cached_pixels,
+                foj_stage245_uncached_pixels,FB_WIDTH,FB_HEIGHT,FB_WIDTH,
+                foj_stage245_guest_now_ns,NULL);
+            (void)foj_render_pair_draw(&render_pair_probe,
+                (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
+#endif
         }
         framebufferEnd(&framebuffer);
     }
