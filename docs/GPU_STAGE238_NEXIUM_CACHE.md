@@ -14,7 +14,13 @@ CPU-rendered frame, it draws two small diagnostic tiles:
 
 The indicators use `FojBattleThreatCache`'s existing counters, and are drawn
 **after** combat state simulation and rasterization. They cannot affect
-movement, damage, forecasting, replay or terrain.
+movement, damage, forecasting, replay or terrain. Cache tiles occupy
+x=400..407 and x=412..419, y=12..19 in the 1280×720 framebuffer. The
+Stage229 replay meter occupies x=256..383 at the same height; C11
+`_Static_assert` checks the separation during every native build.
+The muted-gray invalid marker and the violet no-hit marker have deliberately
+nonoverlapping RGB tolerances, after an initial synthetic control exposed
+their former color alias.
 
 The new `stage238-nexium-threat-cache.yml` builds the real
 `foj-isometric-research.nro` with devkitA64, boots it in software-Vulkan
