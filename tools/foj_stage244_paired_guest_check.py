@@ -21,8 +21,16 @@ from tools.foj_stage241_render_guest_check import close, verify_render_timing
 SCHEMA = "foj-stage244-nexium-inprocess-paired-threat-ns-v1"
 SAMPLED = ("selected", "hovered", "restored", "guarded", "guard_hovered")
 INACTIVE = ("initial", "hidden", "cancelled", "ended")
-CACHED_X = tuple(536 + 4*i for i in range(24))
-UNCACHED_X = tuple(652 + 4*i for i in range(24))
+# Actual Stage243 NeXium screenshots show guest x432/492 timing bars at
+# GUI centers x440/499 (16 authenticated Stage241 bits). Interpolate
+# the verified ~59/60 horizontal scale rather than assuming +8 pixels
+# everywhere. The Stage243 x508 mode tile centers at GUI x516 too.
+def gui_center(framebuffer_x: int) -> int:
+    return round(440 + (framebuffer_x - 432) * 59 / 60)
+
+
+CACHED_X = tuple(gui_center(528 + 4*i) for i in range(24))
+UNCACHED_X = tuple(gui_center(644 + 4*i) for i in range(24))
 BIT_Y = (13, 15, 17)
 STATUS_X = (759, 760, 761)
 ON_CACHED = (111, 170, 51)
