@@ -3,6 +3,7 @@
 #include <limits.h>
 #include <stddef.h>
 #include <string.h>
+#include "battle_scene_key.h"
 
 static const int modes[FOJ_BASE_SCALE_MODES][2]={
     {320,180},{640,360},{1280,720}
@@ -25,30 +26,6 @@ static bool fail(FojBaseScaleProbe *p) {
     p->ready=false;
     return false;
 }
-/* Compare gameplay-relevant members, never struct padding or an
- * uninitialised padding byte from a caller-owned battle snapshot. Scene
- * invalidation must reflect an actual generated battle state change. */
-static bool same_battle_state(const FojBattle *a,const FojBattle *b) {
-    const FojDemo *x=&a->map,*y=&b->map;
-    if(x->hero_x!=y->hero_x || x->hero_y!=y->hero_y ||
-       x->enemy_x!=y->enemy_x || x->enemy_y!=y->enemy_y ||
-       x->cursor_x!=y->cursor_x || x->cursor_y!=y->cursor_y ||
-       x->selected!=y->selected ||
-       a->hero_hp!=b->hero_hp || a->enemy_hp!=b->enemy_hp ||
-       a->moved_this_turn!=b->moved_this_turn ||
-       a->previous_hero_x!=b->previous_hero_x ||
-       a->previous_hero_y!=b->previous_hero_y ||
-       a->attacked_this_turn!=b->attacked_this_turn ||
-       a->guarded_this_turn!=b->guarded_this_turn ||
-       a->turn_number!=b->turn_number || a->outcome!=b->outcome)
-        return false;
-    for(int row=0;row<FOJ_HEIGHT;++row)
-        for(int col=0;col<FOJ_WIDTH;++col)
-            if(x->cells[row][col].elevation!=y->cells[row][col].elevation ||
-               x->cells[row][col].blocked!=y->cells[row][col].blocked)
-                return false;
-    return true;
-}
 static bool sample(uint64_t start,uint64_t end,uint16_t *microseconds) {
     if(end<=start)return false;
     uint64_t us=(end-start)/UINT64_C(1000);
@@ -62,7 +39,7 @@ bool foj_base_scale_step(FojBaseScaleProbe *p,const FojBattle *battle,
     if(!p || !battle || !a || !b || a==b || !clock_ns || p->failed)
         return false;
     const bool changed=!p->key_valid || p->preview!=preview ||
-                       !same_battle_state(&p->scene_key,battle);
+                       !foj_battle_scene_key_equal(&p->scene_key,battle);
     if(!changed) return p->ready;
     if(p->scene_resets==UINT32_MAX)return fail(p);
     ++p->scene_resets;
