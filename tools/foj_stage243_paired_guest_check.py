@@ -153,6 +153,17 @@ def summarize(results: dict[str, dict]) -> dict:
             "uncached_minus_cached_us": uncached_mean - cached_mean,
             "observed_uncached_over_cached_ratio": round(uncached_mean / cached_mean, 4),
         }
+    # These states do not execute the visible movement-threat forecast:
+    # initial=no selection; hidden=overlay disabled; cancelled=unselected;
+    # ended=terminal battle state. Any ABBA timing differences here
+    # demonstrate guest/runner drift unrelated to this forecast cache.
+    no_forecast_control_states = (
+        "initial", "hidden", "cancelled", "ended",
+    )
+    no_forecast_differences = {
+        state: per_state[state]["uncached_minus_cached_us"]
+        for state in no_forecast_control_states
+    }
     return {
         "schema": SCHEMA,
         "emulator": "NeXium",
@@ -161,6 +172,11 @@ def summarize(results: dict[str, dict]) -> dict:
         "real_guest_screenshots": 4 * len(STATES),
         "comparison": "controlled ABBA of two compile-time NRO variants",
         "pair_results": per_state,
+        "no_forecast_control_difference_us": no_forecast_differences,
+        "baseline_guest_drift_observed": any(
+            value != 0 for value in no_forecast_differences.values()
+        ),
+        "causal_cache_speedup_verified": False,
         "scene_pixels_identical_except_top_diagnostics": True,
         "guest_cache_state_verified": True,
         "same_neXium_binary": True,
