@@ -14,6 +14,20 @@
 #include "coll_battle_overlay.h"
 #include "local_coll_window.h"
 
+#ifndef FOJ_STAGE246_PHASE_TIMING
+#define FOJ_STAGE246_PHASE_TIMING 0
+#endif
+#if FOJ_STAGE246_PHASE_TIMING != 0 && FOJ_STAGE246_PHASE_TIMING != 1
+#error "Stage246 profile switch must be 0 or 1"
+#endif
+#if FOJ_STAGE246_PHASE_TIMING
+#include "isometric_phase_meter.h"
+static uint64_t foj_stage246_now_ns(void *ctx) {
+    (void)ctx;
+    return armTicksToNs(armGetSystemTick());
+}
+#endif
+
 #ifndef FOJ_STAGE245_RENDER_PAIR
 #define FOJ_STAGE245_RENDER_PAIR 0
 #endif
@@ -103,6 +117,23 @@ static uint32_t foj_stage245_cached_pixels[FB_WIDTH*FB_HEIGHT];
 static uint32_t foj_stage245_uncached_pixels[FB_WIDTH*FB_HEIGHT];
 #endif
 
+#if FOJ_STAGE246_PHASE_TIMING
+_Static_assert(FOJ_PHASE_METER_FORECAST_X >= FOJ_PHASE_METER_TERRAIN_X+
+               FOJ_PHASE_METER_BITS*FOJ_PHASE_METER_STEP,
+               "Stage246 base and threat timing barcodes overlap");
+_Static_assert(FOJ_PHASE_METER_MARKERS_X >= FOJ_PHASE_METER_FORECAST_X+
+               FOJ_PHASE_METER_BITS*FOJ_PHASE_METER_STEP,
+               "Stage246 threat and marker barcodes overlap");
+_Static_assert(FOJ_PHASE_METER_HUD_X >= FOJ_PHASE_METER_MARKERS_X+
+               FOJ_PHASE_METER_BITS*FOJ_PHASE_METER_STEP,
+               "Stage246 marker and HUD barcodes overlap");
+_Static_assert(FOJ_PHASE_METER_STATUS_X >= FOJ_PHASE_METER_HUD_X+
+               FOJ_PHASE_METER_BITS*FOJ_PHASE_METER_STEP,
+               "Stage246 HUD barcode overlaps status");
+_Static_assert(FOJ_PHASE_METER_STATUS_X+8<=FB_WIDTH,
+               "Stage246 telemetry exceeds framebuffer");
+#endif
+
 static FojCollBattleWindow raw_window;
 
 int main(int argc, char **argv) {
@@ -138,6 +169,10 @@ int main(int argc, char **argv) {
     foj_battle_threat_cache_init(&threat_cache);
     FojRenderCostMeter render_cost;
     foj_render_cost_meter_init(&render_cost);
+#if FOJ_STAGE246_PHASE_TIMING
+    FojIsoPhaseMeter phase_meter;
+    foj_iso_phase_meter_init(&phase_meter);
+#endif
 #if FOJ_STAGE245_RENDER_PAIR
     FojRenderPairProbe render_pair_probe;
     foj_render_pair_init(&render_pair_probe);
@@ -211,10 +246,20 @@ int main(int argc, char **argv) {
              * software battle rendering, excluding buffer acquire/present,
              * COLL overlay and HUD telemetry. No emulated FPS assertion. */
             const u64 render_start_tick = armGetSystemTick();
+#if FOJ_STAGE246_PHASE_TIMING
+            FojIsoPhaseReceipt phase_receipt;
+            foj_iso_render_battle_profiled(&battle, (uint32_t *)pixels,
+                FB_WIDTH, FB_HEIGHT,
+                (int)(stride_bytes / sizeof(u32)),show_threat_preview,
+                FOJ_STAGE243_DISABLE_CACHE ? NULL : &threat_cache,
+                foj_stage246_now_ns,NULL,&phase_receipt);
+            (void)foj_iso_phase_meter_record(&phase_meter,&phase_receipt);
+#else
             foj_iso_render_battle_cached_options(&battle, (uint32_t *)pixels,
                 FB_WIDTH, FB_HEIGHT,
                 (int)(stride_bytes / sizeof(u32)),show_threat_preview,
                 FOJ_STAGE243_DISABLE_CACHE ? NULL : &threat_cache);
+#endif
             const u64 render_elapsed_ticks = armGetSystemTick() - render_start_tick;
             (void)foj_render_cost_meter_record(
                 &render_cost, armTicksToNs(render_elapsed_ticks));
@@ -263,6 +308,13 @@ int main(int argc, char **argv) {
              * and outside all previous diagnostic color neighborhoods. */
             (void)foj_render_cost_meter_draw(&render_cost,
                 (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
+#if FOJ_STAGE246_PHASE_TIMING
+            /* Only an explicitly compiled research guest emits phase
+             * telemetry. All four bars are painted outside the rasterizer
+             * timing region; no combat rule or original asset is touched. */
+            (void)foj_iso_phase_meter_draw(&phase_meter,
+                (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
+#endif
 #if FOJ_STAGE244_PAIRED_PROBE
             /* Research-only, no gameplay mutation: compare a warm-cache
              * forecast call with its uncached counterpart inside the same
