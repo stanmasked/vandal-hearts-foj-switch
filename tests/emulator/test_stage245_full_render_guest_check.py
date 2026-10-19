@@ -4,8 +4,25 @@ import tempfile
 import unittest
 from pathlib import Path
 from PIL import Image, ImageDraw
-from tests.emulator.test_stage244_paired_guest_check import make_frame
-from tools.foj_stage238_cache_guest_check import STATES
+from tools.foj_stage231_threat_guest_check import BACKGROUND,HERO,ENEMY,SIZE
+from tools.foj_stage238_cache_guest_check import (
+    STATES,EXPECTED_GENERATIONS,EXPECTED_HITS,
+)
+from tools.foj_stage241_render_guest_check import BIT_X,ON,OFF as ORIGINAL_OFF
+
+
+def make_frame(path:Path,state:str,n:int) -> None:
+    canvas=Image.new("RGB",SIZE,BACKGROUND)
+    draw=ImageDraw.Draw(canvas)
+    draw.rectangle((580,210,609,239),fill=HERO)
+    draw.rectangle((780,310,809,339),fill=ENEMY)
+    draw.rectangle((409,12,415,18),fill=EXPECTED_GENERATIONS[n])
+    draw.rectangle((420,12,427,18),fill=EXPECTED_HITS[n])
+    original_render_us=8000+n*23
+    for bit,x in enumerate(BIT_X):
+        draw.rectangle((x-1,12,x+1,18),
+                       fill=ON if original_render_us&(1<<bit) else ORIGINAL_OFF)
+    canvas.save(path)
 from tools.foj_stage245_full_render_guest_check import (
     verify_full_render_pairs,center,BITS,CACHED_ON,UNCACHED_ON,OFF,READY,
 )
