@@ -40,8 +40,11 @@ The audit:
 - independently rechecks Stage238 battle and cache generation transitions
   on both cached passes;
 - requires *exactly identical synthetic battle scene pixels* at matching
-  game states across all four runs, cropping out the whole top diagnostic
-  region before hashing the meaningful game region;
+  game states across all four runs in the central 500×360 battlefield
+  rectangle (x=550..1049, y=180..539). Two real Stage242 NeXium evidence
+  runs verified pixel-for-pixel identity across all nine states in this
+  crop; a larger area was unsuitable because mutable guest UI pixels
+  appeared along its left boundary;
 - verifies two consistent cached NRO SHA-256 values, two consistent
   uncached NRO SHA-256 values, different hashes across the variants,
   and one pinned NeXium archive across all four processes;
