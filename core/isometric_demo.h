@@ -30,4 +30,27 @@ void foj_iso_render_battle_cached_options(const FojBattle *battle,
                                           FojBattleThreatCache *cache);
 
 
+/* Stage246 research-only exclusive CPU phase timings. Callback is
+ * monotonic nanoseconds; the production API below is left unchanged. */
+typedef uint64_t (*FojIsoPhaseClockNs)(void *);
+typedef struct {
+    uint64_t terrain_ns;          /* 8x6 terrain + tokens + route */
+    uint64_t threat_compute_ns;   /* risk-matrix cache lookup/recompute */
+    uint64_t threat_paint_ns;     /* danger/landing markers */
+    uint64_t battle_hud_ns;       /* health, guard, attack, enemy indicators */
+    uint64_t whole_raster_ns;     /* sum of these exclusive stages */
+    bool forecast_available;
+    bool valid;
+} FojIsoPhaseReceipt;
+
+void foj_iso_render_battle_profiled(const FojBattle *battle,
+                                    uint32_t *pixels,
+                                    int width, int height,
+                                    int stride_pixels,
+                                    bool show_threat_preview,
+                                    FojBattleThreatCache *cache,
+                                    FojIsoPhaseClockNs clock_ns,
+                                    void *clock_context,
+                                    FojIsoPhaseReceipt *receipt);
+
 #endif
