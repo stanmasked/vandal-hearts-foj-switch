@@ -92,7 +92,7 @@ static Sample measure(bool use_cache) {
     battle.map.cursor_y = before.map.cursor_y;
     if (memcmp(&battle, &before, sizeof(battle)) != 0)
         die("timed preview modified combat state");
-    consumed_digest ^= digest;
+    consumed_digest |= digest;
     return result;
 }
 
