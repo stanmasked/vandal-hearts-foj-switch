@@ -14,10 +14,14 @@ import re
 import statistics
 from pathlib import Path
 
-from tools.foj_stage238_cache_guest_check import STATES
-from tools.foj_stage241_render_guest_check import (
-    SCHEMA as INPUT_SCHEMA, verify_render_timing,
+# Pure report checks deliberately require only the standard library.
+# Actual image decoding is imported lazily by audit_artifacts(), which runs
+# on the NeXium aggregate job with python3-pil installed.
+STATES = (
+    "initial", "selected", "hovered", "hidden", "restored",
+    "cancelled", "guarded", "guard_hovered", "ended",
 )
+INPUT_SCHEMA = "foj-stage241-nexium-guest-software-render-us-v1"
 
 SCHEMA = "foj-stage242-independent-guest-render-repeats-v1"
 RUN_IDS = (1, 2, 3)
@@ -149,6 +153,7 @@ def read_digest(path: Path) -> str:
 
 
 def audit_artifacts(root: Path) -> dict:
+    from tools.foj_stage241_render_guest_check import verify_render_timing
     reports, hashes = {}, {}
     for run_id in RUN_IDS:
         folder = root / f"foj-stage242-repeat-{run_id}"
