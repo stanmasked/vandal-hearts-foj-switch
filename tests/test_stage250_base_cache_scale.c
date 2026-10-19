@@ -36,6 +36,22 @@ static void test_sizes_and_scene_keys(void) {
     const uint64_t last=clock.t;
     assert(foj_base_scale_step(p,&battle,true,a,b,tick,&clock));
     assert(clock.t==last); /* Unchanged state: no synthetic extra work. */
+    /* Independent value-equivalent copy with deliberately different
+     * outer struct padding: this must NOT cause an extra measurement. */
+    FojBattle equal;
+    memset(&equal,0xa5,sizeof(equal));
+    equal.map=battle.map;
+    equal.hero_hp=battle.hero_hp;
+    equal.enemy_hp=battle.enemy_hp;
+    equal.moved_this_turn=battle.moved_this_turn;
+    equal.previous_hero_x=battle.previous_hero_x;
+    equal.previous_hero_y=battle.previous_hero_y;
+    equal.attacked_this_turn=battle.attacked_this_turn;
+    equal.guarded_this_turn=battle.guarded_this_turn;
+    equal.turn_number=battle.turn_number;
+    equal.outcome=battle.outcome;
+    assert(foj_base_scale_step(p,&equal,true,a,b,tick,&clock));
+    assert(clock.t==last && p->scene_resets==1);
     battle.map.cells[0][0].elevation++;
     assert(foj_base_scale_step(p,&battle,true,a,b,tick,&clock));
     assert(p->scene_resets==2 && p->cache.hits==3 &&
