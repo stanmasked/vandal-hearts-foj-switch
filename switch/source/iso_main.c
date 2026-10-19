@@ -238,6 +238,14 @@ int main(int argc, char **argv) {
         /* Right-stick click toggles only presentation, not battle inputs. */
         if (pressed & HidNpadButton_StickR)
             show_threat_preview=!show_threat_preview;
+#if FOJ_STAGE246_PHASE_TIMING
+        /* A timed window must never mix frames captured from different
+         * battle actions or overlay visibility modes. One guest command
+         * resets the 32-frame average before the first new render.
+         * Other NRO variants have no added work. */
+        if (battle_input || (pressed & HidNpadButton_StickR))
+            foj_iso_phase_meter_init(&phase_meter);
+#endif
 
         u32 stride_bytes = 0;
         u32 *pixels = (u32 *)framebufferBegin(&framebuffer, &stride_bytes);
