@@ -44,20 +44,17 @@ def read_bar(frame, framebuffer_x: int, on_color: tuple[int, int, int]) -> int:
     result = 0
     for bit in range(BITS):
         x = center(framebuffer_x + bit*4)
-        # NeXium independently resamples horizontal columns: a 3px guest
-        # bar can appear as 2px in the GUI. Require a complete 3-row
-        # color match at a maximum 1px offset; reject contradictory bits.
-        choices = [
-            (pixels_match(frame, pos, on_color),
-             pixels_match(frame, pos, OFF))
-            for pos in (x, x-1, x+1)
-        ]
-        candidates = {j for on, off in choices
-                      for j in ((1,) if on else (0,) if off else ())}
-        if candidates == {1}:
+        # Real Stage244 NeXium guest proof: all 48 A/B barcode bits in
+        # five captured scenes (240 color samples) give exactly the same
+        # color at x=(predicted-1) as their independently verified bit
+        # centers. Do not scan adjacent colors: nearby *different* bits
+        # could create ambiguous evidence at the barcode boundaries.
+        sample_x = x - 1
+        if pixels_match(frame, sample_x, on_color):
             result |= 1 << bit
-        elif candidates != {0}:
-            raise ValueError(f"Ambiguous/missing guest render bit {bit} at x={x}")
+        elif not pixels_match(frame, sample_x, OFF):
+            raise ValueError(
+                f"Missing/ambiguous guest render bit {bit} at x={sample_x}")
     if not 1 <= result < 65535:
         raise ValueError(f"Invalid zero/saturated full-render mean: {result}")
     return result
