@@ -1,0 +1,172 @@
+name: Stage 242 NeXium independent timing repeatability
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/stage242-nexium-render-repeats.yml'
+      - 'tools/foj_stage242_repeat_guest_check.py'
+      - 'tools/foj_stage238_nexium_drive.sh'
+      - 'tests/test_stage242_repeat_guest_check.py'
+      - 'switch/**'
+      - 'core/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stage242-nexium-render-repeats.yml'
+      - 'tools/foj_stage242_repeat_guest_check.py'
+      - 'tools/foj_stage238_nexium_drive.sh'
+      - 'tests/test_stage242_repeat_guest_check.py'
+      - 'switch/**'
+      - 'core/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build NRO with guest AArch64 software-render timer
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and validate real interactive battle NRO
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f switch/Makefile build/foj-isometric-research.nro
+          python3 tools/validate_nro.py build/foj-isometric-research.nro
+      - name: Publish generated-only guest executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage242-render-timing-nro
+          path: build/foj-isometric-research.nro
+          if-no-files-found: error
+
+  nexium:
+    name: Independent guest timing repeat ${{ matrix.repeat }}
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        repeat: [1, 2, 3]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: foj-stage242-render-timing-nro
+          path: nros
+      - name: Install headless Vulkan and screenshot dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl jq xvfb xauth xdotool imagemagick python3-pil \
+            libgtk-3-0t64 libasound2t64 libudev1 libxkbcommon0 libxkbcommon-x11-0 \
+            libx11-xcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 \
+            libxcb-randr0 libxcb-render0 libxcb-shape0 libxcb-xkb1 \
+            libvulkan1 mesa-vulkan-drivers
+      - name: Obtain pinned NeXium nightly and record digest
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/nexium runtime-evidence
+          json="$(curl -fsSL --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/nexium-emu/nexium-nightly/releases/tags/nightly)"
+          url="$(printf '%s' "$json" | jq -r \
+            '.assets[] | select(.name == "nexium-linux-x86_64.tar.gz") | .browser_download_url')"
+          test -n "$url"
+          curl -fL --retry 3 --retry-all-errors "$url" -o /tmp/nexium-linux.tar.gz
+          sha256sum /tmp/nexium-linux.tar.gz > runtime-evidence/nexium-archive.sha256
+          tar -xzf /tmp/nexium-linux.tar.gz -C /tmp/nexium
+          binary="$(find /tmp/nexium -type f -executable \
+            \( -name 'nexium-gui' -o -name 'nexium' \) -print -quit)"
+          test -n "$binary"
+          echo "NEXIUM_BIN=$binary" >> "$GITHUB_ENV"
+      - name: Validate repeat identifier and generated guest NRO
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ matrix.repeat }}" -ge 1
+          test "${{ matrix.repeat }}" -le 3
+          test -s nros/foj-isometric-research.nro
+      - name: Capture actual guest battle, cache, and 32-frame render timers
+        shell: bash
+        run: |
+          set -euo pipefail
+          icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 -name 'lvp_icd*.json' -print -quit)"
+          test -n "$icd"
+          export VK_ICD_FILENAMES="$icd"
+          export FOJ_NRO="$GITHUB_WORKSPACE/nros/foj-isometric-research.nro"
+          export FOJ_EVIDENCE_DIR="$GITHUB_WORKSPACE/runtime-evidence"
+          test -s "$FOJ_NRO"
+          sha256sum "$FOJ_NRO" > "$FOJ_EVIDENCE_DIR/nro.sha256"
+          timeout --kill-after=5s 230s xvfb-run -a \
+            -s "-screen 0 1280x720x24" \
+            bash tools/foj_stage238_nexium_drive.sh
+      - name: Decode bounded timer bits and verify battle transition sequence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage241_render_guest_check \
+            --initial runtime-evidence/cache-initial.png \
+            --selected runtime-evidence/cache-selected.png \
+            --hovered runtime-evidence/cache-hovered.png \
+            --hidden runtime-evidence/cache-hidden.png \
+            --restored runtime-evidence/cache-restored.png \
+            --cancelled runtime-evidence/cache-cancelled.png \
+            --guarded runtime-evidence/cache-guarded.png \
+            --guard-hovered runtime-evidence/cache-guard-hovered.png \
+            --ended runtime-evidence/cache-ended.png \
+            --report runtime-evidence/stage241-render-timing-receipt.json
+      - name: Preserve guest timing screenshots and immutable receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage242-repeat-${{ matrix.repeat }}
+          path: runtime-evidence/
+          if-no-files-found: warn
+
+  summarize:
+    name: Compare three independently booted NeXium guests
+    needs: [nexium]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: foj-stage242-repeat-*
+          path: repeat-evidence
+          merge-multiple: false
+      - name: Install offline screenshot auditor dependency
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y python3-pil
+      - name: Reject missing or synthetic guest evidence, then measure variability
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests \
+            -p 'test_stage242_repeat_guest_check.py' -v
+          mkdir -p stage242-summary
+          python3 -m tools.foj_stage242_repeat_guest_check \
+            --artifacts-root repeat-evidence \
+            --report stage242-summary/guest-run-variability.json
+          python3 -m json.tool stage242-summary/guest-run-variability.json >/dev/null
+      - name: Preserve three-run provenance and statistical comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage242-three-guest-run-summary
+          path: stage242-summary/
+          if-no-files-found: warn
