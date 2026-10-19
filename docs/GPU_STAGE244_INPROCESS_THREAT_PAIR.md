@@ -38,6 +38,51 @@ for five selected/visible battle scenes, verify they are inactive for
 the other four states, and still satisfy the Stage238 cache/transitions
 and Stage241 software-render evidence checks on the same nine PNGs.
 
+## First real-guest failure and decoded evidence
+
+The first Stage244 guest workflow
+[39295665885](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39295665885)
+**successfully** passed strict native C11 GCC/Clang/UBSan tests, built the
+experimental NRO and captured all nine real 1280×720 NeXium screenshots.
+The final checker stopped on a diagnostic coordinate error before
+publishing a receipt: the status was sampled at x759 rather than its
+actual screenshot location x748..755, resulting in background RGB
+(13,19,33) for the initial state.
+
+The archived [real guest evidence artifact](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39295665885/artifacts/12208066693)
+shows **24 distinct bars per measurement**. Each barcode pixel group
+is 2–3 columns wide after GUI letterboxing, and the exact center
+positions are recorded as literal coordinate tables in the Stage244
+checker. The status is now read at x750..752, y13/15/17. These
+positions were checked against **all nine screenshots**: five selected
+and visible states had a valid green ready/parity tile, while the
+initial, hidden, cancelled and ended scenes had the pending tile.
+
+After applying those measured coordinate tables offline, the saved
+first guest run decodes:
+
+| Captured state | Warm-cache ns/call | Uncached ns/call |
+| --- | ---: | ---: |
+| selected | 290 | 347284 |
+| hovered | 294 | 351166 |
+| restored | 350 | 347249 |
+| guarded | 298 | 350965 |
+| guard_hovered | 314 | 338300 |
+
+The median over these five snapshot readouts is **298 ns/call** for
+a warm cached forecast and **347284 ns/call** for full synthetic
+recomputation. The reconstructed values are supported by raw image
+pixels but did **not** pass the original CI receipt due to the coordinate
+bug; they are preliminary until the corrected workflow finishes
+successfully. The very large per-call difference is plausible because
+the cache returns an already-computed 8×6 risk map while the uncached
+path recomputes paths and speculative turns. It is **not** a measure
+of whole game rendering or FPS improvement.
+
+Extra screenshot regression tests preserve measured pixel coordinates,
+reject the old wrong-position status, and detect corruption of a
+high (23rd) nanosecond bit.
+
 ## What these measurements do not prove
 
 Within-process AB/BA eliminates the need to compare separate NeXium
