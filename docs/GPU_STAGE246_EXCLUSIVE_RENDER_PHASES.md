@@ -37,6 +37,22 @@ accounting, untouched synthetic gameplay pixels, zero extra clock
 calls in the uninstrumented API, fail-closed clock and arithmetic checks,
 and correct color decoding.
 
+### Validity of scene-scoped 32-frame means
+
+The optional Stage246 guest explicitly **resets the phase accumulator
+on every real battle input and threat-overlay visibility toggle**,
+before the first render of the new state. Until a fresh window of 32
+valid frames completes, the barcode stays in pending mode; an older
+READY value cannot be misread as the timing for a new scene. A native
+regression checks that partial windows and previous averages are
+discarded when a new scene begins.
+
+Counter timestamps for an *empty* phase (for example, hidden threat
+markers) may legitimately be equal at the timer's tick resolution.
+Timestamp boundaries therefore must be nondecreasing, with a strictly
+positive overall render duration; reversals or a frozen entire render
+fail closed. Extra native controls test both cases.
+
 The GitHub Actions experiment uses the tested Stage245 NeXium control
 sequence with generous accumulation time, produces nine real GUI PNGs
 and decodes four phase costs for each named game state. Stage238
