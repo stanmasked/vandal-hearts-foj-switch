@@ -2,6 +2,7 @@
 #include <limits.h>
 #include <stddef.h>
 #include <string.h>
+#include "battle_scene_key.h"
 
 void foj_base_stability_init(FojBaseStabilityProbe *p) {
     if (!p) return;
@@ -42,7 +43,7 @@ bool foj_base_stability_step(FojBaseStabilityProbe *p,
        p->failed) return false;
     const bool new_scene=!p->pair.key_valid ||
         p->pair.show_preview!=show_preview ||
-        memcmp(&p->pair.scene_key,battle,sizeof(*battle))!=0;
+        !foj_battle_scene_key_equal(&p->pair.scene_key,battle);
     if(new_scene) {
         /* Timed scope: one raw base-frame cold recompute followed by the
          * same exact-scene warm row-wise copy. No threat overlays here.
