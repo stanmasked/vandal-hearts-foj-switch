@@ -43,6 +43,22 @@ static FojIsoBaseCache stage247_base_cache;
 enum { FOJ_STAGE247_STATUS_X=1252, FOJ_STAGE247_STATUS_Y=12 };
 #endif
 
+#ifndef FOJ_STAGE248_BASE_PAIRS
+#define FOJ_STAGE248_BASE_PAIRS 0
+#endif
+#if FOJ_STAGE248_BASE_PAIRS != 0 && FOJ_STAGE248_BASE_PAIRS != 1
+#error "Stage248 base-cache paired diagnostic must be 0 or 1"
+#endif
+#if FOJ_STAGE248_BASE_PAIRS && (!FOJ_STAGE247_BASE_CACHE || !FOJ_STAGE246_PHASE_TIMING)
+#error "Stage248 guest requires Stage247 and Stage246 measurement paths"
+#endif
+#if FOJ_STAGE248_BASE_PAIRS
+#include "base_cache_pair_probe.h"
+static FojBasePairProbe stage248_probe;
+static uint32_t stage248_cached_pixels[1280*720];
+static uint32_t stage248_uncached_pixels[1280*720];
+#endif
+
 #ifndef FOJ_STAGE245_RENDER_PAIR
 #define FOJ_STAGE245_RENDER_PAIR 0
 #endif
@@ -122,6 +138,19 @@ _Static_assert(FOJ_STAGE247_STATUS_X+8 <= FB_WIDTH,
                "Stage247 tile exceeds framebuffer");
 #endif
 
+#if FOJ_STAGE248_BASE_PAIRS
+_Static_assert(FOJ_BASE_PAIR_CACHED_X >= FOJ_PAIR_MODE_X+FOJ_PAIR_MODE_SIZE,
+               "Stage248 A/B evidence overlaps build identity");
+_Static_assert(FOJ_BASE_PAIR_UNCACHED_X >=
+               FOJ_BASE_PAIR_CACHED_X+FOJ_BASE_PAIR_BITS*FOJ_BASE_PAIR_STEP,
+               "Stage248 A/B bitfields overlap");
+_Static_assert(FOJ_BASE_PAIR_STATUS_X >=
+               FOJ_BASE_PAIR_UNCACHED_X+FOJ_BASE_PAIR_BITS*FOJ_BASE_PAIR_STEP,
+               "Stage248 parity marker overlaps bitfields");
+_Static_assert(FOJ_BASE_PAIR_STATUS_X+8 <= FOJ_PHASE_METER_TERRAIN_X,
+               "Stage248 must not overlap Stage246 four-phase diagnostics");
+#endif
+
 #if FOJ_STAGE245_RENDER_PAIR
 _Static_assert(FOJ_RENDER_PAIR_CACHED_X >= FOJ_PAIR_MODE_X+FOJ_PAIR_MODE_SIZE,
                "Stage245 bar overlaps Stage243 build identity");
@@ -197,6 +226,9 @@ int main(int argc, char **argv) {
 #if FOJ_STAGE246_PHASE_TIMING
     FojIsoPhaseMeter phase_meter;
     foj_iso_phase_meter_init(&phase_meter);
+#endif
+#if FOJ_STAGE248_BASE_PAIRS
+    foj_base_pair_init(&stage248_probe);
 #endif
 #if FOJ_STAGE245_RENDER_PAIR
     FojRenderPairProbe render_pair_probe;
@@ -391,6 +423,18 @@ int main(int argc, char **argv) {
                 for (int xx=FOJ_PAIR_MODE_X;
                          xx<FOJ_PAIR_MODE_X+FOJ_PAIR_MODE_SIZE; ++xx)
                     pixels[yy*pixel_stride+xx] = pair_color;
+#if FOJ_STAGE248_BASE_PAIRS
+            /* Isolated true A/B: two independently warmed forecast caches,
+             * scratch-only full battle rasters, and AB/BA alternating order.
+             * Never alter the visible frame or gameplay state. Draw this
+             * research-only receipt after both timing regions. */
+            (void)foj_base_pair_step(
+                &stage248_probe,&battle,show_threat_preview,
+                stage248_cached_pixels,stage248_uncached_pixels,
+                FB_WIDTH,FB_HEIGHT,FB_WIDTH,foj_stage246_now_ns,NULL);
+            (void)foj_base_pair_draw(&stage248_probe,(uint32_t *)pixels,
+                                     FB_WIDTH,FB_HEIGHT,pixel_stride);
+#endif
 #if FOJ_STAGE245_RENDER_PAIR
             /* Two *complete* CPU rasterizations from the same battle
              * state. Only the optional research NRO executes these extra
