@@ -261,6 +261,8 @@ jobs:
           python3 -m json.tool \
             timing-evidence/stage239-cost-py${{ matrix.python }}.json \
             >/dev/null
+          python3 -m tools.foj_stage239_cost_check \
+            timing-evidence/stage239-cost-py${{ matrix.python }}.json
       - name: Stage239 forecast cost harness (UBSan correctness)
         run: |
           set -euo pipefail
