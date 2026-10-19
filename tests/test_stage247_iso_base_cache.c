@@ -73,6 +73,37 @@ static void state_and_overlay_parity(void) {
     assert(cache.hits==7 && cache.misses==5);
     assert(cache.bypasses==0);
 }
+static void persistent_forecast_is_not_cached_with_pixels(void) {
+    FojBattle battle;foj_battle_init(&battle);
+    assert(foj_battle_confirm(&battle)==FOJ_BATTLE_SELECTED);
+    FojBattleThreatCache cached_threat,normal_threat;
+    foj_battle_threat_cache_init(&cached_threat);
+    foj_battle_threat_cache_init(&normal_threat);
+    foj_iso_base_cache_init(&cache);
+    uint32_t *cached=frame(),*normal=frame();
+    /* Full threat-cache metrics must evolve exactly as in the uncached
+     * renderer, even when the independent terrain cache hits. */
+    for(int pass=0;pass<5;++pass) {
+        const bool show=pass!=2;
+        if(pass==4)foj_battle_move_cursor(&battle,1,0);
+        bool was_hit=false;
+        foj_iso_render_battle_profiled_base_cached(
+            &battle,cached,W,H,STRIDE,show,&cached_threat,
+            &cache,&was_hit,NULL,NULL,NULL);
+        foj_iso_render_battle_cached_options(
+            &battle,normal,W,H,STRIDE,show,&normal_threat);
+        parity(cached,normal);
+        assert(cached_threat.calculations==normal_threat.calculations);
+        assert(cached_threat.hits==normal_threat.hits);
+        assert(cached_threat.valid==normal_threat.valid);
+        assert(was_hit==(pass>0 && pass<4));
+    }
+    assert(cached_threat.calculations==1);
+    assert(cached_threat.hits==3);
+    assert(cache.misses==2 && cache.hits==3);
+    free(cached);free(normal);
+}
+
 static void all_scene_fields_invalidate(void) {
     FojDemo original,scene;
     foj_demo_init(&original);
@@ -138,6 +169,7 @@ static void dimensions_and_invalid_inputs(void) {
 }
 int main(void) {
     state_and_overlay_parity();
+    persistent_forecast_is_not_cached_with_pixels();
     all_scene_fields_invalidate();
     dimensions_and_invalid_inputs();
     return EXIT_SUCCESS;
