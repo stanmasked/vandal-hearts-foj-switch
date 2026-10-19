@@ -24,8 +24,8 @@ def make_frame(path: Path, generation: tuple[int,int,int], hit: tuple[int,int,in
         draw=ImageDraw.Draw(image)
         draw.rectangle((580,210,609,239), fill=HERO)
         draw.rectangle((780,310,809,339), fill=ENEMY)
-        draw.rectangle((256,12,263,19), fill=generation)
-        draw.rectangle((268,12,275,19), fill=hit)
+        draw.rectangle((400,12,407,19), fill=generation)
+        draw.rectangle((412,12,419,19), fill=hit)
     image.save(path)
 
 
