@@ -278,6 +278,20 @@ jobs:
           path: timing-evidence/
           if-no-files-found: error
 
+      - name: Stage240 render microsecond telemetry (strict C11)
+        run: |
+          cc -std=c11 -O2 -Wall -Wextra -Werror -pedantic -Icore \
+            tests/test_render_cost_meter.c core/render_cost_meter.c \
+            -o /tmp/foj240_render_cost_meter
+          /tmp/foj240_render_cost_meter
+      - name: Stage240 render time diagnostics (UBSan)
+        run: |
+          cc -std=c11 -O1 -g -fsanitize=undefined \
+            -fno-omit-frame-pointer -Icore \
+            tests/test_render_cost_meter.c core/render_cost_meter.c \
+            -o /tmp/foj240_render_cost_ubsan
+          /tmp/foj240_render_cost_ubsan
+
       - name: Compile portable FoJ COLL parser under strict C11 flags
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic -Icore \

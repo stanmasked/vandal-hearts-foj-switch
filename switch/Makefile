@@ -24,7 +24,7 @@ BANIM_SRC := switch/source/banim_main.c core/banim_core.c
 OBJ_SRC := switch/source/obj_main.c core/obj_wireframe.c
 DDS_SRC := switch/source/dds_main.c core/dds_texture.c
 COLL_SRC := switch/source/coll_main.c core/coll_grid.c core/coll_view.c core/coll_iso_view.c
-ISO_SRC := switch/source/iso_main.c switch/source/local_coll_window.c core/tactical_demo.c core/tactical_battle.c core/battle_replay.c core/battle_replay_meter.c core/isometric_demo.c core/coll_grid.c core/coll_battle_window.c core/coll_battle_overlay.c
+ISO_SRC := switch/source/iso_main.c switch/source/local_coll_window.c core/tactical_demo.c core/tactical_battle.c core/battle_replay.c core/battle_replay_meter.c core/render_cost_meter.c core/isometric_demo.c core/coll_grid.c core/coll_battle_window.c core/coll_battle_overlay.c
 SRC := switch/source/main.c switch/source/local_coll_window.c core/tactical_demo.c core/tactical_battle.c core/battle_replay.c core/coll_grid.c core/coll_battle_window.c
 HDR := core/tactical_demo.h core/tactical_battle.h core/battle_replay.h core/battle_replay_meter.h core/coll_grid.h core/coll_battle_window.h core/coll_battle_overlay.h switch/source/local_coll_window.h
 
@@ -48,7 +48,7 @@ $(TARGET).nacp: | build
 $(TARGET).nro: $(TARGET).elf $(TARGET).nacp
 	$(ELF2NRO) $< $@ --nacp=$(TARGET).nacp
 
-$(ISO_TARGET).elf: $(ISO_SRC) $(HDR) core/isometric_demo.h | build
+$(ISO_TARGET).elf: $(ISO_SRC) $(HDR) core/isometric_demo.h core/render_cost_meter.h | build
 	$(CC) $(CFLAGS) $(LDFLAGS) $(ISO_SRC) -o $@ -lnx -lm
 
 $(ISO_TARGET).nacp: | build
