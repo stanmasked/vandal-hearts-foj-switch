@@ -8,6 +8,7 @@ NACPTOOL := $(DEVKITPRO)/tools/bin/nacptool
 
 TARGET := build/foj-switch-research
 ISO_TARGET := build/foj-isometric-research
+ISO_PAIR_TARGET := build/foj-isometric-inprocess-pair
 ISO_UNCACHED_TARGET := build/foj-isometric-research-uncached
 COLL_TARGET := build/foj-coll-map-research
 DDS_TARGET := build/foj-dds-texture-research
@@ -56,6 +57,14 @@ $(ISO_TARGET).nacp: | build
 	$(NACPTOOL) --create "FoJ Isometric Research" "VH FoJ contributors" "0.2.0" $@
 
 $(ISO_TARGET).nro: $(ISO_TARGET).elf $(ISO_TARGET).nacp
+	$(ELF2NRO) $< $@ --nacp=$(ISO_TARGET).nacp
+
+# Stage244 opt-in measurement guest: same simulated combat plus isolated
+# intra-process paired forecast probe. Not part of the default "all" target.
+$(ISO_PAIR_TARGET).elf: $(ISO_SRC) core/threat_pair_probe.c $(HDR) core/isometric_demo.h core/render_cost_meter.h core/threat_pair_probe.h | build
+	$(CC) $(CFLAGS) -DFOJ_STAGE244_PAIRED_PROBE=1 $(LDFLAGS) $(ISO_SRC) core/threat_pair_probe.c -o $@ -lnx -lm
+
+$(ISO_PAIR_TARGET).nro: $(ISO_PAIR_TARGET).elf $(ISO_TARGET).nacp
 	$(ELF2NRO) $< $@ --nacp=$(ISO_TARGET).nacp
 
 # Stage243 A/B build: compile the same guest code with just the cache gate
