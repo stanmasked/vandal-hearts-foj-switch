@@ -6,6 +6,10 @@ on:
     paths:
       - '.github/workflows/stage250-nexium-base-scale.yml'
       - 'core/base_cache_scale_probe.*'
+      - 'core/base_cache_stability_probe.*'
+      - 'core/battle_scene_key.h'
+      - 'tests/test_stage248_*'
+      - 'tests/test_stage249_*'
       - 'core/base_cache_pair_probe.*'
       - 'core/isometric_demo.*'
       - 'core/isometric_base_cache.h'
@@ -19,6 +23,7 @@ on:
     paths:
       - '.github/workflows/stage250-nexium-base-scale.yml'
       - 'core/base_cache_scale_probe.*'
+      - 'core/battle_scene_key.h'
       - 'core/base_cache_pair_probe.*'
       - 'switch/source/iso_main.c'
       - 'switch/Makefile'
@@ -46,6 +51,26 @@ jobs:
           ./build/stage250-gcc
           ./build/stage250-clang
           UBSAN_OPTIONS=halt_on_error=1 ./build/stage250-ubsan
+      - name: Stage248/249 semantic scene-key regression on GCC Clang UBSan
+        shell: bash
+        run: |
+          set -euo pipefail
+          common="-std=c11 -Wall -Wextra -Werror -pedantic -O2 -Icore"
+          shared="core/base_cache_pair_probe.c core/isometric_demo.c core/tactical_battle.c core/tactical_demo.c"
+          for stage in 248 249; do
+            if [ "$stage" -eq 248 ]; then
+              inputs="tests/test_stage248_base_cache_pair_probe.c $shared"
+            else
+              inputs="tests/test_stage249_base_cache_stability.c core/base_cache_stability_probe.c $shared"
+            fi
+            gcc $common $inputs -o "build/stage${stage}-g" -lm
+            clang $common $inputs -o "build/stage${stage}-c" -lm
+            gcc $common -fsanitize=undefined -fno-sanitize-recover=all \
+              $inputs -o "build/stage${stage}-u" -lm
+            "./build/stage${stage}-g"
+            "./build/stage${stage}-c"
+            UBSAN_OPTIONS=halt_on_error=1 "./build/stage${stage}-u"
+          done
 
   build:
     name: devkitA64 research-only resolution-scaling NRO
