@@ -21,18 +21,23 @@ from tools.foj_stage241_render_guest_check import close, verify_render_timing
 SCHEMA = "foj-stage244-nexium-inprocess-paired-threat-ns-v1"
 SAMPLED = ("selected", "hovered", "restored", "guarded", "guard_hovered")
 INACTIVE = ("initial", "hidden", "cancelled", "ended")
-# Actual Stage243 NeXium screenshots show guest x432/492 timing bars at
-# GUI centers x440/499 (16 authenticated Stage241 bits). Interpolate
-# the verified ~59/60 horizontal scale rather than assuming +8 pixels
-# everywhere. The Stage243 x508 mode tile centers at GUI x516 too.
-def gui_center(framebuffer_x: int) -> int:
-    return round(440 + (framebuffer_x - 432) * 59 / 60)
-
-
-CACHED_X = tuple(gui_center(528 + 4*i) for i in range(24))
-UNCACHED_X = tuple(gui_center(644 + 4*i) for i in range(24))
+# Grounded in *actual* Stage244 NeXium screenshots from failed
+# workflow 39295665885 (artifact 12208066693), NOT interpolated
+# coordinates. GUI letterboxing reduces some 3-pixel bars to 2 pixels.
+# These are actual interior/center pixel positions of 24 distinct bars.
+CACHED_X = (
+    533, 537, 541, 544, 548, 552, 556, 560,
+    564, 568, 571, 575, 579, 583, 587, 591,
+    595, 599, 602, 606, 610, 614, 618, 622,
+)
+UNCACHED_X = (
+    645, 649, 652, 656, 660, 664, 668, 672,
+    676, 679, 683, 687, 691, 695, 699, 703,
+    706, 710, 714, 718, 722, 726, 730, 734,
+)
 BIT_Y = (13, 15, 17)
-STATUS_X = (759, 760, 761)
+# 8x8 parity tile appears at x748..755, y12..18 in actual NeXium GUI.
+STATUS_X = (750, 751, 752)
 ON_CACHED = (111, 170, 51)
 ON_UNCACHED = (229, 111, 163)
 OFF = (48, 37, 48)
