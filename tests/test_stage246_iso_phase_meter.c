@@ -148,6 +148,32 @@ static void meter_window_and_pixel_contract(void) {
     assert(!foj_iso_phase_meter_draw(&meter,NULL,sw,sh,sw));
     free(pixels);
 }
+static void scene_change_clears_mixed_window(void) {
+    FojIsoPhaseMeter meter;
+    foj_iso_phase_meter_init(&meter);
+    FojIsoPhaseReceipt active=fake(1234000);
+    for (int i=0;i<FOJ_PHASE_METER_WINDOW;i++)
+        assert(foj_iso_phase_meter_record(&meter,&active));
+    assert(meter.ready && meter.completed_windows==1u);
+    assert(foj_iso_phase_meter_record(&meter,&active));
+    assert(meter.ready && meter.frame_count==1);
+    /* Guest action/overlay toggle forces a full window restart.
+     * Never show a stale READY value for the newly entered scene. */
+    foj_iso_phase_meter_init(&meter);
+    assert(!meter.ready && !meter.failed && meter.frame_count==0);
+    assert(meter.completed_windows==0u);
+    FojIsoPhaseReceipt inactive=fake(50000);
+    inactive.forecast_available=false;
+    for (int i=0;i<FOJ_PHASE_METER_WINDOW-1;i++) {
+        assert(foj_iso_phase_meter_record(&meter,&inactive));
+        assert(!meter.ready);
+    }
+    assert(foj_iso_phase_meter_record(&meter,&inactive));
+    assert(meter.ready && meter.terrain_mean_us==50);
+    assert(meter.forecast_mean_us==50);
+    assert(!meter.last_forecast_available);
+}
+
 static void meter_rejects_incomplete_or_forged_receipts(void) {
     FojIsoPhaseMeter meter;
     foj_iso_phase_meter_init(&meter);
@@ -177,6 +203,7 @@ int main(void) {
     bad_clock_and_no_extra_production_ticks();
     quantized_subphase_is_not_clock_failure();
     meter_window_and_pixel_contract();
+    scene_change_clears_mixed_window();
     meter_rejects_incomplete_or_forged_receipts();
     return EXIT_SUCCESS;
 }
