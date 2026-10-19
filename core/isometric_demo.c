@@ -344,7 +344,11 @@ void foj_iso_render_battle_profiled(const FojBattle *battle,
     if (receipt && clock_ns) {
         const uint64_t t4 = clock_ns(clock_context);
         receipt->forecast_available = have_danger;
-        if (t0 < t1 && t1 < t2 && t2 < t3 && t3 < t4) {
+        /* A skipped forecast/marker stage can finish within one guest
+         * counter tick. Zero-duration *individual* phases are valid;
+         * the full render still must advance the counter. Reject
+         * reversals, not legitimate timestamp quantization. */
+        if (t0 <= t1 && t1 <= t2 && t2 <= t3 && t3 <= t4 && t0 < t4) {
             receipt->terrain_ns = t1 - t0;
             receipt->threat_compute_ns = t2 - t1;
             receipt->threat_paint_ns = t3 - t2;
