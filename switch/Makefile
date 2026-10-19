@@ -8,6 +8,7 @@ NACPTOOL := $(DEVKITPRO)/tools/bin/nacptool
 
 TARGET := build/foj-switch-research
 ISO_TARGET := build/foj-isometric-research
+ISO_UNCACHED_TARGET := build/foj-isometric-research-uncached
 COLL_TARGET := build/foj-coll-map-research
 DDS_TARGET := build/foj-dds-texture-research
 OBJ_TARGET := build/foj-obj-wireframe-research
@@ -55,6 +56,14 @@ $(ISO_TARGET).nacp: | build
 	$(NACPTOOL) --create "FoJ Isometric Research" "VH FoJ contributors" "0.2.0" $@
 
 $(ISO_TARGET).nro: $(ISO_TARGET).elf $(ISO_TARGET).nacp
+	$(ELF2NRO) $< $@ --nacp=$(ISO_TARGET).nacp
+
+# Stage243 A/B build: compile the same guest code with just the cache gate
+# changed. Reuse identical NACP; do not add the experimental NRO to all.
+$(ISO_UNCACHED_TARGET).elf: $(ISO_SRC) $(HDR) core/isometric_demo.h core/render_cost_meter.h | build
+	$(CC) $(CFLAGS) -DFOJ_STAGE243_DISABLE_CACHE=1 $(LDFLAGS) $(ISO_SRC) -o $@ -lnx -lm
+
+$(ISO_UNCACHED_TARGET).nro: $(ISO_UNCACHED_TARGET).elf $(ISO_TARGET).nacp
 	$(ELF2NRO) $< $@ --nacp=$(ISO_TARGET).nacp
 
 $(COLL_TARGET).elf: $(COLL_SRC) core/coll_grid.h core/coll_view.h core/coll_iso_view.h | build
