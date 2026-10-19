@@ -1,0 +1,158 @@
+name: Stage 245 NeXium within-guest full software-render pairs
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/stage245-nexium-full-render-pairs.yml'
+      - 'core/render_pair_probe.*'
+      - 'switch/source/iso_main.c'
+      - 'switch/Makefile'
+      - 'tools/foj_stage245_*'
+      - 'tests/test_stage245_render_pair_probe.c'
+      - 'tests/emulator/test_stage245_full_render_guest_check.py'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stage245-nexium-full-render-pairs.yml'
+      - 'core/render_pair_probe.*'
+      - 'switch/source/iso_main.c'
+      - 'switch/Makefile'
+      - 'tools/foj_stage245_*'
+      - 'tests/test_stage245_render_pair_probe.c'
+      - 'tests/emulator/test_stage245_full_render_guest_check.py'
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    name: C11 GCC, Clang and UBSan full-render parity controls
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile three independent host configurations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          common="-std=c11 -Wall -Wextra -Werror -pedantic -O2 -Icore"
+          inputs="tests/test_stage245_render_pair_probe.c core/render_pair_probe.c core/isometric_demo.c core/tactical_battle.c core/tactical_demo.c"
+          gcc $common $inputs -o build/stage245-gcc -lm
+          clang $common $inputs -o build/stage245-clang -lm
+          gcc $common -fsanitize=undefined -fno-sanitize-recover=all $inputs -o build/stage245-ubsan -lm
+      - name: Verify full-raster pixel parity, inactive forecasts, clock failures and bounded HUD
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./build/stage245-gcc
+          ./build/stage245-clang
+          UBSAN_OPTIONS=halt_on_error=1 ./build/stage245-ubsan
+
+  build:
+    name: Compile research-only in-process full-render pair Switch NRO
+    needs: native
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile NRO with libnx system counter and probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f switch/Makefile build/foj-isometric-full-render-pair.nro
+          python3 tools/validate_nro.py build/foj-isometric-full-render-pair.nro
+      - name: Preserve asset-free executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage245-guest-full-render-pair-nro
+          path: build/foj-isometric-full-render-pair.nro
+          if-no-files-found: error
+
+  nexium:
+    name: Decode full CPU-rasterizer timings from same actual NeXium guest
+    needs: build
+    runs-on: ubuntu-26.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: foj-stage245-guest-full-render-pair-nro
+          path: nros
+      - name: Install Vulkan guest and screenshot dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl jq xvfb xauth xdotool imagemagick python3-pil \
+            libgtk-3-0t64 libasound2t64 libudev1 libxkbcommon0 libxkbcommon-x11-0 \
+            libx11-xcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 \
+            libxcb-randr0 libxcb-render0 libxcb-shape0 libxcb-xkb1 \
+            libvulkan1 mesa-vulkan-drivers
+      - name: Resolve nightly NeXium and retain binary provenance
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/nexium guest-evidence
+          json="$(curl -fsSL --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/nexium-emu/nexium-nightly/releases/tags/nightly)"
+          url="$(printf '%s' "$json" | jq -r \
+            '.assets[] | select(.name == "nexium-linux-x86_64.tar.gz") | .browser_download_url')"
+          test -n "$url"
+          curl -fL --retry 3 --retry-all-errors "$url" -o /tmp/nexium-linux.tar.gz
+          sha256sum /tmp/nexium-linux.tar.gz > guest-evidence/nexium-archive.sha256
+          tar -xzf /tmp/nexium-linux.tar.gz -C /tmp/nexium
+          binary="$(find /tmp/nexium -type f -executable \
+            \( -name 'nexium-gui' -o -name 'nexium' \) -print -quit)"
+          test -n "$binary"
+          echo "NEXIUM_BIN=$binary" >> "$GITHUB_ENV"
+      - name: Reject invalid 16-bit full-render bars and forged guest states
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage245_full_render_guest_check.py' -v
+      - name: Capture one actual Switch guest with AB-BA full-rasterizer timings
+        shell: bash
+        run: |
+          set -euo pipefail
+          icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 -name 'lvp_icd*.json' -print -quit)"
+          test -n "$icd"
+          export VK_ICD_FILENAMES="$icd"
+          export FOJ_NRO="$GITHUB_WORKSPACE/nros/foj-isometric-inprocess-pair.nro"
+          export FOJ_EVIDENCE_DIR="$GITHUB_WORKSPACE/guest-evidence"
+          sha256sum "$FOJ_NRO" > guest-evidence/nro.sha256
+          test -s "$FOJ_NRO"
+          timeout --kill-after=5s 260s xvfb-run -a \
+            -s "-screen 0 1280x720x24" \
+            bash tools/foj_stage244_nexium_drive.sh
+      - name: Verify 9 gameplay states and nine full CPU-render pairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage245_full_render_guest_check \
+            --initial guest-evidence/cache-initial.png \
+            --selected guest-evidence/cache-selected.png \
+            --hovered guest-evidence/cache-hovered.png \
+            --hidden guest-evidence/cache-hidden.png \
+            --restored guest-evidence/cache-restored.png \
+            --cancelled guest-evidence/cache-cancelled.png \
+            --guarded guest-evidence/cache-guarded.png \
+            --guard-hovered guest-evidence/cache-guard-hovered.png \
+            --ended guest-evidence/cache-ended.png \
+            --report guest-evidence/stage245-inprocess-full-render-us.json
+      - name: Preserve actual game screenshots and paired CPU-render costs (not FPS)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage245-neXium-inprocess-full-render-evidence
+          path: guest-evidence/
+          if-no-files-found: warn
