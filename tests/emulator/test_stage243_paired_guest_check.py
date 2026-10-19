@@ -81,6 +81,11 @@ class PairedGuestControls(unittest.TestCase):
         self.assertEqual(receipt["real_guest_screenshots"],36)
         self.assertTrue(receipt["scene_pixels_identical_except_top_diagnostics"])
         self.assertFalse(receipt["switch_fps_measured"])
+        self.assertFalse(receipt["causal_cache_speedup_verified"])
+        self.assertEqual(
+            set(receipt["no_forecast_control_difference_us"]),
+            {"initial","hidden","cancelled","ended"})
+        self.assertTrue(receipt["baseline_guest_drift_observed"])
         self.assertGreater(
             receipt["pair_results"]["hovered"]["uncached_minus_cached_us"],0)
 
@@ -91,6 +96,7 @@ class PairedGuestControls(unittest.TestCase):
         report=summarize(data)
         self.assertLess(report["pair_results"]["hovered"]["uncached_minus_cached_us"],0)
         self.assertFalse(report["hard_speedup_threshold_enforced"])
+        self.assertFalse(report["causal_cache_speedup_verified"])
 
     def test_missing_guest_rejected(self):
         self.assert_rejected(lambda x:x.pop("cached_second"))
