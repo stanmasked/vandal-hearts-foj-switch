@@ -127,7 +127,7 @@ jobs:
           icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 -name 'lvp_icd*.json' -print -quit)"
           test -n "$icd"
           export VK_ICD_FILENAMES="$icd"
-          export FOJ_NRO="$GITHUB_WORKSPACE/nros/foj-isometric-inprocess-pair.nro"
+          export FOJ_NRO="$GITHUB_WORKSPACE/nros/foj-isometric-full-render-pair.nro"
           export FOJ_EVIDENCE_DIR="$GITHUB_WORKSPACE/guest-evidence"
           sha256sum "$FOJ_NRO" > guest-evidence/nro.sha256
           test -s "$FOJ_NRO"
