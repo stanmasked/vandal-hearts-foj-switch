@@ -56,7 +56,7 @@ bool foj_base_stability_step(FojBaseStabilityProbe *p,
         p->worst_window_spread_us=0;
         if(p->scene_resets==UINT32_MAX) return fail(p);
         ++p->scene_resets;
-        foj_iso_base_cache_init(&p->pair.base_cache);
+        foj_base_pair_init(&p->pair);
         FojDemo visual=battle->map;
         if(battle->enemy_hp==0) {
             visual.enemy_x=-1;
