@@ -14,6 +14,15 @@
 #include "coll_battle_overlay.h"
 #include "local_coll_window.h"
 
+/* Stage243: experimental compare-only switch. Production/default NRO keeps
+ * the Stage237 cache. No battle logic, replay or predicted result differs. */
+#ifndef FOJ_STAGE243_DISABLE_CACHE
+#define FOJ_STAGE243_DISABLE_CACHE 0
+#endif
+#if FOJ_STAGE243_DISABLE_CACHE != 0 && FOJ_STAGE243_DISABLE_CACHE != 1
+#error "Stage243 cache toggle must be 0 or 1"
+#endif
+
 enum { FB_WIDTH = 1280, FB_HEIGHT = 720 };
 /* Cache telemetry must not overwrite the Stage229 replay input meter.
  * 128 columns start at FOJ_REPLAY_METER_X, covering [256,384). */
@@ -29,6 +38,12 @@ _Static_assert(FOJ_RENDER_COST_X >= FOJ_CACHE_HITS_X + FOJ_CACHE_TILE_SIZE,
                "Stage240 timing pixels overlap Stage238 cache audit");
 _Static_assert(FOJ_RENDER_COST_X + FOJ_RENDER_COST_BITS * FOJ_RENDER_COST_STEP <= FB_WIDTH,
                "Stage240 timing pixels leave framebuffer");
+/* Stage243: A/B provenance tile must not overwrite the 16 timer bits. */
+enum { FOJ_PAIR_MODE_X = 508, FOJ_PAIR_MODE_Y = 12,
+       FOJ_PAIR_MODE_SIZE = 8 };
+_Static_assert(FOJ_PAIR_MODE_X >= FOJ_RENDER_COST_X +
+               FOJ_RENDER_COST_BITS * FOJ_RENDER_COST_STEP,
+               "Stage243 experimental build identity overlaps render timer");
 
 static FojCollBattleWindow raw_window;
 
@@ -133,7 +148,7 @@ int main(int argc, char **argv) {
             foj_iso_render_battle_cached_options(&battle, (uint32_t *)pixels,
                 FB_WIDTH, FB_HEIGHT,
                 (int)(stride_bytes / sizeof(u32)),show_threat_preview,
-                &threat_cache);
+                FOJ_STAGE243_DISABLE_CACHE ? NULL : &threat_cache);
             const u64 render_elapsed_ticks = armGetSystemTick() - render_start_tick;
             (void)foj_render_cost_meter_record(
                 &render_cost, armTicksToNs(render_elapsed_ticks));
@@ -182,6 +197,16 @@ int main(int argc, char **argv) {
              * and outside all previous diagnostic color neighborhoods. */
             (void)foj_render_cost_meter_draw(&render_cost,
                 (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
+            /* Draw *after* timing so mode identification cannot affect
+             * the measured region. Distinct from all earlier HUD colors.
+             * RGB: cached=(17,207,241), uncached=(238,94,21). */
+            const uint32_t pair_color = FOJ_STAGE243_DISABLE_CACHE ?
+                UINT32_C(0xff155eee) : UINT32_C(0xfff1cf11);
+            for (int yy=FOJ_PAIR_MODE_Y;
+                     yy<FOJ_PAIR_MODE_Y+FOJ_PAIR_MODE_SIZE; ++yy)
+                for (int xx=FOJ_PAIR_MODE_X;
+                         xx<FOJ_PAIR_MODE_X+FOJ_PAIR_MODE_SIZE; ++xx)
+                    pixels[yy*pixel_stride+xx] = pair_color;
         }
         framebufferEnd(&framebuffer);
     }
