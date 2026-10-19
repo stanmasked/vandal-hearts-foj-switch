@@ -12,7 +12,6 @@ import json
 import statistics
 from pathlib import Path
 
-from PIL import ImageChops
 from tools.foj_stage231_threat_guest_check import read_frame
 from tools.foj_stage238_cache_guest_check import (
     STATES, ALL_GENERATIONS, IDLE, HIT, NO_HIT, GENERATION_RECT, HIT_RECT,
@@ -30,7 +29,10 @@ MODE_CACHED = (17, 207, 241)
 MODE_UNCACHED = (238, 94, 21)
 # Screenshots in NeXium show framebuffer at 1280x720 plus an ~8px x offset.
 # Take ONLY the actual game scene. Exclude all top-row diagnostic telemetry.
-SCENE_CROP = (200, 48, 1150, 690)
+# Verified against the 9 states from two earlier independent NeXium
+# guest artifacts (Stage242); the wider x=200.. crop included mutable
+# outer-window pixels at y≈110 and would falsely reject scene parity.
+SCENE_CROP = (550, 180, 1050, 540)
 
 
 def binary_sha_file(path: Path) -> str:
