@@ -105,6 +105,17 @@ def summarize(results: dict[str, dict]) -> dict:
         raise ValueError("Emulator or NRO binaries differ within one ABBA experiment")
     if next(iter(cached_hashes)) == next(iter(uncached_hashes)):
         raise ValueError("Identical cached and uncached NRO files")
+    for key in ORDER:
+        record = results[key]
+        for name in ("scene_sha256", "frame_sha256", "render_us"):
+            item = record.get(name)
+            if not isinstance(item, dict) or set(item) != set(STATES):
+                raise ValueError(f"{key}: missing/extra {name} scene values")
+        for name in ("scene_sha256", "frame_sha256"):
+            for state, digest in record[name].items():
+                if (not isinstance(digest, str) or len(digest) != 64 or
+                        any(c not in "0123456789abcdef" for c in digest)):
+                    raise ValueError(f"{key}: invalid {name} hash at {state}")
     reference = results["cached_first"]["scene_sha256"]
     for key in ORDER:
         if results[key]["scene_sha256"] != reference:
