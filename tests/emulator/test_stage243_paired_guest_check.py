@@ -4,10 +4,12 @@ from __future__ import annotations
 import copy
 import hashlib
 import unittest
+from PIL import Image, ImageDraw
 
 from tools.foj_stage238_cache_guest_check import STATES
 from tools.foj_stage243_paired_guest_check import (
-    ORDER, ROLES, SCHEMA, summarize,
+    ORDER, ROLES, SCHEMA, summarize, MODE_X, MODE_Y, MODE_CACHED,
+    MODE_UNCACHED, verify_mode_tile,
 )
 
 
@@ -30,6 +32,39 @@ def sample_results():
                 for j,state in enumerate(STATES)},
         }
     return results
+
+
+class ModeTileScreenshotTests(unittest.TestCase):
+    def guest_frame(self, cached: bool) -> Image.Image:
+        frame = Image.new("RGB", (1280,720), (13,19,33))
+        draw = ImageDraw.Draw(frame)
+        # Derived from 36 genuine NeXium PNGs in Actions 39281551213:
+        # A/B mode tile covers GUI x515..519 and y12..18.
+        draw.rectangle((515,12,519,18),
+                       fill=MODE_CACHED if cached else MODE_UNCACHED)
+        return frame
+
+    def test_cached_tile_at_real_guest_coordinate(self):
+        verify_mode_tile(self.guest_frame(True), "cached", "initial")
+
+    def test_uncached_tile_at_real_guest_coordinate(self):
+        verify_mode_tile(self.guest_frame(False), "uncached", "initial")
+
+    def test_opposite_mode_rejected(self):
+        with self.assertRaises(ValueError):
+            verify_mode_tile(self.guest_frame(True), "uncached", "initial")
+
+    def test_old_wrong_x520_fails_not_rerouted_to_background(self):
+        frame = self.guest_frame(True)
+        self.assertEqual(frame.getpixel((520,15)), (13,19,33))
+        self.assertIn(517, MODE_X)
+        self.assertNotIn(520, MODE_X)
+
+    def test_corrupted_one_of_nine_samples_rejected(self):
+        frame = self.guest_frame(False)
+        frame.putpixel((MODE_X[1],MODE_Y[1]),(13,19,33))
+        with self.assertRaises(ValueError):
+            verify_mode_tile(frame, "uncached", "guarded")
 
 
 class PairedGuestControls(unittest.TestCase):
