@@ -57,6 +57,17 @@ def verify_uncached_markers(frame) -> None:
         raise ValueError(f"Experimental uncached NRO used cache: {counts}, {hit_count}, {no_hit}")
 
 
+def verify_mode_tile(frame, role: str, state: str) -> None:
+    if role not in ("cached", "uncached"):
+        raise ValueError("Unknown guest cache mode")
+    expected_color = MODE_CACHED if role == "cached" else MODE_UNCACHED
+    opposite = MODE_UNCACHED if role == "cached" else MODE_CACHED
+    samples = [frame.getpixel((x, y)) for x in MODE_X for y in MODE_Y]
+    if not all(close(pixel, expected_color) for pixel in samples) or any(
+            close(pixel, opposite) for pixel in samples):
+        raise ValueError(f"{state}: wrong cached/uncached guest NRO mode tile: {samples}")
+
+
 def inspect_sequence(folder: Path, role: str) -> dict:
     if role not in ("cached", "uncached"):
         raise ValueError("Invalid NRO build identity")
@@ -66,14 +77,9 @@ def inspect_sequence(folder: Path, role: str) -> dict:
     frame_hashes = []
     scene_hashes = []
     values = []
-    expected_color = MODE_CACHED if role == "cached" else MODE_UNCACHED
-    opposite = MODE_UNCACHED if role == "cached" else MODE_CACHED
     for state, path in zip(STATES, paths):
         im = read_frame(path)
-        samples = [im.getpixel((x, y)) for x in MODE_X for y in MODE_Y]
-        if not all(close(p, expected_color) for p in samples) or any(
-                close(p, opposite) for p in samples):
-            raise ValueError(f"{state}: wrong cached/uncached guest NRO mode tile: {samples}")
+        verify_mode_tile(im, role, state)
         if role == "uncached":
             verify_uncached_markers(im)
         values.append(decode_microseconds(path))
