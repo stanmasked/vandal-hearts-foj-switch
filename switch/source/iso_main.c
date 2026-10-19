@@ -13,6 +13,16 @@
 #include "local_coll_window.h"
 
 enum { FB_WIDTH = 1280, FB_HEIGHT = 720 };
+/* Cache telemetry must not overwrite the Stage229 replay input meter.
+ * 128 columns start at FOJ_REPLAY_METER_X, covering [256,384). */
+enum { FOJ_CACHE_TILE_SIZE = 8, FOJ_CACHE_GEN_X = 400,
+       FOJ_CACHE_HITS_X = 412, FOJ_CACHE_TILE_Y = 12 };
+_Static_assert(FOJ_CACHE_GEN_X >= FOJ_REPLAY_METER_X + FOJ_REPLAY_MAX_INPUTS,
+               "Stage238 cache telemetry overlaps replay input history");
+_Static_assert(FOJ_CACHE_HITS_X >= FOJ_CACHE_GEN_X + FOJ_CACHE_TILE_SIZE,
+               "Stage238 telemetry squares overlap each other");
+_Static_assert(FOJ_CACHE_HITS_X + FOJ_CACHE_TILE_SIZE <= FB_WIDTH,
+               "Stage238 telemetry exceeds the framebuffer");
 
 static FojCollBattleWindow raw_window;
 
@@ -143,10 +153,13 @@ int main(int argc, char **argv) {
                 0xff40b2e7u : 0xffbe47e5u;
             const u32 cache_hit_color = threat_cache.hits > 0u ?
                 0xff88df34u : 0xffc42472u;
-            for (int iy=12;iy<20;++iy) {
-                for (int ix=256;ix<264;++ix)
+            for (int iy=FOJ_CACHE_TILE_Y;
+                     iy<FOJ_CACHE_TILE_Y+FOJ_CACHE_TILE_SIZE;++iy) {
+                for (int ix=FOJ_CACHE_GEN_X;
+                         ix<FOJ_CACHE_GEN_X+FOJ_CACHE_TILE_SIZE;++ix)
                     pixels[iy*pixel_stride+ix] = cache_generation_color;
-                for (int ix=268;ix<276;++ix)
+                for (int ix=FOJ_CACHE_HITS_X;
+                         ix<FOJ_CACHE_HITS_X+FOJ_CACHE_TILE_SIZE;++ix)
                     pixels[iy*pixel_stride+ix] = cache_hit_color;
             }
         }
