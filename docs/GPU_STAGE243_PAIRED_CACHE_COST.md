@@ -32,6 +32,25 @@ the ABBA order cached/uncached/uncached/cached. Each process replays
 exactly the same fixed scripted nine-state synthetic battle input
 sequence and records nine real screenshots (36 in total).
 
+## First actual A–B–B–A CI diagnosis
+
+The original Stage243 GitHub Actions run
+[39281551213](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39281551213)
+built both NROs and **booted/captured all four real NeXium guest processes
+successfully** (36 PNGs), but the final receipt check failed before
+interpreting timing. The checker was looking at GUI x=520, immediately
+outside the 8×8 build-identity tile: the actual NeXium screenshots put the
+five interior visible columns at **GUI x=515..519**, with y=12..18.
+The CI failure printed the unrelated background RGB (13,19,33).
+
+The fix samples all nine interior pixels at x=(516,517,518),
+y=(13,15,17). This is derived from and cross-checked against the
+*saved real failure artifact*, not from guessed framebuffer coordinates.
+Five additional pixel regression tests verify mode colors, rejection of
+the opposite mode, prevention of the original x=520 bug and detection of
+a single corrupted diagnostic pixel. No gameplay or timing code changed
+during this correction.
+
 The audit:
 - requires each real image to decode 16 valid (nonzero, unsaturated)
   AArch64 guest timer bits, sampled at the verified NeXium GUI positions;
