@@ -138,6 +138,55 @@ static void all_scene_fields_invalidate(void) {
     assert(!foj_iso_base_cache_draw(&cache,&original,p,W,H,STRIDE));
     free(p);free(gold);
 }
+static void full_resolution_two_buffers_preserve_exact_pixels(void) {
+    /* Host-test the real Switch framebuffer size (including a padded
+     * row stride and two alternating backbuffers). The small 320x180
+     * controls above cannot prove the 1280x720 capacity edge. */
+    enum { FW=FOJ_ISO_BASE_CACHE_WIDTH,
+           FH=FOJ_ISO_BASE_CACHE_HEIGHT, FS=FW+8 };
+    const size_t len=(size_t)FS*(size_t)FH;
+    uint32_t *buffers[2]={malloc(len*sizeof(uint32_t)),
+                           malloc(len*sizeof(uint32_t))};
+    uint32_t *reference=malloc(len*sizeof(uint32_t));
+    assert(buffers[0] && buffers[1] && reference);
+    FojBattle battle;foj_battle_init(&battle);
+    foj_iso_base_cache_init(&cache);
+    for (int state=0;state<6;++state) {
+        if (state==2)battle.hero_hp=3;
+        if (state==3)
+            assert(foj_battle_confirm(&battle)==FOJ_BATTLE_SELECTED);
+        if (state==4)foj_battle_move_cursor(&battle,1,0);
+        const bool show=state!=5;
+        const bool expect_hit=state==1 || state==2 || state==5;
+        uint32_t *visible=buffers[state%2];
+        for (size_t n=0;n<len;++n) {
+            visible[n]=UINT32_C(0x12345678);
+            reference[n]=UINT32_C(0x12345678);
+        }
+        FojBattleThreatCache threat_a,threat_b;
+        foj_battle_threat_cache_init(&threat_a);
+        foj_battle_threat_cache_init(&threat_b);
+        bool hit=false;
+        foj_iso_render_battle_profiled_base_cached(
+            &battle,visible,FW,FH,FS,show,&threat_a,&cache,&hit,
+            NULL,NULL,NULL);
+        foj_iso_render_battle_cached_options(
+            &battle,reference,FW,FH,FS,show,&threat_b);
+        assert(hit==expect_hit);
+        for (int y=0;y<FH;++y) {
+            const size_t start=(size_t)y*(size_t)FS;
+            assert(!memcmp(visible+start,reference+start,
+                           (size_t)FW*sizeof(uint32_t)));
+            for (int x=FW;x<FS;++x) {
+                assert(visible[start+(size_t)x]==UINT32_C(0x12345678));
+                assert(reference[start+(size_t)x]==UINT32_C(0x12345678));
+            }
+        }
+    }
+    assert(cache.hits==3 && cache.misses==3);
+    free(reference);free(buffers[0]);free(buffers[1]);
+}
+
 static void dimensions_and_invalid_inputs(void) {
     FojDemo scene;foj_demo_init(&scene);
     foj_iso_base_cache_init(&cache);
@@ -171,6 +220,7 @@ int main(void) {
     state_and_overlay_parity();
     persistent_forecast_is_not_cached_with_pixels();
     all_scene_fields_invalidate();
+    full_resolution_two_buffers_preserve_exact_pixels();
     dimensions_and_invalid_inputs();
     return EXIT_SUCCESS;
 }
