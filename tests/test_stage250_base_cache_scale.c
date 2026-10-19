@@ -64,8 +64,15 @@ static void test_sizes_and_scene_keys(void) {
     assert(foj_base_scale_draw(p,screen,sw,sh,sw));
     assert(screen[FOJ_BASE_SCALE_Y*sw+FOJ_BASE_SCALE_STATUS_X]==
            UINT32_C(0xff54e394));
-    assert(!foj_base_scale_draw(p,screen,sw-1,sh,sw));
-    assert(!foj_base_scale_draw(p,screen,sw,sh-1,sw));
+    /* Draw should accept the exact minimum bounds, but reject the
+     * immediately preceding width and height. A 979-pixel screen is
+     * already wide enough for the last status tile at x=968. */
+    assert(foj_base_scale_draw(p,screen,FOJ_BASE_SCALE_STATUS_X+8,
+                               FOJ_BASE_SCALE_Y+8,sw));
+    assert(!foj_base_scale_draw(p,screen,FOJ_BASE_SCALE_STATUS_X+7,
+                                FOJ_BASE_SCALE_Y+8,sw));
+    assert(!foj_base_scale_draw(p,screen,FOJ_BASE_SCALE_STATUS_X+8,
+                                FOJ_BASE_SCALE_Y+7,sw));
     assert(!foj_base_scale_draw(p,screen,sw,sh,sw-1));
     free(screen);free(a);free(b);free(p);
 }
