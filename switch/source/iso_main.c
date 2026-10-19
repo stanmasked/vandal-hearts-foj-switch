@@ -3,12 +3,14 @@
  * This is NOT Vandal Hearts: Flames of Judgment's PS3 renderer or game engine.
  */
 #include <switch.h>
+#include <switch/arm/counter.h>
 #include <stdint.h>
 
 #include "tactical_demo.h"
 #include "isometric_demo.h"
 #include "battle_replay.h"
 #include "battle_replay_meter.h"
+#include "render_cost_meter.h"
 #include "coll_battle_overlay.h"
 #include "local_coll_window.h"
 
@@ -23,6 +25,10 @@ _Static_assert(FOJ_CACHE_HITS_X >= FOJ_CACHE_GEN_X + FOJ_CACHE_TILE_SIZE,
                "Stage238 telemetry squares overlap each other");
 _Static_assert(FOJ_CACHE_HITS_X + FOJ_CACHE_TILE_SIZE <= FB_WIDTH,
                "Stage238 telemetry exceeds the framebuffer");
+_Static_assert(FOJ_RENDER_COST_X >= FOJ_CACHE_HITS_X + FOJ_CACHE_TILE_SIZE,
+               "Stage240 timing pixels overlap Stage238 cache audit");
+_Static_assert(FOJ_RENDER_COST_X + FOJ_RENDER_COST_BITS * FOJ_RENDER_COST_STEP <= FB_WIDTH,
+               "Stage240 timing pixels leave framebuffer");
 
 static FojCollBattleWindow raw_window;
 
@@ -57,6 +63,8 @@ int main(int argc, char **argv) {
     foj_battle_init(&battle);
     FojBattleThreatCache threat_cache;
     foj_battle_threat_cache_init(&threat_cache);
+    FojRenderCostMeter render_cost;
+    foj_render_cost_meter_init(&render_cost);
     FojBattleReplay replay;
     foj_replay_init(&replay);
     bool replay_ok = true;
@@ -118,10 +126,17 @@ int main(int argc, char **argv) {
         u32 stride_bytes = 0;
         u32 *pixels = (u32 *)framebufferBegin(&framebuffer, &stride_bytes);
         if (pixels) {
+            /* libnx's AArch64 system counter measures only CPU-side
+             * software battle rendering, excluding buffer acquire/present,
+             * COLL overlay and HUD telemetry. No emulated FPS assertion. */
+            const u64 render_start_tick = armGetSystemTick();
             foj_iso_render_battle_cached_options(&battle, (uint32_t *)pixels,
                 FB_WIDTH, FB_HEIGHT,
                 (int)(stride_bytes / sizeof(u32)),show_threat_preview,
                 &threat_cache);
+            const u64 render_elapsed_ticks = armGetSystemTick() - render_start_tick;
+            (void)foj_render_cost_meter_record(
+                &render_cost, armTicksToNs(render_elapsed_ticks));
             if (raw_loaded && show_raw_window)
                 (void)foj_coll_battle_overlay(
                     &raw_window,(uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,
@@ -162,6 +177,11 @@ int main(int argc, char **argv) {
                          ix<FOJ_CACHE_HITS_X+FOJ_CACHE_TILE_SIZE;++ix)
                     pixels[iy*pixel_stride+ix] = cache_hit_color;
             }
+            /* Stage240: 16 bit, low bit first, software-render mean
+             * microseconds across 32 frames. Draw after original overlays
+             * and outside all previous diagnostic color neighborhoods. */
+            (void)foj_render_cost_meter_draw(&render_cost,
+                (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
         }
         framebufferEnd(&framebuffer);
     }
