@@ -185,14 +185,21 @@ static void hp_bar(Canvas *canvas, int cx, int cy, unsigned hp,
     }
 }
 
-void foj_iso_render_battle_cached_options(const FojBattle *battle,
-                                          uint32_t *pixels,
-                                          int width, int height,
-                                          int stride_pixels,
-                                          bool show_threat_preview,
-                                          FojBattleThreatCache *cache) {
+void foj_iso_render_battle_profiled(const FojBattle *battle,
+                                    uint32_t *pixels,
+                                    int width, int height,
+                                    int stride_pixels,
+                                    bool show_threat_preview,
+                                    FojBattleThreatCache *cache,
+                                    FojIsoPhaseClockNs clock_ns,
+                                    void *clock_context,
+                                    FojIsoPhaseReceipt *receipt) {
+    if (receipt) {
+        *receipt = (FojIsoPhaseReceipt){0};
+    }
     if (!battle || !pixels || width <= 0 || height <= 0 ||
         stride_pixels < width) return;
+    const uint64_t t0 = clock_ns && receipt ? clock_ns(clock_context) : 0;
     FojDemo visual = battle->map;
     if (battle->enemy_hp == 0) {
         /* Hide the defeated synthetic enemy token on the final screen. */
@@ -200,14 +207,17 @@ void foj_iso_render_battle_cached_options(const FojBattle *battle,
         visual.enemy_y = -1;
     }
     foj_iso_render(&visual, pixels, width, height, stride_pixels);
+    const uint64_t t1 = clock_ns && receipt ? clock_ns(clock_context) : 0;
     Canvas canvas = {pixels, width, height, stride_pixels};
     int x, y;
     /* Destination danger is advisory and exists only during A movement
      * selection. Resolve the exact same enemy Y action on temporary
      * copies for each reachable cell; retain no PS3 terrain semantics. */
     FojBattleThreatPreview danger;
-    if (show_threat_preview &&
-        foj_battle_preview_movement_threat_cached(cache,battle,&danger)) {
+    const bool have_danger = show_threat_preview &&
+        foj_battle_preview_movement_threat_cached(cache,battle,&danger);
+    const uint64_t t2 = clock_ns && receipt ? clock_ns(clock_context) : 0;
+    if (have_danger) {
         for (int dy=0;dy<FOJ_HEIGHT;++dy) {
             for (int dx=0;dx<FOJ_WIDTH;++dx) {
                 if (!danger.can_move[dy][dx]) continue;
@@ -246,6 +256,7 @@ void foj_iso_render_battle_cached_options(const FojBattle *battle,
             }
         }
     }
+    const uint64_t t3 = clock_ns && receipt ? clock_ns(clock_context) : 0;
     if (foj_in_bounds(battle->map.hero_x, battle->map.hero_y)) {
         foj_iso_project(width, height, battle->map.hero_x, battle->map.hero_y,
             battle->map.cells[battle->map.hero_y][battle->map.hero_x].elevation,
@@ -330,6 +341,30 @@ void foj_iso_render_battle_cached_options(const FojBattle *battle,
             for (int x0 = 0; x0 < width; ++x0)
                 pixel(&canvas, x0, y0, color);
     }
+    if (receipt && clock_ns) {
+        const uint64_t t4 = clock_ns(clock_context);
+        receipt->forecast_available = have_danger;
+        if (t0 < t1 && t1 < t2 && t2 < t3 && t3 < t4) {
+            receipt->terrain_ns = t1 - t0;
+            receipt->threat_compute_ns = t2 - t1;
+            receipt->threat_paint_ns = t3 - t2;
+            receipt->battle_hud_ns = t4 - t3;
+            receipt->whole_raster_ns = t4 - t0;
+            receipt->valid = true;
+        }
+    }
+}
+
+/* Production function: no clock reads, no HUD receipts, same exact drawing.
+ * The same helper is used by the opt-in Stage246 guest build. */
+void foj_iso_render_battle_cached_options(const FojBattle *battle,
+                                          uint32_t *pixels,
+                                          int width, int height,
+                                          int stride_pixels,
+                                          bool show_threat_preview,
+                                          FojBattleThreatCache *cache) {
+    foj_iso_render_battle_profiled(battle,pixels,width,height,stride_pixels,
+                                    show_threat_preview,cache,NULL,NULL,NULL);
 }
 
 /* Preserve all established entry points and framebuffer contracts. */
