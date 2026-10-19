@@ -52,9 +52,23 @@ enum { FOJ_STAGE247_STATUS_X=1252, FOJ_STAGE247_STATUS_Y=12 };
 #if FOJ_STAGE248_BASE_PAIRS && (!FOJ_STAGE247_BASE_CACHE || !FOJ_STAGE246_PHASE_TIMING)
 #error "Stage248 guest requires Stage247 and Stage246 measurement paths"
 #endif
+#ifndef FOJ_STAGE249_STABILITY
+#define FOJ_STAGE249_STABILITY 0
+#endif
+#if FOJ_STAGE249_STABILITY != 0 && FOJ_STAGE249_STABILITY != 1
+#error "Stage249 stability diagnostic must be 0 or 1"
+#endif
+#if FOJ_STAGE249_STABILITY && !FOJ_STAGE248_BASE_PAIRS
+#error "Stage249 requires in-process Stage248 parity probe"
+#endif
 #if FOJ_STAGE248_BASE_PAIRS
 #include "base_cache_pair_probe.h"
+#if FOJ_STAGE249_STABILITY
+#include "base_cache_stability_probe.h"
+static FojBaseStabilityProbe stage249_probe;
+#else
 static FojBasePairProbe stage248_probe;
+#endif
 static uint32_t stage248_cached_pixels[1280*720];
 static uint32_t stage248_uncached_pixels[1280*720];
 #endif
@@ -151,6 +165,25 @@ _Static_assert(FOJ_BASE_PAIR_STATUS_X+8 <= FOJ_PHASE_METER_TERRAIN_X,
                "Stage248 must not overlap Stage246 four-phase diagnostics");
 #endif
 
+#if FOJ_STAGE249_STABILITY
+_Static_assert(FOJ_BASE_STABILITY_COLD_X >= FOJ_PAIR_MODE_X+FOJ_PAIR_MODE_SIZE,
+               "Stage249 refill telemetry overlaps build-mode identity");
+_Static_assert(FOJ_BASE_STABILITY_WARM_X >=
+    FOJ_BASE_STABILITY_COLD_X+FOJ_BASE_STABILITY_BITS*FOJ_BASE_STABILITY_STEP,
+    "Stage249 cold/warm telemetry overlap");
+_Static_assert(FOJ_BASE_STABILITY_SPREAD_X >=
+    FOJ_BASE_STABILITY_WARM_X+FOJ_BASE_STABILITY_BITS*FOJ_BASE_STABILITY_STEP,
+    "Stage249 warm/spread telemetry overlap");
+_Static_assert(FOJ_BASE_STABILITY_STATUS_X >=
+    FOJ_BASE_STABILITY_SPREAD_X+FOJ_BASE_STABILITY_BITS*FOJ_BASE_STABILITY_STEP,
+    "Stage249 spread/status overlap");
+_Static_assert(FOJ_BASE_STABILITY_STATUS_X+8 <= FOJ_BASE_PAIR_CACHED_X,
+    "Stage249 bars overlap Stage248 paired base-cache bars");
+_Static_assert(sizeof(FojBaseStabilityProbe) + sizeof(FojIsoBaseCache) +
+    (size_t)2*FB_WIDTH*FB_HEIGHT*sizeof(uint32_t) < (size_t)17*1024*1024,
+    "Stage249 opt-in NRO research storage unexpectedly exceeds 17 MiB");
+#endif
+
 #if FOJ_STAGE245_RENDER_PAIR
 _Static_assert(FOJ_RENDER_PAIR_CACHED_X >= FOJ_PAIR_MODE_X+FOJ_PAIR_MODE_SIZE,
                "Stage245 bar overlaps Stage243 build identity");
@@ -228,7 +261,11 @@ int main(int argc, char **argv) {
     foj_iso_phase_meter_init(&phase_meter);
 #endif
 #if FOJ_STAGE248_BASE_PAIRS
+#if FOJ_STAGE249_STABILITY
+    foj_base_stability_init(&stage249_probe);
+#else
     foj_base_pair_init(&stage248_probe);
+#endif
 #endif
 #if FOJ_STAGE245_RENDER_PAIR
     FojRenderPairProbe render_pair_probe;
@@ -428,12 +465,23 @@ int main(int argc, char **argv) {
              * scratch-only full battle rasters, and AB/BA alternating order.
              * Never alter the visible frame or gameplay state. Draw this
              * research-only receipt after both timing regions. */
+#if FOJ_STAGE249_STABILITY
+            (void)foj_base_stability_step(
+                &stage249_probe,&battle,show_threat_preview,
+                stage248_cached_pixels,stage248_uncached_pixels,
+                FB_WIDTH,FB_HEIGHT,FB_WIDTH,foj_stage246_now_ns,NULL);
+            (void)foj_base_pair_draw(&stage249_probe.pair,
+                (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
+            (void)foj_base_stability_draw(&stage249_probe,
+                (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
+#else
             (void)foj_base_pair_step(
                 &stage248_probe,&battle,show_threat_preview,
                 stage248_cached_pixels,stage248_uncached_pixels,
                 FB_WIDTH,FB_HEIGHT,FB_WIDTH,foj_stage246_now_ns,NULL);
             (void)foj_base_pair_draw(&stage248_probe,(uint32_t *)pixels,
                                      FB_WIDTH,FB_HEIGHT,pixel_stride);
+#endif
 #endif
 #if FOJ_STAGE245_RENDER_PAIR
             /* Two *complete* CPU rasterizations from the same battle
