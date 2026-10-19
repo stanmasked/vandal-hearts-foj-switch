@@ -4,11 +4,9 @@
 #include <stddef.h>
 #include <string.h>
 
-enum {
-    COLOR_READY_ON = 0xff7fe8ffu,
-    COLOR_READY_OFF = 0xff302530u,
-    COLOR_PENDING = 0xffb8863fu
-};
+static const uint32_t COLOR_READY_ON = UINT32_C(0xff7fe8ff);
+static const uint32_t COLOR_READY_OFF = UINT32_C(0xff302530);
+static const uint32_t COLOR_PENDING = UINT32_C(0xffb8863f);
 
 void foj_render_cost_meter_init(FojRenderCostMeter *meter) {
     if (meter) memset(meter, 0, sizeof(*meter));
