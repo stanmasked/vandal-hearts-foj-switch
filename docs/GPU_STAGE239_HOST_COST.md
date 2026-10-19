@@ -36,6 +36,12 @@ speedup. Behavioral correctness is enforced separately.
 For each Python CI matrix version, artifacts named
 `foj-stage239-host-threat-cost-py3.11` and
 `foj-stage239-host-threat-cost-py3.13` preserve a JSON report.
+The generated JSON is then checked by `tools/foj_stage239_cost_check.py`
+against the raw trial samples and exact forecast counts. Twenty independent
+Python tests reject missing values, fabricated medians, false Switch
+performance claims, invalid cache hits and forged ratios. A real
+noise-driven slowdown remains a valid result; no speed threshold is imposed.
+
 A dedicated UBSan run also checks the timing harness for undefined
 behavior but is **not** used for meaningful performance numbers.
 
