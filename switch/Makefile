@@ -10,6 +10,7 @@ TARGET := build/foj-switch-research
 ISO_TARGET := build/foj-isometric-research
 ISO_PAIR_TARGET := build/foj-isometric-inprocess-pair
 ISO_FULL_PAIR_TARGET := build/foj-isometric-full-render-pair
+ISO_PHASE_TARGET := build/foj-isometric-phase-report
 ISO_UNCACHED_TARGET := build/foj-isometric-research-uncached
 COLL_TARGET := build/foj-coll-map-research
 DDS_TARGET := build/foj-dds-texture-research
@@ -74,6 +75,14 @@ $(ISO_FULL_PAIR_TARGET).elf: $(ISO_SRC) core/render_pair_probe.c $(HDR) core/iso
 	$(CC) $(CFLAGS) -DFOJ_STAGE245_RENDER_PAIR=1 $(LDFLAGS) $(ISO_SRC) core/render_pair_probe.c -o $@ -lnx -lm
 
 $(ISO_FULL_PAIR_TARGET).nro: $(ISO_FULL_PAIR_TARGET).elf $(ISO_TARGET).nacp
+	$(ELF2NRO) $< $@ --nacp=$(ISO_TARGET).nacp
+
+# Stage246 research-only four-way exclusive software-render phase tracing.
+# Regular/default NRO is still built without the additional clock calls.
+$(ISO_PHASE_TARGET).elf: $(ISO_SRC) core/isometric_phase_meter.c $(HDR) core/isometric_demo.h core/isometric_phase_meter.h | build
+	$(CC) $(CFLAGS) -DFOJ_STAGE246_PHASE_TIMING=1 $(LDFLAGS) $(ISO_SRC) core/isometric_phase_meter.c -o $@ -lnx -lm
+
+$(ISO_PHASE_TARGET).nro: $(ISO_PHASE_TARGET).elf $(ISO_TARGET).nacp
 	$(ELF2NRO) $< $@ --nacp=$(ISO_TARGET).nacp
 
 # Stage243 A/B build: compile the same guest code with just the cache gate
