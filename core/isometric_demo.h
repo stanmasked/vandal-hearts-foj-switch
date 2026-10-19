@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "tactical_demo.h"
 #include "tactical_battle.h"
+#include "isometric_base_cache.h"
 
 void foj_iso_project(int width, int height, int x, int y, int elevation,
                      int *screen_x, int *screen_y);
@@ -49,6 +50,22 @@ void foj_iso_render_battle_profiled(const FojBattle *battle,
                                     int stride_pixels,
                                     bool show_threat_preview,
                                     FojBattleThreatCache *cache,
+                                    FojIsoPhaseClockNs clock_ns,
+                                    void *clock_context,
+                                    FojIsoPhaseReceipt *receipt);
+
+/* Stage247 opt-in research path: cache only the complete base-render
+ * output for an exactly equal FojDemo, never the threat/hitpoint overlays.
+ * Caller owns a static/heap FojIsoBaseCache. If base_cache is NULL,
+ * precisely the existing Stage246 renderer is used. */
+void foj_iso_render_battle_profiled_base_cached(
+                                    const FojBattle *battle,
+                                    uint32_t *pixels,
+                                    int width,int height,int stride_pixels,
+                                    bool show_threat_preview,
+                                    FojBattleThreatCache *cache,
+                                    FojIsoBaseCache *base_cache,
+                                    bool *base_cache_hit,
                                     FojIsoPhaseClockNs clock_ns,
                                     void *clock_context,
                                     FojIsoPhaseReceipt *receipt);

@@ -1,7 +1,9 @@
 #include "isometric_demo.h"
+#include "isometric_base_cache.h"
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 enum { HALF_W = 47, HALF_H = 23, STEP_X = 54, STEP_Y = 30, STEP_Z = 18 };
 typedef struct { int x, y; } Point;
@@ -167,6 +169,72 @@ void foj_iso_render(const FojDemo *state, uint32_t *pixels,
     }
 }
 
+/* Compare every raster-relevant field rather than raw struct bytes:
+ * padding is not image data. Conservative full-scene validation ensures
+ * that overlay order and terrain occlusion remain pixel-identical. */
+static bool same_iso_scene(const FojDemo *a,const FojDemo *b) {
+    if (a->hero_x!=b->hero_x || a->hero_y!=b->hero_y ||
+        a->enemy_x!=b->enemy_x || a->enemy_y!=b->enemy_y ||
+        a->cursor_x!=b->cursor_x || a->cursor_y!=b->cursor_y ||
+        a->selected!=b->selected) return false;
+    for (int y=0;y<FOJ_HEIGHT;++y)
+        for (int x=0;x<FOJ_WIDTH;++x)
+            if (a->cells[y][x].elevation!=b->cells[y][x].elevation ||
+                a->cells[y][x].blocked!=b->cells[y][x].blocked)
+                return false;
+    return true;
+}
+
+void foj_iso_base_cache_init(FojIsoBaseCache *cache) {
+    if (!cache) return;
+    cache->valid=false;
+    cache->width=0;cache->height=0;
+    cache->hits=0;cache->misses=0;cache->bypasses=0;
+}
+
+static void count_cache_event(uint64_t *counter) {
+    if (*counter!=UINT64_MAX) ++*counter;
+}
+
+bool foj_iso_base_cache_draw(FojIsoBaseCache *cache,
+                             const FojDemo *state,uint32_t *pixels,
+                             int width,int height,int stride_pixels) {
+    if (!state || !pixels || width<=0 || height<=0 ||
+        stride_pixels<width) return false;
+    if (!cache) {
+        foj_iso_render(state,pixels,width,height,stride_pixels);
+        return false;
+    }
+    if (width>FOJ_ISO_BASE_CACHE_WIDTH ||
+        height>FOJ_ISO_BASE_CACHE_HEIGHT) {
+        count_cache_event(&cache->bypasses);
+        foj_iso_render(state,pixels,width,height,stride_pixels);
+        return false;
+    }
+    const size_t row_bytes=(size_t)width*sizeof(uint32_t);
+    if (cache->valid && cache->width==width &&
+        cache->height==height && same_iso_scene(&cache->scene,state)) {
+        for (int y=0;y<height;++y)
+            memcpy(pixels+(size_t)y*(size_t)stride_pixels,
+                   cache->raster+(size_t)y*(size_t)width,row_bytes);
+        count_cache_event(&cache->hits);
+        return true;
+    }
+    /* Recompute on the real destination first, then save just the live
+     * columns. Preserve any row padding. Never fingerprint the pixels:
+     * the original scene state is the canonical cache key. */
+    foj_iso_render(state,pixels,width,height,stride_pixels);
+    for (int y=0;y<height;++y)
+        memcpy(cache->raster+(size_t)y*(size_t)width,
+               pixels+(size_t)y*(size_t)stride_pixels,row_bytes);
+    cache->scene=*state;
+    cache->width=width;
+    cache->height=height;
+    cache->valid=true;
+    count_cache_event(&cache->misses);
+    return false;
+}
+
 /* The overlay is deliberately primitive and uses only generated geometry.
  * Its health bars are readable without a font, textures, or PS3 assets. */
 static void hp_bar(Canvas *canvas, int cx, int cy, unsigned hp,
@@ -185,18 +253,22 @@ static void hp_bar(Canvas *canvas, int cx, int cy, unsigned hp,
     }
 }
 
-void foj_iso_render_battle_profiled(const FojBattle *battle,
+void foj_iso_render_battle_profiled_base_cached(
+                                    const FojBattle *battle,
                                     uint32_t *pixels,
                                     int width, int height,
                                     int stride_pixels,
                                     bool show_threat_preview,
                                     FojBattleThreatCache *cache,
+                                    FojIsoBaseCache *base_cache,
+                                    bool *base_cache_hit,
                                     FojIsoPhaseClockNs clock_ns,
                                     void *clock_context,
                                     FojIsoPhaseReceipt *receipt) {
     if (receipt) {
         *receipt = (FojIsoPhaseReceipt){0};
     }
+    if (base_cache_hit) *base_cache_hit=false;
     if (!battle || !pixels || width <= 0 || height <= 0 ||
         stride_pixels < width) return;
     const uint64_t t0 = clock_ns && receipt ? clock_ns(clock_context) : 0;
@@ -206,7 +278,9 @@ void foj_iso_render_battle_profiled(const FojBattle *battle,
         visual.enemy_x = -1;
         visual.enemy_y = -1;
     }
-    foj_iso_render(&visual, pixels, width, height, stride_pixels);
+    const bool reused_base=foj_iso_base_cache_draw(
+        base_cache,&visual,pixels,width,height,stride_pixels);
+    if (base_cache_hit) *base_cache_hit=reused_base;
     const uint64_t t1 = clock_ns && receipt ? clock_ns(clock_context) : 0;
     Canvas canvas = {pixels, width, height, stride_pixels};
     int x, y;
@@ -357,6 +431,21 @@ void foj_iso_render_battle_profiled(const FojBattle *battle,
             receipt->valid = true;
         }
     }
+}
+
+/* Existing Stage246 entry point remains unchanged; all regular callers
+ * render from scratch without a base-cache allocation. */
+void foj_iso_render_battle_profiled(const FojBattle *battle,
+                                    uint32_t *pixels,
+                                    int width,int height,int stride_pixels,
+                                    bool show_threat_preview,
+                                    FojBattleThreatCache *cache,
+                                    FojIsoPhaseClockNs clock_ns,
+                                    void *clock_context,
+                                    FojIsoPhaseReceipt *receipt) {
+    foj_iso_render_battle_profiled_base_cached(
+        battle,pixels,width,height,stride_pixels,show_threat_preview,
+        cache,NULL,NULL,clock_ns,clock_context,receipt);
 }
 
 /* Production function: no clock reads, no HUD receipts, same exact drawing.

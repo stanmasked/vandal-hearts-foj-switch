@@ -28,6 +28,21 @@ static uint64_t foj_stage246_now_ns(void *ctx) {
 }
 #endif
 
+#ifndef FOJ_STAGE247_BASE_CACHE
+#define FOJ_STAGE247_BASE_CACHE 0
+#endif
+#if FOJ_STAGE247_BASE_CACHE != 0 && FOJ_STAGE247_BASE_CACHE != 1
+#error "Stage247 base-cache mode must be 0 or 1"
+#endif
+#if FOJ_STAGE247_BASE_CACHE && !FOJ_STAGE246_PHASE_TIMING
+#error "Stage247 guest requires the Stage246 phase timing decoder"
+#endif
+#if FOJ_STAGE247_BASE_CACHE
+/* ~3.52 MiB research storage kept outside small Switch thread stacks. */
+static FojIsoBaseCache stage247_base_cache;
+enum { FOJ_STAGE247_STATUS_X=1252, FOJ_STAGE247_STATUS_Y=12 };
+#endif
+
 #ifndef FOJ_STAGE245_RENDER_PAIR
 #define FOJ_STAGE245_RENDER_PAIR 0
 #endif
@@ -100,6 +115,13 @@ _Static_assert(FOJ_PAIR_PROBE_STATUS_X+8 <= FB_WIDTH,
                "Stage244 diagnostic leaves the framebuffer");
 #endif
 
+#if FOJ_STAGE247_BASE_CACHE
+_Static_assert(FOJ_STAGE247_STATUS_X >= FOJ_PHASE_METER_STATUS_X+8,
+               "Stage247 cache hit tile overlaps Stage246 diagnostic status");
+_Static_assert(FOJ_STAGE247_STATUS_X+8 <= FB_WIDTH,
+               "Stage247 tile exceeds framebuffer");
+#endif
+
 #if FOJ_STAGE245_RENDER_PAIR
 _Static_assert(FOJ_RENDER_PAIR_CACHED_X >= FOJ_PAIR_MODE_X+FOJ_PAIR_MODE_SIZE,
                "Stage245 bar overlaps Stage243 build identity");
@@ -167,6 +189,9 @@ int main(int argc, char **argv) {
     foj_battle_init(&battle);
     FojBattleThreatCache threat_cache;
     foj_battle_threat_cache_init(&threat_cache);
+#if FOJ_STAGE247_BASE_CACHE
+    foj_iso_base_cache_init(&stage247_base_cache);
+#endif
     FojRenderCostMeter render_cost;
     foj_render_cost_meter_init(&render_cost);
 #if FOJ_STAGE246_PHASE_TIMING
@@ -256,11 +281,21 @@ int main(int argc, char **argv) {
             const u64 render_start_tick = armGetSystemTick();
 #if FOJ_STAGE246_PHASE_TIMING
             FojIsoPhaseReceipt phase_receipt;
+#if FOJ_STAGE247_BASE_CACHE
+            bool stage247_hit=false;
+            foj_iso_render_battle_profiled_base_cached(
+                &battle, (uint32_t *)pixels, FB_WIDTH, FB_HEIGHT,
+                (int)(stride_bytes / sizeof(u32)),show_threat_preview,
+                FOJ_STAGE243_DISABLE_CACHE ? NULL : &threat_cache,
+                &stage247_base_cache, &stage247_hit,
+                foj_stage246_now_ns,NULL,&phase_receipt);
+#else
             foj_iso_render_battle_profiled(&battle, (uint32_t *)pixels,
                 FB_WIDTH, FB_HEIGHT,
                 (int)(stride_bytes / sizeof(u32)),show_threat_preview,
                 FOJ_STAGE243_DISABLE_CACHE ? NULL : &threat_cache,
                 foj_stage246_now_ns,NULL,&phase_receipt);
+#endif
             (void)foj_iso_phase_meter_record(&phase_meter,&phase_receipt);
 #else
             foj_iso_render_battle_cached_options(&battle, (uint32_t *)pixels,
@@ -322,6 +357,17 @@ int main(int argc, char **argv) {
              * timing region; no combat rule or original asset is touched. */
             (void)foj_iso_phase_meter_draw(&phase_meter,
                 (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
+#if FOJ_STAGE247_BASE_CACHE
+            /* Guest-only proof: green if this frame actually reused the
+             * scene-exact cached base, red for a cold/new-scene miss.
+             * Nothing reads this indicator to decide gameplay actions. */
+            const u32 base_color=stage247_hit ?
+                UINT32_C(0xff83e72a) : UINT32_C(0xff3131f2);
+            for (int y=FOJ_STAGE247_STATUS_Y;y<FOJ_STAGE247_STATUS_Y+8;++y)
+                for (int x=FOJ_STAGE247_STATUS_X;
+                         x<FOJ_STAGE247_STATUS_X+8;++x)
+                    pixels[y*pixel_stride+x]=base_color;
+#endif
 #endif
 #if FOJ_STAGE244_PAIRED_PROBE
             /* Research-only, no gameplay mutation: compare a warm-cache
