@@ -69,6 +69,40 @@ class InProcessPairGuestTests(unittest.TestCase):
             result["guest_scene_values_ns"]["selected"]["uncached_ns_per_call"],
             5001)
 
+    def test_real_guest_24bit_bar_position_regression(self):
+        # These coordinates were checked against all nine genuine PNGs
+        # from workflow 39295665885, artifact 12208066693.
+        self.assertEqual((CACHED_X[0],CACHED_X[11],CACHED_X[-1]),
+                         (533,575,622))
+        self.assertEqual((UNCACHED_X[0],UNCACHED_X[11],UNCACHED_X[-1]),
+                         (645,687,734))
+        self.assertEqual(STATUS_X,(750,751,752))
+        self.assertNotIn(759,STATUS_X)
+        self.assertEqual(len(set(CACHED_X)),24)
+        self.assertEqual(len(set(UNCACHED_X)),24)
+
+    def test_shifted_status_tile_fails_real_guest_check(self):
+        with Image.open(self.paths[1]) as frame:
+            im=frame.convert("RGB")
+        draw=ImageDraw.Draw(im)
+        draw.rectangle((STATUS_X[0]-1,12,STATUS_X[-1]+1,18),
+                       fill=BACKGROUND)
+        # Earlier offset assumption x759 is visibly outside the real tile.
+        draw.rectangle((759,12,766,18),fill=READY)
+        im.save(self.paths[1])
+        with self.assertRaises(ValueError):
+            validate_guest_pair_screenshots(self.paths)
+
+    def test_mutated_23rd_nanosecond_bit_fails(self):
+        with Image.open(self.paths[2]) as frame:
+            im=frame.convert("RGB")
+        draw=ImageDraw.Draw(im)
+        x=UNCACHED_X[22]
+        draw.rectangle((x-1,12,x+1,18),fill=(250,0,10))
+        im.save(self.paths[2])
+        with self.assertRaises(ValueError):
+            validate_guest_pair_screenshots(self.paths)
+
     def test_wrong_parity_status_rejected(self):
         self.write_frames(selected={"wrong_tile":True})
         with self.assertRaises(ValueError):
