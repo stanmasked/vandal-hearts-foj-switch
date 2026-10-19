@@ -5,9 +5,11 @@ on:
   pull_request:
     paths:
       - '.github/workflows/stage246-nexium-exclusive-phases.yml'
+      - 'core/isometric_demo.*'
       - 'core/isometric_phase_meter.*'
       - 'switch/source/iso_main.c'
       - 'switch/Makefile'
+      - 'tools/foj_stage245_nexium_drive.sh'
       - 'tools/foj_stage246_*'
       - 'tests/test_stage246_iso_phase_meter.c'
       - 'tests/emulator/test_stage246_phase_guest_check.py'
@@ -15,9 +17,11 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/stage246-nexium-exclusive-phases.yml'
+      - 'core/isometric_demo.*'
       - 'core/isometric_phase_meter.*'
       - 'switch/source/iso_main.c'
       - 'switch/Makefile'
+      - 'tools/foj_stage245_nexium_drive.sh'
       - 'tools/foj_stage246_*'
       - 'tests/test_stage246_iso_phase_meter.c'
       - 'tests/emulator/test_stage246_phase_guest_check.py'
