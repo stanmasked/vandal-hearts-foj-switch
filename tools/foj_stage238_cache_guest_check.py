@@ -33,11 +33,22 @@ def near(candidate: tuple[int, int, int], color: tuple[int, int, int]) -> bool:
     return all(abs(candidate[c] - color[c]) <= 8 for c in range(3))
 
 
-def matching(frame: Image.Image, color: tuple[int, int, int]) -> int:
-    palette = frame.getcolors(maxcolors=65536)
-    if palette is None:
-        raise ValueError("Unexpectedly noisy NeXium screenshot")
-    return sum(count for count, rgb in palette if near(rgb, color))
+# Actual NeXium guest screenshots letterbox the 1280x720 framebuffer.
+# The two Stage238 tiles appear at x=409..415 and x=420..427, y=12..18.
+# Restrict classification to disjoint bounded neighborhoods. The old
+# full-image histogram misclassified unrelated GUI pixels as cache state.
+# Bounds are inclusive-left, exclusive-right, inclusive-top, exclusive-bottom.
+GENERATION_RECT = (407, 418, 10, 21)
+HIT_RECT = (419, 430, 10, 21)
+
+
+def matching(frame: Image.Image, color: tuple[int, int, int],
+             rect: tuple[int, int, int, int]) -> int:
+    x1, x2, y1, y2 = rect
+    return sum(
+        near(frame.getpixel((x, y)), color)
+        for y in range(y1, y2) for x in range(x1, x2)
+    )
 
 
 def verify_cache_screenshots(paths: tuple[Path, ...]) -> dict:
@@ -47,8 +58,10 @@ def verify_cache_screenshots(paths: tuple[Path, ...]) -> dict:
     hits = []
     for index, path in enumerate(paths):
         image = read_frame(path)
-        counts = [matching(image, rgb) for rgb in ALL_GENERATIONS]
-        counts.extend((matching(image, HIT), matching(image, NO_HIT)))
+        counts = [matching(image, rgb, GENERATION_RECT)
+                  for rgb in ALL_GENERATIONS]
+        counts.extend((matching(image, HIT, HIT_RECT),
+                       matching(image, NO_HIT, HIT_RECT)))
         expected = ALL_GENERATIONS.index(EXPECTED_GENERATIONS[index])
         expected_hit = 4 if EXPECTED_HITS[index] == HIT else 5
         for i, amount in enumerate(counts):
