@@ -24,8 +24,8 @@ def make_frame(path: Path, generation: tuple[int,int,int], hit: tuple[int,int,in
         draw=ImageDraw.Draw(image)
         draw.rectangle((580,210,609,239), fill=HERO)
         draw.rectangle((780,310,809,339), fill=ENEMY)
-        draw.rectangle((400,12,407,19), fill=generation)
-        draw.rectangle((412,12,419,19), fill=hit)
+        draw.rectangle((409,12,415,18), fill=generation)
+        draw.rectangle((420,12,427,18), fill=hit)
     image.save(path)
 
 
@@ -89,6 +89,26 @@ class CacheGuestProofTests(unittest.TestCase):
 
     def test_wrong_frame_size_rejected(self):
         make_frame(self.frames[1], FIRST, HIT, wrong_size=True)
+        with self.assertRaises(ValueError):
+            verify_cache_screenshots(self.frames)
+
+    def test_unrelated_gui_pixels_do_not_spoof_cache_state(self):
+        # NeXium HUD/background may use close colors outside the tiles.
+        with Image.open(self.frames[1]) as original:
+            altered=original.convert("RGB")
+        paint=ImageDraw.Draw(altered)
+        paint.rectangle((600,30,650,45), fill=IDLE)
+        altered.save(self.frames[1])
+        report=verify_cache_screenshots(self.frames)
+        self.assertTrue(report["single_generation_survives_hover_and_overlay_toggle"])
+
+    def test_marker_outside_expected_neighborhood_is_rejected(self):
+        with Image.open(self.frames[2]) as original:
+            altered=original.convert("RGB")
+        paint=ImageDraw.Draw(altered)
+        paint.rectangle((409,12,415,18), fill=BACKGROUND)
+        paint.rectangle((500,12,506,18), fill=FIRST)
+        altered.save(self.frames[2])
         with self.assertRaises(ValueError):
             verify_cache_screenshots(self.frames)
 
