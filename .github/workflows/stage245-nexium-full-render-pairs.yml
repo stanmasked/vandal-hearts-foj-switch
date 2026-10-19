@@ -133,7 +133,7 @@ jobs:
           test -s "$FOJ_NRO"
           timeout --kill-after=5s 260s xvfb-run -a \
             -s "-screen 0 1280x720x24" \
-            bash tools/foj_stage244_nexium_drive.sh
+            bash tools/foj_stage245_nexium_drive.sh
       - name: Verify 9 gameplay states and nine full CPU-render pairs
         shell: bash
         run: |
