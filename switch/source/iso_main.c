@@ -14,6 +14,20 @@
 #include "coll_battle_overlay.h"
 #include "local_coll_window.h"
 
+#ifndef FOJ_STAGE244_PAIRED_PROBE
+#define FOJ_STAGE244_PAIRED_PROBE 0
+#endif
+#if FOJ_STAGE244_PAIRED_PROBE != 0 && FOJ_STAGE244_PAIRED_PROBE != 1
+#error "Stage244 must use 0 or 1 for its research-only diagnostic"
+#endif
+#if FOJ_STAGE244_PAIRED_PROBE
+#include "threat_pair_probe.h"
+static uint64_t foj_stage244_guest_now_ns(void *unused) {
+    (void)unused;
+    return armTicksToNs(armGetSystemTick());
+}
+#endif
+
 /* Stage243: experimental compare-only switch. Production/default NRO keeps
  * the Stage237 cache. No battle logic, replay or predicted result differs. */
 #ifndef FOJ_STAGE243_DISABLE_CACHE
@@ -44,6 +58,19 @@ enum { FOJ_PAIR_MODE_X = 508, FOJ_PAIR_MODE_Y = 12,
 _Static_assert(FOJ_PAIR_MODE_X >= FOJ_RENDER_COST_X +
                FOJ_RENDER_COST_BITS * FOJ_RENDER_COST_STEP,
                "Stage243 experimental build identity overlaps render timer");
+
+#if FOJ_STAGE244_PAIRED_PROBE
+_Static_assert(FOJ_PAIR_PROBE_CACHED_X > FOJ_PAIR_MODE_X + FOJ_PAIR_MODE_SIZE,
+               "Stage244 paired timing bars overlap Stage243 mode tile");
+_Static_assert(FOJ_PAIR_PROBE_UNCACHED_X >= FOJ_PAIR_PROBE_CACHED_X+
+               FOJ_PAIR_PROBE_BITS*FOJ_PAIR_PROBE_STEP,
+               "Stage244 cached and uncached bars overlap");
+_Static_assert(FOJ_PAIR_PROBE_STATUS_X >= FOJ_PAIR_PROBE_UNCACHED_X+
+               FOJ_PAIR_PROBE_BITS*FOJ_PAIR_PROBE_STEP,
+               "Stage244 pairing status overlaps uncached nanosecond bits");
+_Static_assert(FOJ_PAIR_PROBE_STATUS_X+8 <= FB_WIDTH,
+               "Stage244 diagnostic leaves the framebuffer");
+#endif
 
 static FojCollBattleWindow raw_window;
 
@@ -80,6 +107,10 @@ int main(int argc, char **argv) {
     foj_battle_threat_cache_init(&threat_cache);
     FojRenderCostMeter render_cost;
     foj_render_cost_meter_init(&render_cost);
+#if FOJ_STAGE244_PAIRED_PROBE
+    FojThreatPairProbe within_guest_probe;
+    foj_threat_pair_probe_init(&within_guest_probe);
+#endif
     FojBattleReplay replay;
     foj_replay_init(&replay);
     bool replay_ok = true;
@@ -197,6 +228,18 @@ int main(int argc, char **argv) {
              * and outside all previous diagnostic color neighborhoods. */
             (void)foj_render_cost_meter_draw(&render_cost,
                 (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
+#if FOJ_STAGE244_PAIRED_PROBE
+            /* Research-only, no gameplay mutation: compare a warm-cache
+             * forecast call with its uncached counterpart inside the same
+             * AArch64 process, in alternating AB/BA order. The independent
+             * probe cache is never the cache used by the real renderer. */
+            (void)foj_threat_pair_probe_step(
+                &within_guest_probe,show_threat_preview ? &battle : NULL,
+                foj_stage244_guest_now_ns,NULL);
+            (void)foj_threat_pair_probe_draw(
+                &within_guest_probe, (uint32_t *)pixels,
+                FB_WIDTH, FB_HEIGHT,pixel_stride);
+#endif
             /* Draw *after* timing so mode identification cannot affect
              * the measured region. Distinct from all earlier HUD colors.
              * RGB: cached=(17,207,241), uncached=(238,94,21). */
