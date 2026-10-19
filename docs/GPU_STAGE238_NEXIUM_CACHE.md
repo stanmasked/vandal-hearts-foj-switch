@@ -36,9 +36,22 @@ NeXium and captures nine actual guest screenshots:
 8. D-pad hovered again: remains second generation, hits present.
 9. Y ends turn: no active movement prediction.
 
+Actual NeXium screenshot evidence from run `39179738519` confirms that
+the raw x=400/x=412 framebuffer markers land at x=409..415/x=420..427,
+y=12..18 in the 1280×720 GUI screenshot. The original Stage238 screenshot
+validator incorrectly classified its **whole-image** color histogram:
+22 unrelated gray GUI pixels were mistaken for an active invalid-cache
+marker during the selected frame. The updated validator samples only
+nonoverlapping marker neighborhoods (x=407..417 and x=419..429,
+y=10..20), retaining the original fail-closed bounds on marker counts.
+Two further synthetic tests assert that unrelated GUI colors do not cause
+false rejection and that misplaced markers cannot impersonate valid evidence.
+The nine previously captured real guest frames satisfy these region-local
+checks; fresh latest-head CI is still required before merging.
+
 The verifier requires the existing Stage231 battlefield/hero/enemy palette
 as a prerequisite and then checks both unique counter colors in each frame.
-Eleven generated screenshot controls include missing hits, stale generations,
+Thirteen generated screenshot controls include missing hits, stale generations,
 extra recomputations, blank frames and wrong sizes. Guest screenshots and an
 asset-free JSON receipt are uploaded as CI artifacts.
 
