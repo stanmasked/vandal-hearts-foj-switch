@@ -1,0 +1,74 @@
+name: Stage259 retained private actor GPU upload
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage259-private-gpu-upload.yml'
+      - 'gpu/private_draw.mk'
+      - 'gpu/private_bundle_intake.*'
+      - 'gpu/deko3d_clear_main.c'
+      - 'tests/test_gpu_private_bundle_intake.c'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stage259-private-gpu-upload.yml'
+      - 'gpu/private_draw.mk'
+      - 'gpu/private_bundle_intake.*'
+      - 'gpu/deko3d_clear_main.c'
+      - 'tests/test_gpu_private_bundle_intake.c'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    name: Verify private actor GPU buffer ownership and two DDS uploads
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Strict C11 release and sanitizer tests with fabricated local assets
+        shell: bash
+        env:
+          CC: ${{ matrix.compiler }}
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          src="tests/test_gpu_private_bundle_intake.c gpu/private_bundle_intake.c gpu/private_actor_bridge.c gpu/actor_upload_plan.c gpu/atlas_dds.c core/rigmesh_io.c core/material_table.c core/gpu_vertex_stream.c core/gpu_draw_plan.c"
+          for mode in strict ndebug sanitized; do
+            flags="-std=c11 -O1 -g -Wall -Wextra -Werror -pedantic -Icore -Igpu"
+            case "$mode" in
+              strict) ;;
+              ndebug) flags="$flags -DNDEBUG" ;;
+              sanitized) flags="$flags -fsanitize=address,undefined -fno-omit-frame-pointer" ;;
+            esac
+            "$CC" $flags $src -lm -o "build/stage259-$CC-$mode"
+            ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
+            UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+              "./build/stage259-$CC-$mode"
+          done
+  native:
+    name: Build isolated private-actor deko3d NRO via devkitA64
+    needs: host
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile NRO that uses private vertices and private DDS
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f gpu/private_draw.mk verify
+          python3 tools/validate_nro.py build/foj-deko3d-private-actor-upload.nro
+      - uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage259-private-actor-gpu-upload-nro
+          path: build/foj-deko3d-private-actor-upload.nro
+          if-no-files-found: error
