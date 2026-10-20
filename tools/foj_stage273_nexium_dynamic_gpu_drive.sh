@@ -9,6 +9,13 @@ set -euo pipefail
 : "${NEXIUM_DATA_ROOT:?}"
 : "${FOJ_EVIDENCE_DIR:?}"
 test -s "$FOJ_NRO"
+case "$FOJ_DYNAMIC_CASE" in original|reversed) ;; *) exit 2;; esac
+sort_root="$NEXIUM_DATA_ROOT/sdmc/switch/foj/gpu"
+sort_marker="$sort_root/foj-native-sort-pass.txt"
+test ! -e "$sort_marker" && test ! -L "$sort_marker" || {
+  echo "Stage273 refuses a pre-existing native GPU sort receipt" >&2
+  exit 2
+}
 for entry in actor.fojrm actor.fojmat material0.dds material1.dds material2.dds \
   foj_actor.vert.dksh foj_triangle.frag.dksh; do
   test -s "$NEXIUM_DATA_ROOT/sdmc/switch/foj/gpu/$entry"
@@ -101,4 +108,23 @@ if [ "$phase_changed" != 1 ]; then
 fi
 test -s "$FOJ_EVIDENCE_DIR/gpu-initial.png"
 test -s "$FOJ_EVIDENCE_DIR/gpu-later.png"
-echo "Two actual NeXium dynamically ordered alpha-blend captures with independently changed clear colors"
+# Verify the *guest-NRO-created* draw-pass sequence, not a generator
+# assertion or a host-synthesized receipt. It is created exclusively by
+# the NRO after native C11 sorting, before GPU command submission.
+test -f "$sort_marker" && test ! -L "$sort_marker" || {
+  echo "Stage273 guest did not write native sort receipt" >&2
+  exit 1
+}
+python3 - "$sort_marker" "$FOJ_DYNAMIC_CASE" <<'PY'
+from pathlib import Path
+import sys
+marker,scene=Path(sys.argv[1]),sys.argv[2]
+expected = {
+    "original": b"FOJ_NATIVE_SORT_V1 2,1,0\n",
+    "reversed": b"FOJ_NATIVE_SORT_V1 2,0,1\n",
+}[scene]
+if marker.read_bytes()!=expected:
+    raise SystemExit("Native GPU draw pass receipt disagrees with scene")
+PY
+cp -- "$sort_marker" "$FOJ_EVIDENCE_DIR/native-sort-pass.txt"
+echo "Two real NeXium RGB frames AND guest-authored native sort sequence verified"
