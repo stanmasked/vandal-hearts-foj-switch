@@ -119,7 +119,10 @@ jobs:
           set -euo pipefail
           python3 -m unittest discover -s tests/emulator \
             -p 'test_stage271_negative_fixture.py' -v
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage271_guest_receipts.py' -v
           bash -n tools/foj_stage271_nexium_reject_drive.sh
+          bash -n tools/foj_stage267_nexium_three_layer_drive.sh
       - name: Run three actual NeXium guests with unsafe synthesized triangles
         shell: bash
         run: |
