@@ -135,6 +135,24 @@ Mock evidence tests only check the classifier and rejection of missing,
 tampered and forged refusal markers. They do not establish that the
 actual NRO was executed in NeXium.
 
+## Independent evidence contradiction audit
+
+In addition to the NeXium guest launch scripts, the final
+`foj_stage274_pass_contract_check.py` **independently rejects**
+contradictory artifact contents. Each positive scene must contain its
+real framebuffer RGB frames and expected native alpha-pass receipt,
+but **must not** contain a native rear-alpha rejection receipt. The
+single-byte rear-alpha negative scene must contain its exclusive
+pre-GPU rejection receipt, but **must not** carry a native successful
+sort receipt, successful GPU pass-state receipt, screenshots or a
+`foj-boot-*.txt` journal. File and symlink cases both fail closed.
+
+Four synthetic-only classifier regressions verify the independent
+rejection rules for contradictory positive refusal, unexpected native
+negative sort success, unexpected negative screenshot and unexpected
+negative boot journal. Those host tests demonstrate fail-closed audit
+logic only; they never claim that NeXium executed the synthesized data.
+
 ## Test plan
 
 - GCC and Clang, ordinary C11 and NDEBUG: host contract unit cases for
