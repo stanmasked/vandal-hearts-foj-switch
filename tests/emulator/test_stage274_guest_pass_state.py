@@ -42,6 +42,28 @@ def generate_mock_evidence(root:Path):
             image.save(dest/name)
 
 
+    negative=root/"rear-alpha-negative"
+    negative.mkdir()
+    (negative/"generated-input.json").write_text(json.dumps({
+        "schema":"foj.stage274.native_rear_alpha_negative.v1",
+        "scenario":"one-rear-alpha-254",
+        "generated_only":True,
+        "original_ps3_resources":False,
+        "guest_verified":False,
+        "changed_file":"material2.dds",
+        "changed_bytes":1,
+        "original_alpha":255,
+        "mutated_alpha":254,
+        "expected_native_rejection_marker":
+            "FOJ_NATIVE_REAR_ALPHA_REJECT_V1 pre_gpu=1",
+    }),encoding="utf-8")
+    (negative/"native-rear-alpha-reject.txt").write_bytes(
+        b"FOJ_NATIVE_REAR_ALPHA_REJECT_V1 pre_gpu=1\n")
+    (negative/"guest.log").write_text(
+        "synthetic classifier fixture, NOT real guest execution\n",
+        encoding="utf-8")
+
+
 class Stage274PassEvidenceTests(unittest.TestCase):
     def test_generated_receipt_has_native_state_for_both_orders(self):
         self.assertEqual(expected_receipt("original"),
@@ -57,6 +79,8 @@ class Stage274PassEvidenceTests(unittest.TestCase):
             generate_mock_evidence(folder)
             result=verify(folder)
             self.assertEqual(result["guest_native_pass_state_receipts"],2)
+            self.assertEqual(result["native_rear_alpha_rejection_receipts"],1)
+            self.assertTrue(result["negative_generated_rear_dds_refused_before_gpu"])
             self.assertEqual(result["stage273_independent_frame_audit"][
                 "verified_guest_frames"],4)
             self.assertEqual(result["actual_guest_provenance"],
@@ -86,6 +110,34 @@ class Stage274PassEvidenceTests(unittest.TestCase):
             generate_mock_evidence(folder)
             (folder/"reversed"/"native-alpha-pass.txt").unlink()
             with self.assertRaisesRegex(ValueError,"native GPU blend/depth"):
+                verify(folder)
+
+    def test_missing_negative_guest_receipt_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            generate_mock_evidence(folder)
+            (folder/"rear-alpha-negative"/"native-rear-alpha-reject.txt").unlink()
+            with self.assertRaisesRegex(ValueError,"negative guest evidence"):
+                verify(folder)
+
+    def test_wrong_native_rear_alpha_marker_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            generate_mock_evidence(folder)
+            (folder/"rear-alpha-negative"/"native-rear-alpha-reject.txt").write_bytes(
+                b"FOJ_NATIVE_REAR_ALPHA_REJECT_V1 pre_gpu=0\n")
+            with self.assertRaisesRegex(ValueError,"rear DDS refusal"):
+                verify(folder)
+
+    def test_wrong_negative_generated_dds_provenance_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            generate_mock_evidence(folder)
+            path=folder/"rear-alpha-negative"/"generated-input.json"
+            report=json.loads(path.read_text())
+            report["changed_bytes"]=2
+            path.write_text(json.dumps(report))
+            with self.assertRaisesRegex(ValueError,"rear DDS refusal"):
                 verify(folder)
 
     def test_correct_pass_marker_does_not_rescue_duplicate_frames(self):
