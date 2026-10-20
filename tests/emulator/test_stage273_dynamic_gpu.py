@@ -129,22 +129,61 @@ class DynamicSceneTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 inspect(path,"reversed")
 
+    @classmethod
+    def synthesized_receipts(cls,root:Path,duplicated:bool=False):
+        """Only classifier fixtures; not evidence that NeXium executed."""
+        for case in CASES:
+            folder=root/case
+            folder.mkdir()
+            (folder/"generated-input.json").write_text(json.dumps({
+                "schema":"foj.stage273.dynamic_gpu_sort.v1",
+                "scenario":case,
+                "generated_only":True,
+                "guest_proof_claimed":False,
+                "expected_native_pass_order":list(BACK_TO_FRONT[case]),
+                "expected_overlap_rgb":list(expected_rgb(case)),
+            }))
+            native = "FOJ_NATIVE_SORT_V1 " + ",".join(
+                map(str,BACK_TO_FRONT[case])) + "\\n"
+            (folder/"native-sort-pass.txt").write_bytes(native.encode("ascii"))
+            cls.make_png(folder/"gpu-initial.png",case,(55,31,67))
+            later=(55,31,67) if duplicated else (112,145,110)
+            cls.make_png(folder/"gpu-later.png",case,later)
+
+    def test_host_only_synthetic_accepted_receipts_do_not_claim_guest(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            self.synthesized_receipts(root)
+            result=verify(root)
+            self.assertEqual(result["verified_guest_frames"],4)
+            self.assertEqual(set(result["cases"]),set(CASES))
+            for case in CASES:
+                self.assertTrue(result["cases"][case][
+                    "native_guest_sort_receipt_checked"])
+            self.assertEqual(result["actual_guest_provenance"],
+                             "requires real NeXium GitHub Actions workflow")
+
+    def test_wrong_native_sort_marker_rejected_despite_valid_pixels(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            self.synthesized_receipts(root)
+            (root/"reversed"/"native-sort-pass.txt").write_bytes(
+                b"FOJ_NATIVE_SORT_V1 2,1,0\\n")
+            with self.assertRaisesRegex(ValueError,"native guest sort receipt"):
+                verify(root)
+
+    def test_missing_native_sort_marker_rejected_despite_valid_pixels(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            self.synthesized_receipts(root)
+            (root/"original"/"native-sort-pass.txt").unlink()
+            with self.assertRaisesRegex(ValueError,"native guest sort receipt"):
+                verify(root)
+
     def test_duplicate_captures_do_not_constitute_guest_proof(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)
-            for case in CASES:
-                folder=root/case
-                folder.mkdir()
-                (folder/"generated-input.json").write_text(json.dumps({
-                    "schema":"foj.stage273.dynamic_gpu_sort.v1",
-                    "scenario":case,
-                    "generated_only":True,
-                    "guest_proof_claimed":False,
-                    "expected_native_pass_order":list(BACK_TO_FRONT[case]),
-                    "expected_overlap_rgb":list(expected_rgb(case)),
-                }))
-                self.make_png(folder/"gpu-initial.png",case,(55,31,67))
-                self.make_png(folder/"gpu-later.png",case,(55,31,67))
+            self.synthesized_receipts(root,duplicated=True)
             with self.assertRaises(ValueError):
                 verify(root)
 
