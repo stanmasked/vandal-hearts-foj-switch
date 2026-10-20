@@ -23,6 +23,9 @@ void foj_compact_base_init(FojCompactBaseCache *p) {
                     FOJ_ISO_BASE_CACHE_HEIGHT*sizeof(uint32_t);
     p->width=p->height=0;p->valid=false;
     p->hits=p->misses=p->bypasses=p->allocations=p->releases=0;
+#if defined(FOJ_STAGE252_STRESS) && FOJ_STAGE252_STRESS
+    p->inject_fail_next_allocation=false;
+#endif
 }
 void foj_compact_base_release(FojCompactBaseCache *p) {
     if(!p)return;
@@ -63,6 +66,15 @@ int foj_compact_base_draw(FojCompactBaseCache *p,const FojDemo *scene,
      * and no hidden max-size reservation when rendering a smaller frame. */
     if(p->allocated_bytes!=used || !p->raster) {
         foj_compact_base_release(p);
+#if defined(FOJ_STAGE252_STRESS) && FOJ_STAGE252_STRESS
+        /* Deterministic fault occurs only at a genuine allocation site;
+         * the old block is already freed and cannot be reused stale. */
+        if(p->inject_fail_next_allocation) {
+            p->inject_fail_next_allocation=false;
+            p->valid=false;
+            return -1;
+        }
+#endif
         p->raster=(uint32_t *)malloc(used);
         if(!p->raster) {p->valid=false;return -1;}
         p->allocated_bytes=used;
