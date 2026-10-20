@@ -8,6 +8,7 @@ on:
       - 'gpu/native_alpha_reject.mk'
       - 'tools/foj_stage271_*'
       - 'tests/emulator/test_stage271_negative_fixture.py'
+      - 'tests/emulator/test_stage271_native_xy_parity.py'
   workflow_dispatch:
 
 permissions:
@@ -37,6 +38,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tests/emulator -p 'test_stage271_negative_fixture.py' -v
           python3 -m unittest discover -s tests/emulator -p 'test_stage271_guest_receipts.py' -v
+          python3 -m unittest discover -s tests/emulator -p 'test_stage271_native_xy_parity.py' -v
           python3 -m unittest discover -s tests/emulator -p 'test_stage269_guarded_scene.py' -v
           python3 -m unittest discover -s tests/emulator -p 'test_stage268_transparency_crossing.py' -v
 
