@@ -62,7 +62,7 @@ def verify(root:Path)->dict:
         negative_info.get("expected_native_rejection_marker")!=
             "FOJ_NATIVE_REAR_ALPHA_REJECT_V1 pre_gpu=1" or
         negative_marker.read_bytes()!=
-            b"FOJ_NATIVE_REAR_ALPHA_REJECT_V1 pre_gpu=1\\n"):
+            b"FOJ_NATIVE_REAR_ALPHA_REJECT_V1 pre_gpu=1\n"):
         raise ValueError("Incorrect Stage274 native rear DDS refusal evidence")
     return {
         "schema":SCHEMA,
