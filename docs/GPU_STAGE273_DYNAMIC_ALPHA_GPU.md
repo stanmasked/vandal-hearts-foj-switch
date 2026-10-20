@@ -85,7 +85,13 @@ straight-alpha RGB reference model, not from a claimed GPU snapshot.
 
 CI compiles the C11 topo-sort and **strict opaque-atlas guard** under
 GCC/Clang (with and without NDEBUG), checks randomized C/Python reference
-parity, builds the actual NRO with devkitA64/UAM, and starts
+parity, and also compiles the **real DDS decoder together with the native
+rear-opacity contract** on the exact generated 64×64 RGBA8 DDS file bytes.
+That new integration test accepts fully opaque rear texels, refuses a
+single altered alpha byte (254 or 0), and checks that a truncated DDS
+is rejected without modifying the output buffer. This is a host-only
+C/DDS processing check, not emulator proof. CI then builds the actual
+NRO with devkitA64/UAM, and starts
 **two independent real NeXium guests**, each with its own new
 synthetic SD root. For each guest it requires two distinct framebuffer
 captures with independently changed clear colors. The checker verifies
