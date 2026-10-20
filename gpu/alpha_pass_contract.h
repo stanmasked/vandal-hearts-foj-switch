@@ -37,4 +37,12 @@ FojGpuAlphaPassStatus foj_gpu_alpha_pass_contract(
     const uint32_t *draw_order,size_t order_count,
     FojGpuAlphaPass *out,size_t out_capacity);
 
+/* Strictly generated-only per-pass diagnostic. Exact success output:
+ * FOJ_NATIVE_ALPHA_PASS_V1 2:0:1:1 1:1:1:0 0:1:1:0\n
+ * or a safe reversal of the last two materials. Transactional on errors.
+ * A receipt alone is NOT actual GPU rendering evidence. */
+int foj_gpu_alpha_pass_format_receipt(
+    const FojGpuAlphaPass *passes,size_t count,
+    char *out,size_t capacity);
+
 #endif
