@@ -34,6 +34,13 @@ jobs:
               "/tmp/foj-stage270-$compiler-$mode"
             done
           done
+      - name: Require Pillow for positive-control RGB classifier tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-pil
+          python3 -c 'from PIL import Image, ImageDraw; print("Pillow RGB tests enabled")'
       - name: Host-only synthetic negative cases and rejection tests
         run: |
           python3 -m unittest discover -s tests/emulator -p 'test_stage271_negative_fixture.py' -v
