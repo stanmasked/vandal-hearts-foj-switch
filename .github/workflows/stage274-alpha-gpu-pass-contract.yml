@@ -6,6 +6,8 @@ on:
       - '.github/workflows/stage274-alpha-gpu-pass-contract.yml'
       - 'gpu/alpha_pass_contract.*'
       - 'tests/test_gpu_alpha_pass_contract.c'
+      - 'tools/foj_stage274_*'
+      - 'tests/emulator/test_stage274_guest_pass_state.py'
       - 'gpu/deko3d_clear_main.c'
       - 'gpu/alpha_pass_contract.mk'
       - 'gpu/transparency_sort.*'
@@ -81,6 +83,8 @@ jobs:
           set -euo pipefail
           python3 -m unittest discover -s tests/emulator \
             -p 'test_stage273_native_atlas_chain.py' -v
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage274_guest_pass_state.py' -v
           python3 -m unittest discover -s tests/emulator \
             -p 'test_stage273_dynamic_gpu.py' -v
           python3 -m unittest discover -s tests/emulator \
@@ -169,6 +173,7 @@ jobs:
           python3 -m unittest discover -s tests/emulator \
             -p 'test_stage273_dynamic_gpu.py' -v
           bash -n tools/foj_stage273_nexium_dynamic_gpu_drive.sh
+          bash -n tools/foj_stage274_nexium_pass_drive.sh
       - name: Run two actual NeXium guests with distinct safe depth ordering
         shell: bash
         run: |
@@ -190,13 +195,13 @@ jobs:
             export FOJ_DYNAMIC_CASE="$scene"
             timeout --kill-after=5s 240s xvfb-run -a \
               -s "-screen 0 1280x720x24" \
-              bash tools/foj_stage273_nexium_dynamic_gpu_drive.sh
+              bash tools/foj_stage274_nexium_pass_drive.sh
           done
       - name: Require independently computed blend RGB against four real frames
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m tools.foj_stage273_dynamic_gpu_check \
+          python3 -m tools.foj_stage274_pass_contract_check \
             --evidence runtime-evidence \
             --report runtime-evidence/stage274-pass-contract-guest-receipt.json
       - name: Preserve synthetic-only guest captures and failure diagnostics
