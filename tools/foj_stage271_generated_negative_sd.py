@@ -46,13 +46,16 @@ def rejected_actor(kind: str) -> bytes:
 def install_rejected(root: Path,shaders: Path,kind: str)->dict:
     if kind not in CASES:
         raise ValueError("Unsupported generated negative case")
-    # install_three_layer validates that root does not exist and shaders
-    # are generated UAM modules. No user/private content is ever accepted.
+    # Prove that the negative fixture is genuinely unsafe *before*
+    # any root is created, so generation errors cannot leave partial SD.
+    actor=rejected_actor(kind)
+    # install_three_layer validates a non-existent output root and
+    # generated UAM shader modules. It never accepts user game assets.
     report=install_three_layer(root,shaders,"both-half")
     mesh=root/SUBDIR/"actor.fojrm"
     if mesh.is_symlink() or not mesh.is_file():
         raise ValueError("Generated mesh path is unsafe")
-    mesh.write_bytes(rejected_actor(kind))
+    mesh.write_bytes(actor)
     receipt=root/SUBDIR/"foj-native-unsafe-reject.txt"
     if receipt.exists() or receipt.is_symlink():
         raise ValueError("Rejection receipt pre-exists")
