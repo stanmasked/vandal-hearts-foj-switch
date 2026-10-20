@@ -25,6 +25,9 @@
 #include "research_texture.h"
 #if defined(FOJ_GPU_NATIVE_ALPHA_ORDER_GUARD)
 #include "three_layer_preflight.h"
+#if defined(FOJ_GPU_DYNAMIC_ALPHA_SORT)
+#include "transparency_sort.h"
+#endif
 #endif
 #include "atlas_dds.h"
 #include "dds_screen_status.h"
@@ -117,6 +120,15 @@ static void foj_present_shader_boot_failure(
 
 int main(int argc,char **argv) {
     (void)argc;(void)argv;
+#if defined(FOJ_GPU_DYNAMIC_ALPHA_SORT) && \
+    (!defined(FOJ_GPU_THREE_LAYER_BLEND) || \
+     !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) || \
+     !defined(FOJ_GPU_ALPHA_BLEND))
+#error "Stage273 dynamic sort requires 3-layer actor and alpha blending"
+#endif
+#if defined(FOJ_GPU_DYNAMIC_ALPHA_SORT) && defined(FOJ_GPU_NATIVE_ALPHA_ORDER_GUARD)
+#error "Dynamic sort is an alternative to Stage270 fixed-order guard"
+#endif
 #if defined(FOJ_GPU_NEGATIVE_GUEST_RECEIPT) && !defined(FOJ_GPU_NATIVE_ALPHA_ORDER_GUARD)
 #error "Stage271 receipt only applies to the opt-in native depth-order guard"
 #endif
@@ -184,6 +196,35 @@ int main(int argc,char **argv) {
                 foj_gpu_private_bundle_status_name(private_status));
         return 7;
     }
+#if defined(FOJ_GPU_DYNAMIC_ALPHA_SORT)
+    /* Stage273 research-only dynamic order, computed on the same actor
+     * vertex stream submitted to deko3d later. No GPU state exists yet.
+     * Require the sole opaque rear material to be the first pass.
+     * The other two may appear in either strict back-to-front order. */
+    uint32_t dynamic_three_passes[3]={UINT32_MAX,UINT32_MAX,UINT32_MAX};
+    if (private_payload.report.actor.stream.vertices_written!=9u ||
+        private_payload.report.actor.stream.batches_written!=3u ||
+        private_payload.batches[0].first_vertex!=0u ||
+        private_payload.batches[0].vertex_count!=3u ||
+        private_payload.batches[0].texture_index!=0u ||
+        private_payload.batches[1].first_vertex!=3u ||
+        private_payload.batches[1].vertex_count!=3u ||
+        private_payload.batches[1].texture_index!=1u ||
+        private_payload.batches[2].first_vertex!=6u ||
+        private_payload.batches[2].vertex_count!=3u ||
+        private_payload.batches[2].texture_index!=2u ||
+        foj_alpha_sort_back_to_front(
+            private_payload.vertices,3u,dynamic_three_passes,3u)
+              !=FOJ_ALPHA_SORT_OK ||
+        dynamic_three_passes[0]!=2u) {
+        fprintf(stderr,"FoJ dynamic alpha sort: unsafe or unsupported actor\n");
+        foj_gpu_private_bundle_free(&private_payload);
+        return 8;
+    }
+    fprintf(stderr,"FoJ dynamic alpha sort: pass=%u,%u,%u\n",
+            dynamic_three_passes[0],dynamic_three_passes[1],
+            dynamic_three_passes[2]);
+#endif
 #if defined(FOJ_GPU_NATIVE_ALPHA_ORDER_GUARD)
     /* Critical: screen-space geometry is checked on the very same
      * projected/private vertex stream used later for GPU upload.
@@ -828,7 +869,11 @@ int main(int argc,char **argv) {
                 draw_ranges[1].material_index!=1u ||
                 draw_ranges[2].material_index!=2u)
                 goto cleanup;
+#if defined(FOJ_GPU_DYNAMIC_ALPHA_SORT)
+            const uint32_t *const pass_order=dynamic_three_passes;
+#else
             const size_t pass_order[3]={2u,1u,0u};
+#endif
 #else
             if (batch_count!=2u ||
                 draw_ranges[0].material_index!=0u ||
