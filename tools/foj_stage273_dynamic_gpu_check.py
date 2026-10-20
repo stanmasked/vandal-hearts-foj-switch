@@ -62,6 +62,17 @@ def verify(root:Path)->dict:
             or r.get("expected_native_pass_order")!=list(BACK_TO_FRONT[case])
             or r.get("expected_overlap_rgb")!=list(expected_rgb(case))):
             raise ValueError(f"Untrusted generated scene receipt for {case}")
+        # The guest-native marker was absent before launch and authored
+        # exclusively by the opt-in NRO during actual pre-GPU sorting.
+        # A Python receipt alone cannot establish the selected NRO order.
+        native_receipt=folder/"native-sort-pass.txt"
+        expected_receipt=(
+            "FOJ_NATIVE_SORT_V1 " +
+            ",".join(map(str,BACK_TO_FRONT[case])) + "\n"
+        ).encode("ascii")
+        if (native_receipt.is_symlink() or not native_receipt.is_file() or
+                native_receipt.read_bytes()!=expected_receipt):
+            raise ValueError(f"Missing or incorrect native guest sort receipt: {case}")
         first=folder/"gpu-initial.png"
         later=folder/"gpu-later.png"
         a=inspect(first,case)
@@ -80,6 +91,7 @@ def verify(root:Path)->dict:
         seen[case]={
             "first":a,"later":b,
             "expected_draw_order":list(BACK_TO_FRONT[case]),
+            "native_guest_sort_receipt_checked":True,
             "background_phase_changed":True,
         }
     if len(set(signatures))!=len(CASES):
