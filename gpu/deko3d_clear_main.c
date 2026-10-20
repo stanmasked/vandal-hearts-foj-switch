@@ -213,6 +213,29 @@ int main(int argc,char **argv) {
         !foj_gpu_opaque_rear_atlas(
             private_payload.rgba[2],&private_payload.report.atlas[2])) {
         fprintf(stderr,"FoJ dynamic alpha sort: non-opaque rear atlas rejected\n");
+#if defined(FOJ_GPU_DYNAMIC_PASS_CONTRACT)
+        /* Stage274 generated-only negative guest: prove the decoded rear
+         * DDS was refused before GPU device creation. Never write source
+         * paths or source pixels to the marker. An existing marker cannot
+         * be overwritten, and a failed receipt is not proof of refusal. */
+        FILE *rear_rejection=fopen(
+            "sdmc:/switch/foj/gpu/foj-native-rear-alpha-reject.txt","wx");
+        if (!rear_rejection) {
+            foj_gpu_private_bundle_free(&private_payload);
+            return 9;
+        }
+        static const char rear_message[]=
+            "FOJ_NATIVE_REAR_ALPHA_REJECT_V1 pre_gpu=1\n";
+        const size_t rear_written=fwrite(
+            rear_message,1,sizeof(rear_message)-1u,rear_rejection);
+        const int rear_flushed=fflush(rear_rejection);
+        const int rear_closed=fclose(rear_rejection);
+        if (rear_written!=sizeof(rear_message)-1u ||
+            rear_flushed!=0 || rear_closed!=0) {
+            foj_gpu_private_bundle_free(&private_payload);
+            return 9;
+        }
+#endif
         foj_gpu_private_bundle_free(&private_payload);
         return 8;
     }
