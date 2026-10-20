@@ -79,6 +79,19 @@ enum { FOJ_STAGE247_STATUS_X=1252, FOJ_STAGE247_STATUS_Y=12 };
 #if FOJ_STAGE251_COMPACT && !FOJ_STAGE250_SCALE
 #error "Stage251 compact base cache requires Stage250 scaling guest"
 #endif
+#ifndef FOJ_STAGE252_STRESS
+#define FOJ_STAGE252_STRESS 0
+#endif
+#if FOJ_STAGE252_STRESS != 0 && FOJ_STAGE252_STRESS != 1
+#error "Stage252 stress mode requires flag 0 or 1"
+#endif
+#if FOJ_STAGE252_STRESS && !FOJ_STAGE251_COMPACT
+#error "Stage252 requires Stage251 compact research NRO"
+#endif
+#if FOJ_STAGE252_STRESS
+#include "compact_stress_probe.h"
+static FojCompactStressReceipt stage252_stress;
+#endif
 #if FOJ_STAGE250_SCALE
 #include "base_cache_scale_probe.h"
 static FojBaseScaleProbe stage250_probe;
@@ -220,6 +233,15 @@ _Static_assert(sizeof(FojBaseScaleProbe)+sizeof(FojBaseStabilityProbe)+
     "Stage250 opt-in static experimental buffers exceed 21 MiB");
 #endif
 
+#if FOJ_STAGE252_STRESS
+_Static_assert(FOJ_COMPACT_STRESS_Y>=FOJ_BASE_COMPACT_Y+8,
+               "Stage252 endurance receipt overlaps Stage251 memory");
+_Static_assert(FOJ_COMPACT_STRESS_STATUS_X>=
+    FOJ_COMPACT_STRESS_FIRST_X+4*72,
+    "Stage252 endurance bars overlap readiness status");
+_Static_assert(FOJ_COMPACT_STRESS_STATUS_X+8<=FB_WIDTH,
+               "Stage252 endurance status overflows framebuffer");
+#endif
 #if FOJ_STAGE251_COMPACT
 _Static_assert(FOJ_BASE_COMPACT_Y >= FOJ_BASE_SCALE_Y+8,
                "Stage251 memory telemetry overlaps Stage250 timing");
@@ -323,6 +345,12 @@ int main(int argc, char **argv) {
 #if FOJ_STAGE244_PAIRED_PROBE
     FojThreatPairProbe within_guest_probe;
     foj_threat_pair_probe_init(&within_guest_probe);
+#endif
+#if FOJ_STAGE252_STRESS
+    /* Run a private 96-state stress once, before the visible battle.
+     * Reuse existing scratch arrays. No input or frame changes. */
+    (void)foj_compact_stress_run(
+        &stage252_stress,stage248_cached_pixels,stage248_uncached_pixels);
 #endif
     FojBattleReplay replay;
     foj_replay_init(&replay);
@@ -537,6 +565,10 @@ int main(int argc, char **argv) {
                 (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
 #if FOJ_STAGE251_COMPACT
             (void)foj_base_scale_draw_memory(&stage250_probe,
+                (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
+#endif
+#if FOJ_STAGE252_STRESS
+            (void)foj_compact_stress_draw(&stage252_stress,
                 (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
 #endif
 #endif
