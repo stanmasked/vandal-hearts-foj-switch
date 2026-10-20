@@ -13,15 +13,25 @@ static const uint32_t bytes[FOJ_BASE_SCALE_MODES]={
 };
 void foj_base_scale_init(FojBaseScaleProbe *p) {
     if(!p)return;
+#if FOJ_STAGE251_COMPACT
+    foj_compact_base_init(&p->cache);
+#else
     foj_iso_base_cache_init(&p->cache);
+#endif
     for(int i=0;i<FOJ_BASE_SCALE_MODES;++i) {
         p->cold_us[i]=p->warm_us[i]=0;
         p->active_bytes[i]=bytes[i];
+#if FOJ_STAGE251_COMPACT
+        p->requested_kib[i]=0;
+#endif
     }
     p->scene_resets=0;
     p->key_valid=p->preview=p->ready=p->failed=false;
 }
 static bool fail(FojBaseScaleProbe *p) {
+#if FOJ_STAGE251_COMPACT
+    foj_compact_base_release(&p->cache);
+#endif
     p->failed=true;
     p->ready=false;
     return false;
@@ -45,7 +55,11 @@ bool foj_base_scale_step(FojBaseScaleProbe *p,const FojBattle *battle,
     ++p->scene_resets;
     p->ready=false;
     p->key_valid=false;
+#if FOJ_STAGE251_COMPACT
+    foj_compact_base_reset(&p->cache);
+#else
     foj_iso_base_cache_init(&p->cache);
+#endif
     FojDemo visual=battle->map;
     if(battle->enemy_hp==0) {
         visual.enemy_x=-1;
@@ -55,13 +69,32 @@ bool foj_base_scale_step(FojBaseScaleProbe *p,const FojBattle *battle,
         const int width=modes[i][0],height=modes[i][1];
         const size_t used=(size_t)width*(size_t)height*sizeof(uint32_t);
         const uint64_t before=clock_ns(ctx);
+#if FOJ_STAGE251_COMPACT
+        const int cold_hit=foj_compact_base_draw(
+            &p->cache,&visual,a,width,height,width);
+#else
         const bool cold_hit=foj_iso_base_cache_draw(
             &p->cache,&visual,a,width,height,width);
+#endif
         const uint64_t mid=clock_ns(ctx);
+#if FOJ_STAGE251_COMPACT
+        const int warm_hit=foj_compact_base_draw(
+            &p->cache,&visual,b,width,height,width);
+#else
         const bool warm_hit=foj_iso_base_cache_draw(
             &p->cache,&visual,b,width,height,width);
+#endif
         const uint64_t after=clock_ns(ctx);
-        if(cold_hit || !warm_hit || !sample(before,mid,&p->cold_us[i]) ||
+#if FOJ_STAGE251_COMPACT
+        if(cold_hit!=0 || warm_hit!=1 ||
+           p->cache.allocated_bytes!=used ||
+           used%1024u!=0 || used/1024u>=UINT16_MAX)
+            return fail(p);
+        p->requested_kib[i]=(uint16_t)(used/1024u);
+#else
+        if(cold_hit || !warm_hit) return fail(p);
+#endif
+        if(!sample(before,mid,&p->cold_us[i]) ||
            !sample(mid,after,&p->warm_us[i]) ||
            memcmp(a,b,used)!=0) return fail(p);
         /* Independent reference, deliberately outside timing window. */
@@ -71,6 +104,12 @@ bool foj_base_scale_step(FojBaseScaleProbe *p,const FojBattle *battle,
     if(p->cache.misses!=FOJ_BASE_SCALE_MODES ||
        p->cache.hits!=FOJ_BASE_SCALE_MODES ||
        p->cache.bypasses!=0)return fail(p);
+#if FOJ_STAGE251_COMPACT
+    if(p->cache.allocations!=FOJ_BASE_SCALE_MODES ||
+       p->cache.releases!=FOJ_BASE_SCALE_MODES-1 ||
+       p->cache.allocated_bytes!=(size_t)bytes[2])
+        return fail(p);
+#endif
     p->scene_key=*battle;
     p->preview=preview;
     p->key_valid=true;
@@ -114,3 +153,38 @@ bool foj_base_scale_draw(const FojBaseScaleProbe *p,uint32_t *pixels,
                    FOJ_BASE_SCALE_STATUS_X+xx]=tile;
     return true;
 }
+
+#if FOJ_STAGE251_COMPACT
+void foj_base_scale_release(FojBaseScaleProbe *p) {
+    if(!p)return;
+    foj_compact_base_release(&p->cache);
+    p->ready=false;p->key_valid=false;
+}
+/* Three optical 16-bit KiB values, with an independent status tile. */
+bool foj_base_scale_draw_memory(const FojBaseScaleProbe *p,
+                                uint32_t *pixels,int width,int height,int stride) {
+    if(!p || !pixels || width<FOJ_BASE_COMPACT_STATUS_X+8 ||
+       height<FOJ_BASE_COMPACT_Y+8 || stride<width || stride<=0 ||
+       height>INT_MAX/stride)return false;
+    const uint32_t on[FOJ_BASE_SCALE_MODES]={
+        UINT32_C(0xff59de8b),UINT32_C(0xffdd7848),UINT32_C(0xff76abec)
+    };
+    const uint32_t off=UINT32_C(0xff302530);
+    const uint32_t pending=UINT32_C(0xffb28c51);
+    for(int i=0;i<FOJ_BASE_SCALE_MODES;++i)
+        for(int bit=0;bit<16;++bit) {
+            const int x=FOJ_BASE_COMPACT_X+i*72+bit*4;
+            const uint32_t pixel=(!p->ready || p->failed) ? pending :
+                (p->requested_kib[i]&(UINT16_C(1)<<bit)) ? on[i]:off;
+            for(int y=0;y<8;++y)
+                for(int d=0;d<3;++d)
+                    pixels[(FOJ_BASE_COMPACT_Y+y)*stride+x+d]=pixel;
+        }
+    const uint32_t tile=p->failed ? UINT32_C(0xff2929f4) :
+        p->ready ? UINT32_C(0xff54e394):pending;
+    for(int y=0;y<8;++y)
+        for(int d=0;d<8;++d)
+            pixels[(FOJ_BASE_COMPACT_Y+y)*stride+FOJ_BASE_COMPACT_STATUS_X+d]=tile;
+    return true;
+}
+#endif
