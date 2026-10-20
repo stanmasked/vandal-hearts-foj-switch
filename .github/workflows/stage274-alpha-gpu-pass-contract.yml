@@ -55,7 +55,7 @@ jobs:
           set -euo pipefail
           for compiler in gcc clang; do
             for mode in debug release; do
-              opts="-std=c11 -O2 -Wall -Wextra -Werror -pedantic -Icore -Igpu"
+              opts="-std=c11 -O2 -Wall -Wextra -Werror -pedantic -fsanitize=undefined -fno-sanitize-recover=all -Icore -Igpu"
               if [[ "$mode" == release ]]; then opts="$opts -DNDEBUG"; fi
               "$compiler" $opts tests/test_gpu_alpha_pass_contract.c \
                 gpu/alpha_pass_contract.c \
