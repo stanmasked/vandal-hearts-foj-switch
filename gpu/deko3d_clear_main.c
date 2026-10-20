@@ -527,6 +527,25 @@ int main(int argc,char **argv) {
             draw_ranges,batch_count,dynamic_three_passes,3u,
             alpha_passes,FOJ_GPU_ALPHA_PASS_COUNT)!=FOJ_GPU_ALPHA_PASS_OK)
         goto cleanup;
+    /* Optional Stage274-only guest evidence. The native code first
+     * verifies all texture bindings, alpha flags and depth transitions,
+     * then writes a fresh exact descriptor record. This is not a GPU
+     * success claim: NeXium must also capture real RGB frames. */
+    char native_pass_text[128];
+    if (!foj_gpu_alpha_pass_format_receipt(
+            alpha_passes,FOJ_GPU_ALPHA_PASS_COUNT,
+            native_pass_text,sizeof(native_pass_text)))
+        goto cleanup;
+    FILE *native_pass_file=fopen(
+        "sdmc:/switch/foj/gpu/foj-native-alpha-pass.txt","wx");
+    if(!native_pass_file)goto cleanup;
+    const size_t pass_len=strlen(native_pass_text);
+    const size_t pass_saved=fwrite(native_pass_text,1,pass_len,
+                                   native_pass_file);
+    const int pass_flushed=fflush(native_pass_file);
+    const int pass_closed=fclose(native_pass_file);
+    if(pass_saved!=pass_len || pass_flushed!=0 || pass_closed!=0)
+        goto cleanup;
 #endif
     const size_t vertex_upload_bytes=vertex_count*sizeof(FojGpuVertex);
 #else
