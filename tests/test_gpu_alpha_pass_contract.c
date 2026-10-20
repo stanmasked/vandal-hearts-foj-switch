@@ -100,6 +100,38 @@ int main(void){
     CHECK(foj_gpu_alpha_pass_contract(ranges,3,forward,2,out,3)==FOJ_GPU_ALPHA_PASS_INVALID);
     CHECK(foj_gpu_alpha_pass_contract(ranges,3,forward,3,out,2)==FOJ_GPU_ALPHA_PASS_INVALID);
     CHECK(retained(out));
+    /* Exhaustively inspect all 3^3 native GPU pass index sequences.
+     * Only [2,1,0] and [2,0,1] may render. All other combinations
+     * must fail without modifying the caller's sentinel buffer. */
+    unsigned valid_orders=0;
+    for (uint32_t first=0;first<3u;++first)
+        for (uint32_t second=0;second<3u;++second)
+            for (uint32_t third=0;third<3u;++third) {
+                const uint32_t candidate[3]={first,second,third};
+                const int safe=first==2u &&
+                    ((second==0u && third==1u) ||
+                     (second==1u && third==0u));
+                memset(out,0xA5,sizeof(out));
+                const FojGpuAlphaPassStatus result=
+                    foj_gpu_alpha_pass_contract(
+                        ranges,3,candidate,3,out,3);
+                CHECK((result==FOJ_GPU_ALPHA_PASS_OK)==safe);
+                if (safe) {
+                    ++valid_orders;
+                    CHECK(out[0].material_index==2u);
+                    CHECK(out[1].material_index==second);
+                    CHECK(out[2].material_index==third);
+                    CHECK(out[0].blend_enabled==0u);
+                    CHECK(out[0].depth_write_enabled==1u);
+                    CHECK(out[1].blend_enabled==1u);
+                    CHECK(out[1].depth_write_enabled==0u);
+                    CHECK(out[2].blend_enabled==1u);
+                    CHECK(out[2].depth_write_enabled==0u);
+                } else {
+                    CHECK(retained(out));
+                }
+            }
+    CHECK(valid_orders==2u);
     printf("Stage274 native alpha state contract %u checks pass\n",checks);
     return 0;
 }
