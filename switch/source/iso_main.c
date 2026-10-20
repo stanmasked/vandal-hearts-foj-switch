@@ -70,6 +70,15 @@ enum { FOJ_STAGE247_STATUS_X=1252, FOJ_STAGE247_STATUS_Y=12 };
 #if FOJ_STAGE250_SCALE && !FOJ_STAGE249_STABILITY
 #error "Stage250 scale probe requires Stage249 stable measurement guest"
 #endif
+#ifndef FOJ_STAGE251_COMPACT
+#define FOJ_STAGE251_COMPACT 0
+#endif
+#if FOJ_STAGE251_COMPACT != 0 && FOJ_STAGE251_COMPACT != 1
+#error "Stage251 compact base-cache flag must be 0 or 1"
+#endif
+#if FOJ_STAGE251_COMPACT && !FOJ_STAGE250_SCALE
+#error "Stage251 compact base cache requires Stage250 scaling guest"
+#endif
 #if FOJ_STAGE250_SCALE
 #include "base_cache_scale_probe.h"
 static FojBaseScaleProbe stage250_probe;
@@ -209,6 +218,16 @@ _Static_assert(sizeof(FojBaseScaleProbe)+sizeof(FojBaseStabilityProbe)+
     sizeof(FojIsoBaseCache)+(size_t)2*FB_WIDTH*FB_HEIGHT*sizeof(uint32_t)
     < (size_t)21*1024*1024,
     "Stage250 opt-in static experimental buffers exceed 21 MiB");
+#endif
+
+#if FOJ_STAGE251_COMPACT
+_Static_assert(FOJ_BASE_COMPACT_Y >= FOJ_BASE_SCALE_Y+8,
+               "Stage251 memory telemetry overlaps Stage250 timing");
+_Static_assert(FOJ_BASE_COMPACT_STATUS_X >=
+    FOJ_BASE_COMPACT_X+FOJ_BASE_SCALE_MODES*72,
+    "Stage251 memory bars overlap the readiness tile");
+_Static_assert(sizeof(FojBaseScaleProbe)<4096,
+               "Stage251 compact probe unexpectedly reserves static pixels");
 #endif
 
 #if FOJ_STAGE245_RENDER_PAIR
@@ -516,6 +535,10 @@ int main(int argc, char **argv) {
 #if FOJ_STAGE250_SCALE
             (void)foj_base_scale_draw(&stage250_probe,
                 (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
+#if FOJ_STAGE251_COMPACT
+            (void)foj_base_scale_draw_memory(&stage250_probe,
+                (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
+#endif
 #endif
 #else
             (void)foj_base_pair_step(
@@ -542,6 +565,9 @@ int main(int argc, char **argv) {
         framebufferEnd(&framebuffer);
     }
 
+#if FOJ_STAGE251_COMPACT
+    foj_base_scale_release(&stage250_probe);
+#endif
     framebufferClose(&framebuffer);
     return 0;
 }
