@@ -62,9 +62,37 @@ than Stage254 and must not be represented as such.
   Stage254 flag configuration. Passing it does not constitute direct
   NeXium proof of the Stage255 policy.
 
-## Pending before completion
+## Separate opt-in Switch NRO and NeXium receipt
 
-The Stage255 policy has only an isolated native CI target. It has not
-been wired into an experimental NRO or proven in NeXium. Do not
-promote it to a default build or claim emulated/physical-console
-performance gains based on these host-only tests.
+A new isolated target `build/foj-isometric-compact-budget-fallback.nro`
+is compiled with both Stage254/Stage255 flags. Earlier targets and the
+normal NRO continue to omit Stage255.
+
+The Stage255 probe performs 384 synthetic CPU-raster frames, cycling
+320×180, 640×360 and 1280×720 for 48 eight-frame blocks, with a budget
+equal to each block's exact pixel payload. It renders every frame against
+an independent uncached raster reference. The additional optical
+receipt at guest y108 (six 16-bit fields beginning at x536, readiness at
+x968) is intended to encode **384 / 48 / 48 / 192 / 192 / 16**:
+frames, allocations, releases, hits, misses and 320×180 fallback blocks.
+
+This deliberately exhibits **48** allocations under tight budgets,
+rather than Stage254's **32** when 900-KiB capacity is affordable.
+The Stage254 receipt remains at y92 and continues to report
+384/48/32/32/16/675 in the same guest run.
+
+`tools/foj_stage255_budget_guest_check.py` verifies nine fresh NeXium
+battle-state screenshots, its six counters, the green readiness tile
+and the complete Stage254 + ancestor receipt chain. Mutation tests
+reject corrupted values and missing predecessor evidence.
+
+## Completion gates — not yet confirmed
+
+- [ ] Strict GCC/Clang/UBSan/ASan/LSan host tests
+- [ ] Independently compiled and validated research-only devkitA64 NRO
+- [ ] Nine genuine NeXium screenshots with Stage255 optical receipt
+- [ ] Stage254's inherited receipt on the same nine screenshots
+- [ ] All repository-wide PR workflows green on the same head commit
+
+No claims about process RSS, Switch GPU frame times, physical console
+performance or gameplay from the original PS3 game are made.
