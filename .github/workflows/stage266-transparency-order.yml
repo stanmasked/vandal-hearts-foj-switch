@@ -1,0 +1,37 @@
+name: Stage266 generated transparency draw-order oracle
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage266-transparency-order.yml'
+      - 'tools/foj_stage266_transparency_order.py'
+      - 'tests/emulator/test_stage266_transparency_order.py'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stage266-transparency-order.yml'
+      - 'tools/foj_stage266_transparency_order.py'
+      - 'tests/emulator/test_stage266_transparency_order.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  oracle:
+    name: Verify generated 3-layer draw ordering and RGB reference
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify pure-Python generated-only oracle
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage266_transparency_order.py' -v
+          python3 -m tools.foj_stage266_transparency_order
+          python3 -m compileall -q tools/foj_stage266_transparency_order.py \
+            tests/emulator/test_stage266_transparency_order.py
