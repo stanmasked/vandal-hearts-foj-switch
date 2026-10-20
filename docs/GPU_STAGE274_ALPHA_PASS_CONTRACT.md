@@ -36,6 +36,31 @@ invalid/deduplicated orders, wrong material mappings, mismatched vertex
 ranges, and an opaque rear scheduled after a translucent pass. The
 Stage273 decoded-DDS all-alpha-255 rear check remains required.
 
+## Exact six-module native C11 preflight integration
+
+`tests/emulator/test_stage274_actual_native_chain.py` now compiles
+**the actual production C files together** (not a Python reimplementation)
+under both GCC and Clang:
+
+1. `core/gpu_vertex_stream.c` projects the exact generated FOJRM
+   vertex positions and UVs using the same camera as the NRO.
+2. `core/gpu_draw_plan.c` validates material sections and draw ranges.
+3. `gpu/transparency_sort.c` computes the ordered triangle indices.
+4. `gpu/alpha_pass_contract.c` verifies matching texture/depth/blend
+   descriptors and independently formats the exact native receipt.
+5. `gpu/atlas_dds.c` decodes the generated opaque rear DDS image.
+6. `gpu/alpha_material_contract.c` checks every decoded alpha byte.
+
+This one host test checks the original and depth-swapped safe scenes,
+plus a Stage271 reversed fixed-order case (which **is safely sortable**
+dynamically), and requires crossing/coplanar negative cases to be
+rejected without mutating the order output. It then changes one valid
+rear DDS alpha byte to either 254 or zero and requires the native
+opaque-material guard to refuse both.
+
+This is a native code integration preflight, **not** a Nintendo Switch
+NRO build, emulator frame, or physical-console result.
+
 ## Native GPU integration
 
 With `FOJ_GPU_DYNAMIC_PASS_CONTRACT=1` *only* in Stage274's isolated
