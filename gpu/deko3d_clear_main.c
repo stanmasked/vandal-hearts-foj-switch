@@ -25,10 +25,10 @@
 #include "research_texture.h"
 #if defined(FOJ_GPU_NATIVE_ALPHA_ORDER_GUARD)
 #include "three_layer_preflight.h"
+#endif
 #if defined(FOJ_GPU_DYNAMIC_ALPHA_SORT)
 #include "transparency_sort.h"
 #include "alpha_material_contract.h"
-#endif
 #endif
 #include "atlas_dds.h"
 #include "dds_screen_status.h"
