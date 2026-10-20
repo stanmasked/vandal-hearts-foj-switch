@@ -145,7 +145,7 @@ class Stage274PassEvidenceTests(unittest.TestCase):
             folder=Path(tmp)
             generate_mock_evidence(folder)
             (folder/"original"/"native-rear-alpha-reject.txt").write_bytes(
-                b"FOJ_NATIVE_REAR_ALPHA_REJECT_V1 pre_gpu=1\\n")
+                b"FOJ_NATIVE_REAR_ALPHA_REJECT_V1 pre_gpu=1\n")
             with self.assertRaisesRegex(
                     ValueError,"Contradictory positive/rear-alpha"):
                 verify(folder)
@@ -155,7 +155,7 @@ class Stage274PassEvidenceTests(unittest.TestCase):
             folder=Path(tmp)
             generate_mock_evidence(folder)
             (folder/"rear-alpha-negative"/"native-sort-pass.txt").write_bytes(
-                b"FOJ_NATIVE_SORT_V1 2,1,0\\n")
+                b"FOJ_NATIVE_SORT_V1 2,1,0\n")
             with self.assertRaisesRegex(
                     ValueError,"Contradictory negative GPU guest evidence"):
                 verify(folder)
