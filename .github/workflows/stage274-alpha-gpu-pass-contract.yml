@@ -183,6 +183,7 @@ jobs:
             -p 'test_stage273_dynamic_gpu.py' -v
           bash -n tools/foj_stage273_nexium_dynamic_gpu_drive.sh
           bash -n tools/foj_stage274_nexium_pass_drive.sh
+          bash -n tools/foj_stage274_nexium_rear_alpha_reject.sh
       - name: Run two actual NeXium guests with distinct safe depth ordering
         shell: bash
         run: |
@@ -206,6 +207,25 @@ jobs:
               -s "-screen 0 1280x720x24" \
               bash tools/foj_stage274_nexium_pass_drive.sh
           done
+      - name: Prove native pre-GPU refusal of one invented translucent rear DDS pixel
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/stage274-generated-rear-alpha-negative"
+          mkdir -p runtime-evidence/rear-alpha-negative
+          python3 -m tools.foj_stage274_negative_rear_alpha_sd \
+            --data-root "$root" --shaders native/gpu/build \
+            > runtime-evidence/rear-alpha-negative/generated-input.json
+          export NEXIUM_DATA_ROOT="$root"
+          export FOJ_EVIDENCE_DIR="$GITHUB_WORKSPACE/runtime-evidence/rear-alpha-negative"
+          icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 \
+            -name 'lvp_icd*.json' -print -quit)"
+          test -n "$icd"
+          export VK_ICD_FILENAMES="$icd"
+          export FOJ_NRO="$GITHUB_WORKSPACE/native/build/foj-deko3d-alpha-pass-contract-proof.nro"
+          timeout --kill-after=5s 100s xvfb-run -a \
+            -s "-screen 0 1280x720x24" \
+            bash tools/foj_stage274_nexium_rear_alpha_reject.sh
       - name: Require independently computed blend RGB against four real frames
         shell: bash
         run: |
