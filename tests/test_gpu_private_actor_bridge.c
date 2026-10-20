@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "private_actor_bridge.h"
+#include "rigmesh_io.h"
 
 enum { MESH_BYTES=28+32+2*8+6*76, MATERIAL_BYTES=16+2*4 };
 static void write32(uint8_t *p,uint32_t n) {
@@ -135,6 +136,7 @@ int main(void) {
                      FOJ_GPU_STREAM_INVALID);
     make_material(t);
     write32(t+8,1);
+    write32(t+12,1);
     reject_unchanged(m,sizeof(m),t,20,&cam,4096,6,2,
                      FOJ_GPU_STREAM_BOUNDS);
     make_material(t);
