@@ -144,7 +144,7 @@ class DynamicSceneTests(unittest.TestCase):
                 "expected_overlap_rgb":list(expected_rgb(case)),
             }))
             native = "FOJ_NATIVE_SORT_V1 " + ",".join(
-                map(str,BACK_TO_FRONT[case])) + "\\n"
+                map(str,BACK_TO_FRONT[case])) + "\n"
             (folder/"native-sort-pass.txt").write_bytes(native.encode("ascii"))
             cls.make_png(folder/"gpu-initial.png",case,(55,31,67))
             later=(55,31,67) if duplicated else (112,145,110)
@@ -168,7 +168,7 @@ class DynamicSceneTests(unittest.TestCase):
             root=Path(temp)
             self.synthesized_receipts(root)
             (root/"reversed"/"native-sort-pass.txt").write_bytes(
-                b"FOJ_NATIVE_SORT_V1 2,1,0\\n")
+                b"FOJ_NATIVE_SORT_V1 2,1,0\n")
             with self.assertRaisesRegex(ValueError,"native guest sort receipt"):
                 verify(root)
 
