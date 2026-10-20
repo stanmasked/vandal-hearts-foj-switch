@@ -102,6 +102,33 @@ actual GPU screenshots via the Stage273 RGB oracle, then requires
 both Stage274 native receipts. Host-synthesized image/marker unit
 fixtures **are not evidence of real NeXium execution**.
 
+## Third NeXium guest: single rear DDS alpha-byte refusal
+
+The Stage274-only research NRO now exclusively writes
+`foj-native-rear-alpha-reject.txt` with the exact line
+`FOJ_NATIVE_REAR_ALPHA_REJECT_V1 pre_gpu=1` if decoded material 2
+contains *any* nonopaque texel. It returns before GPU initialization,
+and neither the ordinary native sort marker nor the Stage274 pass
+marker is written.
+
+`tools/foj_stage274_negative_rear_alpha_sd.py` creates a **fresh**
+generated-only SD root with exactly one byte changed from 255 to 254
+in the 64×64 rear DDS texture. The other actor, materials and shader
+assets remain unchanged. It never loads private resources.
+
+A **third independent real NeXium guest** now runs this invalid case.
+The dedicated shell driver requires all native markers to be absent
+before launch, observes the exact guest-created refusal marker,
+requires both positive-render markers and the GPU boot journal to
+remain absent, and saves a log and refusal receipt. The final
+independent evidence checker validates the negative generator receipt,
+exact refusal bytes and guest log in addition to all four RGB frames
+from the two valid guest scenes.
+
+Mock evidence tests only check the classifier and rejection of missing,
+tampered and forged refusal markers. They do not establish that the
+actual NRO was executed in NeXium.
+
 ## Test plan
 
 - GCC and Clang, ordinary C11 and NDEBUG: host contract unit cases for
