@@ -7,6 +7,7 @@ on:
       - 'gpu/three_layer_preflight.c'
       - 'gpu/three_layer_preflight.h'
       - 'tests/test_gpu_three_layer_preflight.c'
+      - 'tests/emulator/test_stage270_native_guard_parity.py'
       - 'tools/foj_stage269_guarded_scene.py'
       - 'tools/foj_stage267_*'
       - 'tools/foj_stage266_transparency_order.py'
@@ -60,6 +61,7 @@ jobs:
           done
       - name: Retain host-side rejection and synthetic fixture tests
         run: |
+          python3 -m unittest discover -s tests/emulator -p 'test_stage270_native_guard_parity.py' -v
           python3 -m unittest discover -s tests/emulator -p 'test_stage269_guarded_scene.py' -v
           python3 -m unittest discover -s tests/emulator -p 'test_stage268_transparency_crossing.py' -v
 
