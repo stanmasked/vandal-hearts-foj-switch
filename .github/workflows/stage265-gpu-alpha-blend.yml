@@ -10,7 +10,6 @@ on:
       - 'gpu/blend_draw.mk'
       - 'gpu/private_bundle_intake.*'
       - 'gpu/Makefile'
-      - 'gpu/deko3d_clear_main.c'
   push:
     branches: [main]
     paths:
@@ -20,7 +19,6 @@ on:
       - 'gpu/deko3d_clear_main.c'
       - 'gpu/blend_draw.mk'
       - 'gpu/Makefile'
-      - 'gpu/deko3d_clear_main.c'
   workflow_dispatch:
 
 permissions:
