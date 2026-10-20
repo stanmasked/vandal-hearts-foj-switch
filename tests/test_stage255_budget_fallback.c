@@ -57,7 +57,11 @@ static void test_budget_fallback_and_recovery(void) {
 
     /* The small frame still reuses its exact-sized allocation below floor. */
     c.budget_bytes=500u*1024u;
-    scene.cursor_x=1;
+    /* foj_demo_init() already sets cursor_x to 1. Move it for real:
+     * an unchanged scene must be a HIT, not a fabricated cold MISS. */
+    const int old_cursor_x=scene.cursor_x;
+    scene.cursor_x=(old_cursor_x+1)%FOJ_WIDTH;
+    assert(scene.cursor_x!=old_cursor_x);
     check_frame(&c,&scene,a,b,320,180,0,SMALL_KIB);
     check_frame(&c,&scene,a,b,320,180,1,SMALL_KIB);
     assert(c.allocations==2);
