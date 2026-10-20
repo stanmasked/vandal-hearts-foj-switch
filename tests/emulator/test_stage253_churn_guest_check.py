@@ -21,10 +21,10 @@ def paint253(path:Path,values=(384,48,48,192,192,3600),status=READY):
     for i,(value,on) in enumerate(zip(values,ON)):
         for bit in range(16):
             x=sample_x(ORIGIN+i*STEP+4*bit)
-            d.rectangle((x-1,76,x+1,82),
+            d.rectangle((x-1,75,x+1,80),
                         fill=on if value&(1<<bit) else OFF)
     x=sample_x(STATUS_X+4)
-    d.rectangle((x-4,76,x+4,82),fill=status)
+    d.rectangle((x-4,75,x+4,80),fill=status)
     im.save(path)
 
 class ChurnGuestTests(unittest.TestCase):
@@ -66,7 +66,7 @@ class ChurnGuestTests(unittest.TestCase):
     def test_invalid_color_rejected(self):
         with Image.open(self.paths[5]) as src:im=src.convert("RGB")
         x=sample_x(ORIGIN+2*STEP+4*8)
-        ImageDraw.Draw(im).rectangle((x-1,76,x+1,82),fill=(255,0,0))
+        ImageDraw.Draw(im).rectangle((x-1,75,x+1,80),fill=(255,0,0))
         im.save(self.paths[5])
         with self.assertRaises(ValueError):verify_churn_guest(self.paths)
     def test_stage252_ancestor_required(self):
