@@ -99,6 +99,23 @@ the predicted overlap RGB within 8 levels over 116/121 pixels in
 each probe and checks the rear-only material footprint. Four real
 frames are required, with different blended overlap signatures.
 
+### Pairwise-safe geometry can still have no global order
+
+Added a deterministic **three-triangle cycle** as a Stage273
+regression. Each of A/B, B/C and A/C has a positive-area projected
+overlap with strict, non-crossing depth precedence in its own region.
+Together the constraints form **B → A → C → B**, which is impossible
+to satisfy with one GPU draw sequence. The compiled C11 DAG planner
+must return `FOJ_ALPHA_SORT_UNSAFE` without modifying any of the
+caller-provided output indices. An independent Python Stage268
+topological test verifies the same three exact triangles and that
+every individual pair is safe but the full graph is cyclic.
+
+This demonstrates why checking only pairs is insufficient: a
+topological cycle remains a fail-closed case, not an invitation to
+guess a translucent submission order. Host checks cannot substitute
+for the separate actual NeXium screenshot assertions.
+
 ## Safety and non-goals
 
 - No original FoJ PS3 models, packages, textures, sound, private files,
