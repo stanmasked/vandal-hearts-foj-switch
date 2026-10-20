@@ -1,0 +1,259 @@
+name: Stage 254 NeXium 900-KiB bounded cache reuse comparison
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/stage254-nexium-bounded-reuse.yml'
+      - 'core/compact_reuse_probe.*'
+      - 'core/compact_churn_probe.*'
+      - 'core/compact_stress_probe.*'
+      - 'tests/test_stage254_*'
+      - 'tests/test_stage253_*'
+      - 'tests/test_stage252_*'
+      - 'tests/emulator/test_stage254_*'
+      - 'tests/emulator/test_stage253_*'
+      - 'tests/emulator/test_stage252_*'
+      - 'tools/foj_stage254_*'
+      - 'tools/foj_stage253_*'
+      - 'tools/foj_stage252_*'
+      - 'core/base_cache_compact.*'
+      - 'core/base_cache_scale_probe.*'
+      - 'tests/test_stage251_*'
+      - 'tests/emulator/test_stage251_*'
+      - 'tools/foj_stage251_*'
+      - 'core/base_cache_stability_probe.*'
+      - 'core/battle_scene_key.h'
+      - 'tests/test_stage248_*'
+      - 'tests/test_stage249_*'
+      - 'core/base_cache_pair_probe.*'
+      - 'core/isometric_demo.*'
+      - 'core/isometric_base_cache.h'
+      - 'switch/source/iso_main.c'
+      - 'switch/Makefile'
+      - 'tools/foj_stage250_*'
+      - 'tests/test_stage250_*'
+      - 'tests/emulator/test_stage250_*'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stage254-nexium-bounded-reuse.yml'
+      - 'core/compact_reuse_probe.*'
+      - 'core/compact_churn_probe.*'
+      - 'core/compact_stress_probe.*'
+      - 'tests/test_stage254_*'
+      - 'tests/test_stage253_*'
+      - 'tests/test_stage252_*'
+      - 'tests/emulator/test_stage254_*'
+      - 'tests/emulator/test_stage253_*'
+      - 'tests/emulator/test_stage252_*'
+      - 'tools/foj_stage254_*'
+      - 'tools/foj_stage253_*'
+      - 'tools/foj_stage252_*'
+      - 'core/base_cache_compact.*'
+      - 'core/base_cache_scale_probe.*'
+      - 'core/battle_scene_key.h'
+      - 'core/base_cache_pair_probe.*'
+      - 'switch/source/iso_main.c'
+      - 'switch/Makefile'
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    name: GCC Clang UBSan ASan bounded reuse against exact cache and prior regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stage251 allocation, reuse, release, stride, budget and pixel parity tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          common="-std=c11 -Wall -Wextra -Werror -pedantic -O2 -Icore -DFOJ_STAGE251_COMPACT=1"
+          inputs="tests/test_stage251_compact_cache.c core/base_cache_compact.c core/base_cache_scale_probe.c core/base_cache_stability_probe.c core/base_cache_pair_probe.c core/isometric_demo.c core/tactical_battle.c core/tactical_demo.c"
+          gcc $common $inputs -o build/stage251-gcc -lm
+          clang $common $inputs -o build/stage251-clang -lm
+          gcc $common -fsanitize=undefined -fno-sanitize-recover=all $inputs -o build/stage251-ubsan -lm
+          ./build/stage251-gcc
+          ./build/stage251-clang
+          UBSAN_OPTIONS=halt_on_error=1 ./build/stage251-ubsan
+      - name: Stage252 96-cycle stress GCC Clang UBSan ASan and deterministic OOM
+        shell: bash
+        run: |
+          set -euo pipefail
+          common="-std=c11 -Wall -Wextra -Werror -pedantic -O2 -Icore -DFOJ_STAGE252_STRESS=1"
+          inputs="tests/test_stage252_compact_stress.c core/compact_stress_probe.c core/base_cache_compact.c core/isometric_demo.c core/tactical_battle.c core/tactical_demo.c"
+          gcc $common $inputs -o build/stage252-gcc -lm
+          clang $common $inputs -o build/stage252-clang -lm
+          gcc $common -fsanitize=undefined -fno-sanitize-recover=all $inputs -o build/stage252-ubsan -lm
+          clang $common -fsanitize=address,undefined -fno-omit-frame-pointer $inputs -o build/stage252-asan -lm
+          ./build/stage252-gcc
+          ./build/stage252-clang
+          UBSAN_OPTIONS=halt_on_error=1 ./build/stage252-ubsan
+          ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./build/stage252-asan
+      - name: Stage253 384-frame hit-miss and memory-churn regression with sanitizers
+        shell: bash
+        run: |
+          set -euo pipefail
+          common="-std=c11 -Wall -Wextra -Werror -pedantic -O2 -Icore -DFOJ_STAGE252_STRESS=1 -DFOJ_STAGE253_CHURN=1"
+          inputs="tests/test_stage253_compact_churn.c core/compact_churn_probe.c core/base_cache_compact.c core/isometric_demo.c core/tactical_battle.c core/tactical_demo.c"
+          gcc $common $inputs -o build/stage253-gcc -lm
+          clang $common $inputs -o build/stage253-clang -lm
+          gcc $common -fsanitize=undefined -fno-sanitize-recover=all $inputs -o build/stage253-ubsan -lm
+          clang $common -fsanitize=address,undefined -fno-omit-frame-pointer $inputs -o build/stage253-asan -lm
+          ./build/stage253-gcc
+          ./build/stage253-clang
+          UBSAN_OPTIONS=halt_on_error=1 ./build/stage253-ubsan
+          ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./build/stage253-asan
+      - name: Stage254 bounded reuse GCC Clang UBSan ASan and fault recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          common="-std=c11 -Wall -Wextra -Werror -pedantic -O2 -Icore -DFOJ_STAGE252_STRESS=1 -DFOJ_STAGE253_CHURN=1 -DFOJ_STAGE254_REUSE=1"
+          inputs="tests/test_stage254_bounded_reuse.c core/compact_reuse_probe.c core/compact_churn_probe.c core/base_cache_compact.c core/isometric_demo.c core/tactical_battle.c core/tactical_demo.c"
+          gcc $common $inputs -o build/stage254-gcc -lm
+          clang $common $inputs -o build/stage254-clang -lm
+          gcc $common -fsanitize=undefined -fno-sanitize-recover=all $inputs -o build/stage254-ubsan -lm
+          clang $common -fsanitize=address,undefined -fno-omit-frame-pointer $inputs -o build/stage254-asan -lm
+          ./build/stage254-gcc
+          ./build/stage254-clang
+          UBSAN_OPTIONS=halt_on_error=1 ./build/stage254-ubsan
+          ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./build/stage254-asan
+      - name: Stage248/249 and Stage250 fixed-storage regression on GCC Clang UBSan
+        shell: bash
+        run: |
+          set -euo pipefail
+          common="-std=c11 -Wall -Wextra -Werror -pedantic -O2 -Icore"
+          shared="core/base_cache_pair_probe.c core/isometric_demo.c core/tactical_battle.c core/tactical_demo.c"
+          for stage in 248 249; do
+            if [ "$stage" -eq 248 ]; then
+              inputs="tests/test_stage248_base_cache_pair_probe.c $shared"
+            else
+              inputs="tests/test_stage249_base_cache_stability.c core/base_cache_stability_probe.c $shared"
+            fi
+            gcc $common $inputs -o "build/stage${stage}-g" -lm
+            clang $common $inputs -o "build/stage${stage}-c" -lm
+            gcc $common -fsanitize=undefined -fno-sanitize-recover=all \
+              $inputs -o "build/stage${stage}-u" -lm
+            "./build/stage${stage}-g"
+            "./build/stage${stage}-c"
+            UBSAN_OPTIONS=halt_on_error=1 "./build/stage${stage}-u"
+          done
+          # Stage250 must still work with fixed cache (flag disabled).
+          inputs="tests/test_stage250_base_cache_scale.c core/base_cache_scale_probe.c core/base_cache_stability_probe.c core/base_cache_pair_probe.c core/isometric_demo.c core/tactical_battle.c core/tactical_demo.c"
+          gcc $common $inputs -o build/stage250-gcc -lm
+          clang $common $inputs -o build/stage250-clang -lm
+          gcc $common -fsanitize=undefined -fno-sanitize-recover=all \
+            $inputs -o build/stage250-ubsan -lm
+          ./build/stage250-gcc
+          ./build/stage250-clang
+          UBSAN_OPTIONS=halt_on_error=1 ./build/stage250-ubsan
+
+  build:
+    name: devkitA64 research-only Stage254 900-KiB bounded reuse NRO
+    needs: native
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and verify Switch NRO
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f switch/Makefile build/foj-isometric-compact-bounded-reuse.nro
+          python3 tools/validate_nro.py build/foj-isometric-compact-bounded-reuse.nro
+      - uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage254-bounded-reuse-nro
+          path: build/foj-isometric-compact-bounded-reuse.nro
+          if-no-files-found: error
+
+  nexium:
+    name: "Nine real NeXium states: Stage254 bounded reuse and inherited Stage253 parity"
+    needs: build
+    runs-on: ubuntu-26.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: foj-stage254-bounded-reuse-nro
+          path: nros
+      - name: Install NeXium Vulkan and screenshot requirements
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl jq xvfb xauth xdotool imagemagick python3-pil \
+            libgtk-3-0t64 libasound2t64 libudev1 libxkbcommon0 libxkbcommon-x11-0 \
+            libx11-xcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 \
+            libxcb-randr0 libxcb-render0 libxcb-shape0 libxcb-xkb1 \
+            libvulkan1 mesa-vulkan-drivers
+      - name: Resolve pinned-by-hash nightly NeXium archive
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/nexium guest-evidence
+          json="$(curl -fsSL --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/nexium-emu/nexium-nightly/releases/tags/nightly)"
+          url="$(printf '%s' "$json" | jq -r \
+            '.assets[] | select(.name == "nexium-linux-x86_64.tar.gz") | .browser_download_url')"
+          test -n "$url"
+          curl -fL --retry 3 --retry-all-errors "$url" -o /tmp/nexium-linux.tar.gz
+          sha256sum /tmp/nexium-linux.tar.gz > guest-evidence/nexium-archive.sha256
+          tar -xzf /tmp/nexium-linux.tar.gz -C /tmp/nexium
+          binary="$(find /tmp/nexium -type f -executable \
+            \( -name 'nexium-gui' -o -name 'nexium' \) -print -quit)"
+          test -n "$binary"
+          echo "NEXIUM_BIN=$binary" >> "$GITHUB_ENV"
+      - name: Decoder mutation tests and inherited stages 238-251
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage254_reuse_guest_check.py' -v
+      - name: Capture nine genuine NeXium battle states
+        shell: bash
+        run: |
+          set -euo pipefail
+          icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 -name 'lvp_icd*.json' -print -quit)"
+          test -n "$icd"
+          export VK_ICD_FILENAMES="$icd"
+          export FOJ_NRO="$GITHUB_WORKSPACE/nros/foj-isometric-compact-bounded-reuse.nro"
+          export FOJ_EVIDENCE_DIR="$GITHUB_WORKSPACE/guest-evidence"
+          sha256sum "$FOJ_NRO" > guest-evidence/nro.sha256
+          test -s "$FOJ_NRO"
+          timeout --kill-after=5s 260s xvfb-run -a \
+            -s "-screen 0 1280x720x24" \
+            bash tools/foj_stage245_nexium_drive.sh
+      - name: Verify 384-frame bounded reuse and inherited Stage253 optical proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage254_reuse_guest_check \
+            --initial guest-evidence/cache-initial.png \
+            --selected guest-evidence/cache-selected.png \
+            --hovered guest-evidence/cache-hovered.png \
+            --hidden guest-evidence/cache-hidden.png \
+            --restored guest-evidence/cache-restored.png \
+            --cancelled guest-evidence/cache-cancelled.png \
+            --guarded guest-evidence/cache-guarded.png \
+            --guard-hovered guest-evidence/cache-guard-hovered.png \
+            --ended guest-evidence/cache-ended.png \
+            --report guest-evidence/stage254-bounded-reuse-comparison.json
+      - name: Preserve NeXium raster evidence, binary hashes and provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage254-NeXium-bounded-reuse
+          path: guest-evidence/
+          if-no-files-found: warn
