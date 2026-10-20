@@ -1,0 +1,79 @@
+name: Stage258 private actor and dual DDS GPU preflight
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage258-private-bundle.yml'
+      - 'gpu/private_bundle_intake.*'
+      - 'gpu/private.mk'
+      - 'gpu/private_actor_bridge.*'
+      - 'gpu/deko3d_clear_main.c'
+      - 'tests/test_gpu_private_bundle_intake.c'
+      - 'core/rigmesh_io.*'
+      - 'core/material_table.*'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stage258-private-bundle.yml'
+      - 'gpu/private_bundle_intake.*'
+      - 'gpu/private.mk'
+      - 'gpu/private_actor_bridge.*'
+      - 'gpu/deko3d_clear_main.c'
+      - 'tests/test_gpu_private_bundle_intake.c'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    name: Strict generated bundle intake
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Host strict C11 NDEBUG and memory sanitizer checks
+        shell: bash
+        env:
+          CC: ${{ matrix.compiler }}
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          sources="tests/test_gpu_private_bundle_intake.c gpu/private_bundle_intake.c gpu/private_actor_bridge.c gpu/actor_upload_plan.c gpu/atlas_dds.c core/rigmesh_io.c core/material_table.c core/gpu_vertex_stream.c core/gpu_draw_plan.c"
+          for mode in strict ndebug sanitized; do
+            flags="-std=c11 -O1 -g -Wall -Wextra -Werror -pedantic -Icore -Igpu"
+            case "$mode" in
+              strict) ;;
+              ndebug) flags="$flags -DNDEBUG" ;;
+              sanitized) flags="$flags -fsanitize=address,undefined -fno-omit-frame-pointer" ;;
+            esac
+            "$CC" $flags $sources -lm -o "build/stage258-$CC-$mode"
+            ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
+            UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+              "./build/stage258-$CC-$mode"
+          done
+
+  native:
+    name: Real devkitA64 isolated private-preflight NRO
+    needs: host
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkita64:latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build private-input opt-in GPU research NRO
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f gpu/private.mk verify
+          python3 tools/validate_nro.py build/foj-deko3d-private-bundle-preflight.nro
+      - uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage258-private-bundle-preflight-nro
+          path: build/foj-deko3d-private-bundle-preflight.nro
+          if-no-files-found: error
