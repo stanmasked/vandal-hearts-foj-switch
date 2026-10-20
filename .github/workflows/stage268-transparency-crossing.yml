@@ -1,0 +1,39 @@
+name: Stage268 conservative translucent triangle overlap ordering
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage268-transparency-crossing.yml'
+      - 'tools/foj_stage268_transparency_crossing.py'
+      - 'tests/emulator/test_stage268_transparency_crossing.py'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stage268-transparency-crossing.yml'
+      - 'tools/foj_stage268_transparency_crossing.py'
+      - 'tests/emulator/test_stage268_transparency_crossing.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  crossing:
+    name: Fail closed on intersecting translucent geometry
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run positive and negative geometry classifiers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator -p 'test_stage268_transparency_crossing.py' -v
+          python3 -m tools.foj_stage268_transparency_crossing
+          python3 -m compileall -q tools/foj_stage268_transparency_crossing.py tests/emulator/test_stage268_transparency_crossing.py
