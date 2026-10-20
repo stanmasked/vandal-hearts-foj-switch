@@ -40,6 +40,34 @@ int main(void){
     CHECK(out[0].blend_enabled==0u);
     CHECK(out[1].blend_enabled==1u);
     CHECK(out[2].blend_enabled==1u);
+    /* Encode precisely the C plan that the Stage274 NRO will use for
+     * binding textures and configuring deko3d state. */
+    char receipt[128],tiny[8];
+    memset(receipt,0xA5,sizeof(receipt));
+    CHECK(foj_gpu_alpha_pass_format_receipt(out,3,receipt,sizeof(receipt))==1);
+    CHECK(strcmp(receipt,
+        "FOJ_NATIVE_ALPHA_PASS_V1 2:0:1:1 0:1:1:0 1:1:1:0\\n")==0);
+    memset(tiny,0xA5,sizeof(tiny));
+    CHECK(foj_gpu_alpha_pass_format_receipt(out,3,tiny,sizeof(tiny))==0);
+    for(unsigned i=0;i<sizeof(tiny);++i)CHECK((unsigned char)tiny[i]==0xA5u);
+    FojGpuAlphaPass altered[3]={out[0],out[1],out[2]};
+    altered[1].depth_write_enabled=1u;
+    memset(receipt,0xA5,sizeof(receipt));
+    CHECK(foj_gpu_alpha_pass_format_receipt(altered,3,receipt,sizeof(receipt))==0);
+    CHECK((unsigned char)receipt[0]==0xA5u);
+    altered[1]=out[1];
+    altered[2].blend_enabled=0u;
+    CHECK(foj_gpu_alpha_pass_format_receipt(altered,3,receipt,sizeof(receipt))==0);
+    CHECK((unsigned char)receipt[0]==0xA5u);
+    altered[2]=out[2];
+    altered[2].material_index=2u;
+    CHECK(foj_gpu_alpha_pass_format_receipt(altered,3,receipt,sizeof(receipt))==0);
+    CHECK((unsigned char)receipt[0]==0xA5u);
+    CHECK(foj_gpu_alpha_pass_contract(ranges,3,forward,3,out,3)==FOJ_GPU_ALPHA_PASS_OK);
+    CHECK(foj_gpu_alpha_pass_format_receipt(out,3,receipt,sizeof(receipt))==1);
+    CHECK(strcmp(receipt,
+        "FOJ_NATIVE_ALPHA_PASS_V1 2:0:1:1 1:1:1:0 0:1:1:0\\n")==0);
+
     const uint32_t duplicate[3]={2u,1u,1u};
     const uint32_t out_of_range[3]={2u,1u,3u};
     const uint32_t too_early[3]={1u,2u,0u};
