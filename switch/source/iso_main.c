@@ -97,6 +97,19 @@ enum { FOJ_STAGE247_STATUS_X=1252, FOJ_STAGE247_STATUS_Y=12 };
 #if FOJ_STAGE253_CHURN && !FOJ_STAGE252_STRESS
 #error "Stage253 requires the isolated Stage252 research guest"
 #endif
+#ifndef FOJ_STAGE254_REUSE
+#define FOJ_STAGE254_REUSE 0
+#endif
+#if FOJ_STAGE254_REUSE != 0 && FOJ_STAGE254_REUSE != 1
+#error "Stage254 bounded reuse flag must be 0 or 1"
+#endif
+#if FOJ_STAGE254_REUSE && !FOJ_STAGE253_CHURN
+#error "Stage254 requires Stage253 research NRO"
+#endif
+#if FOJ_STAGE254_REUSE
+#include "compact_reuse_probe.h"
+static FojReuseReceipt stage254_reuse;
+#endif
 #if FOJ_STAGE253_CHURN
 #include "compact_churn_probe.h"
 static FojCompactChurnReceipt stage253_churn;
@@ -246,6 +259,14 @@ _Static_assert(sizeof(FojBaseScaleProbe)+sizeof(FojBaseStabilityProbe)+
     "Stage250 opt-in static experimental buffers exceed 21 MiB");
 #endif
 
+#if FOJ_STAGE254_REUSE
+_Static_assert(FOJ_REUSE_Y>=FOJ_CHURN_Y+8,
+               "Stage254 optical receipt overlaps Stage253");
+_Static_assert(FOJ_REUSE_STATUS_X>=FOJ_REUSE_X+6*72,
+               "Stage254 last barcode overlaps readiness");
+_Static_assert(FOJ_REUSE_STATUS_X+8<=FB_WIDTH,
+               "Stage254 receipt extends past framebuffer");
+#endif
 #if FOJ_STAGE253_CHURN
 _Static_assert(FOJ_CHURN_Y>=FOJ_COMPACT_STRESS_Y+8,
                "Stage253 receipt overlaps Stage252");
@@ -378,6 +399,13 @@ int main(int argc, char **argv) {
      * private research buffers, never mutate battle, controls or saves. */
     (void)foj_compact_churn_run(
         &stage253_churn,stage248_cached_pixels,stage248_uncached_pixels);
+#endif
+#if FOJ_STAGE254_REUSE
+    /* Compare a bounded 900-KiB floor against the independent exact-sized
+     * Stage253 receipt. Run once, before any visible guest battle action. */
+    (void)foj_reuse_probe_run(
+        &stage254_reuse,&stage253_churn,
+        stage248_cached_pixels,stage248_uncached_pixels);
 #endif
     FojBattleReplay replay;
     foj_replay_init(&replay);
@@ -600,6 +628,10 @@ int main(int argc, char **argv) {
 #endif
 #if FOJ_STAGE253_CHURN
             (void)foj_compact_churn_draw(&stage253_churn,
+                (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
+#endif
+#if FOJ_STAGE254_REUSE
+            (void)foj_reuse_probe_draw(&stage254_reuse,
                 (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
 #endif
 #endif
