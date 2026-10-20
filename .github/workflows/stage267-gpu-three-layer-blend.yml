@@ -3,7 +3,7 @@ name: Stage267 actual three-layer source-over alpha GPU proof in NeXium
 on:
   pull_request:
     paths:
-      - '.github/workflows/stage267-gpu-alpha-blend.yml'
+      - '.github/workflows/stage267-gpu-three-layer-blend.yml'
       - 'tools/foj_stage267_*'
       - 'tools/foj_stage266_transparency_order.py'
       - 'tests/emulator/test_stage267_gpu_three_layer.py'
@@ -11,18 +11,19 @@ on:
       - 'gpu/three_layer_blend.mk'
       - 'gpu/private_bundle_intake.*'
       - 'gpu/research_texture.h'
-      - 'tools/foj_stage266_transparency_order.py'
       - 'gpu/Makefile'
-      - 'gpu/research_texture.h'
   push:
     branches: [main]
     paths:
-      - '.github/workflows/stage267-gpu-alpha-blend.yml'
+      - '.github/workflows/stage267-gpu-three-layer-blend.yml'
       - 'tools/foj_stage267_*'
       - 'tests/emulator/test_stage267_gpu_three_layer.py'
       - 'gpu/deko3d_clear_main.c'
       - 'gpu/three_layer_blend.mk'
       - 'gpu/Makefile'
+      - 'gpu/private_bundle_intake.*'
+      - 'gpu/research_texture.h'
+      - 'tools/foj_stage266_transparency_order.py'
   workflow_dispatch:
 
 permissions:
