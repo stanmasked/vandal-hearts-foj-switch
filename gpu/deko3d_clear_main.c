@@ -109,6 +109,12 @@ static void foj_present_shader_boot_failure(
 
 int main(int argc,char **argv) {
     (void)argc;(void)argv;
+#if defined(FOJ_GPU_ALPHA_BLEND) && !defined(FOJ_GPU_DEPTH_PROOF)
+#error "GPU alpha blend requires the opt-in depth renderer"
+#endif
+#if defined(FOJ_GPU_ALPHA_BLEND) && defined(FOJ_GPU_ALPHA_CUTOUT)
+#error "Alpha blend and binary cutout are separate research pipelines"
+#endif
 #if defined(FOJ_GPU_ALPHA_CUTOUT) && !defined(FOJ_GPU_DEPTH_PROOF)
 #error "GPU alpha cutout requires the opt-in depth renderer"
 #endif
@@ -684,6 +690,14 @@ int main(int argc,char **argv) {
             dkRasterizerStateDefaults(&rasterizer);
             dkColorStateDefaults(&color_state);
             dkColorWriteStateDefaults(&color_write);
+#if defined(FOJ_GPU_ALPHA_BLEND)
+            DkBlendState alpha_blend;
+            dkBlendStateDefaults(&alpha_blend);
+            /* SrcAlpha / (1-SrcAlpha) standard straight-alpha RGB.
+             * Front translucent batches must be submitted AFTER opaque
+             * rear geometry, with depth test ON and depth write OFF. */
+            dkColorStateSetBlendEnable(&color_state,0,false);
+#endif
 #if defined(FOJ_GPU_DEPTH_PROOF)
             DkDepthStencilState depth_state;
             dkDepthStencilStateDefaults(&depth_state);
@@ -732,6 +746,33 @@ int main(int argc,char **argv) {
                   FOJ_RESEARCH_TEXTURE_COUNT);
             dkCmdBufBindSamplerDescriptorSet(cmd,
                   texture_data_addr+SAMPLER_DESCRIPTORS_OFFSET,1);
+#if defined(FOJ_GPU_ALPHA_BLEND)
+            /* Exactly two validated ordered sections, warm material 0 in
+             * front and cool 1 behind. Render opaque cool first, then
+             * translucent warm: blending is deliberately NOT commutative.
+             * This is only the generated 2-material experiment. */
+            if (batch_count!=2u ||
+                draw_ranges[0].material_index!=0u ||
+                draw_ranges[1].material_index!=1u)
+                goto cleanup;
+            const size_t pass_order[2]={1u,0u};
+            for (size_t pass=0;pass<2u;++pass) {
+                const FojGpuDrawRange *range=&draw_ranges[pass_order[pass]];
+                const bool translucent=range->material_index==0u;
+                DkColorState pass_color=color_state;
+                dkColorStateSetBlendEnable(&pass_color,0,translucent);
+                dkCmdBufBindColorState(cmd,&pass_color);
+                if (translucent)
+                    dkCmdBufBindBlendStates(cmd,0,&alpha_blend,1);
+                DkDepthStencilState pass_depth=depth_state;
+                pass_depth.depthWriteEnable=!translucent;
+                dkCmdBufBindDepthStencilState(cmd,&pass_depth);
+                DkResHandle handle=dkMakeTextureHandle(range->material_index,0);
+                dkCmdBufBindTextures(cmd,DkStage_Fragment,0,&handle,1);
+                dkCmdBufDraw(cmd,DkPrimitive_Triangles,
+                             range->vertex_count,1,range->first_vertex,0);
+            }
+#else
             for (size_t batch=0;batch<batch_count;
                  ++batch) {
                 const FojGpuDrawRange *range=&draw_ranges[batch];
@@ -740,6 +781,7 @@ int main(int argc,char **argv) {
                 dkCmdBufDraw(cmd,DkPrimitive_Triangles,
                              range->vertex_count,1,range->first_vertex,0);
             }
+#endif
 #endif
             commands[slot][phase]=dkCmdBufFinishList(cmd);
             if (!commands[slot][phase])goto cleanup;
