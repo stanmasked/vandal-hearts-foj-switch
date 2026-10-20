@@ -142,26 +142,13 @@ jobs:
               -s "-screen 0 1280x720x24" \
               bash tools/foj_stage271_nexium_reject_drive.sh
           done
-      - name: Require all three native rejected-guest receipts
+      - name: Require three exact native reject markers with a JSON receipt
         shell: bash
         run: |
           set -euo pipefail
-          for scene in crossing reversed coplanar; do
-            test -s "runtime-evidence/$scene/guest.log"
-            test -s "runtime-evidence/$scene/generated-input.json"
-            python3 - "$scene" <<'PY'
-import json
-from pathlib import Path
-import sys
-scene=sys.argv[1]
-folder=Path("runtime-evidence")/scene
-r=json.loads((folder/"generated-input.json").read_text())
-assert r["negative_case"]==scene
-assert r["generated_only"] is True
-assert r["guest_execution_verified"] is False
-assert (folder/"native-reject.txt").read_bytes()==b"FOJ_NATIVE_UNSAFE_REJECT_V1 exit=8 pre_gpu=1\\n"
-PY
-          done
+          python3 -m tools.foj_stage271_evidence_check \
+            --evidence runtime-evidence \
+            --report runtime-evidence/stage271-native-guest-receipt.json
       - name: Archive actual guest logs and narrow pre-GPU rejection receipts
         if: always()
         uses: actions/upload-artifact@v4
