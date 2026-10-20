@@ -27,6 +27,7 @@
 #include "three_layer_preflight.h"
 #if defined(FOJ_GPU_DYNAMIC_ALPHA_SORT)
 #include "transparency_sort.h"
+#include "alpha_material_contract.h"
 #endif
 #endif
 #include "atlas_dds.h"
@@ -200,7 +201,15 @@ int main(int argc,char **argv) {
     /* Stage273 research-only dynamic order, computed on the same actor
      * vertex stream submitted to deko3d later. No GPU state exists yet.
      * Require the sole opaque rear material to be the first pass.
-     * The other two may appear in either strict back-to-front order. */
+     * The other two may appear in either strict back-to-front order.
+     * The presumed opaque rear DDS MUST be 255-alpha in every texel. */
+    if (private_payload.report.atlas_count!=3u ||
+        !foj_gpu_opaque_rear_atlas(
+            private_payload.rgba[2],&private_payload.report.atlas[2])) {
+        fprintf(stderr,"FoJ dynamic alpha sort: non-opaque rear atlas rejected\n");
+        foj_gpu_private_bundle_free(&private_payload);
+        return 8;
+    }
     uint32_t dynamic_three_passes[3]={UINT32_MAX,UINT32_MAX,UINT32_MAX};
     if (private_payload.report.actor.stream.vertices_written!=9u ||
         private_payload.report.actor.stream.batches_written!=3u ||
