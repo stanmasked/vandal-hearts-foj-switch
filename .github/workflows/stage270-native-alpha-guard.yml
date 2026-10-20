@@ -13,7 +13,6 @@ on:
       - 'tests/emulator/test_stage267_gpu_three_layer.py'
       - 'gpu/deko3d_clear_main.c'
       - 'gpu/native_alpha_guard.mk'
-      - 'gpu/native_alpha_guard.mk'
       - 'gpu/private_bundle_intake.*'
       - 'gpu/research_texture.h'
       - 'gpu/Makefile'
@@ -23,6 +22,10 @@ on:
     paths:
       - '.github/workflows/stage270-native-alpha-guard.yml'
       - 'tools/foj_stage267_*'
+      - 'tools/foj_stage269_guarded_scene.py'
+      - 'tests/test_gpu_three_layer_preflight.c'
+      - 'gpu/three_layer_preflight.c'
+      - 'gpu/three_layer_preflight.h'
       - 'tests/emulator/test_stage267_gpu_three_layer.py'
       - 'gpu/deko3d_clear_main.c'
       - 'gpu/native_alpha_guard.mk'
