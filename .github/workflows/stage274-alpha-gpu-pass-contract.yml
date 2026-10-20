@@ -8,6 +8,9 @@ on:
       - 'tests/test_gpu_alpha_pass_contract.c'
       - 'tools/foj_stage274_*'
       - 'tests/emulator/test_stage274_guest_pass_state.py'
+      - 'tests/emulator/test_stage274_actual_native_chain.py'
+      - 'core/gpu_vertex_stream.c'
+      - 'core/gpu_draw_plan.c'
       - 'gpu/deko3d_clear_main.c'
       - 'gpu/alpha_pass_contract.mk'
       - 'gpu/transparency_sort.*'
@@ -77,6 +80,12 @@ jobs:
               "/tmp/foj-stage273-opaque-$compiler-$mode"
             done
           done
+      - name: Test exact actual C projection-to-depth-to-material pipeline on GCC and Clang
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage274_actual_native_chain.py' -v
       - name: Verify dynamic generated fixtures and randomized order
         shell: bash
         run: |
