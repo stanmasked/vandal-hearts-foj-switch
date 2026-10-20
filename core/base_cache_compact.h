@@ -15,6 +15,10 @@ typedef struct {
     int width, height;
     uint64_t hits, misses, bypasses, allocations, releases;
     bool valid;
+#if defined(FOJ_STAGE252_STRESS) && FOJ_STAGE252_STRESS
+    /* Research-only deterministic allocator failure; default build omits. */
+    bool inject_fail_next_allocation;
+#endif
 } FojCompactBaseCache;
 
 /* Init only a zero-initialized or already released struct. */
