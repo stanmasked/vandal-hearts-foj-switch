@@ -109,6 +109,9 @@ static void foj_present_shader_boot_failure(
 
 int main(int argc,char **argv) {
     (void)argc;(void)argv;
+#if defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) && !defined(FOJ_GPU_PRIVATE_BUNDLE_PREFLIGHT)
+#error "Private actor draw must use the fail-closed private intake"
+#endif
 #if defined(FOJ_GPU_PRIVATE_BUNDLE_PREFLIGHT)
     /* Dedicated opt-in NRO. Validate the entire private actor+material+two
      * DDS set before initializing a GPU device. Never silently render
@@ -122,6 +125,16 @@ int main(int argc,char **argv) {
     const FojTextureCamera private_camera={
         0.f,0.f,0.f,2.f,0.f,0.f,1.f,0
     };
+#if defined(FOJ_GPU_PRIVATE_ACTOR_DRAW)
+    FojGpuPrivateBundleData private_payload={0};
+    const FojGpuPrivateBundleStatus private_status=
+        foj_gpu_private_bundle_load(
+            "sdmc:/switch/foj/gpu/actor.fojrm",
+            "sdmc:/switch/foj/gpu/actor.fojmat",
+            private_atlases,&private_camera,
+            SCREEN_WIDTH,SCREEN_HEIGHT,DK_MEMBLOCK_ALIGNMENT,
+            &private_payload);
+#else
     FojGpuPrivateBundleReport private_report={0};
     const FojGpuPrivateBundleStatus private_status=
         foj_gpu_private_bundle_preflight(
@@ -130,14 +143,17 @@ int main(int argc,char **argv) {
             private_atlases,&private_camera,
             SCREEN_WIDTH,SCREEN_HEIGHT,DK_MEMBLOCK_ALIGNMENT,
             &private_report);
+#endif
     if (private_status!=FOJ_PRIVATE_BUNDLE_OK) {
-        fprintf(stderr,"FoJ private GPU preflight: %s\\n",
+        fprintf(stderr,"FoJ private GPU intake: %s\n",
                 foj_gpu_private_bundle_status_name(private_status));
         return 7;
     }
-    fprintf(stderr,"FoJ private GPU bundle accepted (%u DDS slots); "
-            "GPU presentation remains synthetic research geometry\\n",
-            private_report.atlas_count);
+#if defined(FOJ_GPU_PRIVATE_ACTOR_DRAW)
+    fprintf(stderr,"FoJ private actor GPU upload: unverified display\n");
+#else
+    fprintf(stderr,"FoJ private bundle accepted; synthetic GPU scene\n");
+#endif
 #endif
     /* Nonzero exit if setup fails or no frame was presented. */
     int exit_status=3;
@@ -204,6 +220,9 @@ int main(int argc,char **argv) {
         (void)foj_gpu_boot_journal_note(
             &boot_journal,FOJ_BOOT_EXIT,FOJ_BOOT_EXITED,boot_frames);
         foj_gpu_boot_journal_close(&boot_journal);
+#endif
+#if defined(FOJ_GPU_PRIVATE_ACTOR_DRAW)
+        foj_gpu_private_bundle_free(&private_payload);
 #endif
         return 2;
     }
@@ -281,40 +300,44 @@ int main(int argc,char **argv) {
     FOJ_ENTER_BOOT(FOJ_BOOT_VERTICES);
 #endif
 
-    /* Clear-only mode keeps the original smoke data. Shader-backed mode
-     * uploads a synthetic four-triangle surface in two ordered sections. */
+    /* In the default research mode vertices are invented; Stage259 swaps
+     * in only validated, retained user-local actor vertices and batches. */
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
     FojGpuVertex research_vertices[FOJ_RESEARCH_VERTEX_COUNT];
     FojGpuBatch research_batches[FOJ_RESEARCH_BATCH_COUNT];
     FojGpuStreamInfo research_info;
-    FojGpuDrawRange draw_ranges[FOJ_RESEARCH_BATCH_COUNT];
+    FojGpuDrawRange draw_ranges[FOJ_GPU_MAX_BATCHES];
     FojGpuActorUploadPlan actor_upload={0};
     if (foj_gpu_research_mesh(research_vertices,FOJ_RESEARCH_VERTEX_COUNT,
                               research_batches,FOJ_RESEARCH_BATCH_COUNT,
-                              &research_info)!=FOJ_GPU_STREAM_OK ||
-        research_info.vertices_written!=FOJ_RESEARCH_VERTEX_COUNT ||
-        research_info.batches_written!=FOJ_RESEARCH_BATCH_COUNT ||
-        foj_gpu_build_draw_plan(research_batches,
-                                research_info.batches_written,
-                                research_info.vertices_written,
-                                FOJ_RESEARCH_MATERIAL_COUNT,
-                                draw_ranges,FOJ_RESEARCH_BATCH_COUNT)
-                                !=FOJ_GPU_STREAM_OK ||
-        foj_gpu_actor_upload_plan(
-            research_batches,research_info.batches_written,
-            research_info.vertices_written,FOJ_RESEARCH_MATERIAL_COUNT,
-            DK_MEMBLOCK_ALIGNMENT,&actor_upload)!=FOJ_GPU_STREAM_OK ||
-        actor_upload.payload_bytes!=sizeof(research_vertices) ||
+                              &research_info)!=FOJ_GPU_STREAM_OK)
+        goto cleanup;
+    const FojGpuVertex *vertex_source=research_vertices;
+    const FojGpuBatch *batch_source=research_batches;
+    size_t vertex_count=research_info.vertices_written;
+    size_t batch_count=research_info.batches_written;
+#if defined(FOJ_GPU_PRIVATE_ACTOR_DRAW)
+    vertex_source=private_payload.vertices;
+    batch_source=private_payload.batches;
+    vertex_count=private_payload.report.actor.stream.vertices_written;
+    batch_count=private_payload.report.actor.stream.batches_written;
+#endif
+    if (foj_gpu_build_draw_plan(batch_source,batch_count,vertex_count,
+                                 FOJ_RESEARCH_MATERIAL_COUNT,
+                                 draw_ranges,FOJ_GPU_MAX_BATCHES)!=FOJ_GPU_STREAM_OK ||
+        foj_gpu_actor_upload_plan(batch_source,batch_count,vertex_count,
+                                  FOJ_RESEARCH_MATERIAL_COUNT,
+                                  DK_MEMBLOCK_ALIGNMENT,&actor_upload)!=FOJ_GPU_STREAM_OK ||
+        actor_upload.payload_bytes!=vertex_count*sizeof(FojGpuVertex) ||
         actor_upload.material_mask!=
             (UINT32_C(1)<<FOJ_RESEARCH_MATERIAL_COUNT)-1u)
         goto cleanup;
-    const size_t vertex_upload_bytes=sizeof(research_vertices);
+    const size_t vertex_upload_bytes=vertex_count*sizeof(FojGpuVertex);
 #else
     const size_t vertex_upload_bytes=sizeof(kResearchTriangle);
 #endif
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
-    /* Validated once for all ordered material draws, before GPU allocation.
-     * No proprietary mesh is loaded here: only generated quads. */
+    /* Validated ordered multi-material draws, with strict buffer capacity. */
     uint32_t vertex_memory_bytes=actor_upload.allocation_bytes;
 #else
     uint32_t vertex_memory_bytes=0;
@@ -336,7 +359,7 @@ int main(int argc,char **argv) {
     if (!vertex_cpu_addr || vertex_gpu_addr==DK_GPU_ADDR_INVALID)
         goto cleanup;
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
-    memcpy(vertex_cpu_addr,research_vertices,vertex_upload_bytes);
+    memcpy(vertex_cpu_addr,vertex_source,vertex_upload_bytes);
 #else
     memcpy(vertex_cpu_addr,kResearchTriangle,vertex_upload_bytes);
 #endif
@@ -441,18 +464,28 @@ int main(int argc,char **argv) {
     if (!texture_data_cpu || texture_data_addr==DK_GPU_ADDR_INVALID)
         goto cleanup;
 
+#if !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW)
     const char *const atlas_paths[FOJ_RESEARCH_TEXTURE_COUNT]={
         "sdmc:/switch/foj/gpu/material0.dds",
         "sdmc:/switch/foj/gpu/material1.dds"
     };
+#endif
     for (unsigned i=0;i<FOJ_RESEARCH_TEXTURE_COUNT;++i) {
         uint8_t *pixels=texture_data_cpu+PIXEL_STAGING_OFFSET+
                         i*PIXEL_STAGING_STRIDE;
         FojAtlasRgba8Info atlas={0};
         FojAtlasDdsStatus dds_status=FOJ_ATLAS_DDS_INVALID_ARGUMENT;
+#if defined(FOJ_GPU_PRIVATE_ACTOR_DRAW)
+        const int loaded=1;
+        atlas=private_payload.report.atlas[i];
+        if (atlas.pixel_bytes>PIXEL_STAGING_STRIDE)goto cleanup;
+        memcpy(pixels,private_payload.rgba[i],atlas.pixel_bytes);
+        dds_status=FOJ_ATLAS_DDS_LOADED;
+#else
         const int loaded=foj_atlas_dds_try_read_status(
             atlas_paths[i],pixels,PIXEL_STAGING_STRIDE,&atlas,
             &dds_status);
+#endif
         /* Generic status and slot ID only: never log user paths, game
          * bytes or file hashes. Console stderr visibility depends on
          * the homebrew environment and is not hardware-verified. */
@@ -631,7 +664,7 @@ int main(int argc,char **argv) {
                   FOJ_RESEARCH_TEXTURE_COUNT);
             dkCmdBufBindSamplerDescriptorSet(cmd,
                   texture_data_addr+SAMPLER_DESCRIPTORS_OFFSET,1);
-            for (size_t batch=0;batch<research_info.batches_written;
+            for (size_t batch=0;batch<batch_count;
                  ++batch) {
                 const FojGpuDrawRange *range=&draw_ranges[batch];
                 DkResHandle handle=dkMakeTextureHandle(range->material_index,0);
@@ -732,5 +765,8 @@ cleanup:
         if (images_mem[i])dkMemBlockDestroy(images_mem[i]);
     if (queue)dkQueueDestroy(queue);
     dkDeviceDestroy(device);
+#if defined(FOJ_GPU_PRIVATE_ACTOR_DRAW)
+    foj_gpu_private_bundle_free(&private_payload);
+#endif
     return exit_status;
 }

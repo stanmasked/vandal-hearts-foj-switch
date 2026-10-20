@@ -117,20 +117,31 @@ const char *foj_gpu_private_bundle_status_name(
     }
 }
 
-FojGpuPrivateBundleStatus foj_gpu_private_bundle_preflight(
+void foj_gpu_private_bundle_free(FojGpuPrivateBundleData *data) {
+    if (!data)return;
+    for (unsigned i=0;i<FOJ_GPU_PRIVATE_REQUIRED_ATLASES;++i)
+        free(data->rgba[i]);
+    free(data->batches);
+    free(data->vertices);
+    memset(data,0,sizeof(*data));
+}
+
+FojGpuPrivateBundleStatus foj_gpu_private_bundle_load(
     const char *mesh_path,const char *material_path,
     const char *const atlas_paths[FOJ_GPU_PRIVATE_REQUIRED_ATLASES],
     const FojTextureCamera *camera,unsigned width,unsigned height,
-    size_t gpu_alignment,FojGpuPrivateBundleReport *report) {
+    size_t gpu_alignment,FojGpuPrivateBundleData *out) {
     if (!mesh_path || !material_path || !atlas_paths ||
-        !atlas_paths[0] || !atlas_paths[1] || !camera || !report)
+        !atlas_paths[0] || !atlas_paths[1] || !camera || !out)
+        return FOJ_PRIVATE_BUNDLE_ARGUMENT;
+    /* Do not overwrite or leak a previous successful payload. */
+    if (out->vertices || out->batches ||
+        out->rgba[0] || out->rgba[1])
         return FOJ_PRIVATE_BUNDLE_ARGUMENT;
 
     uint8_t *mesh=NULL,*material=NULL;
     size_t mesh_len=0,material_len=0;
-    FojGpuVertex *vertices=NULL;
-    FojGpuBatch *batches=NULL;
-    uint8_t *pixels=NULL;
+    FojGpuPrivateBundleData candidate={0};
     FojGpuPrivateBundleStatus status=read_private_regular(
         mesh_path,28,FOJ_RIGMESH_MAX_FILE_BYTES,&mesh,&mesh_len);
     if (status!=FOJ_PRIVATE_BUNDLE_OK)goto done;
@@ -143,32 +154,31 @@ FojGpuPrivateBundleStatus foj_gpu_private_bundle_preflight(
         status=FOJ_PRIVATE_BUNDLE_INVALID;
         goto done;
     }
-    /* Memory caps are determined by the existing parser and GPU stream. */
-    vertices=malloc(FOJ_GPU_MAX_VERTICES*sizeof(*vertices));
-    batches=malloc(FOJ_GPU_MAX_BATCHES*sizeof(*batches));
-    if (!vertices || !batches) {
+    candidate.vertices=malloc(FOJ_GPU_MAX_VERTICES*sizeof(*candidate.vertices));
+    candidate.batches=malloc(FOJ_GPU_MAX_BATCHES*sizeof(*candidate.batches));
+    if (!candidate.vertices || !candidate.batches) {
         status=FOJ_PRIVATE_BUNDLE_MEMORY;
         goto done;
     }
-    FojGpuPrivateBundleReport candidate={0};
     if (foj_gpu_private_actor_prepare(mesh,mesh_len,material,material_len,
-        camera,width,height,gpu_alignment,vertices,FOJ_GPU_MAX_VERTICES,
-        batches,FOJ_GPU_MAX_BATCHES,&candidate.actor)!=FOJ_GPU_STREAM_OK) {
+        camera,width,height,gpu_alignment,candidate.vertices,
+        FOJ_GPU_MAX_VERTICES,candidate.batches,FOJ_GPU_MAX_BATCHES,
+        &candidate.report.actor)!=FOJ_GPU_STREAM_OK) {
         status=FOJ_PRIVATE_BUNDLE_INVALID;
         goto done;
     }
-    pixels=malloc(FOJ_ATLAS_MAX_BYTES);
-    if (!pixels) {
-        status=FOJ_PRIVATE_BUNDLE_MEMORY;
-        goto done;
-    }
     for(unsigned i=0;i<FOJ_GPU_PRIVATE_REQUIRED_ATLASES;++i) {
-        FojAtlasDdsStatus dds_status=FOJ_ATLAS_DDS_INVALID_ARGUMENT;
+        candidate.rgba[i]=malloc(FOJ_ATLAS_MAX_BYTES);
+        if (!candidate.rgba[i]) {
+            status=FOJ_PRIVATE_BUNDLE_MEMORY;
+            goto done;
+        }
+        FojAtlasDdsStatus ds=FOJ_ATLAS_DDS_INVALID_ARGUMENT;
         FojAtlasRgba8Info info={0};
         const int loaded=foj_atlas_dds_try_read_status(
-            atlas_paths[i],pixels,FOJ_ATLAS_MAX_BYTES,&info,&dds_status);
-        if (loaded!=1 || dds_status!=FOJ_ATLAS_DDS_LOADED) {
-            switch(dds_status) {
+            atlas_paths[i],candidate.rgba[i],FOJ_ATLAS_MAX_BYTES,&info,&ds);
+        if (loaded!=1 || ds!=FOJ_ATLAS_DDS_LOADED) {
+            switch(ds) {
                 case FOJ_ATLAS_DDS_MISSING:
                     status=FOJ_PRIVATE_BUNDLE_MISSING;break;
                 case FOJ_ATLAS_DDS_PATH_REJECTED:
@@ -182,16 +192,30 @@ FojGpuPrivateBundleStatus foj_gpu_private_bundle_preflight(
             }
             goto done;
         }
-        candidate.atlas[i]=info;
+        candidate.report.atlas[i]=info;
     }
-    candidate.atlas_count=FOJ_GPU_PRIVATE_REQUIRED_ATLASES;
-    *report=candidate;
+    candidate.report.atlas_count=FOJ_GPU_PRIVATE_REQUIRED_ATLASES;
+    *out=candidate;
+    memset(&candidate,0,sizeof(candidate)); /* ownership transferred */
     status=FOJ_PRIVATE_BUNDLE_OK;
 done:
-    free(pixels);
-    free(batches);
-    free(vertices);
+    foj_gpu_private_bundle_free(&candidate);
     free(material);
     free(mesh);
     return status;
+}
+
+FojGpuPrivateBundleStatus foj_gpu_private_bundle_preflight(
+    const char *mesh_path,const char *material_path,
+    const char *const atlas_paths[FOJ_GPU_PRIVATE_REQUIRED_ATLASES],
+    const FojTextureCamera *camera,unsigned width,unsigned height,
+    size_t gpu_alignment,FojGpuPrivateBundleReport *report) {
+    if (!report)return FOJ_PRIVATE_BUNDLE_ARGUMENT;
+    FojGpuPrivateBundleData data={0};
+    const FojGpuPrivateBundleStatus result=foj_gpu_private_bundle_load(
+        mesh_path,material_path,atlas_paths,camera,width,height,
+        gpu_alignment,&data);
+    if (result==FOJ_PRIVATE_BUNDLE_OK)*report=data.report;
+    foj_gpu_private_bundle_free(&data);
+    return result;
 }
