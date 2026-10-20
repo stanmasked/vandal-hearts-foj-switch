@@ -30,7 +30,12 @@ The initial integration is narrow: exactly three 3-vertex draw ranges
 with canonical materials `violet(0)`, `warm(1)`, `cool(2)`.
 Any malformed shape, numerical ambiguity, crossing or cycle fails
 closed with code 8. The calculated first draw **must** be material
-`cool(2)`, the only opaque rear. This preserves depth-write and
+`cool(2)`, the only opaque rear. Before any GPU initialization,
+`foj_gpu_opaque_rear_atlas` also checks **every decoded RGBA8 alpha
+byte in material 2 is 255**, with strict texture dimension and length
+bounds. Any single translucent rear texel is rejected with exit 8:
+the sorter must never write an assumed-opaque depth buffer for
+transparent source pixels. This preserves depth-write and
 straight-alpha state transitions. The two translucent materials may
 be reordered safely as `violet, warm` or `warm, violet`.
 
@@ -52,8 +57,9 @@ texture bytes. The difference is **only six Z float values** in
 The expected pixels are computed independently from Stage266's
 straight-alpha RGB reference model, not from a claimed GPU snapshot.
 
-CI compiles the C11 topo-sort under GCC/Clang, checks its randomized
-reference parity, builds the actual NRO with devkitA64/UAM, and starts
+CI compiles the C11 topo-sort and **strict opaque-atlas guard** under
+GCC/Clang (with and without NDEBUG), checks randomized C/Python reference
+parity, builds the actual NRO with devkitA64/UAM, and starts
 **two independent real NeXium guests**, each with its own new
 synthetic SD root. For each guest it requires two distinct framebuffer
 captures with independently changed clear colors. The checker verifies
