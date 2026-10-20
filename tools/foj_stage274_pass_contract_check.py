@@ -34,7 +34,14 @@ def verify(root:Path)->dict:
     # native draw-sort receipts.
     prior=verify_frames(root)
     for case in CASES:
-        receipt=root/case/"native-alpha-pass.txt"
+        # A positive GPU-rendering guest must not ALSO claim its decoded
+        # opaque rear DDS failed the earlier Stage274 pre-GPU check.
+        positive=root/case
+        contradiction=positive/"native-rear-alpha-reject.txt"
+        if contradiction.exists() or contradiction.is_symlink():
+            raise ValueError(
+                f"Contradictory positive/rear-alpha guest evidence: {case}")
+        receipt=positive/"native-alpha-pass.txt"
         if receipt.is_symlink() or not receipt.is_file() or (
             receipt.read_bytes()!=expected_receipt(case)
         ):
@@ -48,6 +55,18 @@ def verify(root:Path)->dict:
     if any(path.is_symlink() or not path.is_file() for path in
            (negative_input,negative_marker,negative_log)):
         raise ValueError("Missing Stage274 real negative guest evidence")
+    # The single-byte rear-DDS failure happens before both success-marker
+    # creation and GPU boot. Refuse contradictory artifacts even if the
+    # expected negative witness itself is correct.
+    for forbidden in (
+            "native-sort-pass.txt","native-alpha-pass.txt",
+            "gpu-initial.png","gpu-later.png"):
+        extra=negative/forbidden
+        if extra.exists() or extra.is_symlink():
+            raise ValueError(
+                "Contradictory negative GPU guest evidence: "+forbidden)
+    if any(negative.glob("foj-boot-*.txt")):
+        raise ValueError("Contradictory negative GPU boot evidence")
     negative_info=json.loads(negative_input.read_text(encoding="utf-8"))
     if (negative_info.get("schema")!=
             "foj.stage274.native_rear_alpha_negative.v1" or
