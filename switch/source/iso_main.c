@@ -88,6 +88,19 @@ enum { FOJ_STAGE247_STATUS_X=1252, FOJ_STAGE247_STATUS_Y=12 };
 #if FOJ_STAGE252_STRESS && !FOJ_STAGE251_COMPACT
 #error "Stage252 requires Stage251 compact research NRO"
 #endif
+#ifndef FOJ_STAGE253_CHURN
+#define FOJ_STAGE253_CHURN 0
+#endif
+#if FOJ_STAGE253_CHURN != 0 && FOJ_STAGE253_CHURN != 1
+#error "Stage253 churn flag must be 0 or 1"
+#endif
+#if FOJ_STAGE253_CHURN && !FOJ_STAGE252_STRESS
+#error "Stage253 requires the isolated Stage252 research guest"
+#endif
+#if FOJ_STAGE253_CHURN
+#include "compact_churn_probe.h"
+static FojCompactChurnReceipt stage253_churn;
+#endif
 #if FOJ_STAGE252_STRESS
 #include "compact_stress_probe.h"
 static FojCompactStressReceipt stage252_stress;
@@ -233,6 +246,14 @@ _Static_assert(sizeof(FojBaseScaleProbe)+sizeof(FojBaseStabilityProbe)+
     "Stage250 opt-in static experimental buffers exceed 21 MiB");
 #endif
 
+#if FOJ_STAGE253_CHURN
+_Static_assert(FOJ_CHURN_Y>=FOJ_COMPACT_STRESS_Y+8,
+               "Stage253 receipt overlaps Stage252");
+_Static_assert(FOJ_CHURN_STATUS_X>=FOJ_CHURN_X+6*72,
+               "Stage253 final barcode overlaps readiness");
+_Static_assert(FOJ_CHURN_STATUS_X+8<=FB_WIDTH,
+               "Stage253 receipt extends outside framebuffer");
+#endif
 #if FOJ_STAGE252_STRESS
 _Static_assert(FOJ_COMPACT_STRESS_Y>=FOJ_BASE_COMPACT_Y+8,
                "Stage252 endurance receipt overlaps Stage251 memory");
@@ -351,6 +372,12 @@ int main(int argc, char **argv) {
      * Reuse existing scratch arrays. No input or frame changes. */
     (void)foj_compact_stress_run(
         &stage252_stress,stage248_cached_pixels,stage248_uncached_pixels);
+#endif
+#if FOJ_STAGE253_CHURN
+    /* Separate 384-frame churn trace, once per guest startup. Reuse the
+     * private research buffers, never mutate battle, controls or saves. */
+    (void)foj_compact_churn_run(
+        &stage253_churn,stage248_cached_pixels,stage248_uncached_pixels);
 #endif
     FojBattleReplay replay;
     foj_replay_init(&replay);
@@ -569,6 +596,10 @@ int main(int argc, char **argv) {
 #endif
 #if FOJ_STAGE252_STRESS
             (void)foj_compact_stress_draw(&stage252_stress,
+                (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
+#endif
+#if FOJ_STAGE253_CHURN
+            (void)foj_compact_churn_draw(&stage253_churn,
                 (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
 #endif
 #endif

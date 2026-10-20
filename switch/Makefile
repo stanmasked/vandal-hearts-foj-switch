@@ -17,6 +17,7 @@ ISO_BASE_STABILITY_TARGET := build/foj-isometric-base-cache-stability
 ISO_BASE_SCALE_TARGET := build/foj-isometric-base-cache-scale
 ISO_COMPACT_TARGET := build/foj-isometric-compact-base-cache
 ISO_COMPACT_STRESS_TARGET := build/foj-isometric-compact-base-cache-stress
+ISO_COMPACT_CHURN_TARGET := build/foj-isometric-compact-cache-churn
 ISO_UNCACHED_TARGET := build/foj-isometric-research-uncached
 COLL_TARGET := build/foj-coll-map-research
 DDS_TARGET := build/foj-dds-texture-research
@@ -142,6 +143,14 @@ $(ISO_COMPACT_STRESS_TARGET).elf: $(ISO_SRC) core/isometric_phase_meter.c core/b
 	$(CC) $(CFLAGS) -DFOJ_STAGE246_PHASE_TIMING=1 -DFOJ_STAGE247_BASE_CACHE=1 -DFOJ_STAGE248_BASE_PAIRS=1 -DFOJ_STAGE249_STABILITY=1 -DFOJ_STAGE250_SCALE=1 -DFOJ_STAGE251_COMPACT=1 -DFOJ_STAGE252_STRESS=1 $(LDFLAGS) $(ISO_SRC) core/isometric_phase_meter.c core/base_cache_pair_probe.c core/base_cache_stability_probe.c core/base_cache_scale_probe.c core/base_cache_compact.c core/compact_stress_probe.c -o $@ -lnx -lm
 
 $(ISO_COMPACT_STRESS_TARGET).nro: $(ISO_COMPACT_STRESS_TARGET).elf $(ISO_TARGET).nacp
+	$(ELF2NRO) $< $@ --nacp=$(ISO_TARGET).nacp
+
+# Stage253 research-only sustained cache churn; default and Stage252 NRO
+# builds do not include this extra memory/accounting experiment.
+$(ISO_COMPACT_CHURN_TARGET).elf: $(ISO_SRC) core/isometric_phase_meter.c core/base_cache_pair_probe.c core/base_cache_stability_probe.c core/base_cache_scale_probe.c core/base_cache_compact.c core/compact_stress_probe.c core/compact_churn_probe.c $(HDR) core/compact_churn_probe.h | build
+	$(CC) $(CFLAGS) -DFOJ_STAGE246_PHASE_TIMING=1 -DFOJ_STAGE247_BASE_CACHE=1 -DFOJ_STAGE248_BASE_PAIRS=1 -DFOJ_STAGE249_STABILITY=1 -DFOJ_STAGE250_SCALE=1 -DFOJ_STAGE251_COMPACT=1 -DFOJ_STAGE252_STRESS=1 -DFOJ_STAGE253_CHURN=1 $(LDFLAGS) $(ISO_SRC) core/isometric_phase_meter.c core/base_cache_pair_probe.c core/base_cache_stability_probe.c core/base_cache_scale_probe.c core/base_cache_compact.c core/compact_stress_probe.c core/compact_churn_probe.c -o $@ -lnx -lm
+
+$(ISO_COMPACT_CHURN_TARGET).nro: $(ISO_COMPACT_CHURN_TARGET).elf $(ISO_TARGET).nacp
 	$(ELF2NRO) $< $@ --nacp=$(ISO_TARGET).nacp
 
 # Stage243 A/B build: compile the same guest code with just the cache gate
