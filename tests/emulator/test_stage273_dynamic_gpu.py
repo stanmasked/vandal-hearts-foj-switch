@@ -16,7 +16,9 @@ from tools.foj_stage267_generated_multiblend_sd import (
     generated_three_layer_mesh, expected_rgb as stage267_rgb,
 )
 from tools.foj_stage269_guarded_scene import guard_three_layer_mesh
-from tools.foj_stage268_transparency_crossing import UnsafeTransparencyOrder
+from tools.foj_stage268_transparency_crossing import (
+    Triangle, pair_relation, plan_back_to_front, UnsafeTransparencyOrder,
+)
 from tools.foj_stage273_dynamic_gpu_check import inspect,verify
 from tools.foj_stage267_gpu_three_layer_check import PROBES
 
@@ -132,6 +134,27 @@ class DynamicSceneTests(unittest.TestCase):
                     order=(ctypes.c_uint32*3)(999,999,999)
                     self.assertEqual(classifier(projected,3,order,3),0)
                     self.assertEqual(tuple(order),BACK_TO_FRONT[case])
+
+    def test_three_pairwise_safe_intersections_can_form_unsafe_cycle(self):
+        # Three planar translucent triangles overlap at three distinct
+        # places: A near B, B near C, C near A. The depth comparisons
+        # never cross within each pair, yet no global order exists.
+        raw=(
+            ((.88058,-.42220,.92917),(.46793,.58045,.47462),
+             (-.19407,-.27824,.05000)),
+            ((.09299,-.06395,.05000),(.04929,.66650,.05000),
+             (-.56145,.26344,.77722)),
+            ((.22444,-.58653,.45352),(-.15052,.24749,.05000),
+             (-.68532,-.49425,.05000)),
+        )
+        a,b,c=tuple(Triangle(name,coords) for name,coords
+                    in zip(("A","B","C"),raw))
+        self.assertEqual(pair_relation(a,b),"b_before_a")
+        self.assertEqual(pair_relation(b,c),"b_before_a")
+        self.assertEqual(pair_relation(a,c),"a_before_b")
+        with self.assertRaisesRegex(
+                UnsafeTransparencyOrder,"Cyclic triangle depth precedence"):
+            plan_back_to_front((a,b,c))
 
     def test_bad_case_and_preexisting_private_root_fail_closed(self):
         with tempfile.TemporaryDirectory() as temp:
