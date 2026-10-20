@@ -132,12 +132,14 @@ FojGpuPrivateBundleStatus foj_gpu_private_bundle_load(
     const FojTextureCamera *camera,unsigned width,unsigned height,
     size_t gpu_alignment,FojGpuPrivateBundleData *out) {
     if (!mesh_path || !material_path || !atlas_paths ||
-        !atlas_paths[0] || !atlas_paths[1] || !camera || !out)
+        !camera || !out)
         return FOJ_PRIVATE_BUNDLE_ARGUMENT;
-    /* Do not overwrite or leak a previous successful payload. */
-    if (out->vertices || out->batches ||
-        out->rgba[0] || out->rgba[1])
-        return FOJ_PRIVATE_BUNDLE_ARGUMENT;
+    /* Reject missing slots and live caller-owned output before allocation. */
+    if (out->vertices || out->batches)return FOJ_PRIVATE_BUNDLE_ARGUMENT;
+    for (unsigned i=0;i<FOJ_GPU_PRIVATE_REQUIRED_ATLASES;++i) {
+        if (!atlas_paths[i] || out->rgba[i])
+            return FOJ_PRIVATE_BUNDLE_ARGUMENT;
+    }
 
     uint8_t *mesh=NULL,*material=NULL;
     size_t mesh_len=0,material_len=0;
