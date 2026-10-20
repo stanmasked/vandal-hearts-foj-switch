@@ -5,7 +5,11 @@
 #include <stddef.h>
 #include <stdint.h>
 enum {
+    #if defined(FOJ_GPU_THREE_LAYER_BLEND)
+    FOJ_RESEARCH_TEXTURE_COUNT=3,
+#else
     FOJ_RESEARCH_TEXTURE_COUNT=2,
+#endif
     FOJ_RESEARCH_TEXTURE_WIDTH=8,
     FOJ_RESEARCH_TEXTURE_HEIGHT=8,
     FOJ_RESEARCH_TEXTURE_BYTES=8*8*4
