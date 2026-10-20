@@ -6,10 +6,7 @@ import unittest
 
 from tools.foj_stage271_evidence_check import RECEIPT,verify
 from tools.foj_stage271_generated_negative_sd import CASES
-try:
-    from PIL import Image, ImageDraw
-except ImportError:
-    Image = ImageDraw = None
+from PIL import Image, ImageDraw
 
 
 def fill(root:Path):
@@ -81,7 +78,6 @@ class ReceiptTests(unittest.TestCase):
             file.write_text(json.dumps(data))
             with self.assertRaises(ValueError):verify(root)
 
-    @unittest.skipUnless(Image is not None, "Pillow needed for frame verification")
     def test_safe_control_synthetic_fixture_only_tests_classifier(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);fill(root)
@@ -93,7 +89,6 @@ class ReceiptTests(unittest.TestCase):
             self.assertTrue(result["positive_control"]["gpu_clear_phase_changed"])
             self.assertFalse(result["actual_host_process_exit_code_measured"])
 
-    @unittest.skipUnless(Image is not None, "Pillow needed for frame verification")
     def test_safe_control_wrong_rgb_fails_closed(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);fill(root)
