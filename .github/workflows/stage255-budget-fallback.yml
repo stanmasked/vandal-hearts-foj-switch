@@ -52,6 +52,11 @@ jobs:
           clang $flags $sources -o build/stage254-clang -lm
           ./build/stage254-gcc
           ./build/stage254-clang
+      - name: Stage255 cannot leak into default or previous NRO targets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_stage255_build_isolation.py' -v
       - name: Reject Stage255 without its Stage254 dependency at compile time
         shell: bash
         run: |
