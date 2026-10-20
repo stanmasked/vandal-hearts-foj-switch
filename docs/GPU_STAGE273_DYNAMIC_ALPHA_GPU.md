@@ -43,6 +43,32 @@ The GPU command buffer uses the actual dynamic pass indices — unlike
 Stage272's CPU-only planner — to select the material, vertex range,
 blend enable and depth-write behavior.
 
+### Independent native selected-order evidence
+
+For this **isolated synthetic-only research NRO**, after validating
+geometry, the native code exclusively creates
+`foj-native-sort-pass.txt` in the generated SD root. Its complete
+content is one of:
+
+```text
+FOJ_NATIVE_SORT_V1 2,1,0
+FOJ_NATIVE_SORT_V1 2,0,1
+```
+
+Only one of the two lines is written per guest. If a marker already
+exists or the write cannot be flushed and closed, the NRO refuses the
+scene with exit code 9 **before GPU creation**. The marker contains
+only the selected draw-index sequence, no source paths, file bytes,
+private names or game assets.
+
+The real NeXium guest driver requires the marker to be **absent before
+launch**, confirms the exact bytes after recording GPU screenshots,
+then preserves a copy in that guest's evidence directory. The
+independent final RGB audit also requires the expected native marker
+for both scenes, in addition to the correct framebuffer pixels.
+Host-created mock markers in unit tests check only this classifier;
+they never establish actual guest provenance.
+
 ## Two synthetic real-GPU scenarios
 
 Both share exactly the same XY triangles and RGBA8 DDS color/alpha
