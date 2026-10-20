@@ -1,7 +1,9 @@
 """Stage273 host tests: synthetic fixtures/classifier only, never guest proof."""
 from pathlib import Path
+import ctypes
 import json
 import struct
+import subprocess
 import tempfile
 import unittest
 from PIL import Image, ImageDraw
@@ -47,6 +49,42 @@ class DynamicSceneTests(unittest.TestCase):
                 legal.update(range(index,index+4))
         self.assertTrue(changed)
         self.assertTrue(changed.issubset(legal))
+
+    def test_compiled_c_planner_matches_generated_actor_orders(self):
+        # Exact generated vertex XYZ, normalized into the same monotonic
+        # [0,1] research depth and orthographic XY transform used by NRO.
+        # This tests actual C sorting, not only the Python name DAG.
+        class Vertex(ctypes.Structure):
+            _fields_=[(field,ctypes.c_float) for field in
+                      ("x","y","z","w","u","v")]
+        with tempfile.TemporaryDirectory() as tmp:
+            lib=Path(tmp)/"dynamic-sort.so"
+            repo=Path(__file__).resolve().parents[2]
+            subprocess.run([
+                "cc","-std=c11","-O2","-Wall","-Wextra",
+                "-Werror","-pedantic","-shared","-fPIC",
+                "-Icore","-Igpu","gpu/transparency_sort.c",
+                "-lm","-o",str(lib),
+            ],cwd=repo,check=True)
+            binary=ctypes.CDLL(str(lib))
+            classifier=binary.foj_alpha_sort_back_to_front
+            classifier.argtypes=[
+                ctypes.POINTER(Vertex),ctypes.c_size_t,
+                ctypes.POINTER(ctypes.c_uint32),ctypes.c_size_t]
+            classifier.restype=ctypes.c_int
+            for case in CASES:
+                with self.subTest(case=case):
+                    actor=generated_actor(case)
+                    raw=[struct.unpack_from("<3f",actor,VERTEX_START+
+                         i*VERTEX_STRIDE) for i in range(9)]
+                    depths=[z for _,_,z in raw]
+                    lo,hi=min(depths),max(depths)
+                    vertices=(Vertex*9)(*(Vertex(
+                        x*.4725,y*.84,.01+.98*(z-lo)/(hi-lo),1,0,0)
+                        for x,y,z in raw))
+                    order=(ctypes.c_uint32*3)(999,999,999)
+                    self.assertEqual(classifier(vertices,3,order,3),0)
+                    self.assertEqual(tuple(order),BACK_TO_FRONT[case])
 
     def test_bad_case_and_preexisting_private_root_fail_closed(self):
         with tempfile.TemporaryDirectory() as temp:
