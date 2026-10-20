@@ -19,8 +19,8 @@ from tools.foj_stage260_generated_gpu_sd import SUBDIR,install_generated
 
 SCHEMA="foj.stage263.generated_depth.v1"
 TRIANGLES={
-    "warm": ((-.68,-.50),(.42,-.50),(-.13,.69)),
-    "cool": ((-.43,-.50),(.67,-.50),(.12,.69)),
+    "warm": ((-.76,-.50),(.34,-.50),(-.21,.69)),
+    "cool": ((-.35,-.50),(.75,-.50),(.20,.69)),
 }
 NEAR_Z=.35
 FAR_Z=-.35
