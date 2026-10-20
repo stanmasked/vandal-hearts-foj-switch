@@ -233,6 +233,25 @@ int main(int argc,char **argv) {
     fprintf(stderr,"FoJ dynamic alpha sort: pass=%u,%u,%u\n",
             dynamic_three_passes[0],dynamic_three_passes[1],
             dynamic_three_passes[2]);
+    /* Stage273 *generated-only diagnostic* binds the actual selected
+     * native GPU submission sequence to the subsequent NeXium frames.
+     * This must be fresh: never overwrite/follow a prior output marker.
+     * No private texture bytes, names or paths are written. */
+    FILE *sort_receipt=fopen(
+        "sdmc:/switch/foj/gpu/foj-native-sort-pass.txt","wx");
+    if (!sort_receipt) {
+        foj_gpu_private_bundle_free(&private_payload);
+        return 9;
+    }
+    const int sort_bytes=fprintf(sort_receipt,"FOJ_NATIVE_SORT_V1 %u,%u,%u\n",
+        dynamic_three_passes[0],dynamic_three_passes[1],
+        dynamic_three_passes[2]);
+    const int sort_flushed=fflush(sort_receipt);
+    const int sort_closed=fclose(sort_receipt);
+    if (sort_bytes!=25 || sort_flushed!=0 || sort_closed!=0) {
+        foj_gpu_private_bundle_free(&private_payload);
+        return 9;
+    }
 #endif
 #if defined(FOJ_GPU_NATIVE_ALPHA_ORDER_GUARD)
     /* Critical: screen-space geometry is checked on the very same
