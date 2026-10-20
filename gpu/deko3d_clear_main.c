@@ -109,6 +109,9 @@ static void foj_present_shader_boot_failure(
 
 int main(int argc,char **argv) {
     (void)argc;(void)argv;
+#if defined(FOJ_GPU_DEPTH_PROOF) && !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW)
+#error "GPU depth proof requires validated private actor data"
+#endif
 #if defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) && !defined(FOJ_GPU_PRIVATE_BUNDLE_PREFLIGHT)
 #error "Private actor draw must use the fail-closed private intake"
 #endif
@@ -162,6 +165,12 @@ int main(int argc,char **argv) {
     DkCmdBuf cmd=NULL;
     DkSwapchain swapchain=NULL;
     DkMemBlock images_mem[BUFFER_COUNT]={0};
+#if defined(FOJ_GPU_DEPTH_PROOF)
+    DkMemBlock depth_mem[BUFFER_COUNT]={0};
+    DkImage depth_images[BUFFER_COUNT];
+    DkImageView depth_views[BUFFER_COUNT];
+    DkImageLayout depth_layout;
+#endif
     DkMemBlock cmd_mem=NULL;
     DkMemBlock vertex_mem=NULL;
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
@@ -270,6 +279,36 @@ int main(int argc,char **argv) {
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
     FOJ_READY_BOOT();
     FOJ_ENTER_BOOT(FOJ_BOOT_SWAPCHAIN);
+#endif
+#if defined(FOJ_GPU_DEPTH_PROOF)
+    /* Separate depth images for each acquired swapchain slot.
+     * Deko3d uses 0..1 depth in this NRO. FOJ stream maps nearer
+     * camera-space +Z to larger depth; clear 0 and test GREATER.
+     * This is a genuine GPU attachment, not a CPU sort of batches. */
+    DkImageLayoutMaker depth_layout_maker;
+    dkImageLayoutMakerDefaults(&depth_layout_maker,device);
+    depth_layout_maker.type=DkImageType_2D;
+    depth_layout_maker.format=DkImageFormat_Z24S8;
+    depth_layout_maker.flags=DkImageFlags_UsageRender;
+    depth_layout_maker.dimensions[0]=SCREEN_WIDTH;
+    depth_layout_maker.dimensions[1]=SCREEN_HEIGHT;
+    depth_layout_maker.dimensions[2]=1;
+    dkImageLayoutInitialize(&depth_layout,&depth_layout_maker);
+    uint32_t depth_image_bytes=0;
+    if (!foj_smoke_image_allocation(
+            dkImageLayoutGetSize(&depth_layout),
+            dkImageLayoutGetAlignment(&depth_layout),
+            DK_MEMBLOCK_ALIGNMENT,&depth_image_bytes))
+        goto cleanup;
+    for (unsigned i=0;i<BUFFER_COUNT;++i) {
+        DkMemBlockMaker dm;
+        dkMemBlockMakerDefaults(&dm,device,depth_image_bytes);
+        dm.flags=DkMemBlockFlags_GpuCached|DkMemBlockFlags_Image;
+        depth_mem[i]=dkMemBlockCreate(&dm);
+        if (!depth_mem[i])goto cleanup;
+        dkImageInitialize(&depth_images[i],&depth_layout,depth_mem[i],0);
+        dkImageViewDefaults(&depth_views[i],&depth_images[i]);
+    }
 #endif
     DkImage const* swap_images[BUFFER_COUNT]={
         &images[0],&images[1]
@@ -609,8 +648,17 @@ int main(int argc,char **argv) {
     for (unsigned slot=0;slot<BUFFER_COUNT;++slot) {
         for (unsigned phase=0;phase<2;++phase) {
             DkImageView const* color_targets[]={&views[slot]};
+#if defined(FOJ_GPU_DEPTH_PROOF)
+            dkCmdBufBindRenderTargets(cmd,color_targets,1,&depth_views[slot]);
+#else
             dkCmdBufBindRenderTargets(cmd,color_targets,1,NULL);
+#endif
             dkCmdBufSetScissors(cmd,0,&full_screen,1);
+#if defined(FOJ_GPU_DEPTH_PROOF)
+            /* Clear on EVERY phase/list so prior frames cannot occlude
+             * later frames when swapchain images are reacquired. */
+            dkCmdBufClearDepthStencil(cmd,true,0.0f,0,0);
+#endif
             float rgba[4];
             if (!foj_smoke_color(phase,rgba))goto cleanup;
             dkCmdBufClearColorFloat(cmd,0,DkColorMask_RGBA,
@@ -626,6 +674,13 @@ int main(int argc,char **argv) {
             dkRasterizerStateDefaults(&rasterizer);
             dkColorStateDefaults(&color_state);
             dkColorWriteStateDefaults(&color_write);
+#if defined(FOJ_GPU_DEPTH_PROOF)
+            DkDepthStencilState depth_state;
+            dkDepthStencilStateDefaults(&depth_state);
+            depth_state.depthTestEnable=true;
+            depth_state.depthWriteEnable=true;
+            depth_state.depthCompareOp=DkCompareOp_Greater;
+#endif
             DkShader const* shaders[2]={
                 &shader_vertex,&shader_fragment
             };
@@ -656,6 +711,9 @@ int main(int argc,char **argv) {
             dkCmdBufBindRasterizerState(cmd,&rasterizer);
             dkCmdBufBindColorState(cmd,&color_state);
             dkCmdBufBindColorWriteState(cmd,&color_write);
+#if defined(FOJ_GPU_DEPTH_PROOF)
+            dkCmdBufBindDepthStencilState(cmd,&depth_state);
+#endif
             dkCmdBufBindVtxAttribState(cmd,attribs,2);
             dkCmdBufBindVtxBufferState(cmd,vertex_states,1);
             dkCmdBufBindVtxBuffers(cmd,0,vertex_data,1);
@@ -761,6 +819,10 @@ cleanup:
 #endif
     if (cmd_mem)dkMemBlockDestroy(cmd_mem);
     if (swapchain)dkSwapchainDestroy(swapchain);
+#if defined(FOJ_GPU_DEPTH_PROOF)
+    for (unsigned i=0;i<BUFFER_COUNT;++i)
+        if (depth_mem[i])dkMemBlockDestroy(depth_mem[i]);
+#endif
     for (unsigned i=0;i<BUFFER_COUNT;++i)
         if (images_mem[i])dkMemBlockDestroy(images_mem[i]);
     if (queue)dkQueueDestroy(queue);
