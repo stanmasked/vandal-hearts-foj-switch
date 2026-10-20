@@ -39,6 +39,24 @@ FojGpuPrivateBundleStatus foj_gpu_private_bundle_preflight(
     const FojTextureCamera *camera, unsigned width,unsigned height,
     size_t gpu_alignment,FojGpuPrivateBundleReport *report);
 
+/* Stage259: caller-owned validated data, retained for actual GPU upload.
+ * No raw FOJRM/FOJMAT/DDS source file blobs are retained.
+ * All members must be zero on entry; free only after successful load.
+ * Invalid/missing data never becomes synthetic fallback in private mode. */
+typedef struct {
+    FojGpuPrivateBundleReport report;
+    FojGpuVertex *vertices;
+    FojGpuBatch *batches;
+    uint8_t *rgba[FOJ_GPU_PRIVATE_REQUIRED_ATLASES];
+} FojGpuPrivateBundleData;
+
+FojGpuPrivateBundleStatus foj_gpu_private_bundle_load(
+    const char *mesh_path,const char *material_path,
+    const char *const atlas_paths[FOJ_GPU_PRIVATE_REQUIRED_ATLASES],
+    const FojTextureCamera *camera,unsigned width,unsigned height,
+    size_t gpu_alignment,FojGpuPrivateBundleData *out);
+void foj_gpu_private_bundle_free(FojGpuPrivateBundleData *data);
+
 const char *foj_gpu_private_bundle_status_name(
     FojGpuPrivateBundleStatus status);
 #endif
