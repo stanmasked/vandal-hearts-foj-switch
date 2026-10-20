@@ -300,8 +300,8 @@ int main(int argc,char **argv) {
     FOJ_ENTER_BOOT(FOJ_BOOT_VERTICES);
 #endif
 
-    /* Clear-only mode keeps the original smoke data. Shader-backed mode
-     * uploads a synthetic four-triangle surface in two ordered sections. */
+    /* In the default research mode vertices are invented; Stage259 swaps
+     * in only validated, retained user-local actor vertices and batches. */
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
     FojGpuVertex research_vertices[FOJ_RESEARCH_VERTEX_COUNT];
     FojGpuBatch research_batches[FOJ_RESEARCH_BATCH_COUNT];
@@ -337,8 +337,7 @@ int main(int argc,char **argv) {
     const size_t vertex_upload_bytes=sizeof(kResearchTriangle);
 #endif
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
-    /* Validated once for all ordered material draws, before GPU allocation.
-     * No proprietary mesh is loaded here: only generated quads. */
+    /* Validated ordered multi-material draws, with strict buffer capacity. */
     uint32_t vertex_memory_bytes=actor_upload.allocation_bytes;
 #else
     uint32_t vertex_memory_bytes=0;
@@ -465,10 +464,12 @@ int main(int argc,char **argv) {
     if (!texture_data_cpu || texture_data_addr==DK_GPU_ADDR_INVALID)
         goto cleanup;
 
+#if !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW)
     const char *const atlas_paths[FOJ_RESEARCH_TEXTURE_COUNT]={
         "sdmc:/switch/foj/gpu/material0.dds",
         "sdmc:/switch/foj/gpu/material1.dds"
     };
+#endif
     for (unsigned i=0;i<FOJ_RESEARCH_TEXTURE_COUNT;++i) {
         uint8_t *pixels=texture_data_cpu+PIXEL_STAGING_OFFSET+
                         i*PIXEL_STAGING_STRIDE;
