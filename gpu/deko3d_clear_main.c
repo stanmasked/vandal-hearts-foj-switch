@@ -109,6 +109,9 @@ static void foj_present_shader_boot_failure(
 
 int main(int argc,char **argv) {
     (void)argc;(void)argv;
+#if defined(FOJ_GPU_ALPHA_CUTOUT) && !defined(FOJ_GPU_DEPTH_PROOF)
+#error "GPU alpha cutout requires the opt-in depth renderer"
+#endif
 #if defined(FOJ_GPU_DEPTH_PROOF) && !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW)
 #error "GPU depth proof requires validated private actor data"
 #endif
@@ -439,8 +442,15 @@ int main(int argc,char **argv) {
         exit_status=6;
         goto cleanup;
     }
+#if defined(FOJ_GPU_ALPHA_CUTOUT)
+    const char *const fragment_path=
+        "sdmc:/switch/foj/gpu/foj_alpha_cutout.frag.dksh";
+#else
+    const char *const fragment_path=
+        "sdmc:/switch/foj/gpu/foj_triangle.frag.dksh";
+#endif
     if (!foj_dksh_read_file(
-            "sdmc:/switch/foj/gpu/foj_triangle.frag.dksh",
+            fragment_path,
             shader_cpu+FOJ_GPU_SHADER_SLOT_BYTES,FOJ_DKSH_MAX_BYTES,
             FOJ_DKSH_FRAGMENT,&fs_bytes)) {
         foj_present_shader_boot_failure(
