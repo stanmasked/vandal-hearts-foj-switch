@@ -93,10 +93,16 @@ flush causes the opt-in NRO to abort rather than falsely attest pass
 states. This recording happens **before GPU draw command lists are
 recorded** and reveals no original game data.
 
-`tools/foj_stage274_nexium_pass_drive.sh` requires the marker to be
+`tools/foj_stage274_nexium_pass_drive.sh` requires both the acceptance marker **and the rear-alpha refusal marker** to be
 absent before launch, runs the actual Stage273 NeXium framebuffer
 driver, and checks and preserves both the native sort receipt and the
-new exact native material/depth receipt. The final independent
+new exact native material/depth receipt. The same driver also requires the rear-alpha rejection witness to remain
+**absent after a successful positive guest**. A test that emits both a
+valid GPU pass-state receipt and a translucent rear-material rejection
+is contradictory and must fail, even if four rendered RGB frames look
+correct.
+
+The final independent
 `tools/foj_stage274_pass_contract_check.py` first validates all four
 actual GPU screenshots via the Stage273 RGB oracle, then requires
 both Stage274 native receipts. Host-synthesized image/marker unit
