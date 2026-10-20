@@ -108,7 +108,7 @@ jobs:
           if-no-files-found: error
 
   nexium:
-    name: Nine real NeXium states: compact heap memory and inherited raster timing
+    name: "Nine real NeXium states: compact heap memory and inherited raster timing"
     needs: build
     runs-on: ubuntu-26.04
     timeout-minutes: 18
