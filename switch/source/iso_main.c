@@ -110,6 +110,19 @@ enum { FOJ_STAGE247_STATUS_X=1252, FOJ_STAGE247_STATUS_Y=12 };
 #include "compact_reuse_probe.h"
 static FojReuseReceipt stage254_reuse;
 #endif
+#ifndef FOJ_STAGE255_BUDGET_FALLBACK
+#define FOJ_STAGE255_BUDGET_FALLBACK 0
+#endif
+#if FOJ_STAGE255_BUDGET_FALLBACK != 0 && FOJ_STAGE255_BUDGET_FALLBACK != 1
+#error "Stage255 budget fallback flag must be 0 or 1"
+#endif
+#if FOJ_STAGE255_BUDGET_FALLBACK && !FOJ_STAGE254_REUSE
+#error "Stage255 needs Stage254's explicit research-mode cache"
+#endif
+#if FOJ_STAGE255_BUDGET_FALLBACK
+#include "compact_budget_probe.h"
+static FojBudgetReceipt stage255_budget;
+#endif
 #if FOJ_STAGE253_CHURN
 #include "compact_churn_probe.h"
 static FojCompactChurnReceipt stage253_churn;
@@ -259,6 +272,14 @@ _Static_assert(sizeof(FojBaseScaleProbe)+sizeof(FojBaseStabilityProbe)+
     "Stage250 opt-in static experimental buffers exceed 21 MiB");
 #endif
 
+#if FOJ_STAGE255_BUDGET_FALLBACK
+_Static_assert(FOJ_BUDGET_Y>=FOJ_REUSE_Y+8,
+               "Stage255 optical receipt overlaps Stage254");
+_Static_assert(FOJ_BUDGET_STATUS_X>=FOJ_BUDGET_X+6*72,
+               "Stage255 final barcode overlaps readiness");
+_Static_assert(FOJ_BUDGET_STATUS_X+8<=FB_WIDTH,
+               "Stage255 receipt extends past framebuffer");
+#endif
 #if FOJ_STAGE254_REUSE
 _Static_assert(FOJ_REUSE_Y>=FOJ_CHURN_Y+8,
                "Stage254 optical receipt overlaps Stage253");
@@ -406,6 +427,12 @@ int main(int argc, char **argv) {
     (void)foj_reuse_probe_run(
         &stage254_reuse,&stage253_churn,
         stage248_cached_pixels,stage248_uncached_pixels);
+#endif
+#if FOJ_STAGE255_BUDGET_FALLBACK
+    /* Strict per-frame budget, 16 small-mode fallbacks in 384 frames.
+     * This runs on research-only scratch; never modifies battle state. */
+    (void)foj_budget_probe_run(
+        &stage255_budget,stage248_cached_pixels,stage248_uncached_pixels);
 #endif
     FojBattleReplay replay;
     foj_replay_init(&replay);
@@ -632,6 +659,10 @@ int main(int argc, char **argv) {
 #endif
 #if FOJ_STAGE254_REUSE
             (void)foj_reuse_probe_draw(&stage254_reuse,
+                (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
+#endif
+#if FOJ_STAGE255_BUDGET_FALLBACK
+            (void)foj_budget_probe_draw(&stage255_budget,
                 (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
 #endif
 #endif

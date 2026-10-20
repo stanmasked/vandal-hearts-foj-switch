@@ -1,0 +1,68 @@
+name: Stage255 opt-in budget-aware compact raster fallback
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage255-budget-fallback.yml'
+      - 'core/base_cache_compact.c'
+      - 'core/base_cache_compact.h'
+      - 'tests/test_stage255_budget_fallback.c'
+      - 'core/isometric_demo.*'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stage255-budget-fallback.yml'
+      - 'core/base_cache_compact.c'
+      - 'core/base_cache_compact.h'
+      - 'tests/test_stage255_budget_fallback.c'
+      - 'core/isometric_demo.*'
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    name: GCC Clang UBSan ASan budget policy and unchanged Stage254 baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stage255 opt-in fallback with byte-exact pixel oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          flags="-std=c11 -Wall -Wextra -Werror -pedantic -O2 -Icore -DFOJ_STAGE252_STRESS=1 -DFOJ_STAGE254_REUSE=1 -DFOJ_STAGE255_BUDGET_FALLBACK=1"
+          sources="tests/test_stage255_budget_fallback.c core/base_cache_compact.c core/isometric_demo.c core/tactical_battle.c core/tactical_demo.c"
+          gcc $flags $sources -o build/stage255-gcc -lm
+          clang $flags $sources -o build/stage255-clang -lm
+          gcc $flags -fsanitize=undefined -fno-sanitize-recover=all $sources -o build/stage255-ubsan -lm
+          clang $flags -fsanitize=address,undefined -fno-omit-frame-pointer $sources -o build/stage255-asan -lm
+          ./build/stage255-gcc
+          ./build/stage255-clang
+          UBSAN_OPTIONS=halt_on_error=1 ./build/stage255-ubsan
+          ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./build/stage255-asan
+      - name: Stage254 900-KiB behavior remains unchanged without Stage255 opt-in
+        shell: bash
+        run: |
+          set -euo pipefail
+          flags="-std=c11 -Wall -Wextra -Werror -pedantic -O2 -Icore -DFOJ_STAGE252_STRESS=1 -DFOJ_STAGE253_CHURN=1 -DFOJ_STAGE254_REUSE=1"
+          sources="tests/test_stage254_bounded_reuse.c core/compact_reuse_probe.c core/compact_churn_probe.c core/base_cache_compact.c core/isometric_demo.c core/tactical_battle.c core/tactical_demo.c"
+          gcc $flags $sources -o build/stage254-gcc -lm
+          clang $flags $sources -o build/stage254-clang -lm
+          ./build/stage254-gcc
+          ./build/stage254-clang
+      - name: Stage255 cannot leak into default or previous NRO targets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_stage255_build_isolation.py' -v
+      - name: Reject Stage255 without its Stage254 dependency at compile time
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gcc -std=c11 -Icore -DFOJ_STAGE255_BUDGET_FALLBACK=1 -c core/base_cache_compact.c -o build/invalid-stage255.o 2> build/invalid-stage255.log; then
+            echo "Stage255 without Stage254 compiled unexpectedly"
+            exit 1
+          fi
+          grep -q 'Stage255 budget fallback requires' build/invalid-stage255.log

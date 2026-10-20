@@ -3,6 +3,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+/* Stage255 is opt-in and requires the Stage254 capacity policy. */
+#if defined(FOJ_STAGE255_BUDGET_FALLBACK) && FOJ_STAGE255_BUDGET_FALLBACK && \
+    (!defined(FOJ_STAGE254_REUSE) || !FOJ_STAGE254_REUSE)
+#error "Stage255 budget fallback requires FOJ_STAGE254_REUSE=1"
+#endif
 
 static bool same_scene(const FojDemo *a,const FojDemo *b) {
     if(a->hero_x!=b->hero_x || a->hero_y!=b->hero_y ||
@@ -58,9 +63,21 @@ int foj_compact_base_draw(FojCompactBaseCache *p,const FojDemo *scene,
 #if defined(FOJ_STAGE254_REUSE) && FOJ_STAGE254_REUSE
     /* Alternative capacity policy is strictly gated to Stage254 builds.
      * Only actual pixel payload is used; spare capacity is never pixels. */
-    const size_t target = used < p->reuse_floor_bytes ?
-                          p->reuse_floor_bytes : used;
+    size_t target = used < p->reuse_floor_bytes ?
+                    p->reuse_floor_bytes : used;
+#if defined(FOJ_STAGE255_BUDGET_FALLBACK) && FOJ_STAGE255_BUDGET_FALLBACK
+    /* A budget below the reuse floor must not reject a smaller frame
+     * that fits exactly. No partial frame or over-budget allocation.
+     * A lowered budget also invalidates any old oversized reservation. */
+    if(target>p->budget_bytes && used<=p->budget_bytes)
+        target=used;
+    if(target>p->budget_bytes) {
+        foj_compact_base_release(p);
+        return -1;
+    }
+#else
     if(target>p->budget_bytes)return -1;
+#endif
 #else
     const size_t target=used;
     if(used>p->budget_bytes)return -1;
