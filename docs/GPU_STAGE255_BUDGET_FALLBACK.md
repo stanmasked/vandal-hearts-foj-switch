@@ -46,6 +46,10 @@ than Stage254 and must not be represented as such.
   policy across changing budget, dimensions and scene keys.
 - Every successful cached result is compared byte-for-byte against
   independent `foj_iso_render` output.
+- An additional 384-frame tight-budget schedule uses all 48 eight-frame
+  resolution blocks with independently rendered reference pixels. It
+  expects 192 hits, 192 misses, and **48** allocations (not Stage254's
+  32) because each resolution block has only its exact-sized budget.
 - Cases include reused low-resolution allocation, shared 900-KiB capacity,
   large-to-small shrinking, too-small budget rejection, stale-cache
   invalidation, injected allocation failure and recovery, and preservation
