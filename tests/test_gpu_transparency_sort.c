@@ -71,6 +71,32 @@ int main(void){
     CHECK(foj_alpha_sort_back_to_front(v,65,out,65)==FOJ_ALPHA_SORT_INVALID);
     CHECK(foj_alpha_sort_back_to_front(v,2,out,1)==FOJ_ALPHA_SORT_INVALID);
 
+    /* All three pairs are individually strictly ordered in their own
+     * screen-space overlap, but those overlaps occur in three different
+     * places. Pair precedence creates B->A, C->B, A->C, so a global
+     * GPU pass order does not exist. Fail closed WITHOUT mutating output.
+     * This is an invented geometry-only fixture, not original game data. */
+    const float positions[9][3]={
+        { .88058f,-.42220f,.92917f},
+        { .46793f, .58045f,.47462f},
+        {-.19407f,-.27824f,.05000f},
+        { .09299f,-.06395f,.05000f},
+        { .04929f, .66650f,.05000f},
+        {-.56145f, .26344f,.77722f},
+        { .22444f,-.58653f,.45352f},
+        {-.15052f, .24749f,.05000f},
+        {-.68532f,-.49425f,.05000f}
+    };
+    for(unsigned i=0;i<9;++i)
+        put(v+i,positions[i][0],positions[i][1],positions[i][2]);
+    out[0]=UINT32_C(0xA5A5A5A5);
+    out[1]=UINT32_C(0xA5A5A5A5);
+    out[2]=UINT32_C(0xA5A5A5A5);
+    CHECK(foj_alpha_sort_back_to_front(v,3,out,3)==FOJ_ALPHA_SORT_UNSAFE);
+    CHECK(out[0]==UINT32_C(0xA5A5A5A5));
+    CHECK(out[1]==UINT32_C(0xA5A5A5A5));
+    CHECK(out[2]==UINT32_C(0xA5A5A5A5));
+
     /* Exercise max supported cardinality and the uint64_t highest bit:
      * 64 small, strictly disjoint triangles must remain index-ordered. */
     for(unsigned i=0;i<64;++i) {
