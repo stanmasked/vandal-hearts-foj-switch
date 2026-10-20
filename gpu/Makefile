@@ -47,7 +47,7 @@ alpha-verify: alpha
 	python3 -m tools.validate_dksh --expect-stage vertex $(GPU_OUT)/foj_actor.vert.dksh
 	python3 -m tools.validate_dksh --expect-stage fragment $(GPU_OUT)/foj_alpha_cutout.frag.dksh
 
-triangle: $(GPU_OUT)/foj_actor.vert.dksh $(GPU_OUT)/foj_triangle.frag.dksh $(GPU_OUT)/foj_alpha_cutout.frag.dksh
+triangle: $(GPU_OUT)/foj_actor.vert.dksh $(GPU_OUT)/foj_triangle.frag.dksh
 
 triangle-verify: triangle
 	python3 -m tools.validate_dksh --expect-stage vertex $(GPU_OUT)/foj_actor.vert.dksh
@@ -58,4 +58,4 @@ verify: all
 	python3 -m tools.validate_dksh --expect-stage fragment $(GPU_OUT)/foj_actor.frag.dksh
 
 clean:
-	rm -f $(GPU_OUT)/foj_actor.vert.dksh $(GPU_OUT)/foj_actor.frag.dksh $(GPU_OUT)/foj_triangle.frag.dksh
+	rm -f $(GPU_OUT)/foj_actor.vert.dksh $(GPU_OUT)/foj_actor.frag.dksh $(GPU_OUT)/foj_triangle.frag.dksh $(GPU_OUT)/foj_alpha_cutout.frag.dksh
