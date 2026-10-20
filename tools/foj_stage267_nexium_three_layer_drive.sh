@@ -33,9 +33,9 @@ for attempt in $(seq 1 30); do
   if [[ -n "$window" ]]; then break; fi
 done
 test -n "$window" || { echo "NeXium window not visible" >&2; exit 1; }
-# The NRO deliberately shows DDS diagnostic colors for its FIRST 240
+# The NRO deliberately shows DDS diagnostic colors for its FIRST 360
 # guest frames. Never mistake those status fills for GPU material textures.
-# Wait for both live triangle footprints; a static time delay is insufficient
+# Wait for the generated GPU overlap and unchanged rear-only probes; a static time delay is insufficient
 # because software Vulkan guests may run far below 60 FPS.
 found=0
 for attempt in $(seq 1 30); do
