@@ -7,6 +7,8 @@ on:
       - 'gpu/deko3d_clear_main.c'
       - 'gpu/dynamic_alpha_sort.mk'
       - 'gpu/transparency_sort.*'
+      - 'gpu/alpha_material_contract.*'
+      - 'tests/test_gpu_alpha_material_contract.c'
       - 'tools/foj_stage273_*'
       - 'tests/emulator/test_stage273_dynamic_gpu.py'
       - 'tests/emulator/test_stage272_native_sort_parity.py'
@@ -39,6 +41,20 @@ jobs:
               "$compiler" $flags tests/test_gpu_transparency_sort.c \
                 gpu/transparency_sort.c -lm -o "/tmp/stage273-$compiler-$mode"
               "/tmp/stage273-$compiler-$mode"
+            done
+          done
+      - name: Enforce strict opaque rear DDS alpha on host GCC and Clang
+        shell: bash
+        run: |
+          set -euo pipefail
+          for compiler in gcc clang; do
+            for mode in debug release; do
+              opts="-std=c11 -O2 -Wall -Wextra -Werror -pedantic -Igpu"
+              if [[ "$mode" == release ]]; then opts="$opts -DNDEBUG"; fi
+              "$compiler" $opts tests/test_gpu_alpha_material_contract.c \
+                gpu/alpha_material_contract.c \
+                -o "/tmp/foj-stage273-opaque-$compiler-$mode"
+              "/tmp/foj-stage273-opaque-$compiler-$mode"
             done
           done
       - name: Verify dynamic generated fixtures and randomized order
