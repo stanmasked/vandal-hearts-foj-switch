@@ -73,7 +73,7 @@ int foj_gpu_alpha_pass_format_receipt(
     if(used!=7u)return 0;
     char scratch[128];
     const int length=snprintf(scratch,sizeof(scratch),
-        "FOJ_NATIVE_ALPHA_PASS_V1 %u:%u:%u:%u %u:%u:%u:%u %u:%u:%u:%u\\n",
+        "FOJ_NATIVE_ALPHA_PASS_V1 %u:%u:%u:%u %u:%u:%u:%u %u:%u:%u:%u\n",
         passes[0].material_index,passes[0].blend_enabled,
         passes[0].depth_test_enabled,passes[0].depth_write_enabled,
         passes[1].material_index,passes[1].blend_enabled,
