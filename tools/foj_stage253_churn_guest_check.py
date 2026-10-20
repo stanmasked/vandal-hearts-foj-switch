@@ -10,7 +10,9 @@ from tools.foj_stage241_render_guest_check import close
 from tools.foj_stage246_phase_guest_check import sample_x
 from tools.foj_stage252_stress_guest_check import verify_stress_guest
 
-SCHEMA="foj-stage253-nexium-384-frame-compact-cache-churn-v1"\n# Capture geometry: y76..83 guest becomes y75..80 in NeXium GUI.\n# Avoid y81: it is unpainted background in actual guest screenshots.
+SCHEMA="foj-stage253-nexium-384-frame-compact-cache-churn-v1"
+# Capture geometry: y76..83 guest becomes y75..80 in NeXium GUI.
+# Avoid y81: it is unpainted background in actual guest screenshots.
 ORIGIN=536
 STEP=72
 STATUS_X=968
