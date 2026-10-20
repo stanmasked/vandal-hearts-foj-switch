@@ -25,6 +25,8 @@ on:
       - 'gpu/Makefile'
       - 'gpu/private_bundle_intake.*'
       - 'gpu/research_texture.h'
+      - 'gpu/transparent_order_guard.*'
+      - 'tests/native/stage269_transparency_guard.c'
       - 'tools/foj_stage266_transparency_order.py'
   workflow_dispatch:
 
