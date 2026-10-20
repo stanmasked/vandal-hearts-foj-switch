@@ -10,10 +10,11 @@ GPU_OUT ?= gpu/build
 VERT := gpu/shaders/foj_actor.vert
 FRAG := gpu/shaders/foj_actor.frag
 TRI_FRAG := gpu/shaders/foj_triangle.frag
+CUTOUT_FRAG := gpu/shaders/foj_alpha_cutout.frag
 
 # Never retain a partially generated or validator-rejected DKSH target.
 .DELETE_ON_ERROR:
-.PHONY: all clean check-tool verify triangle triangle-verify
+.PHONY: all clean check-tool verify triangle triangle-verify alpha alpha-verify
 all: $(GPU_OUT)/foj_actor.vert.dksh $(GPU_OUT)/foj_actor.frag.dksh
 
 check-tool:
@@ -36,7 +37,17 @@ $(GPU_OUT)/foj_triangle.frag.dksh: $(TRI_FRAG) tools/validate_dksh.py | $(GPU_OU
 	$(UAM) -s frag -o $@ $<
 	python3 -m tools.validate_dksh --expect-stage fragment $@
 
-triangle: $(GPU_OUT)/foj_actor.vert.dksh $(GPU_OUT)/foj_triangle.frag.dksh
+$(GPU_OUT)/foj_alpha_cutout.frag.dksh: $(CUTOUT_FRAG) tools/validate_dksh.py | $(GPU_OUT) check-tool
+	$(UAM) -s frag -o $@ $<
+	python3 -m tools.validate_dksh --expect-stage fragment $@
+
+alpha: $(GPU_OUT)/foj_actor.vert.dksh $(GPU_OUT)/foj_alpha_cutout.frag.dksh
+
+alpha-verify: alpha
+	python3 -m tools.validate_dksh --expect-stage vertex $(GPU_OUT)/foj_actor.vert.dksh
+	python3 -m tools.validate_dksh --expect-stage fragment $(GPU_OUT)/foj_alpha_cutout.frag.dksh
+
+triangle: $(GPU_OUT)/foj_actor.vert.dksh $(GPU_OUT)/foj_triangle.frag.dksh $(GPU_OUT)/foj_alpha_cutout.frag.dksh
 
 triangle-verify: triangle
 	python3 -m tools.validate_dksh --expect-stage vertex $(GPU_OUT)/foj_actor.vert.dksh
