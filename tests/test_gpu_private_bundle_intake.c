@@ -105,6 +105,47 @@ int main(void) {
         assert(report.atlas[i].height==8);
         assert(report.atlas[i].pixel_bytes==256);
     }
+    /* Stage259: the same verified files must be retained as private
+     * GPU input, not just reported and immediately discarded. */
+    const char *const names[2]={dds0,dds1};
+    FojTextureCamera cam=camera();
+    FojGpuPrivateBundleData retained={0};
+    assert(foj_gpu_private_bundle_load(
+        mesh,mat,names,&cam,1280,720,4096,&retained)==
+        FOJ_PRIVATE_BUNDLE_OK);
+    assert(retained.vertices && retained.batches &&
+           retained.rgba[0] && retained.rgba[1]);
+    assert(retained.report.actor.stream.vertices_written==6);
+    assert(retained.report.actor.upload.payload_bytes==6*24);
+    assert(retained.report.actor.upload.allocation_bytes==4096);
+    assert(retained.report.actor.upload.material_mask==3);
+    assert(retained.batches[0].first_vertex==0);
+    assert(retained.batches[1].first_vertex==3);
+    assert(retained.batches[1].texture_index==1);
+    assert(retained.vertices[0].w==1.f);
+    assert(retained.rgba[0][0]==45);
+    assert(retained.rgba[1][0]==215);
+    assert(retained.rgba[0][3]==255 && retained.rgba[1][3]==255);
+    assert(retained.report.atlas[0].pixel_bytes==256);
+    assert(retained.report.atlas[1].pixel_bytes==256);
+    /* Nonzero live output must be rejected, never overwritten/leaked. */
+    assert(foj_gpu_private_bundle_load(
+        mesh,mat,names,&cam,1280,720,4096,&retained)==
+        FOJ_PRIVATE_BUNDLE_ARGUMENT);
+    assert(retained.rgba[0][0]==45);
+    foj_gpu_private_bundle_free(&retained);
+    assert(!retained.vertices && !retained.batches &&
+           !retained.rgba[0] && !retained.rgba[1]);
+    foj_gpu_private_bundle_free(&retained); /* idempotent */
+
+    FojGpuPrivateBundleData bad={0};
+    const char *const absent_names[2]={dds0,absent};
+    assert(foj_gpu_private_bundle_load(
+        mesh,mat,absent_names,&cam,1280,720,4096,&bad)==
+        FOJ_PRIVATE_BUNDLE_MISSING);
+    assert(!bad.vertices && !bad.rgba[0] && !bad.rgba[1] &&
+           !bad.batches && bad.report.atlas_count==0);
+    foj_gpu_private_bundle_free(&bad);
     rejected(mesh,mat,dds0,absent,FOJ_PRIVATE_BUNDLE_MISSING);
     rejected(absent,mat,dds0,dds1,FOJ_PRIVATE_BUNDLE_MISSING);
     assert(symlink("stage258-actor.fojrm",link)==0);
