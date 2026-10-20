@@ -48,6 +48,35 @@ texture index and vertex range.
 The prior constant-order Stage270 NRO and dynamic Stage273 NRO are
 **not** recompiled or behaviorally altered by these opt-in changes.
 
+## Guest-native binding of GPU pass states to real framebuffer evidence
+
+Stage273 independently records the **triangle ordering** it calculated
+and confirms two separate NeXium scenes have the expected source-over
+RGB. Stage274 now also records, after constructing the validated C11
+pass plan, the exact **texture ID, blend enable, depth-test enable,
+and depth-write enable** for all three passes:
+
+```text
+FOJ_NATIVE_ALPHA_PASS_V1 2:0:1:1 1:1:1:0 0:1:1:0
+FOJ_NATIVE_ALPHA_PASS_V1 2:0:1:1 0:1:1:0 1:1:1:0
+```
+
+Exactly one of these lines, terminated by a newline, is written per
+native guest to `sdmc:/switch/foj/gpu/foj-native-alpha-pass.txt`.
+The file is created exclusively; an existing file/symlink or a failed
+flush causes the opt-in NRO to abort rather than falsely attest pass
+states. This recording happens **before GPU draw command lists are
+recorded** and reveals no original game data.
+
+`tools/foj_stage274_nexium_pass_drive.sh` requires the marker to be
+absent before launch, runs the actual Stage273 NeXium framebuffer
+driver, and checks and preserves both the native sort receipt and the
+new exact native material/depth receipt. The final independent
+`tools/foj_stage274_pass_contract_check.py` first validates all four
+actual GPU screenshots via the Stage273 RGB oracle, then requires
+both Stage274 native receipts. Host-synthesized image/marker unit
+fixtures **are not evidence of real NeXium execution**.
+
 ## Test plan
 
 - GCC and Clang, ordinary C11 and NDEBUG: host contract unit cases for
