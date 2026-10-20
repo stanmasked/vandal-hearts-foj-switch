@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Stage265 generated-only real GPU capture; requires FOJ_BLEND_CASE.\n: "${FOJ_BLEND_CASE:?}"\n# Generated data only. Fail closed if NeXium cannot display both private
+# Stage265 generated-only real GPU capture; requires FOJ_BLEND_CASE.
+: "${FOJ_BLEND_CASE:?}"\n# Generated data only. Fail closed if NeXium cannot display both private
 # GPU materials; never copy actual user-owned game assets to CI.
 set -euo pipefail
 : "${NEXIUM_BIN:?}"
