@@ -36,6 +36,7 @@ jobs:
       - name: Host-only synthetic negative cases and rejection tests
         run: |
           python3 -m unittest discover -s tests/emulator -p 'test_stage271_negative_fixture.py' -v
+          python3 -m unittest discover -s tests/emulator -p 'test_stage271_guest_receipts.py' -v
           python3 -m unittest discover -s tests/emulator -p 'test_stage269_guarded_scene.py' -v
           python3 -m unittest discover -s tests/emulator -p 'test_stage268_transparency_crossing.py' -v
 
