@@ -66,6 +66,21 @@ A timeout, missing marker, wrong result, or accidental GPU boot
 journal causes the workflow to fail. Python-generated test markers in
 unit tests are classifier fixtures, *not emulator evidence*.
 
+### Fourth guest: positive control against false rejection
+
+The **same Stage271 diagnostic NRO** is also launched on a fresh,
+Stage269-preflight-approved `both-half` scene. It must produce **two
+distinct real NeXium GPU frames** with the Stage267 RGB overlap
+`(111,100,162)`, matching rear-only wing and a changed clear-color
+phase. The workflow checks that the guest **never created a native
+unsafe-rejection marker** in its SD root. The independent evidence
+checker validates both screenshots and the generated safe-scene
+receipt.
+
+This catches an overly broad implementation that simply rejects every
+scene to pass the negative cases. The two accepted frames supplement,
+but do not replace, the six original Stage267 GPU screenshots.
+
 This establishes only native early refusal of the three fabricated
 cases when an actual NeXium runner confirms it. It is **not** polygon
 splitting, true order-independent transparency, real PlayStation 3
