@@ -117,6 +117,9 @@ static void foj_present_shader_boot_failure(
 
 int main(int argc,char **argv) {
     (void)argc;(void)argv;
+#if defined(FOJ_GPU_NEGATIVE_GUEST_RECEIPT) && !defined(FOJ_GPU_NATIVE_ALPHA_ORDER_GUARD)
+#error "Stage271 receipt only applies to the opt-in native depth-order guard"
+#endif
 #if defined(FOJ_GPU_NATIVE_ALPHA_ORDER_GUARD) && !defined(FOJ_GPU_THREE_LAYER_BLEND)
 #error "Native transparency guard applies only to opt-in Stage267 three-layer research"
 #endif
@@ -195,6 +198,28 @@ int main(int argc,char **argv) {
         fprintf(stderr,"FoJ native alpha preflight: %s\n",
                 order_status==FOJ_THREE_ORDER_UNSAFE?
                 "unsafe depth crossing or ordering":"invalid layer geometry");
+#if defined(FOJ_GPU_NEGATIVE_GUEST_RECEIPT)
+        /* Stage271 opt-in diagnostic, *only* for the generated NeXium
+         * rejection test. After geometry validation but BEFORE any GPU
+         * device or command list exists, record only the rejection kind.
+         * Exclusive creation never follows/overwrites earlier files.
+         * A missing receipt makes the guest proof fail closed. */
+        if (order_status==FOJ_THREE_ORDER_UNSAFE) {
+            FILE *receipt=fopen(
+                "sdmc:/switch/foj/gpu/foj-native-unsafe-reject.txt","wx");
+            if (receipt) {
+                static const char message[]=
+                    "FOJ_NATIVE_UNSAFE_REJECT_V1 exit=8 pre_gpu=1\n";
+                const size_t written=fwrite(
+                    message,1,sizeof(message)-1u,receipt);
+                if (written!=sizeof(message)-1u ||
+                    fflush(receipt)!=0)
+                    fprintf(stderr,"FoJ native rejection receipt I/O failed\n");
+                if (fclose(receipt)!=0)
+                    fprintf(stderr,"FoJ native rejection receipt close failed\n");
+            }
+        }
+#endif
         foj_gpu_private_bundle_free(&private_payload);
         return 8;
     }
