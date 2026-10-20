@@ -59,10 +59,42 @@ if [ "$found" != 1 ]; then
   echo "Neither warm/cool GPU material pair reached the framebuffer" >&2
   exit 1
 fi
-sleep 2
-alive
-timeout --kill-after=2s 10s import -window "$window" \
-  "$FOJ_EVIDENCE_DIR/gpu-later.png"
+# Do not use a fixed two-second interval: GPU clear-color phases may be
+# identical at that spacing even when the two frames are genuinely distinct.
+# Poll the observed framebuffer for an actual phase change (not just HUD
+# performance metrics) and require both material footprints in that frame.
+phase_changed=0
+for attempt in $(seq 1 28); do
+  sleep .5
+  alive
+  timeout --kill-after=2s 10s import -window "$window" \
+    "$FOJ_EVIDENCE_DIR/gpu-later.png"
+  if python3 - "$FOJ_EVIDENCE_DIR/gpu-initial.png" \
+                 "$FOJ_EVIDENCE_DIR/gpu-later.png" <<'PY'
+from pathlib import Path
+from PIL import Image
+from tools.foj_stage260_gpu_guest_check import inspect
+import sys
+a,b=(Path(x) for x in sys.argv[1:])
+try:
+    inspect(b)
+    with Image.open(a) as first, Image.open(b) as second:
+        x=first.convert("RGB");y=second.convert("RGB")
+    probes=((25,350),(1220,350),(640,650),(25,650))
+    if sum(x.getpixel(q)!=y.getpixel(q) for q in probes)<3:
+        raise ValueError("Same clear-color phase")
+except (ValueError,OSError):
+    raise SystemExit(1)
+PY
+  then
+    phase_changed=1
+    break
+  fi
+done
+if [ "$phase_changed" != 1 ]; then
+  echo "NeXium material GPU test never presented a DISTINCT clear-color phase" >&2
+  exit 1
+fi
 test -s "$FOJ_EVIDENCE_DIR/gpu-initial.png"
 test -s "$FOJ_EVIDENCE_DIR/gpu-later.png"
-echo "Two direct NeXium window captures ready for full independent verification"
+echo "Two actual NeXium material captures with independently changed clear colors"
