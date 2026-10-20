@@ -15,6 +15,10 @@ typedef struct {
     int width, height;
     uint64_t hits, misses, bypasses, allocations, releases;
     bool valid;
+#if defined(FOJ_STAGE254_REUSE) && FOJ_STAGE254_REUSE
+    /* Opt-in bounded 900-KiB floor, zero by default; not process RSS. */
+    size_t reuse_floor_bytes;
+#endif
 #if defined(FOJ_STAGE252_STRESS) && FOJ_STAGE252_STRESS
     /* Research-only deterministic allocator failure; default build omits. */
     bool inject_fail_next_allocation;
