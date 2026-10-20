@@ -168,9 +168,63 @@ static void test_384_frame_tight_budget(void) {
     free(b);
 }
 
+/* Probe the exact byte either side of the 225, 900 and 3600 KiB
+ * boundaries. This is independent of any host allocator fragmentation
+ * or the Nintendo Switch's physical memory accounting. */
+static void test_budget_byte_boundaries(void) {
+    static const int widths[]={320,640,1280};
+    static const int heights[]={180,360,720};
+    static const size_t budgets[]={
+        0u,
+        (size_t)SMALL_KIB*1024u-1u,
+        (size_t)SMALL_KIB*1024u,
+        (size_t)SMALL_KIB*1024u+1u,
+        (size_t)MEDIUM_KIB*1024u-1u,
+        (size_t)MEDIUM_KIB*1024u,
+        (size_t)MEDIUM_KIB*1024u+1u,
+        (size_t)LARGE_KIB*1024u-1u,
+        (size_t)LARGE_KIB*1024u
+    };
+    uint32_t *pixels=scratch(),*oracle=scratch();
+    FojDemo scene;
+    foj_demo_init(&scene);
+    for(int mode=0;mode<3;++mode) {
+        const int w=widths[mode],h=heights[mode];
+        const size_t used=(size_t)w*(size_t)h*sizeof(uint32_t);
+        const size_t floor=(size_t)MEDIUM_KIB*1024u;
+        const size_t preferred=used>floor?used:floor;
+        for(size_t i=0;i<sizeof(budgets)/sizeof(budgets[0]);++i) {
+            FojCompactBaseCache c={0};
+            foj_compact_base_init(&c);
+            c.reuse_floor_bytes=floor;
+            c.budget_bytes=budgets[i];
+            const bool allowed=used<=budgets[i];
+            const size_t expected_capacity=preferred<=budgets[i]?
+                                           preferred:used;
+            if(allowed) {
+                assert(foj_compact_base_draw(&c,&scene,pixels,w,h,w)==0);
+                assert(c.allocated_bytes==expected_capacity);
+                foj_iso_render(&scene,oracle,w,h,w);
+                assert(memcmp(pixels,oracle,used)==0);
+                assert(foj_compact_base_draw(&c,&scene,pixels,w,h,w)==1);
+                assert(c.allocations==1 && c.hits==1 && c.misses==1);
+            } else {
+                assert(foj_compact_base_draw(&c,&scene,pixels,w,h,w)==-1);
+                assert(!c.raster && !c.valid && c.allocated_bytes==0);
+                assert(c.allocations==0 && c.hits==0 && c.misses==0);
+            }
+            foj_compact_base_release(&c);
+            assert(c.allocations==c.releases && !c.raster);
+        }
+    }
+    free(pixels);
+    free(oracle);
+}
+
 int main(void) {
     test_budget_fallback_and_recovery();
     test_strided_and_invalid_inputs();
     test_384_frame_tight_budget();
+    test_budget_byte_boundaries();
     return 0;
 }
