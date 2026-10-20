@@ -34,9 +34,14 @@
 _Static_assert((size_t)FOJ_GPU_SHADER_MAX_DKSH ==
                (size_t)FOJ_DKSH_MAX_BYTES,
                "DKSH intake and GPU shader slot capacities differ");
+#if defined(FOJ_GPU_THREE_LAYER_BLEND)
+_Static_assert(FOJ_RESEARCH_TEXTURE_COUNT==3,
+               "Stage267 requires three independent texture descriptors");
+#else
 _Static_assert((size_t)FOJ_RESEARCH_MATERIAL_COUNT ==
                (size_t)FOJ_RESEARCH_TEXTURE_COUNT,
                "Synthetic material and texture counts must agree");
+#endif
 #endif
 
 enum { SCREEN_WIDTH=1280, SCREEN_HEIGHT=720, BUFFER_COUNT=2 };
@@ -109,6 +114,12 @@ static void foj_present_shader_boot_failure(
 
 int main(int argc,char **argv) {
     (void)argc;(void)argv;
+#if defined(FOJ_GPU_THREE_LAYER_BLEND) && !defined(FOJ_GPU_ALPHA_BLEND)
+#error "Stage267 needs Stage265 source-over blending"
+#endif
+#if defined(FOJ_GPU_THREE_LAYER_BLEND) && !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW)
+#error "Stage267 requires validated local generated three-material data"
+#endif
 #if defined(FOJ_GPU_ALPHA_BLEND) && !defined(FOJ_GPU_DEPTH_PROOF)
 #error "GPU alpha blend requires the opt-in depth renderer"
 #endif
@@ -130,9 +141,12 @@ int main(int argc,char **argv) {
      * generated fallback as though private intake succeeded. Successful
      * intake still renders *generated quads*, NOT the private actor. */
     (void)fsdevMountSdmc();
-    const char *const private_atlases[2]={
+    const char *const private_atlases[FOJ_GPU_PRIVATE_REQUIRED_ATLASES]={
         "sdmc:/switch/foj/gpu/material0.dds",
-        "sdmc:/switch/foj/gpu/material1.dds"
+        "sdmc:/switch/foj/gpu/material1.dds",
+#if defined(FOJ_GPU_THREE_LAYER_BLEND)
+        "sdmc:/switch/foj/gpu/material2.dds",
+#endif
     };
     const FojTextureCamera private_camera={
         0.f,0.f,0.f,2.f,0.f,0.f,1.f,0
@@ -371,14 +385,14 @@ int main(int argc,char **argv) {
     batch_count=private_payload.report.actor.stream.batches_written;
 #endif
     if (foj_gpu_build_draw_plan(batch_source,batch_count,vertex_count,
-                                 FOJ_RESEARCH_MATERIAL_COUNT,
+                                 FOJ_RESEARCH_TEXTURE_COUNT,
                                  draw_ranges,FOJ_GPU_MAX_BATCHES)!=FOJ_GPU_STREAM_OK ||
         foj_gpu_actor_upload_plan(batch_source,batch_count,vertex_count,
-                                  FOJ_RESEARCH_MATERIAL_COUNT,
+                                  FOJ_RESEARCH_TEXTURE_COUNT,
                                   DK_MEMBLOCK_ALIGNMENT,&actor_upload)!=FOJ_GPU_STREAM_OK ||
         actor_upload.payload_bytes!=vertex_count*sizeof(FojGpuVertex) ||
         actor_upload.material_mask!=
-            (UINT32_C(1)<<FOJ_RESEARCH_MATERIAL_COUNT)-1u)
+            (UINT32_C(1)<<FOJ_RESEARCH_TEXTURE_COUNT)-1u)
         goto cleanup;
     const size_t vertex_upload_bytes=vertex_count*sizeof(FojGpuVertex);
 #else
@@ -495,7 +509,11 @@ int main(int argc,char **argv) {
      * test gradients. Reject invalid files instead of silently falling back.
      * Each material has its own aligned CPU-visible staging slot. */
     enum {
+        #if defined(FOJ_GPU_THREE_LAYER_BLEND)
+        TEXTURE_DATA_BYTES=0xD0000,
+#else
         TEXTURE_DATA_BYTES=0x90000,
+#endif
         IMAGE_DESCRIPTORS_OFFSET=0,
         SAMPLER_DESCRIPTORS_OFFSET=0x100,
         PIXEL_STAGING_OFFSET=0x1000,
@@ -751,14 +769,30 @@ int main(int argc,char **argv) {
              * front and cool 1 behind. Render opaque cool first, then
              * translucent warm: blending is deliberately NOT commutative.
              * This is only the generated 2-material experiment. */
+#if defined(FOJ_GPU_THREE_LAYER_BLEND)
+            /* Three invented draw ranges are input-ordered violet(0),
+             * warm(1), cool(2). GPU submission MUST be opaque cool,
+             * then warm middle, then violet nearest (back to front). */
+            if (batch_count!=3u ||
+                draw_ranges[0].material_index!=0u ||
+                draw_ranges[1].material_index!=1u ||
+                draw_ranges[2].material_index!=2u)
+                goto cleanup;
+            const size_t pass_order[3]={2u,1u,0u};
+#else
             if (batch_count!=2u ||
                 draw_ranges[0].material_index!=0u ||
                 draw_ranges[1].material_index!=1u)
                 goto cleanup;
             const size_t pass_order[2]={1u,0u};
-            for (size_t pass=0;pass<2u;++pass) {
+#endif
+            for (size_t pass=0;pass<FOJ_RESEARCH_TEXTURE_COUNT;++pass) {
                 const FojGpuDrawRange *range=&draw_ranges[pass_order[pass]];
+#if defined(FOJ_GPU_THREE_LAYER_BLEND)
+                const bool translucent=range->material_index!=2u;
+#else
                 const bool translucent=range->material_index==0u;
+#endif
                 DkColorState pass_color=color_state;
                 dkColorStateSetBlendEnable(&pass_color,0,translucent);
                 dkCmdBufBindColorState(cmd,&pass_color);
@@ -826,6 +860,22 @@ int main(int argc,char **argv) {
          * host simulation: never submit a scene list after a fatal DDS,
          * select only the actual acquired framebuffer's lists, and keep
          * the first 120 frames of each observed material in order. */
+#if defined(FOJ_GPU_THREE_LAYER_BLEND)
+        /* Three-slot diagnostics are isolated from the legacy two-slot
+         * host planner. Keep a failed final slot visibly displayed. */
+        const unsigned status_frames=FOJ_GPU_DDS_STATUS_FRAMES_PER_SLOT;
+        const int show_status=dds_fatal ||
+                             frame<3u*status_frames;
+        const unsigned status_index=dds_fatal?
+            dds_observed_slots-1u : frame/status_frames;
+        if (show_status && status_index>=FOJ_RESEARCH_TEXTURE_COUNT) {
+            exit_status=5;
+            break;
+        }
+        const DkCmdList chosen=show_status?
+            dds_status_lists[slot][status_index]:
+            commands[slot][foj_smoke_color_for_frame(frame)];
+#else
         FojGpuDdsFrameCommand plan={0};
         if (!foj_gpu_dds_frame_command(frame,(unsigned)slot,dds_states,
                                        dds_observed_slots,dds_fatal,&plan)) {
@@ -836,6 +886,7 @@ int main(int argc,char **argv) {
             plan.kind==FOJ_GPU_DDS_LIST_STATUS?
             dds_status_lists[plan.buffer][plan.index]:
             commands[plan.buffer][plan.index];
+#endif
         if (!chosen) { exit_status=5; break; }
         dkQueueSubmitCommands(queue,chosen);
 #else
