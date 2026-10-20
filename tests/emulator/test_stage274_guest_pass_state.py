@@ -140,6 +140,46 @@ class Stage274PassEvidenceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,"rear DDS refusal"):
                 verify(folder)
 
+    def test_positive_gpu_frames_reject_contradictory_rear_refusal(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            generate_mock_evidence(folder)
+            (folder/"original"/"native-rear-alpha-reject.txt").write_bytes(
+                b"FOJ_NATIVE_REAR_ALPHA_REJECT_V1 pre_gpu=1\\n")
+            with self.assertRaisesRegex(
+                    ValueError,"Contradictory positive/rear-alpha"):
+                verify(folder)
+
+    def test_negative_rear_refusal_cannot_include_sort_success(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            generate_mock_evidence(folder)
+            (folder/"rear-alpha-negative"/"native-sort-pass.txt").write_bytes(
+                b"FOJ_NATIVE_SORT_V1 2,1,0\\n")
+            with self.assertRaisesRegex(
+                    ValueError,"Contradictory negative GPU guest evidence"):
+                verify(folder)
+
+    def test_negative_rear_refusal_cannot_include_gpu_frame(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            generate_mock_evidence(folder)
+            (folder/"rear-alpha-negative"/"gpu-initial.png").write_bytes(
+                b"UNTRUSTED_CONTRADICTORY_FRAME")
+            with self.assertRaisesRegex(
+                    ValueError,"Contradictory negative GPU guest evidence"):
+                verify(folder)
+
+    def test_negative_rear_refusal_cannot_include_boot_journal(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            generate_mock_evidence(folder)
+            (folder/"rear-alpha-negative"/"foj-boot-000.txt").write_bytes(
+                b"INVALID_BOOT")
+            with self.assertRaisesRegex(
+                    ValueError,"Contradictory negative GPU boot evidence"):
+                verify(folder)
+
     def test_correct_pass_marker_does_not_rescue_duplicate_frames(self):
         with tempfile.TemporaryDirectory() as tmp:
             folder=Path(tmp)
