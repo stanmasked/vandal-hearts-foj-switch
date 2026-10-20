@@ -209,8 +209,14 @@ int main(int argc,char **argv) {
      * Require the sole opaque rear material to be the first pass.
      * The other two may appear in either strict back-to-front order.
      * The presumed opaque rear DDS MUST be 255-alpha in every texel. */
-    if (private_payload.report.atlas_count!=3u ||
-        !foj_gpu_opaque_rear_atlas(
+    if (private_payload.report.atlas_count!=3u) {
+        /* Missing decoded atlas is an invalid bundle, not evidence of
+         * a translucent rear pixel. Never issue the alpha-reject marker. */
+        fprintf(stderr,"FoJ dynamic alpha sort: incomplete atlas bundle\n");
+        foj_gpu_private_bundle_free(&private_payload);
+        return 8;
+    }
+    if (!foj_gpu_opaque_rear_atlas(
             private_payload.rgba[2],&private_payload.report.atlas[2])) {
         fprintf(stderr,"FoJ dynamic alpha sort: non-opaque rear atlas rejected\n");
 #if defined(FOJ_GPU_DYNAMIC_PASS_CONTRACT)
