@@ -23,6 +23,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Pillow for synthetic RGB classifier tests
+        run: python3 -m pip install Pillow
       - name: Validate C11 dynamic sort on GCC and Clang
         shell: bash
         run: |
@@ -93,7 +98,7 @@ jobs:
             libx11-xcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 \
             libxcb-randr0 libxcb-render0 libxcb-shape0 libxcb-xkb1 \
             libvulkan1 mesa-vulkan-drivers
-      - name: Run synthetic-only generator and anti-fake screenshot unit checks
+      - name: Run Stage267 synthetic-only anti-fake screenshot unit checks
         shell: bash
         run: |
           set -euo pipefail
@@ -149,7 +154,7 @@ jobs:
               -s "-screen 0 1280x720x24" \
               bash tools/foj_stage273_nexium_dynamic_gpu_drive.sh
           done
-      - name: Require independently computed three-layer RGB against six real frames
+      - name: Require independently computed blend RGB against four real frames
         shell: bash
         run: |
           set -euo pipefail
