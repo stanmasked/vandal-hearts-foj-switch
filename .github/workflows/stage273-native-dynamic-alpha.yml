@@ -9,6 +9,8 @@ on:
       - 'gpu/transparency_sort.*'
       - 'gpu/alpha_material_contract.*'
       - 'tests/test_gpu_alpha_material_contract.c'
+      - 'tests/emulator/test_stage273_native_atlas_chain.py'
+      - 'gpu/atlas_dds.c'
       - 'tools/foj_stage273_*'
       - 'tests/emulator/test_stage273_dynamic_gpu.py'
       - 'tests/emulator/test_stage272_native_sort_parity.py'
@@ -61,6 +63,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage273_native_atlas_chain.py' -v
           python3 -m unittest discover -s tests/emulator \
             -p 'test_stage273_dynamic_gpu.py' -v
           python3 -m unittest discover -s tests/emulator \
@@ -144,6 +148,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage273_native_atlas_chain.py' -v
           python3 -m unittest discover -s tests/emulator \
             -p 'test_stage273_dynamic_gpu.py' -v
           bash -n tools/foj_stage273_nexium_dynamic_gpu_drive.sh
