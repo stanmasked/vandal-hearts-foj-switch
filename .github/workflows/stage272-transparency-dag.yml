@@ -1,0 +1,53 @@
+name: Stage272 portable native transparent triangle DAG ordering
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage272-transparency-dag.yml'
+      - 'gpu/transparency_sort.c'
+      - 'gpu/transparency_sort.h'
+      - 'tests/test_gpu_transparency_sort.c'
+      - 'tests/emulator/test_stage272_native_sort_parity.py'
+      - 'tools/foj_stage268_transparency_crossing.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    name: C11 topological order and reference parity / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile independent native ordering for GCC and Clang
+        shell: bash
+        run: |
+          set -euo pipefail
+          for compiler in gcc clang; do
+            for mode in debug release; do
+              opts="-std=c11 -O2 -Wall -Wextra -Werror -pedantic -Icore -Igpu"
+              if [[ "$mode" == release ]]; then opts="$opts -DNDEBUG"; fi
+              "$compiler" $opts tests/test_gpu_transparency_sort.c \
+                gpu/transparency_sort.c -lm -o "/tmp/foj272-$compiler-$mode"
+              "/tmp/foj272-$compiler-$mode"
+            done
+          done
+      - name: Compare actual compiled C11 DAG to Python for 1,000 invented scenes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage272_native_sort_parity.py' -v
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage268_transparency_crossing.py' -v
+          python3 -m compileall -q tests/emulator/test_stage272_native_sort_parity.py
+
