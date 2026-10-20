@@ -14,6 +14,7 @@ ISO_PHASE_TARGET := build/foj-isometric-phase-report
 ISO_BASE_CACHE_TARGET := build/foj-isometric-base-cache-profile
 ISO_BASE_PAIR_TARGET := build/foj-isometric-base-cache-ab-pairs
 ISO_BASE_STABILITY_TARGET := build/foj-isometric-base-cache-stability
+ISO_BASE_SCALE_TARGET := build/foj-isometric-base-cache-scale
 ISO_UNCACHED_TARGET := build/foj-isometric-research-uncached
 COLL_TARGET := build/foj-coll-map-research
 DDS_TARGET := build/foj-dds-texture-research
@@ -113,6 +114,15 @@ $(ISO_BASE_STABILITY_TARGET).elf: $(ISO_SRC) core/isometric_phase_meter.c core/b
 	$(CC) $(CFLAGS) -DFOJ_STAGE246_PHASE_TIMING=1 -DFOJ_STAGE247_BASE_CACHE=1 -DFOJ_STAGE248_BASE_PAIRS=1 -DFOJ_STAGE249_STABILITY=1 $(LDFLAGS) $(ISO_SRC) core/isometric_phase_meter.c core/base_cache_pair_probe.c core/base_cache_stability_probe.c -o $@ -lnx -lm
 
 $(ISO_BASE_STABILITY_TARGET).nro: $(ISO_BASE_STABILITY_TARGET).elf $(ISO_TARGET).nacp
+	$(ELF2NRO) $< $@ --nacp=$(ISO_TARGET).nacp
+
+# Stage250 research-only NeXium scaling sweep (320/640/1280 widths).
+# Adds an independent private base cache and reuses Stage249 scratch frames;
+# not part of the default all target or the ordinary gameplay renderer.
+$(ISO_BASE_SCALE_TARGET).elf: $(ISO_SRC) core/isometric_phase_meter.c core/base_cache_pair_probe.c core/base_cache_stability_probe.c core/base_cache_scale_probe.c $(HDR) core/isometric_demo.h core/isometric_base_cache.h core/isometric_phase_meter.h core/base_cache_pair_probe.h core/base_cache_stability_probe.h core/base_cache_scale_probe.h | build
+	$(CC) $(CFLAGS) -DFOJ_STAGE246_PHASE_TIMING=1 -DFOJ_STAGE247_BASE_CACHE=1 -DFOJ_STAGE248_BASE_PAIRS=1 -DFOJ_STAGE249_STABILITY=1 -DFOJ_STAGE250_SCALE=1 $(LDFLAGS) $(ISO_SRC) core/isometric_phase_meter.c core/base_cache_pair_probe.c core/base_cache_stability_probe.c core/base_cache_scale_probe.c -o $@ -lnx -lm
+
+$(ISO_BASE_SCALE_TARGET).nro: $(ISO_BASE_SCALE_TARGET).elf $(ISO_TARGET).nacp
 	$(ELF2NRO) $< $@ --nacp=$(ISO_TARGET).nacp
 
 # Stage243 A/B build: compile the same guest code with just the cache gate

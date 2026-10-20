@@ -30,6 +30,23 @@ static void test_pairs_and_scene_invalidation(void) {
     assert(p->completed_windows==1 && p->total_pairs==32);
     assert(p->base_cache.hits==32 && p->base_cache.misses==1);
     assert(memcmp(&battle,&preserved,sizeof(battle))==0);
+    /* Struct padding may differ between semantically identical battles.
+     * Every named gameplay field is equal, so probes must not reset. */
+    FojBattle equivalent;
+    memset(&equivalent,0xa5,sizeof(equivalent));
+    equivalent.map=battle.map;
+    equivalent.hero_hp=battle.hero_hp;
+    equivalent.enemy_hp=battle.enemy_hp;
+    equivalent.moved_this_turn=battle.moved_this_turn;
+    equivalent.previous_hero_x=battle.previous_hero_x;
+    equivalent.previous_hero_y=battle.previous_hero_y;
+    equivalent.attacked_this_turn=battle.attacked_this_turn;
+    equivalent.guarded_this_turn=battle.guarded_this_turn;
+    equivalent.turn_number=battle.turn_number;
+    equivalent.outcome=battle.outcome;
+    assert(foj_base_pair_step(p,&equivalent,true,a,b,W,H,W,tick,&clock));
+    assert(p->total_pairs==33 && p->completed_windows==1);
+    assert(p->base_cache.hits==33 && p->base_cache.misses==1);
     /* Cursor is a meaningful base-render key: MUST restart measurement. */
     foj_battle_move_cursor(&battle,1,0);
     assert(foj_base_pair_step(p,&battle,true,a,b,W,H,W,tick,&clock));

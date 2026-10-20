@@ -47,6 +47,23 @@ static void test_three_real_windows_and_restarts(void) {
     assert(p->uncached_min_us==1000 && p->uncached_max_us==1000);
     assert(p->scene_resets==1);
     assert(memcmp(&battle,&original,sizeof(battle))==0);
+    /* Struct padding may differ between semantically identical battles.
+     * Every named gameplay field is equal, so probes must not reset. */
+    FojBattle equivalent;
+    memset(&equivalent,0xa5,sizeof(equivalent));
+    equivalent.map=battle.map;
+    equivalent.hero_hp=battle.hero_hp;
+    equivalent.enemy_hp=battle.enemy_hp;
+    equivalent.moved_this_turn=battle.moved_this_turn;
+    equivalent.previous_hero_x=battle.previous_hero_x;
+    equivalent.previous_hero_y=battle.previous_hero_y;
+    equivalent.attacked_this_turn=battle.attacked_this_turn;
+    equivalent.guarded_this_turn=battle.guarded_this_turn;
+    equivalent.turn_number=battle.turn_number;
+    equivalent.outcome=battle.outcome;
+    one(p,&equivalent,a,b,&clock,true);
+    assert(p->ready && p->scene_resets==1);
+    assert(p->observed_windows==3 && p->pair.total_pairs==97);
     /* Cursor and forecast toggles each invalidate ALL accumulated windows. */
     foj_battle_move_cursor(&battle,1,0);
     one(p,&battle,a,b,&clock,true);

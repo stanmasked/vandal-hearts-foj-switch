@@ -61,6 +61,19 @@ enum { FOJ_STAGE247_STATUS_X=1252, FOJ_STAGE247_STATUS_Y=12 };
 #if FOJ_STAGE249_STABILITY && !FOJ_STAGE248_BASE_PAIRS
 #error "Stage249 requires in-process Stage248 parity probe"
 #endif
+#ifndef FOJ_STAGE250_SCALE
+#define FOJ_STAGE250_SCALE 0
+#endif
+#if FOJ_STAGE250_SCALE != 0 && FOJ_STAGE250_SCALE != 1
+#error "Stage250 scale diagnostic must be 0 or 1"
+#endif
+#if FOJ_STAGE250_SCALE && !FOJ_STAGE249_STABILITY
+#error "Stage250 scale probe requires Stage249 stable measurement guest"
+#endif
+#if FOJ_STAGE250_SCALE
+#include "base_cache_scale_probe.h"
+static FojBaseScaleProbe stage250_probe;
+#endif
 #if FOJ_STAGE248_BASE_PAIRS
 #include "base_cache_pair_probe.h"
 #if FOJ_STAGE249_STABILITY
@@ -184,6 +197,20 @@ _Static_assert(sizeof(FojBaseStabilityProbe) + sizeof(FojIsoBaseCache) +
     "Stage249 opt-in NRO research storage unexpectedly exceeds 17 MiB");
 #endif
 
+#if FOJ_STAGE250_SCALE
+_Static_assert(FOJ_BASE_SCALE_FIRST_X >= FOJ_PAIR_MODE_X+FOJ_PAIR_MODE_SIZE,
+               "Stage250 scaling barcode overlaps build mode tile");
+_Static_assert(FOJ_BASE_SCALE_STATUS_X >=
+    FOJ_BASE_SCALE_FIRST_X+6*72,
+    "Stage250 final barcode overlaps readiness tile");
+_Static_assert(FOJ_BASE_SCALE_STATUS_X+8 <= FB_WIDTH,
+    "Stage250 scaling receipt exceeds framebuffer");
+_Static_assert(sizeof(FojBaseScaleProbe)+sizeof(FojBaseStabilityProbe)+
+    sizeof(FojIsoBaseCache)+(size_t)2*FB_WIDTH*FB_HEIGHT*sizeof(uint32_t)
+    < (size_t)21*1024*1024,
+    "Stage250 opt-in static experimental buffers exceed 21 MiB");
+#endif
+
 #if FOJ_STAGE245_RENDER_PAIR
 _Static_assert(FOJ_RENDER_PAIR_CACHED_X >= FOJ_PAIR_MODE_X+FOJ_PAIR_MODE_SIZE,
                "Stage245 bar overlaps Stage243 build identity");
@@ -263,6 +290,9 @@ int main(int argc, char **argv) {
 #if FOJ_STAGE248_BASE_PAIRS
 #if FOJ_STAGE249_STABILITY
     foj_base_stability_init(&stage249_probe);
+#if FOJ_STAGE250_SCALE
+    foj_base_scale_init(&stage250_probe);
+#endif
 #else
     foj_base_pair_init(&stage248_probe);
 #endif
@@ -466,6 +496,15 @@ int main(int argc, char **argv) {
              * Never alter the visible frame or gameplay state. Draw this
              * research-only receipt after both timing regions. */
 #if FOJ_STAGE249_STABILITY
+#if FOJ_STAGE250_SCALE
+            /* Cross-resolution synthetic base sweep runs only once after
+             * each state/preview change. Shared private scratch buffers,
+             * outside the Stage249 AB/BA raster timing window. */
+            (void)foj_base_scale_step(
+                &stage250_probe,&battle,show_threat_preview,
+                stage248_cached_pixels,stage248_uncached_pixels,
+                foj_stage246_now_ns,NULL);
+#endif
             (void)foj_base_stability_step(
                 &stage249_probe,&battle,show_threat_preview,
                 stage248_cached_pixels,stage248_uncached_pixels,
@@ -474,6 +513,10 @@ int main(int argc, char **argv) {
                 (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
             (void)foj_base_stability_draw(&stage249_probe,
                 (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
+#if FOJ_STAGE250_SCALE
+            (void)foj_base_scale_draw(&stage250_probe,
+                (uint32_t *)pixels,FB_WIDTH,FB_HEIGHT,pixel_stride);
+#endif
 #else
             (void)foj_base_pair_step(
                 &stage248_probe,&battle,show_threat_preview,
