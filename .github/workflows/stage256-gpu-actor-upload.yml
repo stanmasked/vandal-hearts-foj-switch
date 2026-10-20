@@ -1,0 +1,78 @@
+name: Stage256 safe multi-material GPU actor upload planning
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage256-gpu-actor-upload.yml'
+      - 'gpu/actor_upload_plan.*'
+      - 'gpu/deko3d_clear_main.c'
+      - 'gpu/triangle.mk'
+      - 'gpu/clear.mk'
+      - 'core/gpu_draw_plan.*'
+      - 'core/gpu_vertex_stream.*'
+      - 'tests/test_gpu_actor_upload_plan.c'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stage256-gpu-actor-upload.yml'
+      - 'gpu/actor_upload_plan.*'
+      - 'gpu/deko3d_clear_main.c'
+      - 'gpu/triangle.mk'
+      - 'gpu/clear.mk'
+      - 'core/gpu_draw_plan.*'
+      - 'core/gpu_vertex_stream.*'
+      - 'tests/test_gpu_actor_upload_plan.c'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    name: Strict GCC Clang NDEBUG and ASan UBSan actor upload plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and exercise 2/6/64 material batches with no proprietary assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          shared="tests/test_gpu_actor_upload_plan.c gpu/actor_upload_plan.c core/gpu_draw_plan.c"
+          for compiler in gcc clang; do
+            "$compiler" -std=c11 -Wall -Wextra -Werror -pedantic -O2 -Igpu -Icore \
+              $shared -o "build/stage256-$compiler"
+            "./build/stage256-$compiler"
+            "$compiler" -DNDEBUG -std=c11 -Wall -Wextra -Werror -pedantic -O2 -Igpu -Icore \
+              $shared -o "build/stage256-$compiler-ndebug"
+            "./build/stage256-$compiler-ndebug"
+          done
+          gcc -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic -Igpu -Icore \
+            -fsanitize=undefined -fno-sanitize-recover=all $shared -o build/stage256-ubsan
+          UBSAN_OPTIONS=halt_on_error=1 ./build/stage256-ubsan
+          clang -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic -Igpu -Icore \
+            -fsanitize=address,undefined -fno-omit-frame-pointer $shared \
+            -o build/stage256-asan
+          ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./build/stage256-asan
+
+  native:
+    name: devkitA64 actor upload planner in isolated research GPU NRO
+    needs: host
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate SDK and build distinct experimental deko3d NRO
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f gpu/triangle.mk verify
+          python3 tools/validate_nro.py build/foj-deko3d-triangle-research.nro
+      - uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage256-actor-upload-gpu-research-nro
+          path: build/foj-deko3d-triangle-research.nro
+          if-no-files-found: error

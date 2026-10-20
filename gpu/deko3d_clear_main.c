@@ -21,6 +21,7 @@
 #include "shader_layout.h"
 #include "research_mesh.h"
 #include "gpu_draw_plan.h"
+#include "actor_upload_plan.h"
 #include "research_texture.h"
 #include "atlas_dds.h"
 #include "dds_screen_status.h"
@@ -254,6 +255,7 @@ int main(int argc,char **argv) {
     FojGpuBatch research_batches[FOJ_RESEARCH_BATCH_COUNT];
     FojGpuStreamInfo research_info;
     FojGpuDrawRange draw_ranges[FOJ_RESEARCH_BATCH_COUNT];
+    FojGpuActorUploadPlan actor_upload={0};
     if (foj_gpu_research_mesh(research_vertices,FOJ_RESEARCH_VERTEX_COUNT,
                               research_batches,FOJ_RESEARCH_BATCH_COUNT,
                               &research_info)!=FOJ_GPU_STREAM_OK ||
@@ -264,17 +266,30 @@ int main(int argc,char **argv) {
                                 research_info.vertices_written,
                                 FOJ_RESEARCH_MATERIAL_COUNT,
                                 draw_ranges,FOJ_RESEARCH_BATCH_COUNT)
-                                !=FOJ_GPU_STREAM_OK)
+                                !=FOJ_GPU_STREAM_OK ||
+        foj_gpu_actor_upload_plan(
+            research_batches,research_info.batches_written,
+            research_info.vertices_written,FOJ_RESEARCH_MATERIAL_COUNT,
+            DK_MEMBLOCK_ALIGNMENT,&actor_upload)!=FOJ_GPU_STREAM_OK ||
+        actor_upload.payload_bytes!=sizeof(research_vertices) ||
+        actor_upload.material_mask!=
+            (UINT32_C(1)<<FOJ_RESEARCH_MATERIAL_COUNT)-1u)
         goto cleanup;
     const size_t vertex_upload_bytes=sizeof(research_vertices);
 #else
     const size_t vertex_upload_bytes=sizeof(kResearchTriangle);
 #endif
+#if defined(FOJ_GPU_DRAW_TRIANGLE)
+    /* Validated once for all ordered material draws, before GPU allocation.
+     * No proprietary mesh is loaded here: only generated quads. */
+    uint32_t vertex_memory_bytes=actor_upload.allocation_bytes;
+#else
     uint32_t vertex_memory_bytes=0;
     if (!foj_smoke_image_allocation(vertex_upload_bytes,
                                     DK_MEMBLOCK_ALIGNMENT,
                                     DK_MEMBLOCK_ALIGNMENT,
                                     &vertex_memory_bytes))goto cleanup;
+#endif
     DkMemBlockMaker vertex_maker;
     dkMemBlockMakerDefaults(&vertex_maker,device,vertex_memory_bytes);
     vertex_maker.flags=DkMemBlockFlags_CpuUncached|
