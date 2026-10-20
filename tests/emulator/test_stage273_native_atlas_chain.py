@@ -57,7 +57,8 @@ class NativeGeneratedDDSIntegration(unittest.TestCase):
 
             def decode_generated(dds: bytes):
                 source = (UINT8 * len(dds)).from_buffer_copy(dds)
-                output = (UINT8 * CAPACITY)(*([0xA5] * CAPACITY))
+                output = (UINT8 * CAPACITY)()
+                ctypes.memset(output, 0xA5, CAPACITY)
                 metadata = AtlasInfo(0, 0, 0)
                 result = decode(
                     source, len(dds), output, CAPACITY, ctypes.byref(metadata),
