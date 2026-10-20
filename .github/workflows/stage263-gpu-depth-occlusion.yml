@@ -102,6 +102,7 @@ jobs:
           set -euo pipefail
           python3 -m unittest discover -s tests/emulator \
             -p 'test_stage263_depth_occlusion.py' -v
+          bash -n tools/foj_stage263_nexium_depth_drive.sh
       - name: Run real NeXium guest twice with reversed camera depth
         shell: bash
         run: |
@@ -122,7 +123,7 @@ jobs:
             export FOJ_EVIDENCE_DIR="$GITHUB_WORKSPACE/runtime-evidence/$near"
             timeout --kill-after=5s 180s xvfb-run -a \
               -s "-screen 0 1280x720x24" \
-              bash tools/foj_stage260_nexium_gpu_drive.sh
+              bash tools/foj_stage263_nexium_depth_drive.sh
             python3 -m tools.foj_stage260_gpu_guest_check \
               --evidence "$FOJ_EVIDENCE_DIR" \
               --report "$FOJ_EVIDENCE_DIR/stage260-color-presence.json"
