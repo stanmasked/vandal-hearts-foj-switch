@@ -9,11 +9,19 @@ set -euo pipefail
 case "$FOJ_DYNAMIC_CASE" in original|reversed) ;; *) exit 2;; esac
 sd="$NEXIUM_DATA_ROOT/sdmc/switch/foj/gpu"
 marker="$sd/foj-native-alpha-pass.txt"
-if [[ -e "$marker" || -L "$marker" ]]; then
-  echo "Stage274 refuses an existing per-pass state receipt" >&2
+reject_marker="$sd/foj-native-rear-alpha-reject.txt"
+if [[ -e "$marker" || -L "$marker" ||
+      -e "$reject_marker" || -L "$reject_marker" ]]; then
+  echo "Stage274 refuses pre-existing pass or rear-alpha reject receipt" >&2
   exit 2
 fi
 bash tools/foj_stage273_nexium_dynamic_gpu_drive.sh
+# A successful scene must not produce *both* acceptance and rejection
+# witnesses. The negative guest has a separate strict assertion.
+if [[ -e "$reject_marker" || -L "$reject_marker" ]]; then
+  echo "Stage274 positive NeXium scene emitted rear-alpha rejection" >&2
+  exit 1
+fi
 if [[ ! -f "$marker" || -L "$marker" ]]; then
   echo "Stage274 native NRO did not provide per-pass GPU state" >&2
   exit 1
