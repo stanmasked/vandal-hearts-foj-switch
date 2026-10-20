@@ -143,12 +143,36 @@ jobs:
               -s "-screen 0 1280x720x24" \
               bash tools/foj_stage271_nexium_reject_drive.sh
           done
-      - name: Require three exact native reject markers with a JSON receipt
+      - name: Negative control must NOT reject known-safe triple-alpha geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 \
+            -name 'lvp_icd*.json' -print -quit)"
+          test -n "$icd"
+          export VK_ICD_FILENAMES="$icd"
+          export FOJ_NRO="$GITHUB_WORKSPACE/native/build/foj-deko3d-native-alpha-rejection-proof.nro"
+          root="$RUNNER_TEMP/stage271-safe-control"
+          mkdir -p runtime-evidence/safe-control
+          python3 -m tools.foj_stage269_guarded_scene \
+            --data-root "$root" --shaders native/gpu/build \
+            --scenario both-half \
+            > runtime-evidence/safe-control/generated-input.json
+          export NEXIUM_DATA_ROOT="$root"
+          export FOJ_EVIDENCE_DIR="$GITHUB_WORKSPACE/runtime-evidence/safe-control"
+          export FOJ_TRIPLE_CASE="both-half"
+          timeout --kill-after=5s 240s xvfb-run -a \
+            -s "-screen 0 1280x720x24" \
+            bash tools/foj_stage267_nexium_three_layer_drive.sh
+          test ! -e "$root/sdmc/switch/foj/gpu/foj-native-unsafe-reject.txt"
+          test ! -L "$root/sdmc/switch/foj/gpu/foj-native-unsafe-reject.txt"
+      - name: Require three exact native reject markers AND true GPU positive control
         shell: bash
         run: |
           set -euo pipefail
           python3 -m tools.foj_stage271_evidence_check \
             --evidence runtime-evidence \
+            --positive-control runtime-evidence/safe-control \
             --report runtime-evidence/stage271-native-guest-receipt.json
       - name: Archive actual guest logs and narrow pre-GPU rejection receipts
         if: always()
