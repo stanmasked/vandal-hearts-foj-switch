@@ -23,6 +23,9 @@
 #include "gpu_draw_plan.h"
 #include "actor_upload_plan.h"
 #include "research_texture.h"
+#if defined(FOJ_GPU_NATIVE_ALPHA_ORDER_GUARD)
+#include "three_layer_preflight.h"
+#endif
 #include "atlas_dds.h"
 #include "dds_screen_status.h"
 #include "dds_command_plan.h"
@@ -114,6 +117,9 @@ static void foj_present_shader_boot_failure(
 
 int main(int argc,char **argv) {
     (void)argc;(void)argv;
+#if defined(FOJ_GPU_NATIVE_ALPHA_ORDER_GUARD) && !defined(FOJ_GPU_THREE_LAYER_BLEND)
+#error "Native transparency guard applies only to opt-in Stage267 three-layer research"
+#endif
 #if defined(FOJ_GPU_THREE_LAYER_BLEND) && !defined(FOJ_GPU_ALPHA_BLEND)
 #error "Stage267 needs Stage265 source-over blending"
 #endif
@@ -175,6 +181,25 @@ int main(int argc,char **argv) {
                 foj_gpu_private_bundle_status_name(private_status));
         return 7;
     }
+#if defined(FOJ_GPU_NATIVE_ALPHA_ORDER_GUARD)
+    /* Critical: screen-space geometry is checked on the very same
+     * projected/private vertex stream used later for GPU upload.
+     * Unsafe or ambiguous overlapping triangles fail BEFORE creating
+     * a GPU device, allocating its resources, or issuing draw commands. */
+    const FojThreeOrderStatus order_status=foj_three_layer_preflight(
+        private_payload.vertices,
+        private_payload.report.actor.stream.vertices_written,
+        private_payload.batches,
+        private_payload.report.actor.stream.batches_written);
+    if (order_status!=FOJ_THREE_ORDER_OK) {
+        fprintf(stderr,"FoJ native alpha preflight: %s\n",
+                order_status==FOJ_THREE_ORDER_UNSAFE?
+                "unsafe depth crossing or ordering":"invalid layer geometry");
+        foj_gpu_private_bundle_free(&private_payload);
+        return 8;
+    }
+    fprintf(stderr,"FoJ native alpha preflight: safe three-layer ordering\n");
+#endif
 #if defined(FOJ_GPU_PRIVATE_ACTOR_DRAW)
     fprintf(stderr,"FoJ private actor GPU upload: unverified display\n");
 #else
