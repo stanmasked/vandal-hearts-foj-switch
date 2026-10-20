@@ -8,7 +8,11 @@
 #include "private_actor_bridge.h"
 #include "atlas_dds.h"
 
+#if defined(FOJ_GPU_THREE_LAYER_BLEND)
+enum { FOJ_GPU_PRIVATE_REQUIRED_ATLASES=3 };
+#else
 enum { FOJ_GPU_PRIVATE_REQUIRED_ATLASES=2 };
+#endif
 
 typedef enum {
     FOJ_PRIVATE_BUNDLE_OK=0,
