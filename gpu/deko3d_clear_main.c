@@ -31,6 +31,9 @@
 #if defined(FOJ_GPU_PRIVATE_BUNDLE_PREFLIGHT)
 #include "private_bundle_intake.h"
 #endif
+#if defined(FOJ_GPU_NATIVE_ORDER_GUARD)
+#include "transparent_order_guard.h"
+#endif
 _Static_assert((size_t)FOJ_GPU_SHADER_MAX_DKSH ==
                (size_t)FOJ_DKSH_MAX_BYTES,
                "DKSH intake and GPU shader slot capacities differ");
@@ -114,6 +117,9 @@ static void foj_present_shader_boot_failure(
 
 int main(int argc,char **argv) {
     (void)argc;(void)argv;
+#if defined(FOJ_GPU_NATIVE_ORDER_GUARD) && !defined(FOJ_GPU_THREE_LAYER_BLEND)
+#error "Native order guard requires the generated three-layer GPU experiment"
+#endif
 #if defined(FOJ_GPU_THREE_LAYER_BLEND) && !defined(FOJ_GPU_ALPHA_BLEND)
 #error "Stage267 needs Stage265 source-over blending"
 #endif
@@ -175,6 +181,22 @@ int main(int argc,char **argv) {
                 foj_gpu_private_bundle_status_name(private_status));
         return 7;
     }
+#if defined(FOJ_GPU_NATIVE_ORDER_GUARD)
+    /* Reject unsafe fixed transparent order BEFORE creating any GPU device.
+     * No private geometry, file path, or texture contents are logged. */
+    const FojGpuOrderStatus order_status=
+        foj_gpu_three_layer_order_guard(
+            private_payload.vertices,
+            private_payload.report.actor.stream.vertices_written,
+            private_payload.batches,
+            private_payload.report.actor.stream.batches_written);
+    if (order_status!=FOJ_GPU_ORDER_OK) {
+        fprintf(stderr,"FoJ native translucent guard: %s\n",
+                foj_gpu_order_status_name(order_status));
+        foj_gpu_private_bundle_free(&private_payload);
+        return 8;
+    }
+#endif
 #if defined(FOJ_GPU_PRIVATE_ACTOR_DRAW)
     fprintf(stderr,"FoJ private actor GPU upload: unverified display\n");
 #else
