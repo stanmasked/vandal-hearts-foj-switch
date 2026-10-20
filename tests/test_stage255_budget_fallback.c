@@ -130,8 +130,47 @@ static void test_strided_and_invalid_inputs(void) {
     free(b);
 }
 
+/* A 384-frame version of the Stage253 scene/resolution schedule.
+ * Here each block's budget is exactly its frame payload, so the opt-in
+ * fallback must retain pixel parity without falsely promising that it
+ * also preserves Stage254's 32-allocation optimization. */
+static void test_384_frame_tight_budget(void) {
+    static const int widths[3]={320,640,1280};
+    static const int heights[3]={180,360,720};
+    FojCompactBaseCache c={0};
+    foj_compact_base_init(&c);
+    c.reuse_floor_bytes=MEDIUM_KIB*1024u;
+    uint32_t *a=scratch(),*b=scratch();
+    for(int n=0;n<384;++n) {
+        const int block=n/8;
+        const int mode=block%3;
+        const int w=widths[mode],h=heights[mode];
+        const int variant=(n%8)/2;
+        FojDemo scene;
+        foj_demo_init(&scene);
+        scene.cursor_x=variant;
+        scene.cursor_y=block%FOJ_HEIGHT;
+        scene.cells[0][0].elevation=(uint8_t)variant;
+        const size_t used=(size_t)w*(size_t)h*sizeof(uint32_t);
+        c.budget_bytes=used;
+        const uint64_t allocations_before=c.allocations;
+        check_frame(&c,&scene,a,b,w,h,n%2==0?0:1,used/1024u);
+        if(n%8==0)
+            assert(c.allocations==allocations_before+1u);
+        else
+            assert(c.allocations==allocations_before);
+    }
+    assert(c.hits==192 && c.misses==192 && c.bypasses==0);
+    assert(c.allocations==48 && c.releases==47);
+    foj_compact_base_release(&c);
+    assert(c.allocations==c.releases && !c.raster && !c.valid);
+    free(a);
+    free(b);
+}
+
 int main(void) {
     test_budget_fallback_and_recovery();
     test_strided_and_invalid_inputs();
+    test_384_frame_tight_budget();
     return 0;
 }
