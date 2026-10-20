@@ -31,14 +31,38 @@ for attempt in $(seq 1 30); do
   if [[ -n "$window" ]]; then break; fi
 done
 test -n "$window" || { echo "NeXium window not visible" >&2; exit 1; }
-sleep 3
-alive
-timeout --kill-after=2s 10s import -window "$window" \
-  "$FOJ_EVIDENCE_DIR/gpu-initial.png"
+# The NRO deliberately shows DDS diagnostic colors for its FIRST 240
+# guest frames. Never mistake those status fills for GPU material textures.
+# Wait for both live triangle footprints; a static time delay is insufficient
+# because software Vulkan guests may run far below 60 FPS.
+found=0
+for attempt in $(seq 1 18); do
+  sleep 5
+  alive
+  timeout --kill-after=2s 10s import -window "$window" \
+    "$FOJ_EVIDENCE_DIR/gpu-initial.png"
+  if python3 - "$FOJ_EVIDENCE_DIR/gpu-initial.png" <<'PY'
+from pathlib import Path
+import sys
+from tools.foj_stage260_gpu_guest_check import inspect
+try:
+    inspect(Path(sys.argv[1]))
+except (OSError,ValueError):
+    raise SystemExit(1)
+PY
+  then
+    found=1
+    break
+  fi
+done
+if [ "$found" != 1 ]; then
+  echo "Neither warm/cool GPU material pair reached the framebuffer" >&2
+  exit 1
+fi
 sleep 2
 alive
 timeout --kill-after=2s 10s import -window "$window" \
   "$FOJ_EVIDENCE_DIR/gpu-later.png"
 test -s "$FOJ_EVIDENCE_DIR/gpu-initial.png"
 test -s "$FOJ_EVIDENCE_DIR/gpu-later.png"
-echo "Two real NeXium window captures created; no visual result is claimed until classifier passes"
+echo "Two direct NeXium window captures ready for full independent verification"
