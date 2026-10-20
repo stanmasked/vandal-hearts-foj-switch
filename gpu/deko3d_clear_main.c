@@ -28,6 +28,9 @@
 #include "dds_command_plan.h"
 #include "gpu_boot_diagnostics.h"
 #include "gpu_boot_journal.h"
+#if defined(FOJ_GPU_PRIVATE_BUNDLE_PREFLIGHT)
+#include "private_bundle_intake.h"
+#endif
 _Static_assert((size_t)FOJ_GPU_SHADER_MAX_DKSH ==
                (size_t)FOJ_DKSH_MAX_BYTES,
                "DKSH intake and GPU shader slot capacities differ");
@@ -106,6 +109,36 @@ static void foj_present_shader_boot_failure(
 
 int main(int argc,char **argv) {
     (void)argc;(void)argv;
+#if defined(FOJ_GPU_PRIVATE_BUNDLE_PREFLIGHT)
+    /* Dedicated opt-in NRO. Validate the entire private actor+material+two
+     * DDS set before initializing a GPU device. Never silently render
+     * generated fallback as though private intake succeeded. Successful
+     * intake still renders *generated quads*, NOT the private actor. */
+    (void)fsdevMountSdmc();
+    const char *const private_atlases[2]={
+        "sdmc:/switch/foj/gpu/material0.dds",
+        "sdmc:/switch/foj/gpu/material1.dds"
+    };
+    const FojTextureCamera private_camera={
+        0.f,0.f,0.f,2.f,0.f,0.f,1.f,0
+    };
+    FojGpuPrivateBundleReport private_report={0};
+    const FojGpuPrivateBundleStatus private_status=
+        foj_gpu_private_bundle_preflight(
+            "sdmc:/switch/foj/gpu/actor.fojrm",
+            "sdmc:/switch/foj/gpu/actor.fojmat",
+            private_atlases,&private_camera,
+            SCREEN_WIDTH,SCREEN_HEIGHT,DK_MEMBLOCK_ALIGNMENT,
+            &private_report);
+    if (private_status!=FOJ_PRIVATE_BUNDLE_OK) {
+        fprintf(stderr,"FoJ private GPU preflight: %s\\n",
+                foj_gpu_private_bundle_status_name(private_status));
+        return 7;
+    }
+    fprintf(stderr,"FoJ private GPU bundle accepted (%u DDS slots); "
+            "GPU presentation remains synthetic research geometry\\n",
+            private_report.atlas_count);
+#endif
     /* Nonzero exit if setup fails or no frame was presented. */
     int exit_status=3;
     DkDevice device=NULL;
