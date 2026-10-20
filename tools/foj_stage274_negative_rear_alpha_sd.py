@@ -17,7 +17,7 @@ from tools.foj_stage266_transparency_order import COOL
 
 SCHEMA="foj.stage274.native_rear_alpha_negative.v1"
 EXPECTED_MARKER="FOJ_NATIVE_REAR_ALPHA_REJECT_V1 pre_gpu=1"
-PNG_HEADER_BYTES=128
+DDS_HEADER_BYTES=128
 
 
 def prepare_negative(root:Path,shaders:Path)->dict:
@@ -29,10 +29,10 @@ def prepare_negative(root:Path,shaders:Path)->dict:
         raise ValueError("Unsafe generated rear DDS path")
     before=atlas.read_bytes()
     reference=generated_dds((*COOL,255))
-    if before!=reference or len(before)!=PNG_HEADER_BYTES+64*64*4:
+    if before!=reference or len(before)!=DDS_HEADER_BYTES+64*64*4:
         raise ValueError("Unexpected generated rear atlas layout")
     altered=bytearray(before)
-    at=PNG_HEADER_BYTES+3
+    at=DDS_HEADER_BYTES+3
     if altered[at]!=255:
         raise ValueError("Generated rear pixel not initially opaque")
     altered[at]=254
