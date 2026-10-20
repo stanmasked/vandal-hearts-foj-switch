@@ -39,9 +39,36 @@ def verify(root:Path)->dict:
             receipt.read_bytes()!=expected_receipt(case)
         ):
             raise ValueError(f"Invalid native GPU blend/depth receipt: {case}")
+    # Separate third NeXium guest with exactly one generated alpha texel
+    # changed. No PNG should be accepted as proof of this early rejection.
+    negative=root/"rear-alpha-negative"
+    negative_input=negative/"generated-input.json"
+    negative_marker=negative/"native-rear-alpha-reject.txt"
+    negative_log=negative/"guest.log"
+    if any(path.is_symlink() or not path.is_file() for path in
+           (negative_input,negative_marker,negative_log)):
+        raise ValueError("Missing Stage274 real negative guest evidence")
+    negative_info=json.loads(negative_input.read_text(encoding="utf-8"))
+    if (negative_info.get("schema")!=
+            "foj.stage274.native_rear_alpha_negative.v1" or
+        negative_info.get("scenario")!="one-rear-alpha-254" or
+        negative_info.get("generated_only") is not True or
+        negative_info.get("original_ps3_resources") is not False or
+        negative_info.get("guest_verified") is not False or
+        negative_info.get("changed_file")!="material2.dds" or
+        negative_info.get("changed_bytes")!=1 or
+        negative_info.get("original_alpha")!=255 or
+        negative_info.get("mutated_alpha")!=254 or
+        negative_info.get("expected_native_rejection_marker")!=
+            "FOJ_NATIVE_REAR_ALPHA_REJECT_V1 pre_gpu=1" or
+        negative_marker.read_bytes()!=
+            b"FOJ_NATIVE_REAR_ALPHA_REJECT_V1 pre_gpu=1\\n"):
+        raise ValueError("Incorrect Stage274 native rear DDS refusal evidence")
     return {
         "schema":SCHEMA,
         "stage273_independent_frame_audit":prior,
+        "negative_generated_rear_dds_refused_before_gpu":True,
+        "native_rear_alpha_rejection_receipts":1,
         "guest_native_pass_state_receipts":len(CASES),
         "actual_guest_provenance":"requires real NeXium GitHub Actions workflow",
         "original_ps3_resources":False,
