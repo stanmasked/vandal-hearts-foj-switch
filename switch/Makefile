@@ -16,6 +16,7 @@ ISO_BASE_PAIR_TARGET := build/foj-isometric-base-cache-ab-pairs
 ISO_BASE_STABILITY_TARGET := build/foj-isometric-base-cache-stability
 ISO_BASE_SCALE_TARGET := build/foj-isometric-base-cache-scale
 ISO_COMPACT_TARGET := build/foj-isometric-compact-base-cache
+ISO_COMPACT_STRESS_TARGET := build/foj-isometric-compact-base-cache-stress
 ISO_UNCACHED_TARGET := build/foj-isometric-research-uncached
 COLL_TARGET := build/foj-coll-map-research
 DDS_TARGET := build/foj-dds-texture-research
@@ -132,6 +133,15 @@ $(ISO_COMPACT_TARGET).elf: $(ISO_SRC) core/isometric_phase_meter.c core/base_cac
 	$(CC) $(CFLAGS) -DFOJ_STAGE246_PHASE_TIMING=1 -DFOJ_STAGE247_BASE_CACHE=1 -DFOJ_STAGE248_BASE_PAIRS=1 -DFOJ_STAGE249_STABILITY=1 -DFOJ_STAGE250_SCALE=1 -DFOJ_STAGE251_COMPACT=1 $(LDFLAGS) $(ISO_SRC) core/isometric_phase_meter.c core/base_cache_pair_probe.c core/base_cache_stability_probe.c core/base_cache_scale_probe.c core/base_cache_compact.c -o $@ -lnx -lm
 
 $(ISO_COMPACT_TARGET).nro: $(ISO_COMPACT_TARGET).elf $(ISO_TARGET).nacp
+	$(ELF2NRO) $< $@ --nacp=$(ISO_TARGET).nacp
+
+# Stage252 isolated endurance NRO: 96 generated-state resolution switches.
+# This target includes deterministic OOM injection; normal and Stage251
+# targets do not compile the stress module or its test-only hooks.
+$(ISO_COMPACT_STRESS_TARGET).elf: $(ISO_SRC) core/isometric_phase_meter.c core/base_cache_pair_probe.c core/base_cache_stability_probe.c core/base_cache_scale_probe.c core/base_cache_compact.c core/compact_stress_probe.c $(HDR) core/base_cache_compact.h core/compact_stress_probe.h | build
+	$(CC) $(CFLAGS) -DFOJ_STAGE246_PHASE_TIMING=1 -DFOJ_STAGE247_BASE_CACHE=1 -DFOJ_STAGE248_BASE_PAIRS=1 -DFOJ_STAGE249_STABILITY=1 -DFOJ_STAGE250_SCALE=1 -DFOJ_STAGE251_COMPACT=1 -DFOJ_STAGE252_STRESS=1 $(LDFLAGS) $(ISO_SRC) core/isometric_phase_meter.c core/base_cache_pair_probe.c core/base_cache_stability_probe.c core/base_cache_scale_probe.c core/base_cache_compact.c core/compact_stress_probe.c -o $@ -lnx -lm
+
+$(ISO_COMPACT_STRESS_TARGET).nro: $(ISO_COMPACT_STRESS_TARGET).elf $(ISO_TARGET).nacp
 	$(ELF2NRO) $< $@ --nacp=$(ISO_TARGET).nacp
 
 # Stage243 A/B build: compile the same guest code with just the cache gate
