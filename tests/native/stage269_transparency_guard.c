@@ -92,11 +92,9 @@ int main(void) {
           "swapped material binding rejected");
 
     scene(vertices,batches);
-    for (unsigned i=0;i<3u;++i) {
-        FojGpuVertex tmp=vertices[i];
-        vertices[i]=vertices[2u-i];
-        vertices[2u-i]=tmp;
-    }
+    FojGpuVertex tmp=vertices[0];
+    vertices[0]=vertices[2];
+    vertices[2]=tmp;
     check(assess(vertices,batches)==FOJ_GPU_ORDER_OK,
           "reverse winding accepted with identical correct depth");
 
