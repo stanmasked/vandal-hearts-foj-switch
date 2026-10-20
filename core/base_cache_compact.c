@@ -23,6 +23,9 @@ void foj_compact_base_init(FojCompactBaseCache *p) {
                     FOJ_ISO_BASE_CACHE_HEIGHT*sizeof(uint32_t);
     p->width=p->height=0;p->valid=false;
     p->hits=p->misses=p->bypasses=p->allocations=p->releases=0;
+#if defined(FOJ_STAGE254_REUSE) && FOJ_STAGE254_REUSE
+    p->reuse_floor_bytes=0;
+#endif
 #if defined(FOJ_STAGE252_STRESS) && FOJ_STAGE252_STRESS
     p->inject_fail_next_allocation=false;
 #endif
@@ -52,8 +55,17 @@ int foj_compact_base_draw(FojCompactBaseCache *p,const FojDemo *scene,
        height>INT_MAX/stride)return -1;
     const size_t row=(size_t)width*sizeof(uint32_t);
     const size_t used=row*(size_t)height;
+#if defined(FOJ_STAGE254_REUSE) && FOJ_STAGE254_REUSE
+    /* Alternative capacity policy is strictly gated to Stage254 builds.
+     * Only actual pixel payload is used; spare capacity is never pixels. */
+    const size_t target = used < p->reuse_floor_bytes ?
+                          p->reuse_floor_bytes : used;
+    if(target>p->budget_bytes)return -1;
+#else
+    const size_t target=used;
     if(used>p->budget_bytes)return -1;
-    if(p->valid && p->raster && p->allocated_bytes==used &&
+#endif
+    if(p->valid && p->raster && p->allocated_bytes==target &&
        p->width==width && p->height==height &&
        same_scene(&p->scene,scene)) {
         for(int y=0;y<height;++y)
@@ -64,7 +76,7 @@ int foj_compact_base_draw(FojCompactBaseCache *p,const FojDemo *scene,
     }
     /* Release before replacement: no simultaneous old+new cache payload
      * and no hidden max-size reservation when rendering a smaller frame. */
-    if(p->allocated_bytes!=used || !p->raster) {
+    if(p->allocated_bytes!=target || !p->raster) {
         foj_compact_base_release(p);
 #if defined(FOJ_STAGE252_STRESS) && FOJ_STAGE252_STRESS
         /* Deterministic fault occurs only at a genuine allocation site;
@@ -75,9 +87,9 @@ int foj_compact_base_draw(FojCompactBaseCache *p,const FojDemo *scene,
             return -1;
         }
 #endif
-        p->raster=(uint32_t *)malloc(used);
+        p->raster=(uint32_t *)malloc(target);
         if(!p->raster) {p->valid=false;return -1;}
-        p->allocated_bytes=used;
+        p->allocated_bytes=target;
         increment(&p->allocations);
     }
     p->valid=false;
