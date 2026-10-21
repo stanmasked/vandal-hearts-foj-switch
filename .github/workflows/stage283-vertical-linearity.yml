@@ -164,7 +164,7 @@ jobs:
           if-no-files-found: error
 
   nexium:
-    name: NeXium proves three-column vertical DDS-V boundary relocation
+    name: NeXium verifies three-point vertical DDS-V displacement linearity
     needs: [build, host]
     runs-on: ubuntu-26.04
     timeout-minutes: 30
@@ -245,7 +245,7 @@ jobs:
             export FOJ_V_CASE="$case"
             timeout --kill-after=5s 240s xvfb-run -a \
               -s "-screen 0 1280x720x24" \
-              bash tools/foj_stage282_nexium_vertical_drive.sh
+              bash tools/foj_stage283_nexium_vertical_linearity_drive.sh
           done
       - name: Audit vertical V-source GPU profiles, native receipts and original RGB frames
         shell: bash
