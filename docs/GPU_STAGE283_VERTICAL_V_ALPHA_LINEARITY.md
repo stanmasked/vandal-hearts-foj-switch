@@ -1,6 +1,6 @@
 # GPU Stage283 — Vertical DDS V-coordinate alpha boundary displacement
 
-**Stacked on:** [Stage281 PR #166](https://github.com/stanmasked/vandal-hearts-foj-switch/pull/166), exact-head [3/3 NeXium CI #39603858489](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39603858489) at `bb6d8911617ed7b3febc75a65a8cb6e87b391bf3`.
+**Stacked on:** [Stage282 PR #167](https://github.com/stanmasked/vandal-hearts-foj-switch/pull/167), verified on exact head `2aca830e` by [CI #39613696143](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39613696143).
 
 Stages280–282 demonstrated U-driven horizontal alpha-edge relocation, coherence along five adjacent screen rows, and a V-driven vertical edge relocation. Stage283 adds a **third, intermediate V split** to test whether the screen-space displacement tracks the source-coordinate change in two adjacent intervals, while freezing the 315,448-byte NRO, 512-byte DKSH shaders, nine vertices, XY/UV/Z, camera, native draw sort, pass blend/depth contracts, middle/rear material and RGB values.
 
@@ -13,7 +13,8 @@ Both generated-only `64×64 RGBA8 DDS` inputs change exactly **4096 alpha bytes*
 | New case | Alpha when DDS y is above split | Alpha at/under split | Expected screen crossing |
 |---|---|---|---|
 | `edge-v40` | 0 | 255 | Y≈363 |
-| `edge-v46` | 0 | 255 | Y≈395 |\n| `edge-v52` | 0 | 255 | Y≈428 |
+| `edge-v46` | 0 | 255 | Y≈395 |
+| `edge-v52` | 0 | 255 | Y≈428 |
 
 Only generated `material0.dds` is modified between cases. No PS3 resources, game PKG or original game files are loaded or published. Independently check exact SHA-256 of each full DDS before and after guest.
 
