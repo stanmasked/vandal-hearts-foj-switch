@@ -58,7 +58,7 @@ static void positive(void) {
         assert(b.report.atlas[i].width==256u &&
                b.report.atlas[i].height==256u &&
                b.report.atlas[i].pixel_bytes==FOJ_BC1_PAGE_RGBA_BYTES);
-        assert(b.batches[i].material_index==i);
+        assert(b.batches[i].texture_index==i);
         assert(b.batches[i].first_vertex==i*6u);
         assert(b.batches[i].vertex_count==6u);
     }
