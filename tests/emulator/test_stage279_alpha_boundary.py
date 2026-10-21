@@ -131,13 +131,31 @@ class Stage279BoundaryTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 verify(root)
 
-    def test_out_of_source_over_envelope_rejected(self):
+    def test_off_curve_color_rejected_even_with_in_range_opacity(self):
+        # A black pixel projects to an in-range scalar alpha along the
+        # expected RGB vector, but has a large residual perpendicular to
+        # the physically valid straight-alpha color path. This exercises
+        # the independent three-channel curve check.
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
             mock_files(root)
             path=root/CASES[0]/"gpu-initial.png"
             im=Image.open(path).convert("RGB")
             im.putpixel((661,PROFILE_Y),(0,0,0))
+            im.save(path)
+            with self.assertRaisesRegex(ValueError,"not on source-over curve"):
+                verify(root)
+
+    def test_opacity_outside_source_over_envelope_rejected(self):
+        # White projects slightly below -0.07 into the CPU's normalized
+        # 0..1 alpha axis and must fail the envelope check, independent
+        # of the off-curve color residual guard.
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            mock_files(root)
+            path=root/CASES[0]/"gpu-initial.png"
+            im=Image.open(path).convert("RGB")
+            im.putpixel((661,PROFILE_Y),(255,255,255))
             im.save(path)
             with self.assertRaisesRegex(ValueError,"out-of-envelope"):
                 verify(root)
