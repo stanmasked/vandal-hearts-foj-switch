@@ -4,7 +4,14 @@ Research project for a **native Nintendo Switch homebrew port** of
 *Vandal Hearts: Flames of Judgment* (PlayStation 3 / Xbox 360, 2010).
 
 > **Status: research / native ARM64 smoke-test only — no playable port, PS3
-> code translation or original gameplay.** Nine independent libnx NROs now
+> code translation or original gameplay.
+>
+> **Texture evidence note (Stage300):** Earlier owner-local research confirmed
+> five genuine DDS-in-`.tga` resources from `NPEB00148` (2 BGRA8, 3 BC1).
+> The subsequent Stage291–299 GTF-like investigations are **hypothetical
+> synthetic formats**, not evidence overturning these real DDS observations.
+> One documented 1024×1024 BC1 texture exceeds the current 256×256 GPU atlas
+> loader; see [Stage300 reconciliation](docs/GPU_STAGE300_HISTORICAL_REAL_DDS_GAP.md).** Nine independent libnx NROs now
 > compile in CI, including original-data wireframe and DDS-textured actor research viewers;
 > none runs the original PS3 game.
 
