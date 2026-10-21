@@ -245,6 +245,19 @@ class PrivateThreeDdsBindingTests(unittest.TestCase):
             bridge.prepare(self.source, self.shaders, destination)
         self.assertFalse(destination.exists())
 
+    def test_private_prefix_cannot_escape_to_tracked_dir_via_parent_walk(self):
+        # Even if 'local-data' is gitignored, a /../ component must not
+        # allow the eventual output to land back in the tracked repo root.
+        disguised = PROJECT / "local-data" / ".." / "stage286-tracked-escape"
+        with self.assertRaisesRegex(ValueError, "traversal"):
+            bridge.prepare(self.source, self.shaders, disguised)
+
+    def test_source_destination_nesting_rejected(self):
+        nested = self.source / "accidental-private-output"
+        with self.assertRaisesRegex(ValueError, "must be separate"):
+            bridge.prepare(self.source, self.shaders, nested)
+        self.assertFalse(nested.exists())
+
     def test_cli_errors_hide_source_path_and_private_hashes(self):
         command = [sys.executable, "-m",
                    "tools.foj_stage286_private_three_dds_material_bridge",
