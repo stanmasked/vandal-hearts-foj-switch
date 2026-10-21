@@ -89,8 +89,8 @@ def verify(root:Path)->dict:
             witness=require(folder/f"near-dds-{phase}.sha256")
             if witness!=(new_hash+"\n").encode("ascii"):
                 raise ValueError("Stage276 actual DDS changed or witness forged")
-        if require(folder/"native-sort-pass.txt")!=(
-                b"FOJ_NATIVE_SORT_V1 2,1,0\n") or
+        if (require(folder/"native-sort-pass.txt")!=
+                b"FOJ_NATIVE_SORT_V1 2,1,0\n" or
             require(folder/"native-alpha-pass.txt")!=
                 expected_receipt("original")):
             raise ValueError("Stage276 inconsistent native pass-state receipts")
