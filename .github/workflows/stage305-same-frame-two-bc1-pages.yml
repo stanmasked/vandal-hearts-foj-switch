@@ -1,0 +1,179 @@
+name: Stage305 two BC1 pages in one genuine NeXium GPU frame
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage305-same-frame-two-bc1-pages.yml'
+      - 'gpu/stage305_split_gpu_scene.c'
+      - 'gpu/stage305_split_gpu_scene.h'
+      - 'gpu/stage305_split_surface.mk'
+      - 'gpu/deko3d_clear_main.c'
+      - 'tools/foj_stage305_same_frame_bc1_guest.py'
+      - 'tools/foj_stage305_nexium_drive.sh'
+      - 'tests/gpu/test_stage305_split_gpu_scene.c'
+      - 'tests/emulator/test_stage305_same_frame_bc1_guest.py'
+      - 'docs/GPU_STAGE305_SAME_FRAME_BC1_SPLIT_SURFACE.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage305-same-frame-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host:
+    name: Compiled BC1 two-page and 15-vertex safety / ${{ matrix.compiler }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: ['gcc','clang']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run actual C seam scene with strict generated-only input
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 -O2 -Wall -Wextra -Werror -Igpu -Icore \
+            -DFOJ_GPU_THREE_LAYER_BLEND=1 \
+            gpu/atlas_dds.c gpu/bc1_atlas_page.c \
+            gpu/stage303_bc1_page_uv.c gpu/stage305_split_gpu_scene.c \
+            tests/gpu/test_stage305_split_gpu_scene.c \
+            -lm -o /tmp/foj-stage305-native
+          /tmp/foj-stage305-native
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Refuse fake/single-color/stale/private GPU evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install Pillow
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage305_same_frame_bc1_guest.py' -v
+          bash -n tools/foj_stage305_nexium_drive.sh
+          echo STAGE305_NATIVE_GCC_CLANG_AND_NEGATIVE_PROOFS_PASS
+
+  build:
+    name: Build actual two-page/15-vertex Switch research NRO with devkitA64
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: devkitpro/devkita64:20260219
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile deko3d 15 vertex two-page NRO, plus real shader binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f gpu/stage305_split_surface.mk verify
+          make -f gpu/Makefile triangle-verify
+          python3 tools/validate_nro.py build/foj-deko3d-stage305-split-surface.nro
+          echo STAGE305_DEVKITA64_NATIVE_TWO_PAGE_NRO_PASS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage305-nro-and-generated-shaders
+          path: |
+            build/foj-deko3d-stage305-split-surface.nro
+            gpu/build/foj_actor.vert.dksh
+            gpu/build/foj_triangle.frag.dksh
+          if-no-files-found: error
+
+  nexium:
+    name: Two BC1 pages on ONE split surface in actual NeXium frames
+    runs-on: ubuntu-26.04
+    needs: [host,build]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: foj-stage305-nro-and-generated-shaders
+          path: native
+      - name: Install Mesa Vulkan, Xvfb, Pillow and capture dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl jq xvfb xauth xdotool imagemagick python3-pil \
+            libgtk-3-0t64 libasound2t64 libudev1 libxkbcommon0 libxkbcommon-x11-0 \
+            libx11-xcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 \
+            libxcb-randr0 libxcb-render0 libxcb-shape0 libxcb-xkb1 \
+            libvulkan1 mesa-vulkan-drivers
+      - name: Bind exact NeXium nightly archive identity to guest screenshots
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-evidence /tmp/nexium
+          release="$(curl -fsSL --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/nexium-emu/nexium-nightly/releases/tags/nightly)"
+          asset="$(printf '%s' "$release" | jq -er \
+            '.assets[] | select(.name=="nexium-linux-x86_64.tar.gz") | .browser_download_url')"
+          curl -fL --retry 3 --retry-all-errors "$asset" -o /tmp/nexium.tar.gz
+          sha256sum /tmp/nexium.tar.gz > runtime-evidence/nexium-archive.sha256
+          tar -xzf /tmp/nexium.tar.gz -C /tmp/nexium
+          bin="$(find /tmp/nexium -type f -executable \
+            \( -name 'nexium-gui' -o -name 'nexium' \) -print -quit)"
+          test -n "$bin"
+          echo "NEXIUM_BIN=$bin" >> "$GITHUB_ENV"
+      - name: Prepare strict original-free Stage293 DDS fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage305_same_frame_bc1_guest.py' -v
+          bash -n tools/foj_stage305_nexium_drive.sh
+          icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 -name 'lvp_icd*.json' -print -quit)"
+          test -n "$icd"
+          echo "VK_ICD_FILENAMES=$icd" >> "$GITHUB_ENV"
+          work="$RUNNER_TEMP/stage305-generated-source"
+          evidence="$GITHUB_WORKSPACE/runtime-evidence/bridge"
+          python3 -m tools.foj_stage293_converted_dds_guest prepare \
+            --work-root "$work" --shaders native/gpu/build --evidence "$evidence"
+          python3 -m tools.foj_stage293_converted_dds_guest attest \
+            --work-root "$work" --evidence "$evidence" --phase before
+          echo "NEXIUM_DATA_ROOT=$work/staged" >> "$GITHUB_ENV"
+          echo "FOJ_EVIDENCE_DIR=$evidence" >> "$GITHUB_ENV"
+      - name: Run actual GPU page-split scene and capture TWO real frames
+        shell: bash
+        run: |
+          set -euo pipefail
+          export FOJ_NRO="$GITHUB_WORKSPACE/native/build/foj-deko3d-stage305-split-surface.nro"
+          sd="$NEXIUM_DATA_ROOT/sdmc/switch/foj/gpu"
+          native_marker="$sd/foj-native-stage305-split-pass.txt"
+          test ! -e "$native_marker" && test ! -L "$native_marker"
+          timeout --kill-after=5s 270s xvfb-run -a \
+            -s "-screen 0 1280x720x24" \
+            bash tools/foj_stage305_nexium_drive.sh
+          test -f "$native_marker" && test ! -L "$native_marker"
+          python3 -m tools.foj_stage293_converted_dds_guest attest \
+            --work-root "$(dirname "$NEXIUM_DATA_ROOT")" \
+            --evidence "$FOJ_EVIDENCE_DIR" --phase after
+      - name: Independently verify both BC1 pages in the SAME GPU frame
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage305_same_frame_bc1_guest audit \
+            --evidence runtime-evidence/bridge
+          echo STAGE305_TWO_BC1_PAGES_ONE_ACTUAL_NEIXUM_GPU_FRAME_PASS
+      - name: Publish strictly allowlisted generated-only GPU evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage305_same_frame_bc1_guest publish \
+            --source runtime-evidence --output runtime-evidence-public
+          echo STAGE305_PRIVATE_DATA_REJECTION_PASS
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: foj-stage305-real-guest-bc1-split-surface-proof
+          path: runtime-evidence-public/
+          if-no-files-found: error
+          # Never upload actual game content or raw guest logs.
