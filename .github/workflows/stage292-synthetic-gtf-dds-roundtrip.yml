@@ -1,0 +1,56 @@
+name: Stage292 generated-only GTF-like DDS native C roundtrip
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage292-synthetic-gtf-dds-roundtrip.yml'
+      - 'tools/foj_stage292_synthetic_gtf_dds_roundtrip.py'
+      - 'tests/emulator/test_stage292_synthetic_gtf_dds_roundtrip.py'
+      - 'gpu/atlas_dds.c'
+      - 'gpu/atlas_dds.h'
+      - 'tools/foj_gpu_local_dds_preflight.py'
+      - 'docs/GPU_STAGE292_SYNTHETIC_GTF_DDS_ROUNDTRIP.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage292-synthetic-dds-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-parity:
+    name: Synthetic BGRA / native ${{ matrix.compiler }} / Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.13']
+        compiler: ['gcc', 'clang']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile actual atlas DDS loader, no original assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 -O2 -Wall -Wextra -Werror \
+            -fPIC -shared -Igpu gpu/atlas_dds.c \
+            -o /tmp/foj-stage292-atlas.so
+      - name: Verify synthetic source/channel/mip parity against real C decoder
+        shell: bash
+        env:
+          FOJ_STAGE292_ATLAS_SO: /tmp/foj-stage292-atlas.so
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tools/foj_stage292_synthetic_gtf_dds_roundtrip.py
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage292_synthetic_gtf_dds_roundtrip.py' -v
+          python3 -m tools.foj_stage292_synthetic_gtf_dds_roundtrip \
+            --width 24 --height 13 --mips 3
+          echo STAGE292_SYNTHETIC_GTF_DDS_NATIVE_C_PARITY_PASS
+      # This job neither reads nor publishes game PKG/texture resources.
