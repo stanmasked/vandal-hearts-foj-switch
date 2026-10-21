@@ -108,6 +108,24 @@ actual GPU screenshots via the Stage273 RGB oracle, then requires
 both Stage274 native receipts. Host-synthesized image/marker unit
 fixtures **are not evidence of real NeXium execution**.
 
+## Cryptographic identity of the negative synthetic DDS
+
+The third NeXium guest now records **both** the pristine and modified
+generated rear-DDS SHA-256 digests in its synthetic manifest. Before
+opening NeXium, its shell driver independently rebuilds the public
+64×64 RGBA8 DDS, flips **only** alpha byte at offset 131 (255→254),
+and refuses any actual DDS payload that differs from this exact
+expected file. Both manifest hashes must match that reconstruction.
+
+The final Stage274 evidence auditor independently recomputes the
+original/modified SHA-256 values from the public generator and checks
+the preserved manifest. Two additional synthetic-only classifier
+regressions reject missing or fabricated hashes. This establishes
+which generated DDS bytes are prescribed to the real guest without
+publishing any PS3 resources. The **real guest execution and refusal**
+still require the third NeXium CI job; a hash or mock fixture alone
+does not establish that result.
+
 ## Third NeXium guest: single rear DDS alpha-byte refusal
 
 The Stage274-only research NRO now exclusively writes
