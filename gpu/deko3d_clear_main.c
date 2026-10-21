@@ -37,6 +37,9 @@
 #if defined(FOJ_GPU_STAGE302_GENERATED_PAGE_PROBE)
 #include "stage302_synthetic_page_probe.h"
 #endif
+#if defined(FOJ_GPU_STAGE305_SPLIT_SURFACE)
+#include "stage305_split_gpu_scene.h"
+#endif
 #if defined(FOJ_GPU_STAGE304_UV_NEIGHBOR_PROBE)
 #include "stage304_uv_seam_probe.h"
 #ifndef FOJ_STAGE304_SIDE
@@ -215,6 +218,36 @@ int main(int argc,char **argv) {
                 foj_gpu_private_bundle_status_name(private_status));
         return 7;
     }
+#if defined(FOJ_GPU_STAGE305_SPLIT_SURFACE)
+#if !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) || !defined(FOJ_GPU_THREE_LAYER_BLEND)
+#error "Stage305 requires the exact three synthetic Stage293 material inputs"
+#endif
+#if defined(FOJ_GPU_DYNAMIC_ALPHA_SORT) || defined(FOJ_GPU_DYNAMIC_PASS_CONTRACT)
+#error "Stage305 new 3/6/6 vertex geometry intentionally differs from Stage273 3/3/3 sort"
+#endif
+    if (!foj_stage305_apply_split_surface(&private_payload)) {
+        fprintf(stderr,"FoJ Stage305 generated two-page seam geometry refused\n");
+        foj_gpu_private_bundle_free(&private_payload);
+        return 13;
+    }
+    FILE *const two_page_marker=fopen(
+        "sdmc:/switch/foj/gpu/foj-native-stage305-split-pass.txt","wx");
+    if (!two_page_marker) {
+        foj_gpu_private_bundle_free(&private_payload);
+        return 13;
+    }
+    static const char split_text[]=
+        "FOJ_NATIVE_STAGE305_SPLIT_V1 left=1,1 right=2,1 uv=511/512 verts=15\n";
+    const size_t split_written=fwrite(
+        split_text,1,sizeof(split_text)-1u,two_page_marker);
+    const int split_flushed=fflush(two_page_marker);
+    const int split_closed=fclose(two_page_marker);
+    if (split_written!=sizeof(split_text)-1u ||
+        split_flushed || split_closed) {
+        foj_gpu_private_bundle_free(&private_payload);
+        return 13;
+    }
+#endif
 #if defined(FOJ_GPU_STAGE304_UV_NEIGHBOR_PROBE)
 #if !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) || !defined(FOJ_GPU_THREE_LAYER_BLEND)
 #error "Stage304 requires actual generated Stage293 three-material intake"
