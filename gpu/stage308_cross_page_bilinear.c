@@ -6,9 +6,12 @@
 /* Both page edges use generated Stage301 C-decoded RGBA buffers. We refuse
  * negative/NaN/inf UV, other pages, and mismatched page ranges. */
 int foj_stage308_cross_page_bilinear(
-    const uint8_t *left_rgba, const uint8_t *right_rgba,
+    const uint8_t *left_rgba, size_t left_bytes,
+    const uint8_t *right_rgba, size_t right_bytes,
     unsigned row_y, float atlas_u, uint8_t out_rgba[4]) {
     if (!left_rgba || !right_rgba || !out_rgba ||
+        left_bytes!=FOJ_BC1_PAGE_RGBA_BYTES ||
+        right_bytes!=FOJ_BC1_PAGE_RGBA_BYTES ||
         row_y>=FOJ_BC1_PAGE_EDGE || !isfinite(atlas_u))
         return 0;
     const float first=511.5f/1024.f;
