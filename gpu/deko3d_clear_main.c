@@ -226,7 +226,7 @@ int main(int argc,char **argv) {
         return 11;
     }
     static const char page_message[]=
-        "FOJ_NATIVE_STAGE302_PAGE_V1 p=2,1 rgb=25,202,222 size=256\n";
+        "FOJ_NATIVE_STAGE302_PAGE_V1 p=2,1 rgb=24,203,222 size=256\n";
     const size_t page_written=fwrite(
         page_message,1,sizeof(page_message)-1u,page_receipt);
     const int page_flushed=fflush(page_receipt);
