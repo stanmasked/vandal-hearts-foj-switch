@@ -175,6 +175,21 @@ Mock evidence tests only check the classifier and rejection of missing,
 tampered and forged refusal markers. They do not establish that the
 actual NRO was executed in NeXium.
 
+## Canonical Boolean depth and blend flags
+
+The Stage274 native pass-state receipt must accept *only exact* `0`
+and `1` in all three descriptor flags for every draw. In particular
+`depth_write_enabled=2` previously evaded a complement comparison for
+the transparent draws and could be recorded as though it were valid.
+The condition now explicitly requires depth writes to be `1` on
+the rear opaque draw and `0` on both transparent draws.
+
+`tests/test_gpu_alpha_pass_contract.c` now exercises `2` and
+`UINT32_MAX` for **each of three flags across all three passes**,
+refusing the descriptor without modifying any byte of the caller's
+128-byte receipt buffer. This remains a C11 host correctness test,
+not a NeXium or GPU presentation success signal.
+
 ## Independent evidence contradiction audit
 
 In addition to the NeXium guest launch scripts, the final
