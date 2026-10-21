@@ -78,6 +78,11 @@ static void positive(void) {
     for(unsigned i=0;i<6u;++i)
         assert(b.vertices[i].z==.68f &&
                b.vertices[i].x>=-.03f && b.vertices[i].x<=.03f);
+    /* Renderer uses reverse-Z: clear 0.0, compare Greater. The final
+     * overlay draw must be nearer (greater Z) than base two pages. */
+    assert(b.vertices[0].z>b.vertices[6].z);
+    assert(b.vertices[0].z>b.vertices[12].z);
+    assert(b.vertices[6].z==.55f && b.vertices[12].z==.55f);
     assert(b.vertices[0].u==127.5f/256.f);
     assert(b.vertices[1].u==128.5f/256.f);
     assert(b.vertices[6].x==0.f && b.vertices[12].x==-.6f);
