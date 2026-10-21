@@ -5,7 +5,12 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import ctypes as c
 from PIL import Image,ImageDraw
+from test_stage274_actual_native_chain import (
+    compile_pipeline, Stage274ActualNativeChain, Section, Camera,
+    Vertex, Batch, StreamInfo, U32,
+)
 
 from tools.foj_stage267_gpu_three_layer_check import PROBES
 from tools.foj_stage271_generated_negative_sd import rejected_actor
@@ -80,6 +85,46 @@ class Stage275GuestAuditTests(unittest.TestCase):
             with self.subTest(case=case):
                 with self.assertRaises(UnsafeTransparencyOrder):
                     safe_draw_order(rejected_actor(case))
+
+    def test_actual_c11_projected_sort_distinguishes_unsafe_from_invalid(self):
+        # Real source modules, not the Python topology oracle: verify both
+        # unsafe actors have status UNSAFE=2 (eligible for the opt-in NRO
+        # witness) rather than INVALID=1 (which must not write it).
+        # The output buffer is transactional on both error paths.
+        for compiler in ("gcc","clang"):
+            with self.subTest(compiler=compiler),tempfile.TemporaryDirectory() as tmp:
+                native=compile_pipeline(compiler,Path(tmp)/"stage275-sort.so")
+                camera=Camera(0.,0.,0.,2.,0.,0.,1.,0)
+                sections=(Section*3)(
+                    Section(0,3,0), Section(3,3,1), Section(6,3,2))
+                for case in ("original","reversed",*CASES):
+                    with self.subTest(case=case):
+                        actor=(rejected_actor(case) if case in CASES
+                               else generated_actor(case))
+                        projected=(Vertex*9)()
+                        batches=(Batch*3)()
+                        info=StreamInfo()
+                        status=native["project"](
+                            Stage274ActualNativeChain.input_vertices(actor),
+                            9,sections,3,3,c.byref(camera),1280,720,
+                            projected,9,batches,3,c.byref(info))
+                        self.assertEqual(status,0)
+                        self.assertEqual(
+                            (info.vertices_written,info.batches_written),(9,3))
+                        order=(U32*3)(999,999,999)
+                        native_status=native["sort"](projected,3,order,3)
+                        if case in CASES:
+                            self.assertEqual(native_status,2)
+                            self.assertEqual(tuple(order),(999,999,999))
+                        else:
+                            self.assertEqual(native_status,0)
+                            self.assertEqual(tuple(order),
+                                (2,1,0) if case=="original" else (2,0,1))
+                # A structurally invalid call is status INVALID=1, never
+                # UNSAFE=2, and cannot satisfy the Stage275 witness gate.
+                invalid=(U32*3)(999,999,999)
+                self.assertEqual(native["sort"](projected,0,invalid,3),1)
+                self.assertEqual(tuple(invalid),(999,999,999))
 
     def test_missing_native_reject_refused(self):
         with tempfile.TemporaryDirectory() as tmp:
