@@ -28,7 +28,15 @@ The native NeXium driver requires the guest-exclusive unsafe marker, forbids pos
 
 ## CI gate
 
-`.github/workflows/stage275-native-topology-reject.yml` builds the Stage275 opt-in NRO with devkitA64 and two public generated DKSH shaders. Its host job retains the Stage274 C11 material/depth regressions, randomized Stage272 DAG tests, the Stage274 six-module native C integration test and all Stage274 generated-only classifier tests, plus **nine new** Stage275 classifier tests.
+`.github/workflows/stage275-native-topology-reject.yml` builds the Stage275 opt-in NRO with devkitA64 and two public generated DKSH shaders. Its host job retains the Stage274 C11 material/depth regressions, randomized Stage272 DAG tests, the Stage274 six-module native C integration test and all Stage274 generated-only classifier tests, plus **nine** Stage275 classifier regressions and **one new actual C11
+projection/sort integration test**. The latter compiles the six production
+C11 modules under GCC and Clang and requires both invented crossing and
+coplanar actors to return exactly `FOJ_ALPHA_SORT_UNSAFE=2` with the
+output array unmodified. A deliberately invalid call must instead return
+`FOJ_ALPHA_SORT_INVALID=1` without changing the output. Valid original
+and reversed actors must still return their native `2,1,0`/`2,0,1`
+orders. This distinguishes a genuine Stage275 native-unsafe refusal from
+ordinary input validation failure *before* the guest evidence is credited.
 
 The NeXium job requires **five** guest sessions using the *Stage275 NRO*:
 
