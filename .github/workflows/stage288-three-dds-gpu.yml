@@ -12,6 +12,9 @@ on:
       - '.github/workflows/stage288-three-dds-gpu.yml'
       - 'tools/foj_stage288_generated_bridge_gpu.py'
       - 'tests/emulator/test_stage288_generated_bridge_gpu.py'
+      - 'tools/foj_stage289_public_guest_evidence.py'
+      - 'tests/emulator/test_stage289_public_guest_evidence.py'
+      - 'docs/GPU_STAGE289_PUBLIC_EVIDENCE_GATE.md'
       - 'docs/GPU_STAGE288_THREE_DDS_GPU_BRIDGE.md'
       - 'tools/foj_stage286_private_three_dds_material_bridge.py'
       - '.github/workflows/stage283-vertical-linearity.yml'
@@ -153,6 +156,8 @@ jobs:
             -p 'test_stage285_uv_cross_intersection.py' -v
           python3 -m unittest discover -s tests/emulator \
             -p 'test_stage288_generated_bridge_gpu.py' -v
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage289_public_guest_evidence.py' -v
           python3 -m unittest discover -s tests \
             -p 'test_stage286_private_three_dds_material_bridge.py' -v
           python3 -m unittest discover -s tests/emulator \
@@ -280,11 +285,19 @@ jobs:
             --evidence runtime-evidence/bridge \
             --report runtime-evidence/bridge/stage288-three-dds-gpu-receipt.json
           echo "STAGE288_GENERATED_THREE_DDS_GUEST_GPU_PASS"
+      - name: Stage289 publish only independently audited public evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage289_public_guest_evidence \
+            --source runtime-evidence \
+            --output runtime-evidence-public
+          echo 'STAGE289_PUBLIC_GUEST_EVIDENCE_GATE_PASS'
       - name: Preserve generated-only guest RGB and public diagnostic markers
-        if: always()
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: foj-stage288-generated-three-dds-guest-evidence
-          path: runtime-evidence/
-          if-no-files-found: warn
-          # The private Stage286 binding manifest stays under RUNNER_TEMP.
+          path: runtime-evidence-public/
+          if-no-files-found: error
+          # Only Stage289's allowlisted copy is published, never runtime-evidence/.
