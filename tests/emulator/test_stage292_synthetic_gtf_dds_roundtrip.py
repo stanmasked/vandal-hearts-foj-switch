@@ -97,7 +97,7 @@ class Stage292SyntheticConversionTests(unittest.TestCase):
 
     def test_bad_pitch_rejected(self):
         with self.assertRaises(ValueError):
-            convert_fixture(self.mutated(48, 0))
+            convert_fixture(self.mutated(50, 0))
 
     def test_claimed_payload_overflow_rejected(self):
         with self.assertRaises(ValueError):
