@@ -1,0 +1,213 @@
+name: Stage304 two NeXium GPU runs select adjacent UV pages across atlas half
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage304-uv-neighbor-page-nexium.yml'
+      - 'gpu/stage304_generated_seam.mk'
+      - 'gpu/stage304_uv_seam_probe.c'
+      - 'gpu/stage304_uv_seam_probe.h'
+      - 'gpu/deko3d_clear_main.c'
+      - 'gpu/bc1_atlas_page.c'
+      - 'gpu/bc1_atlas_page.h'
+      - 'tests/gpu/test_stage304_uv_seam_probe.c'
+      - 'tools/foj_stage304_uv_neighbor_guest.py'
+      - 'tests/emulator/test_stage304_uv_neighbor_guest.py'
+      - 'docs/GPU_STAGE304_REAL_UV_NEIGHBOR_NEIXUM.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage304-neighbor-seam-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host:
+    name: Host C generated-only neighbor-page UV proof / ${{ matrix.compiler }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: ['gcc','clang']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run actual Stage304 C UV routing and private-data guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 -O2 -Wall -Wextra -Werror -Igpu -Icore \
+            -DFOJ_GPU_THREE_LAYER_BLEND=1 \
+            gpu/atlas_dds.c gpu/bc1_atlas_page.c gpu/stage303_bc1_page_uv.c \
+            gpu/stage304_uv_seam_probe.c \
+            tests/gpu/test_stage304_uv_seam_probe.c \
+            -o /tmp/stage304-native-probe
+          /tmp/stage304-native-probe
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Refuse forged guest frame and file publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install Pillow
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage302_generated_bc1_page_guest.py' -v
+          echo STAGE304_HOST_C_AND_EVIDENCE_NEGATIVE_PASS
+
+  build:
+    name: Compile opt-in Stage304 left/right native NRO and UAM DKSH on devkitA64
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: devkitpro/devkita64:20260219
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build real NRO with actual C BC1 page path
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f gpu/stage304_generated_seam.mk STAGE304_SIDE=0 OUT=build/foj-deko3d-stage304-left verify
+          make -f gpu/stage304_generated_seam.mk STAGE304_SIDE=1 OUT=build/foj-deko3d-stage304-right verify
+          make -f gpu/Makefile triangle-verify
+          python3 tools/validate_nro.py build/foj-deko3d-stage304-left.nro
+          python3 tools/validate_nro.py build/foj-deko3d-stage304-right.nro
+          echo STAGE304_DEVKITA64_LEFT_AND_RIGHT_NRO_PASS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage304-nro-generated-shaders
+          path: |
+            build/foj-deko3d-stage304-left.nro
+            build/foj-deko3d-stage304-right.nro
+            gpu/build/foj_actor.vert.dksh
+            gpu/build/foj_triangle.frag.dksh
+          if-no-files-found: error
+
+  nexium:
+    name: Two real NeXium GPU frames show selected left/right UV-neighbor page
+    needs: [host, build]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        side: [left, right]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: foj-stage304-nro-generated-shaders
+          path: native
+      - name: Install Mesa Vulkan, framebuffer capture and audit dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl jq xvfb xauth xdotool imagemagick python3-pil \
+            libgtk-3-0t64 libasound2t64 libudev1 libxkbcommon0 libxkbcommon-x11-0 \
+            libx11-xcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 \
+            libxcb-randr0 libxcb-render0 libxcb-shape0 libxcb-xkb1 \
+            libvulkan1 mesa-vulkan-drivers
+      - name: Download NeXium nightly and bind its archive identity
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-evidence /tmp/nexium
+          release="$(curl -fsSL --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/nexium-emu/nexium-nightly/releases/tags/nightly)"
+          asset="$(printf '%s' "$release" | jq -er \
+            '.assets[] | select(.name=="nexium-linux-x86_64.tar.gz") | .browser_download_url')"
+          curl -fL --retry 3 --retry-all-errors "$asset" -o /tmp/nexium.tar.gz
+          sha256sum /tmp/nexium.tar.gz > runtime-evidence/nexium-archive.sha256
+          tar -xzf /tmp/nexium.tar.gz -C /tmp/nexium
+          bin="$(find /tmp/nexium -type f -executable \
+            \( -name 'nexium-gui' -o -name 'nexium' \) -print -quit)"
+          test -n "$bin"
+          echo "NEXIUM_BIN=$bin" >> "$GITHUB_ENV"
+      - name: Prepare generated-only Stage293 inputs and check native page guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage302_generated_bc1_page_guest.py' -v
+          bash -n tools/foj_stage274_nexium_pass_drive.sh
+          icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 -name 'lvp_icd*.json' -print -quit)"
+          test -n "$icd"
+          echo "VK_ICD_FILENAMES=$icd" >> "$GITHUB_ENV"
+          work="$RUNNER_TEMP/stage304-invented-bc1-source"
+          evidence="$GITHUB_WORKSPACE/runtime-evidence/bridge"
+          python3 -m tools.foj_stage293_converted_dds_guest prepare \
+            --work-root "$work" --shaders native/gpu/build --evidence "$evidence"
+          python3 -m tools.foj_stage293_converted_dds_guest attest \
+            --work-root "$work" --evidence "$evidence" --phase before
+          echo "NEXIUM_DATA_ROOT=$work/staged" >> "$GITHUB_ENV"
+          echo "FOJ_EVIDENCE_DIR=$evidence" >> "$GITHUB_ENV"
+      - name: Render actual Stage301 C page decoder output in NeXium
+        shell: bash
+        env:
+          FOJ_DYNAMIC_CASE: original
+        run: |
+          set -euo pipefail
+          export FOJ_NRO="$GITHUB_WORKSPACE/native/build/foj-deko3d-stage304-${{ matrix.side }}.nro"
+          sd="$NEXIUM_DATA_ROOT/sdmc/switch/foj/gpu"
+          marker="$sd/foj-native-stage304-seam-pass.txt"
+          test ! -e "$marker" && test ! -L "$marker"
+          timeout --kill-after=5s 240s xvfb-run -a \
+            -s "-screen 0 1280x720x24" \
+            bash tools/foj_stage274_nexium_pass_drive.sh
+          test -f "$marker" && test ! -L "$marker"
+          cp -- "$marker" "$FOJ_EVIDENCE_DIR/native-stage304-seam-pass.txt"
+          python3 -m tools.foj_stage293_converted_dds_guest attest \
+            --work-root "$(dirname "$NEXIUM_DATA_ROOT")" \
+            --evidence "$FOJ_EVIDENCE_DIR" --phase after
+      - name: Independently audit two GPU frames and exact 256-page identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage302_generated_bc1_page_guest audit \
+            --evidence runtime-evidence/bridge
+          echo STAGE304_REAL_NEIXUM_GENERATED_BC1_UV_NEIGHBOR_PASS
+      - name: Publish only verified generated frames and attestation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage302_generated_bc1_page_guest publish \
+            --source runtime-evidence \
+            --output runtime-evidence-public
+          echo STAGE304_STRICT_EVIDENCE_EXPORT_PASS
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: foj-stage304-real-guest-uv-neighbor-${{ matrix.side }}
+          path: runtime-evidence-public/
+          if-no-files-found: error
+          # Raw guest.log and Stage286 private material manifest never uploaded.
+
+  compare:
+    name: Two real GPU runs resolve 0.5 atlas UV to distinct adjacent pages
+    needs: nexium
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: foj-stage304-real-guest-uv-neighbor-left
+          path: left
+      - uses: actions/download-artifact@v4
+        with:
+          name: foj-stage304-real-guest-uv-neighbor-right
+          path: right
+      - name: Compare both live NeXium GPU sides using four independently captured frames
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install Pillow
+          python3 -m tools.foj_stage304_uv_neighbor_guest pair --left left --right right
+          echo STAGE304_TWO_NEIGHBOR_PAGES_NEIXUM_GPU_PASS
