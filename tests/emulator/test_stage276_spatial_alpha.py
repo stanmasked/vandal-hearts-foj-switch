@@ -82,6 +82,31 @@ class GeneratedSpatialAlphaTests(unittest.TestCase):
                     (SPLIT_X if case=="alpha-left-clear"
                      else WIDTH-SPLIT_X)*WIDTH)
 
+    def test_probes_are_far_from_alpha_boundary_in_actual_projection(self):
+        # Derived from the production orthographic projection scale,
+        # Stage267 violet triangle XY and the public three-vertex UVs.
+        # Sample positions must be well inside their intended halves;
+        # otherwise filtering or edge rasterization could cause false
+        # negative NeXium results unrelated to spatial alpha.
+        scale=.84*min(1280,720)/2.0
+        screen_row=PROBES["left_overlap"][1]
+        wy=(360-screen_row)/scale
+        t=(wy+.50)/(.69+.50)
+        self.assertTrue(0.0<t<1.0)
+        xmin=-.76+t*(-.21+.76)
+        xmax=.34+t*(-.21-.34)
+        umin=.5*t
+        umax=1.0-.5*t
+        def u_at(pixel_x):
+            x=(pixel_x-640)/scale
+            return umin+(x-xmin)/(xmax-xmin)*(umax-umin)
+        self.assertTrue(.55<u_at(PROBES["left_overlap"][0])<.65)
+        self.assertTrue(.78<u_at(PROBES["right_overlap"][0])<.82)
+        self.assertLess(u_at(PROBES["left_overlap"][0])+0.05,
+                        SPLIT_X/WIDTH)
+        self.assertGreater(u_at(PROBES["right_overlap"][0])-0.03,
+                           SPLIT_X/WIDTH)
+
     def test_expected_source_over_pixels_are_distinct(self):
         self.assertEqual(target_rgb(128),(111,100,162))
         self.assertEqual(target_rgb(0),(127,128,123))
