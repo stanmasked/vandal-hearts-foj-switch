@@ -94,6 +94,18 @@ class Stage282VerticalBoundaryTests(unittest.TestCase):
                         self.assertEqual(data[offset+3],
                                          0 if y < SPLITS[case] else 255)
 
+    def test_expected_rows_match_frozen_native_c11_projection(self):
+        # foj_gpu_prepare_stream uses scale=.84*min(width,height)/extent;
+        # at 1280x720 with extent=2 this maps y to framebuffer Y using .84.
+        top = (1.0 - .84 * .69) * 360.0
+        bottom = (1.0 - .84 * (-.50)) * 360.0
+        self.assertAlmostEqual(top, 151.344)
+        self.assertAlmostEqual(bottom, 511.2)
+        for case in CASES:
+            with self.subTest(case=case):
+                projected = top + (bottom - top) * SPLITS[case] / 64.0
+                self.assertEqual(round(projected), EXPECTED_Y[case])
+
     def test_324_synthetic_rgb_samples_accepted_without_sampler_inference(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -108,7 +120,7 @@ class Stage282VerticalBoundaryTests(unittest.TestCase):
                            ["half_transition_y"] for case in CASES]
                 self.assertEqual(crossings,
                                  [EXPECTED_Y[case] for case in CASES])
-                self.assertEqual(crossings[1] - crossings[0], 65)
+                self.assertEqual(crossings[1] - crossings[0], 68)
 
     def test_gradual_physically_possible_alpha_edge_is_allowed(self):
         from tools.foj_stage280_shifted_boundary_check import (
