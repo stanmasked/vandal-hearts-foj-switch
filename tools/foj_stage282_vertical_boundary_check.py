@@ -24,6 +24,7 @@ from tools.foj_stage280_shifted_boundary_check import (
 )
 from tools.foj_stage282_vertical_boundary_sd import (
     SCHEMA, CASES, SPLITS, WIDTH, COLUMNS, PROBE_X, EXPECTED_Y,
+    NATIVE_EXPECTED_Y, NATIVE_FRAME_HEIGHT, CAPTURE_VIEWPORT_HEIGHT,
     positions, profile_y, expected_at, near_atlas,
 )
 
@@ -111,6 +112,10 @@ def verify(root: Path) -> dict:
                 or manifest.get("near_original_dds_sha256") != baseline_digest
                 or manifest.get("near_alpha_split_y") != SPLITS[case]
                 or manifest.get("expected_half_transition_y") != EXPECTED_Y[case]
+                or manifest.get("native_expected_half_transition_y") != NATIVE_EXPECTED_Y[case]
+                or manifest.get("native_framebuffer_height") != NATIVE_FRAME_HEIGHT
+                or manifest.get("capture_viewport_height") != CAPTURE_VIEWPORT_HEIGHT
+                or manifest.get("capture_scale_y") != round(CAPTURE_VIEWPORT_HEIGHT / NATIVE_FRAME_HEIGHT, 8)
                 or manifest.get("near_texture_dimensions") != [WIDTH, WIDTH]
                 or manifest.get("profile_x_columns") != list(COLUMNS)
                 or manifest.get("profile_y_positions") != list(profile_y(case))
