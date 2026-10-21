@@ -86,10 +86,10 @@ def install_masked(root:Path,shaders:Path,case:str)->dict:
     report=install_dynamic(root,shaders,"original")
     atlas=root/SUBDIR/ATLAS_NAME
     if atlas.is_symlink() or not atlas.is_file() or atlas.read_bytes()!=pristine:
-        raise ValueError("Stage276 generated near DDS unexpectedly modified")
+        raise ValueError("Stage277 generated near DDS unexpectedly modified")
     atlas.write_bytes(payload)
     if atlas.read_bytes()!=payload:
-        raise ValueError("Stage276 synthetic DDS write failed")
+        raise ValueError("Stage277 synthetic DDS write failed")
     report.update({
         "schema":SCHEMA,
         "scenario":case,
@@ -118,7 +118,7 @@ def main(argv=None)->int:
         print(json.dumps(install_masked(args.data_root,args.shaders,args.case),
                          sort_keys=True))
     except (OSError,ValueError) as exc:
-        print("Stage276 spatial generated DDS rejected: "+str(exc),
+        print("Stage277 intermediate-alpha generated DDS rejected: "+str(exc),
               file=sys.stderr)
         return 2
     return 0
