@@ -1,5 +1,6 @@
 """Stage274 independent classifier tests: mock files are NEVER GPU proof."""
 import json
+import hashlib
 from pathlib import Path
 import tempfile
 import unittest
@@ -9,6 +10,8 @@ from tools.foj_stage273_dynamic_gpu_sd import (
     CASES, BACK_TO_FRONT, expected_rgb,
 )
 from tools.foj_stage267_gpu_three_layer_check import PROBES
+from tools.foj_stage260_generated_gpu_sd import generated_dds
+from tools.foj_stage266_transparency_order import COOL
 from tools.foj_stage274_pass_contract_check import (
     expected_receipt, verify,
 )
@@ -44,6 +47,9 @@ def generate_mock_evidence(root:Path):
 
     negative=root/"rear-alpha-negative"
     negative.mkdir()
+    clean=generated_dds((*COOL,255))
+    damaged=bytearray(clean)
+    damaged[128+3]=254
     (negative/"generated-input.json").write_text(json.dumps({
         "schema":"foj.stage274.native_rear_alpha_negative.v1",
         "scenario":"one-rear-alpha-254",
@@ -52,6 +58,8 @@ def generate_mock_evidence(root:Path):
         "guest_verified":False,
         "changed_file":"material2.dds",
         "changed_bytes":1,
+        "original_rear_dds_sha256":hashlib.sha256(clean).hexdigest(),
+        "mutated_rear_dds_sha256":hashlib.sha256(damaged).hexdigest(),
         "original_alpha":255,
         "mutated_alpha":254,
         "expected_native_rejection_marker":
@@ -179,6 +187,28 @@ class Stage274PassEvidenceTests(unittest.TestCase):
             with self.assertRaisesRegex(
                     ValueError,"Contradictory negative GPU boot evidence"):
                 verify(folder)
+
+    def test_negative_rear_dds_forged_hash_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            generate_mock_evidence(root)
+            path=root/"rear-alpha-negative"/"generated-input.json"
+            report=json.loads(path.read_text(encoding="utf-8"))
+            report["mutated_rear_dds_sha256"]="0"*64
+            path.write_text(json.dumps(report),encoding="utf-8")
+            with self.assertRaisesRegex(ValueError,"DDS SHA-256 provenance"):
+                verify(root)
+
+    def test_negative_rear_dds_missing_hash_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            generate_mock_evidence(root)
+            path=root/"rear-alpha-negative"/"generated-input.json"
+            report=json.loads(path.read_text(encoding="utf-8"))
+            del report["original_rear_dds_sha256"]
+            path.write_text(json.dumps(report),encoding="utf-8")
+            with self.assertRaisesRegex(ValueError,"DDS SHA-256 provenance"):
+                verify(root)
 
     def test_correct_pass_marker_does_not_rescue_duplicate_frames(self):
         with tempfile.TemporaryDirectory() as tmp:
