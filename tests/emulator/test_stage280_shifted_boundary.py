@@ -93,7 +93,7 @@ class Stage280BoundaryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
             mock_files(root)
-            from tools.foj_stage280_boundary_alpha_check import (
+            from tools.foj_stage280_shifted_boundary_check import (
                 REFERENCE_CLEAR,DELTA,
             )
             for case in CASES:
