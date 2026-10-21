@@ -11,7 +11,7 @@ The normal deko3d texture sampler independently clamps each 256×256 page. At at
 
 For each row, the native Stage308 C reference independently confirms what bilinear color is expected at atlas U=0.5. Only after verifying the decoded contrasting endpoints and their true interior mixed color does the scene replace the three original *generated-only* Stage293 material buffers.
 
-The test NRO renders two adjacent page-local quads occupying [-0.6,0] and [0,0.6] in clip-space X (one page texture each) and a narrow **foreground seam quad** occupying [-0.03,+0.03]. The seam patch uses a **linear deko3d sampler** and varying page-local texture U from 127.5/256 to 128.5/256; at screen-center X it samples precisely halfway between adjacent colors stored in its own third texture. That patch is closer in depth than the base rectangles (z=0.42 vs 0.55), so the existing fixed three-material pass order draws the bridge last.
+The test NRO renders two adjacent page-local quads occupying [-0.6,0] and [0,0.6] in clip-space X (one page texture each) and a narrow **foreground seam quad** occupying [-0.03,+0.03]. The seam patch uses a **linear deko3d sampler** and varying page-local texture U from 127.5/256 to 128.5/256; at screen-center X it samples precisely halfway between adjacent colors stored in its own third texture. That patch is closer in depth than the base rectangles (z=0.68 vs 0.55), so the existing fixed three-material pass order draws the bridge last.
 
 All 18 vertices, three 256×256 RGBA8 material buffers and the synthetic 1024 BC1 source are generated in the NRO; no real NPEB00148 texture or original-game UV data is loaded. The standard Switch NRO is unchanged; the Stage309 build is opt-in.
 
