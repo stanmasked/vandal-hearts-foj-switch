@@ -1,4 +1,10 @@
-name: Stage284 native GPU orthogonal U/V alpha cross
+name: Stage285 GPU U/V cross-intersection audit
+
+# Keep only the newest commit's guest run for this PR; old queued captures
+# are stale by construction and otherwise consume the shared Actions queue.
+concurrency:
+  group: stage285-uv-cross-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 on:
   pull_request:
@@ -8,7 +14,10 @@ on:
       - 'tools/foj_stage282_*'
       - 'tests/emulator/test_stage282_vertical_boundary.py'
       - 'tools/foj_stage284_*'
+      - 'tools/foj_stage285_*'
       - 'tests/emulator/test_stage284_uv_cross.py'
+      - 'tests/emulator/test_stage285_uv_cross_intersection.py'
+      - 'docs/GPU_STAGE285_UV_CROSS_INTERSECTION.md'
       - 'tools/foj_stage283_*'
       - 'tests/emulator/test_stage283_vertical_linearity.py'
       - 'tools/foj_stage281_*'
@@ -51,7 +60,7 @@ permissions:
 
 jobs:
   host:
-    name: Native C11 and Stage284 orthogonal UV alpha-edge classifier
+    name: Native C11, Stage284 regressions and Stage285 intersection auditor
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -137,6 +146,8 @@ jobs:
           python3 -m unittest discover -s tests/emulator \
             -p 'test_stage284_uv_cross.py' -v
           python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage285_uv_cross_intersection.py' -v
+          python3 -m unittest discover -s tests/emulator \
             -p 'test_stage273_dynamic_gpu.py' -v
           python3 -m unittest discover -s tests/emulator \
             -p 'test_stage272_native_sort_parity.py' -v
@@ -169,7 +180,7 @@ jobs:
           if-no-files-found: error
 
   nexium:
-    name: NeXium verifies orthogonal U/V alpha edges in one DDS
+    name: NeXium audits the two-dimensional U/V intersection
     needs: [build, host]
     runs-on: ubuntu-26.04
     timeout-minutes: 30
@@ -260,10 +271,17 @@ jobs:
           python3 -m tools.foj_stage284_uv_cross_check \
             --evidence runtime-evidence \
             --report runtime-evidence/stage284-uv-cross-receipt.json
+      - name: Audit the two-dimensional U/V intersection (Stage285)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage285_uv_cross_intersection_check \
+            --evidence runtime-evidence \
+            --report runtime-evidence/stage285-uv-cross-intersection-receipt.json
       - name: Preserve generated-only guest captures and failure diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: foj-stage284-uv-cross-guest-evidence
+          name: foj-stage285-uv-cross-intersection-guest-evidence
           path: runtime-evidence/
           if-no-files-found: warn
