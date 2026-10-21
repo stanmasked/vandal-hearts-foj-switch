@@ -55,6 +55,26 @@ int main(void){
     memset(receipt,0xA5,sizeof(receipt));
     CHECK(foj_gpu_alpha_pass_format_receipt(altered,3,receipt,sizeof(receipt))==0);
     CHECK((unsigned char)receipt[0]==0xA5u);
+    /* Stage274 must accept only canonical Boolean flags (0 or 1).
+     * In particular, a depth-write value of 2 on a translucent pass
+     * previously escaped a complement-style comparison. Fail closed
+     * for every pass and preserve every caller receipt byte. */
+    for (unsigned pass=0;pass<3u;++pass) {
+        for (unsigned invalid_case=0;invalid_case<2u;++invalid_case) {
+            const uint32_t bad=invalid_case?UINT32_MAX:2u;
+            for (unsigned field=0;field<3u;++field) {
+                FojGpuAlphaPass invalid[3]={out[0],out[1],out[2]};
+                if (field==0u) invalid[pass].blend_enabled=bad;
+                if (field==1u) invalid[pass].depth_test_enabled=bad;
+                if (field==2u) invalid[pass].depth_write_enabled=bad;
+                memset(receipt,0xA5,sizeof(receipt));
+                CHECK(foj_gpu_alpha_pass_format_receipt(
+                    invalid,3,receipt,sizeof(receipt))==0);
+                for (unsigned j=0;j<sizeof(receipt);++j)
+                    CHECK((unsigned char)receipt[j]==0xA5u);
+            }
+        }
+    }
     altered[1]=out[1];
     altered[2].blend_enabled=0u;
     CHECK(foj_gpu_alpha_pass_format_receipt(altered,3,receipt,sizeof(receipt))==0);
