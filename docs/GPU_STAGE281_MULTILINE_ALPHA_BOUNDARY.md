@@ -8,7 +8,7 @@ Stage280 established that changing the *source* alpha boundary from DDS U=40/64 
 
 A single-row screenshot classifier cannot exclude a one-row-only artifact or an edge that jumps/disappears just above or below the sampled scanline. Stage281 holds **both generated DDS masks, all three actor triangles, shader binaries, native NRO, camera and GPU pass states unchanged** and acquires two fresh NeXium GPU frames in each case.
 
-The added independent audit examines **five rows: Y=436, 438, 440, 442, 444** and all **27 consecutive X pixels** centered on each expected boundary (U40: X=618; U52: X=680). This is **270 RGB samples across the four real frames** (5×27×2×2), in addition to the original Stage280 source and control checks. It never infers a sampler configuration.
+The added independent audit examines **five rows: Y=436, 438, 440, 442, 444** and all **27 consecutive X pixels** centered on each expected boundary (U40: X=618; U52: X=680). This is **540 RGB samples across the four real frames** (5×27×2×2), in addition to the original Stage280 source and control checks. It never infers a sampler configuration.
 
 For every row it demands:
 - Both physically composited alpha endpoints occur in the correct left-to-right order.
