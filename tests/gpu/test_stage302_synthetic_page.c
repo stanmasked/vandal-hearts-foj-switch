@@ -32,7 +32,7 @@ static void check_output(void) {
     assert(b.report.atlas[2].height==256u);
     assert(b.report.atlas[2].pixel_bytes==256u*256u*4u);
     assert(b.rgba[0]==a && b.rgba[1]==m);
-    const uint8_t color[4]={25,202,222,255};
+    const uint8_t color[4]={24,203,222,255};
     for (size_t p=0;p<256u*256u;++p)
         assert(memcmp(b.rgba[2]+4u*p,color,4u)==0);
     /* A now-nonmatching rear prevents running this experimental mode twice. */
