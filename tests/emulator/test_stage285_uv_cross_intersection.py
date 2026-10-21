@@ -64,8 +64,9 @@ class UVIntersectionTests(unittest.TestCase):
         # The real NeXium frame differs from the integer blend target by one
         # channel value at clear pixels; geometry and quadrant classification
         # must remain strict while this harmless rounding difference is allowed.
-        self._mutate("gpu-initial.png",
-                     lambda image: image.putpixel((641, 387), (126, 129, 123)))
+        for frame in ("gpu-initial.png", "gpu-later.png"):
+            self._mutate(frame,
+                         lambda image: image.putpixel((641, 387), (126, 129, 123)))
         receipt = verify(self.root)
         self.assertEqual(receipt["frames"][0]["max_channel_delta"], 1)
         self.assertEqual(receipt["frames"][0]["rgb_channel_tolerance"], 2)
