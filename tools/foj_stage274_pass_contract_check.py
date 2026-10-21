@@ -81,6 +81,29 @@ def verify(root:Path)->dict:
     expected_bad_dds[131]=254
     clean_sha256=hashlib.sha256(canonical_dds).hexdigest()
     bad_sha256=hashlib.sha256(expected_bad_dds).hexdigest()
+    # Host-measured actual source DDS on both sides of the real guest is
+    # part of the archived evidence, not merely two hashes reported by
+    # the generator. Reject absent, symlinked, or doctored observations.
+    for phase in ("before","after"):
+        observation=negative/f"rear-dds-{phase}.json"
+        if observation.is_symlink() or not observation.is_file():
+            raise ValueError(f"Missing Stage274 {phase} DDS observation")
+        details=json.loads(observation.read_text(encoding="utf-8"))
+        expected_observation={
+            "schema":"foj.stage274.synthetic_rear_dds_observation.v1",
+            "phase":phase,
+            "source":"generated-only material2.dds",
+            "ddsdigest_sha256":bad_sha256,
+            "dds_length_bytes":len(expected_bad_dds),
+            "original_ddsdigest_sha256":clean_sha256,
+            "modified_alpha_offset":131,
+            "modified_alpha_value":254,
+            "original_ps3_resources":False,
+            "guest_gpu_success_claimed":False,
+        }
+        if details!=expected_observation:
+            raise ValueError(
+                f"Invalid Stage274 {phase} real-guest input DDS observation")
     if (negative_info.get("original_rear_dds_sha256")!=clean_sha256 or
         negative_info.get("mutated_rear_dds_sha256")!=bad_sha256):
         raise ValueError("Stage274 negative DDS SHA-256 provenance mismatch")
