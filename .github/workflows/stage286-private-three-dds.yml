@@ -1,0 +1,91 @@
+name: Stage286 private three-slot DDS bridge
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage286-private-three-dds.yml'
+      - 'tools/foj_stage286_private_three_dds_material_bridge.py'
+      - 'tests/test_stage286_private_three_dds_material_bridge.py'
+      - 'docs/GPU_STAGE286_PRIVATE_THREE_DDS_BRIDGE.md'
+      - 'tools/foj_gpu_local_dds_preflight.py'
+      - 'tools/foj_fd_bound_reader.py'
+      - 'gpu/atlas_dds.c'
+      - 'gpu/atlas_dds.h'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage286-three-dds-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host:
+    name: Safe three-slot intake and C/Python parity (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Test local privacy, three material slots and generated actor binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests \
+            -p 'test_stage286_private_three_dds_material_bridge.py' -v
+      - name: Verify existing classic-DDS C/Python loader agreement
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests \
+            -p 'test_foj_gpu_local_dds_preflight.py' -v
+
+  native:
+    name: Native devkitA64 three-material SD staging (generated files only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: devkitpro/devkita64:20260219
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build public NRO and genuine DKSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f gpu/topology_reject_contract.mk verify
+          make -f gpu/Makefile triangle-verify
+          python3 tools/validate_nro.py build/foj-deko3d-topology-reject-proof.nro
+          python3 -m tools.validate_dksh --expect-stage vertex gpu/build/foj_actor.vert.dksh
+          python3 -m tools.validate_dksh --expect-stage fragment gpu/build/foj_triangle.frag.dksh
+      - name: Stage and independently verify exactly three invented DDS files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/stage286-invented-input"
+          export STAGE286_INPUT="$RUNNER_TEMP/stage286-invented-input"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from tools.foj_stage260_generated_gpu_sd import generated_dds
+          from tools.foj_stage266_transparency_order import VIOLET, WARM, COOL
+          root=Path(os.environ["STAGE286_INPUT"])
+          for index,color in enumerate(((*VIOLET,128),(*WARM,128),(*COOL,255))):
+              (root/f"material{index}.dds").write_bytes(generated_dds(color))
+          PY
+          python3 -m tools.foj_stage286_private_three_dds_material_bridge prepare \
+            --source-dir "$STAGE286_INPUT" --shaders gpu/build \
+            --output-root "$RUNNER_TEMP/stage286-private-output"
+          python3 -m tools.foj_stage286_private_three_dds_material_bridge verify \
+            --output-root "$RUNNER_TEMP/stage286-private-output"
+          test -f "$RUNNER_TEMP/stage286-private-output/sdmc/switch/foj/gpu/actor.fojmat"
+          test -f "$RUNNER_TEMP/stage286-private-output/sdmc/switch/foj/gpu/material2.dds"
+          echo "STAGE286_GENERATED_THREE_SLOT_NATIVE_STAGING_PASS"
+      # No artifact upload: neither test-only nor owner-private DDS bytes leave
+      # this runner. The output root is never a GitHub release or CI artifact.
