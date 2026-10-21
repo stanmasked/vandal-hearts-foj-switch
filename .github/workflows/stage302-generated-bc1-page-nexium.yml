@@ -39,6 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           ${{ matrix.compiler }} -std=c11 -O2 -Wall -Wextra -Werror -Igpu \
+            -DFOJ_GPU_THREE_LAYER_BLEND=1 \
             gpu/atlas_dds.c gpu/bc1_atlas_page.c \
             gpu/stage302_synthetic_page_probe.c \
             tests/gpu/test_stage302_synthetic_page.c \
