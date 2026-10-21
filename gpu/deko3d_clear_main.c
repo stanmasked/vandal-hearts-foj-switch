@@ -34,6 +34,9 @@
 #include "alpha_pass_contract.h"
 #endif
 #include "atlas_dds.h"
+#if defined(FOJ_GPU_STAGE302_GENERATED_PAGE_PROBE)
+#include "stage302_synthetic_page_probe.h"
+#endif
 #include "dds_screen_status.h"
 #include "dds_command_plan.h"
 #include "gpu_boot_diagnostics.h"
@@ -203,6 +206,37 @@ int main(int argc,char **argv) {
                 foj_gpu_private_bundle_status_name(private_status));
         return 7;
     }
+#if defined(FOJ_GPU_STAGE302_GENERATED_PAGE_PROBE)
+#if !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) || !defined(FOJ_GPU_THREE_LAYER_BLEND)
+#error "Stage302 requires the actual 3-material research NRO intake"
+#endif
+    /* Strictly generated-only: refuse any non-Stage293 fixture before
+     * replacing rear atlas with a genuine C-decoded 1024 BC1 page.
+     * A pre-GPU marker only establishes native CPU execution; the
+     * independent NeXium screenshot test proves GPU presentation. */
+    if (!foj_stage302_apply_generated_page(&private_payload)) {
+        fprintf(stderr,"FoJ Stage302 generated BC1 page refused\n");
+        foj_gpu_private_bundle_free(&private_payload);
+        return 11;
+    }
+    FILE *const page_receipt=fopen(
+        "sdmc:/switch/foj/gpu/foj-native-stage302-paged-pass.txt","wx");
+    if (!page_receipt) {
+        foj_gpu_private_bundle_free(&private_payload);
+        return 11;
+    }
+    static const char page_message[]=
+        "FOJ_NATIVE_STAGE302_PAGE_V1 p=2,1 rgb=25,202,222 size=256\n";
+    const size_t page_written=fwrite(
+        page_message,1,sizeof(page_message)-1u,page_receipt);
+    const int page_flushed=fflush(page_receipt);
+    const int page_closed=fclose(page_receipt);
+    if (page_written!=sizeof(page_message)-1u ||
+        page_flushed!=0 || page_closed!=0) {
+        foj_gpu_private_bundle_free(&private_payload);
+        return 11;
+    }
+#endif
 #if defined(FOJ_GPU_DYNAMIC_ALPHA_SORT)
     /* Stage273 research-only dynamic order, computed on the same actor
      * vertex stream submitted to deko3d later. No GPU state exists yet.
