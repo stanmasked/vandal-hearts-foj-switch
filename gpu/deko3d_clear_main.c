@@ -40,6 +40,9 @@
 #if defined(FOJ_GPU_STAGE305_SPLIT_SURFACE)
 #include "stage305_split_gpu_scene.h"
 #endif
+#if defined(FOJ_GPU_STAGE306_PATTERNED_SPLIT)
+#include "stage306_patterned_gpu_scene.h"
+#endif
 #if defined(FOJ_GPU_STAGE304_UV_NEIGHBOR_PROBE)
 #include "stage304_uv_seam_probe.h"
 #ifndef FOJ_STAGE304_SIDE
@@ -218,6 +221,36 @@ int main(int argc,char **argv) {
                 foj_gpu_private_bundle_status_name(private_status));
         return 7;
     }
+#if defined(FOJ_GPU_STAGE306_PATTERNED_SPLIT)
+#if !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) || !defined(FOJ_GPU_THREE_LAYER_BLEND)
+#error "Stage306 requires the exact generated three-material intake"
+#endif
+#if defined(FOJ_GPU_DYNAMIC_ALPHA_SORT) || defined(FOJ_GPU_DYNAMIC_PASS_CONTRACT)
+#error "Stage306 3/6/6 geometry is incompatible with Stage273 3/3/3 sort"
+#endif
+    if (!foj_stage306_apply_patterned_split(&private_payload)) {
+        fprintf(stderr,"FoJ Stage306 patterned BC1 UV scene refused\n");
+        foj_gpu_private_bundle_free(&private_payload);
+        return 14;
+    }
+    FILE *const pattern_marker=fopen(
+        "sdmc:/switch/foj/gpu/foj-native-stage306-pattern-pass.txt","wx");
+    if (!pattern_marker) {
+        foj_gpu_private_bundle_free(&private_payload);
+        return 14;
+    }
+    static const char pattern_record[]=
+        "FOJ_NATIVE_STAGE306_PATTERN_V1 bands=4x2 pages=1,1+2,1 uv=interpolated verts=15\n";
+    const size_t pattern_written=fwrite(
+        pattern_record,1,sizeof(pattern_record)-1u,pattern_marker);
+    const int pattern_flushed=fflush(pattern_marker);
+    const int pattern_closed=fclose(pattern_marker);
+    if (pattern_written!=sizeof(pattern_record)-1u ||
+        pattern_flushed || pattern_closed) {
+        foj_gpu_private_bundle_free(&private_payload);
+        return 14;
+    }
+#endif
 #if defined(FOJ_GPU_STAGE305_SPLIT_SURFACE)
 #if !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) || !defined(FOJ_GPU_THREE_LAYER_BLEND)
 #error "Stage305 requires the exact three synthetic Stage293 material inputs"
