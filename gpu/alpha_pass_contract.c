@@ -64,7 +64,7 @@ int foj_gpu_alpha_pass_format_receipt(
            p->vertex_count!=3u ||
            p->blend_enabled!=(i!=0u) ||
            p->depth_test_enabled!=1u ||
-           p->depth_write_enabled==(i!=0u) ||
+           p->depth_write_enabled!=(i==0u) ||
            (i==0u && p->material_index!=2u) ||
            (i!=0u && p->material_index==2u))
             return 0;
