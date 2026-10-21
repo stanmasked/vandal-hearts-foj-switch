@@ -54,7 +54,7 @@ jobs:
           set -euo pipefail
           python3 -m pip install Pillow
           python3 -m unittest discover -s tests/emulator \
-            -p 'test_stage302_generated_bc1_page_guest.py' -v
+            -p 'test_stage304_uv_neighbor_guest.py' -v
           echo STAGE304_HOST_C_AND_EVIDENCE_NEGATIVE_PASS
 
   build:
@@ -135,7 +135,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m unittest discover -s tests/emulator \
-            -p 'test_stage302_generated_bc1_page_guest.py' -v
+            -p 'test_stage304_uv_neighbor_guest.py' -v
           bash -n tools/foj_stage274_nexium_pass_drive.sh
           icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 -name 'lvp_icd*.json' -print -quit)"
           test -n "$icd"
@@ -170,15 +170,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m tools.foj_stage302_generated_bc1_page_guest audit \
-            --evidence runtime-evidence/bridge
+          python3 -m tools.foj_stage304_uv_neighbor_guest audit \
+            --side ${{ matrix.side }} --evidence runtime-evidence/bridge
           echo STAGE304_REAL_NEIXUM_GENERATED_BC1_UV_NEIGHBOR_PASS
       - name: Publish only verified generated frames and attestation
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m tools.foj_stage302_generated_bc1_page_guest publish \
-            --source runtime-evidence \
+          python3 -m tools.foj_stage304_uv_neighbor_guest publish \
+            --side ${{ matrix.side }} --source runtime-evidence \
             --output runtime-evidence-public
           echo STAGE304_STRICT_EVIDENCE_EXPORT_PASS
       - uses: actions/upload-artifact@v4
