@@ -37,6 +37,15 @@
 #if defined(FOJ_GPU_STAGE302_GENERATED_PAGE_PROBE)
 #include "stage302_synthetic_page_probe.h"
 #endif
+#if defined(FOJ_GPU_STAGE304_UV_NEIGHBOR_PROBE)
+#include "stage304_uv_seam_probe.h"
+#ifndef FOJ_STAGE304_SIDE
+#error "Stage304 requires an explicit left/right compiled selection"
+#endif
+#if FOJ_STAGE304_SIDE != 0 && FOJ_STAGE304_SIDE != 1
+#error "Stage304 only supports left/right of u=0.5"
+#endif
+#endif
 #include "dds_screen_status.h"
 #include "dds_command_plan.h"
 #include "gpu_boot_diagnostics.h"
@@ -206,6 +215,40 @@ int main(int argc,char **argv) {
                 foj_gpu_private_bundle_status_name(private_status));
         return 7;
     }
+#if defined(FOJ_GPU_STAGE304_UV_NEIGHBOR_PROBE)
+#if !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) || !defined(FOJ_GPU_THREE_LAYER_BLEND)
+#error "Stage304 requires actual generated Stage293 three-material intake"
+#endif
+    FojBc1PageUv page_uv={0};
+    if (!foj_stage304_apply_seam_probe(
+            &private_payload,FOJ_STAGE304_SIDE,&page_uv)) {
+        fprintf(stderr,"FoJ Stage304 generated BC1 seam proof refused\n");
+        foj_gpu_private_bundle_free(&private_payload);
+        return 12;
+    }
+    FILE *const seam_receipt=fopen(
+        "sdmc:/switch/foj/gpu/foj-native-stage304-seam-pass.txt","wx");
+    if (!seam_receipt) {
+        foj_gpu_private_bundle_free(&private_payload);
+        return 12;
+    }
+#if FOJ_STAGE304_SIDE == 0
+    static const char seam_message[]=
+        "FOJ_NATIVE_STAGE304_SEAM_V1 side=left p=1,1 lx=255 ly=128 rgb=16,199,214\n";
+#else
+    static const char seam_message[]=
+        "FOJ_NATIVE_STAGE304_SEAM_V1 side=right p=2,1 lx=0 ly=128 rgb=24,203,222\n";
+#endif
+    const size_t seam_written=fwrite(
+        seam_message,1,sizeof(seam_message)-1u,seam_receipt);
+    const int seam_flushed=fflush(seam_receipt);
+    const int seam_closed=fclose(seam_receipt);
+    if (seam_written!=sizeof(seam_message)-1u ||
+        seam_flushed || seam_closed) {
+        foj_gpu_private_bundle_free(&private_payload);
+        return 12;
+    }
+#endif
 #if defined(FOJ_GPU_STAGE302_GENERATED_PAGE_PROBE)
 #if !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) || !defined(FOJ_GPU_THREE_LAYER_BLEND)
 #error "Stage302 requires the actual 3-material research NRO intake"
