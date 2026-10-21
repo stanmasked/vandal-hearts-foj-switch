@@ -16,6 +16,7 @@ from tools.foj_stage282_vertical_boundary_sd import (
     SCHEMA, CASES, SPLITS, WIDTH, COLUMNS, EXPECTED_Y,
     PROBE_X, near_atlas, expected_at, positions, profile_y,
     NATIVE_EXPECTED_Y, NATIVE_FRAME_HEIGHT, CAPTURE_VIEWPORT_HEIGHT,
+    CAPTURE_VIEWPORT_PROBE_X,
 )
 from tools.foj_stage282_vertical_boundary_check import inspect, verify
 
@@ -39,6 +40,7 @@ def mock_files(root: Path) -> None:
             "native_expected_half_transition_y": NATIVE_EXPECTED_Y[case],
             "native_framebuffer_height": NATIVE_FRAME_HEIGHT,
             "capture_viewport_height": CAPTURE_VIEWPORT_HEIGHT,
+            "capture_viewport_probe_x": CAPTURE_VIEWPORT_PROBE_X,
             "capture_scale_y": round(CAPTURE_VIEWPORT_HEIGHT / NATIVE_FRAME_HEIGHT, 8),
             "near_texture_dimensions": [WIDTH, WIDTH],
             "profile_x_columns": list(COLUMNS),
@@ -71,6 +73,8 @@ def mock_files(root: Path) -> None:
                     image.putpixel(
                         (x, y), target_rgb(
                             0 if y < EXPECTED_Y[case] else 255))
+            draw.rectangle((0, CAPTURE_VIEWPORT_HEIGHT, 1279, 719),
+                           fill=(42, 42, 50))
             image.save(folder / frame_name)
 
 
@@ -129,6 +133,21 @@ class Stage282VerticalBoundaryTests(unittest.TestCase):
                 self.assertEqual(crossings,
                                  [EXPECTED_Y[case] for case in CASES])
                 self.assertEqual(crossings[1] - crossings[0], 65)
+
+    def test_capture_viewport_scale_mismatch_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            mock_files(root)
+            path = root / CASES[0] / "gpu-initial.png"
+            with Image.open(path) as source:
+                image = source.convert("RGB")
+            # Move the first non-background row down by one pixel. The
+            # auditor must not silently use a stale capture-to-frame scale.
+            image.putpixel((CAPTURE_VIEWPORT_PROBE_X, CAPTURE_VIEWPORT_HEIGHT),
+                           image.getpixel((CAPTURE_VIEWPORT_PROBE_X, 0)))
+            image.save(path)
+            with self.assertRaisesRegex(ValueError, "capture viewport scaling"):
+                inspect(path, CASES[0])
 
     def test_gradual_physically_possible_alpha_edge_is_allowed(self):
         from tools.foj_stage280_shifted_boundary_check import (
