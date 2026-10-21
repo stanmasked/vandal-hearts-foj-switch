@@ -72,6 +72,44 @@ class FilterEvidenceMocks(unittest.TestCase):
         self.assertGreaterEqual(result["per_phase_transition"]
                                 ["gpu-initial.png"]["intermediate_differences"],8)
 
+    def test_neixum_viewport_inset_still_requires_all_six_real_transitions(self):
+        # Host-generated regression models the *observed* insets of a
+        # windowed 1280px NeXium capture (270..1009), not the ideal
+        # nominal clip-space rectangle 256..1023. Both modes must pass
+        # only when nearest is sharp and linear blends at each measured
+        # RGB step. These mocks are NEVER real guest evidence.
+        for source,mode in ((self.n,"nearest"),(self.l,"linear")):
+            for filename,bg in (("gpu-initial.png",(15,50,68)),
+                                ("gpu-later.png",(65,32,51))):
+                image=Image.new("RGB",(1280,720),bg)
+                pen=ImageDraw.Draw(image)
+                borders=[round(270+i*740/8) for i in range(9)]
+                colors=(*COLORS["left"],*COLORS["right"])
+                for i,color in enumerate(colors):
+                    pen.rectangle((borders[i],180,borders[i+1]-1,539),
+                                  fill=color)
+                if mode=="linear":
+                    for i in (1,2,3,5,6,7):
+                        boundary=borders[i]
+                        before,after=colors[i-1],colors[i]
+                        for x,weight in ((boundary-1,1/6),
+                                         (boundary,5/6)):
+                            mixed=tuple(round(before[k]*(1-weight)+
+                                              after[k]*weight)
+                                        for k in range(3))
+                            pen.line(((x,390),(x,415)),fill=mixed)
+                image.save(source/"bridge"/filename)
+            # Source generation changed the synthetic screenshot but
+            # not any real guest file, public provenance or game byte.
+            from tools.foj_stage306_patterned_uv_guest import audit as base_audit
+            self.assertEqual(base_audit(source/"bridge")[
+                "interpolated_uv_bands_verified"],8)
+        publish(self.n,self.out_n,"nearest")
+        publish(self.l,self.out_l,"linear")
+        out=compare(self.out_n,self.out_l)
+        self.assertEqual(out["per_phase_transition"][
+            "gpu-initial.png"]["intermediate_differences"],12)
+
     def test_identical_filters_refused(self):
         publish(self.n,self.out_n,"nearest")
         publish(self.l,self.out_l,"linear")
