@@ -70,6 +70,19 @@ def generate_mock_evidence(root:Path):
     (negative/"guest.log").write_text(
         "synthetic classifier fixture, NOT real guest execution\n",
         encoding="utf-8")
+    for phase in ("before","after"):
+        (negative/f"rear-dds-{phase}.json").write_text(json.dumps({
+            "schema":"foj.stage274.synthetic_rear_dds_observation.v1",
+            "phase":phase,
+            "source":"generated-only material2.dds",
+            "ddsdigest_sha256":hashlib.sha256(damaged).hexdigest(),
+            "dds_length_bytes":len(damaged),
+            "original_ddsdigest_sha256":hashlib.sha256(clean).hexdigest(),
+            "modified_alpha_offset":131,
+            "modified_alpha_value":254,
+            "original_ps3_resources":False,
+            "guest_gpu_success_claimed":False,
+        }),encoding="utf-8")
 
 
 class Stage274PassEvidenceTests(unittest.TestCase):
@@ -208,6 +221,36 @@ class Stage274PassEvidenceTests(unittest.TestCase):
             del report["original_rear_dds_sha256"]
             path.write_text(json.dumps(report),encoding="utf-8")
             with self.assertRaisesRegex(ValueError,"DDS SHA-256 provenance"):
+                verify(root)
+
+    def test_missing_post_guest_dds_observation_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            generate_mock_evidence(root)
+            (root/"rear-alpha-negative"/"rear-dds-after.json").unlink()
+            with self.assertRaisesRegex(ValueError,"Missing Stage274 after DDS"):
+                verify(root)
+
+    def test_modified_post_guest_dds_identity_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            generate_mock_evidence(root)
+            path=root/"rear-alpha-negative"/"rear-dds-after.json"
+            report=json.loads(path.read_text(encoding="utf-8"))
+            report["ddsdigest_sha256"]="f"*64
+            path.write_text(json.dumps(report),encoding="utf-8")
+            with self.assertRaisesRegex(ValueError,"after real-guest input DDS"):
+                verify(root)
+
+    def test_swapped_early_late_dds_observations_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            generate_mock_evidence(root)
+            p=root/"rear-alpha-negative"/"rear-dds-before.json"
+            report=json.loads(p.read_text(encoding="utf-8"))
+            report["phase"]="after"
+            p.write_text(json.dumps(report),encoding="utf-8")
+            with self.assertRaisesRegex(ValueError,"before real-guest input DDS"):
                 verify(root)
 
     def test_correct_pass_marker_does_not_rescue_duplicate_frames(self):
