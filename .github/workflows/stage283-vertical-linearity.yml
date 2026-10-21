@@ -1,4 +1,4 @@
-name: Stage283 native GPU vertical DDS-V alpha boundary displacement
+name: Stage283 native GPU three-point vertical DDS-V alpha displacement
 
 on:
   pull_request:
