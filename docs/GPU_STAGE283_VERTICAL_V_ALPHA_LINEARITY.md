@@ -32,6 +32,6 @@ Retain the guest-generated precise sort receipt `2,1,0` and exact blend/depth pa
 
 ## CI plan / acceptance
 
-[Dedicated workflow](../.github/workflows/stage283-vertical-linearity.yml) runs inherited native GCC/Clang C11 checks, Stage276–281 tests plus Stage283 host cases, compiles same Stage275 NRO/DKSH with devkitA64, and launches actual NeXium/Vulkan guests to produce six fresh screenshots and one independent `foj.stage282.real_native_vertical_v_edge.v1` receipt.
+[Dedicated workflow](../.github/workflows/stage283-vertical-linearity.yml) runs inherited native GCC/Clang C11 checks, Stage276–283 tests, compiles same Stage275 NRO/DKSH with devkitA64, and launches actual NeXium/Vulkan guests to produce six fresh screenshots and one independent `foj.stage283.real_native_vertical_v_linearity.v1` receipt.
 
 **Acceptance: exact-head CI must pass; the independent guest receipt must verify both adjacent V-displacement segments across all three columns.** No assertion about original PS3 DDS textures, arbitrary texture filtering, physical Nintendo Switch execution or playable FOJ port.
