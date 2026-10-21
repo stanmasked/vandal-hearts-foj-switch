@@ -108,7 +108,7 @@ class GeneratedSpatialAlphaTests(unittest.TestCase):
                         self.assertEqual(bytes(decoded[:64*64*4]),atlas[128:])
                         self.assertEqual(
                             bytes(decoded[64*64*4:64*64*4+16]),
-                            b"\\x00"*16)
+                            bytes(16))
                         # A malformed size must fail before overwriting a
                         # caller buffer or metadata: no hidden fallback to a
                         # uniform-alpha texture or partial decoded data.
@@ -117,7 +117,7 @@ class GeneratedSpatialAlphaTests(unittest.TestCase):
                         self.assertEqual(native["decode"](
                             source,len(atlas)-1,preserved,capacity,
                             c.byref(sentinel)),0)
-                        self.assertEqual(bytes(preserved),b"\\xA5"*capacity)
+                        self.assertEqual(bytes(preserved),bytes([0xA5])*capacity)
                         self.assertEqual(
                             (sentinel.width,sentinel.height,
                              sentinel.pixel_bytes),(31,29,37))
