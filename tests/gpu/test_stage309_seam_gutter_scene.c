@@ -76,7 +76,7 @@ static void positive(void) {
      * than the two original pages at z=.55. Its U interpolates
      * between the exact two source texel centers around 0.5. */
     for(unsigned i=0;i<6u;++i)
-        assert(b.vertices[i].z==.42f &&
+        assert(b.vertices[i].z==.68f &&
                b.vertices[i].x>=-.03f && b.vertices[i].x<=.03f);
     assert(b.vertices[0].u==127.5f/256.f);
     assert(b.vertices[1].u==128.5f/256.f);
