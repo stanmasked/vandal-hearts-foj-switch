@@ -1,0 +1,44 @@
+name: Stage291 possible PS3 texture headers (synthetic only)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage291-ps3-texture-header-triage.yml'
+      - 'tools/foj_stage291_ps3_texture_header_triage.py'
+      - 'tests/emulator/test_stage291_ps3_texture_header_triage.py'
+      - 'tools/foj_fd_bound_reader.py'
+      - 'tools/foj_stage290_private_texture_compatibility.py'
+      - 'docs/GPU_STAGE291_PS3_TEXTURE_HEADER_TRIAGE.md'
+  workflow_dispatch:
+
+concurrency:
+  group: stage291-header-triage-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic:
+    name: Privacy-safe GTF header candidates / Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Check read-only Stage291 helper and synthetic-only regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tools/foj_stage291_ps3_texture_header_triage.py
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage291_ps3_texture_header_triage.py' -v
+          echo STAGE291_PS3_HEADER_HINTS_SYNTHETIC_CI_PASS
+      # Never checkout, download, publish, or print actual PS3 package bytes.
+      # Do not add upload-artifact for owner-local scan outputs.
