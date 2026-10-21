@@ -34,7 +34,7 @@ def make_mock(root):
             draw.rectangle((x-5,y-5,x+5,y+5),
                            fill=expected_rgb("original"))
         x,y=(760,400)
-        draw.rectangle((x-5,y-5,x+5,y+5),fill=(25,202,222))
+        draw.rectangle((x-5,y-5,x+5,y+5),fill=(24,203,222))
         img.save(root/name)
 
 
@@ -79,7 +79,7 @@ class Stage302GuestAuditMockTests(unittest.TestCase):
             audit(self.bridge)
 
     def test_guest_marker_spoofed_coordinates_refused(self):
-        (self.bridge/MARKER).write_text("FOJ_NATIVE_STAGE302_PAGE_V1 p=0,0 rgb=25,202,222 size=256\n")
+        (self.bridge/MARKER).write_text("FOJ_NATIVE_STAGE302_PAGE_V1 p=0,0 rgb=24,203,222 size=256\n")
         with self.assertRaises(ValueError):
             audit(self.bridge)
 
