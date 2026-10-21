@@ -22,10 +22,14 @@ SCHEMA = "foj.stage282.vertical_alpha_dds.v1"
 SPLITS = {"edge-v40": 40, "edge-v52": 52}
 CASES = tuple(SPLITS)
 WIDTH = 64
-# Derived from frozen native C11 projection for triangle vertices y=0.69 at
-# V=0 and y=-0.50 at V=1. With 1280x720, screen Y=151.344 at the apex
-# and 511.200 at the bottom: Y=151.344+359.856*split/64 -> 376,444.
-EXPECTED_Y = {"edge-v40": 376, "edge-v52": 444}
+# Native C11 projection produces Y=376.254 / 443.727 in a 1280x720
+# framebuffer. The real NeXium window capture scales the game viewport to
+# 694 pixels high (rows 0..693, toolbar begins at row 694), so observed
+# screenshot crossings are round(native_y * 694/720) -> 363 / 428.
+NATIVE_FRAME_HEIGHT = 720
+CAPTURE_VIEWPORT_HEIGHT = 694
+NATIVE_EXPECTED_Y = {"edge-v40": 376.254, "edge-v52": 443.727}
+EXPECTED_Y = {"edge-v40": 363, "edge-v52": 428}
 PROBE_X = 630
 COLUMNS = (624, 630, 636)
 ATLAS = "material0.dds"
@@ -96,6 +100,10 @@ def install_masked(root: Path, shaders: Path, case: str) -> dict:
         "near_original_dds_sha256": hashlib.sha256(original).hexdigest(),
         "near_alpha_split_y": SPLITS[case],
         "expected_half_transition_y": EXPECTED_Y[case],
+        "native_expected_half_transition_y": NATIVE_EXPECTED_Y[case],
+        "native_framebuffer_height": NATIVE_FRAME_HEIGHT,
+        "capture_viewport_height": CAPTURE_VIEWPORT_HEIGHT,
+        "capture_scale_y": round(CAPTURE_VIEWPORT_HEIGHT / NATIVE_FRAME_HEIGHT, 8),
         "near_texture_dimensions": [WIDTH, WIDTH],
         "profile_x_columns": list(COLUMNS),
         "profile_y_positions": list(profile_y(case)),
