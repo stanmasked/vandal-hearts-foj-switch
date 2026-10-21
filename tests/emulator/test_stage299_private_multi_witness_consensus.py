@@ -139,7 +139,7 @@ class MultiWitnessConsensusTests(unittest.TestCase):
             (self.owners,c["source_digest"],raw),
             (self.references,c["reference_digest"],rgba)):
             (root/name).write_text(hashlib.sha256(data).hexdigest()+"\n")
-        with self.assertRaisesRegex(ValueError,"consensus"):
+        with self.assertRaisesRegex(ValueError,"common layout"):
             self.inspect()
 
     def test_all_three_flat_gray_textures_remain_ambiguous(self):
@@ -150,7 +150,7 @@ class MultiWitnessConsensusTests(unittest.TestCase):
             (self.owners/c["source_digest"]).write_text(hashlib.sha256(raw).hexdigest()+"\n")
             (self.references/c["reference_digest"]).write_text(
                 hashlib.sha256(rgba).hexdigest()+"\n")
-        with self.assertRaisesRegex(ValueError,"consensus"):
+        with self.assertRaisesRegex(ValueError,"common layout"):
             self.inspect()
 
     def test_bad_reference_for_one_case_refused(self):
@@ -199,6 +199,10 @@ class MultiWitnessConsensusTests(unittest.TestCase):
         (self.source/duplicate["source"]).write_bytes(data)
         (self.owners/duplicate["source_digest"]).write_text(
             hashlib.sha256(data).hexdigest()+"\n")
+        # Bind a consistent pixel reference to the repeated source.
+        # Otherwise the earlier witness check (not anti-reuse) would refuse.
+        exact=(self.references/origin["reference_digest"]).read_bytes()
+        (self.references/duplicate["reference_digest"]).write_bytes(exact)
         with self.assertRaisesRegex(ValueError,"distinct"):
             self.inspect()
 
@@ -287,7 +291,7 @@ class MultiWitnessConsensusTests(unittest.TestCase):
                 consensus(masks)
 
     def test_disjoint_valid_masks_fail_closed(self):
-        with self.assertRaisesRegex(ValueError,"consensus"):
+        with self.assertRaisesRegex(ValueError,"common layout"):
             consensus((1,2,4))
 
     def test_even_if_all_unique_same_layout_no_game_auth(self):
