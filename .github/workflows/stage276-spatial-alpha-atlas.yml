@@ -3,7 +3,9 @@ name: Stage276 spatial per-texel alpha atlas in real NeXium
 on:
   pull_request:
     paths:
-      - '.github/workflows/stage276-spatial-alpha-atlas.yml'\n      - 'tools/foj_stage276_*'\n      - 'tests/emulator/test_stage276_spatial_alpha.py'
+      - '.github/workflows/stage276-spatial-alpha-atlas.yml'
+      - 'tools/foj_stage276_*'
+      - 'tests/emulator/test_stage276_spatial_alpha.py'
       - 'gpu/topology_reject_contract.mk'
       - 'tools/foj_stage275_*'
       - 'tests/emulator/test_stage275_topology_guest.py'
