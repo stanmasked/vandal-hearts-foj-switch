@@ -33,3 +33,12 @@ A nonzero `skipped_large_files` count or `file_limit_reached=true` makes `scan_c
 The synthetic-only Stage290 workflow executes 15 tests under Python 3.11 and 3.13. The tests include RGBA/BGRA/BC1/BC3 acceptance, alpha eligibility, embedded DDS exclusion, malformed header rejection, extra bytes, skip/incomplete conditions, symlink rejection, bounded limits, and no private filenames in success/failure CLI output.
 
 The Stage288/289 NeXium proof is *only* about invented DDS images. This new local classifier is **not** proof that original Vandal Hearts: Flames of Judgment uses classic DDS, that a found candidate belongs to the game, that a source maps to any actor/material slot, or that a physical Switch can render its pixels. Those claims need separate local, owner-authorized format-forensic and GPU validation.
+
+**Historical-evidence clarification (Stage300, 2026-10-21):** Prior owner-local
+research already confirmed **five actual DDS-in-`.tga` game resources**,
+including BGRA8 256×256 and BC1 256×256/1024×1024. See
+[REAL_RESOURCE_SIGNATURES.md](REAL_RESOURCE_SIGNATURES.md). This Stage290
+classifier does not independently repeat those historical observations, nor
+does that five-resource evidence establish the formats of all textures.
+The 1024×1024 BC1 case exceeds the present strict 256×256 GPU loader;
+see [Stage300 reconciliation](GPU_STAGE300_HISTORICAL_REAL_DDS_GAP.md).

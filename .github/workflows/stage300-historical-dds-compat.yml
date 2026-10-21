@@ -1,0 +1,63 @@
+name: Stage300 documented real DDS envelope vs native decoder constraints
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage300-historical-dds-compat.yml'
+      - 'tools/foj_stage300_real_dds_evidence_contract.py'
+      - 'tests/emulator/test_stage300_real_dds_evidence_contract.py'
+      - 'gpu/atlas_dds.c'
+      - 'gpu/atlas_dds.h'
+      - 'core/dds_texture.c'
+      - 'core/dds_texture.h'
+      - 'tools/foj_gpu_local_dds_preflight.py'
+      - 'docs/GPU_STAGE300_HISTORICAL_REAL_DDS_GAP.md'
+      - 'docs/GPU_STAGE290_PRIVATE_TEXTURE_COMPATIBILITY.md'
+      - 'docs/REAL_RESOURCE_SIGNATURES.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage300-real-dds-gap-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-compat:
+    name: Public-dimension synthetic samples against GCC/Clang ${{ matrix.compiler }} and Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: ['gcc', 'clang']
+        python: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile actual old and current C DDS decoders
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 -O2 -Wall -Wextra -Werror \
+            -fPIC -shared -Icore core/dds_texture.c \
+            -o /tmp/foj-stage300-legacy.so
+          ${{ matrix.compiler }} -std=c11 -O2 -Wall -Wextra -Werror \
+            -fPIC -shared -Igpu gpu/atlas_dds.c \
+            -o /tmp/foj-stage300-atlas.so
+      - name: Compare all five historical envelopes using synthetic DDS only
+        shell: bash
+        env:
+          FOJ_STAGE300_LEGACY_SO: /tmp/foj-stage300-legacy.so
+          FOJ_STAGE300_ATLAS_SO: /tmp/foj-stage300-atlas.so
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tools/foj_stage300_real_dds_evidence_contract.py
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage300_real_dds_evidence_contract.py' -v
+          python3 -m tools.foj_stage300_real_dds_evidence_contract
+          echo STAGE300_DOCUMENTED_REAL_DDS_ENVELOPE_NATIVE_GAP_PASS
+      # No NPEB00148 package or original DDS bytes enter CI; no uploads.
