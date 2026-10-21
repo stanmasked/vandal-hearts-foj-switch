@@ -147,7 +147,7 @@ jobs:
           set -euo pipefail
           export FOJ_NRO="$GITHUB_WORKSPACE/native/build/foj-deko3d-stage306-patterned-surface.nro"
           sd="$NEXIUM_DATA_ROOT/sdmc/switch/foj/gpu"
-          native_marker="$sd/foj-native-stage306-split-pass.txt"
+          native_marker="$sd/foj-native-stage306-pattern-pass.txt"
           test ! -e "$native_marker" && test ! -L "$native_marker"
           timeout --kill-after=5s 270s xvfb-run -a \
             -s "-screen 0 1280x720x24" \
@@ -162,7 +162,7 @@ jobs:
           set -euo pipefail
           python3 -m tools.foj_stage306_patterned_uv_guest audit \
             --evidence runtime-evidence/bridge
-          echo STAGE306_TWO_BC1_PAGES_ONE_ACTUAL_NEIXUM_GPU_FRAME_PASS
+          echo STAGE306_EIGHT_INTERPOLATED_BC1_BANDS_ONE_REAL_GPU_FRAME_PASS
       - name: Publish strictly allowlisted generated-only GPU evidence
         shell: bash
         run: |
