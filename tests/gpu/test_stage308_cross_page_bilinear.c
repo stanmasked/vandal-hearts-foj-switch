@@ -98,7 +98,9 @@ int main(void) {
     const uint8_t red[4]={255,0,0,255};
     const uint8_t green[4]={0,255,0,255};
     const uint8_t midpoint2[4]={128,128,0,255};
-    for (unsigned y=0;y<256u;y+=127u) {
+    const unsigned verify_rows[]={0u,1u,126u,127u,128u,129u,254u,255u};
+    for (unsigned ri=0;ri<sizeof(verify_rows)/sizeof(verify_rows[0]);++ri) {
+        const unsigned y=verify_rows[ri];
         const unsigned at=y*256u*4u;
         if (y<128u) {
             expect_rgba(left+at+255u*4u,blue);
