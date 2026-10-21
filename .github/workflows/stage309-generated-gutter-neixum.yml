@@ -1,0 +1,177 @@
+name: Stage309 real NeXium GPU cross-page contrasting-edge gutter reconstruction
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage309-generated-gutter-neixum.yml'
+      - 'gpu/stage309_gutter_gpu.mk'
+      - 'gpu/stage309_seam_gutter_scene.c'
+      - 'gpu/stage309_seam_gutter_scene.h'
+      - 'gpu/stage308_cross_page_bilinear.c'
+      - 'gpu/stage308_cross_page_bilinear.h'
+      - 'gpu/deko3d_clear_main.c'
+      - 'tests/gpu/test_stage309_seam_gutter_scene.c'
+      - 'tools/foj_stage309_nexium_drive.sh'
+      - 'tools/foj_stage309_gutter_gpu_guest.py'
+      - 'tests/emulator/test_stage309_gutter_gpu_guest.py'
+      - 'docs/GPU_STAGE309_GUTTER_RECONSTRUCTION.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage309-generated-bc1-gutter-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host:
+    name: Native BC1 two-page gutter / ${{ matrix.compiler }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: ['gcc','clang']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Native C compiler exercises real 1024 BC1 page decoding and gutter reconstruction
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 -O2 -Wall -Wextra -Werror \
+            -DFOJ_GPU_THREE_LAYER_BLEND=1 -Igpu -Icore \
+            gpu/atlas_dds.c gpu/bc1_atlas_page.c gpu/stage303_bc1_page_uv.c \
+            gpu/stage308_cross_page_bilinear.c gpu/stage309_seam_gutter_scene.c \
+            tests/gpu/test_stage309_seam_gutter_scene.c -lm \
+            -o /tmp/stage309-actual-c
+          /tmp/stage309-actual-c
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Negative screenshot, forged mark and export-privacy regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install Pillow
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage309_gutter_gpu_guest.py' -v
+          bash -n tools/foj_stage309_nexium_drive.sh
+          echo STAGE309_NATIVE_GUTTER_AND_PRIVACY_NEGATIVES_PASS
+
+  build:
+    name: Compile single native Switch NRO with real linear cross-page gutter
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: devkitpro/devkita64:20260219
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build opt-in 18-vertex, three-texture research NRO and shader binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f gpu/stage309_gutter_gpu.mk verify
+          make -f gpu/Makefile triangle-verify
+          python3 tools/validate_nro.py build/foj-deko3d-stage309-gutter.nro
+          echo STAGE309_DEVKITA64_NATIVE_CROSS_PAGE_GUTTER_NRO_PASS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage309-nro-and-dksh
+          path: |
+            build/foj-deko3d-stage309-gutter.nro
+            gpu/build/foj_actor.vert.dksh
+            gpu/build/foj_triangle.frag.dksh
+          if-no-files-found: error
+
+  nexium:
+    name: GPU framebuffer shows actual BC1 blue/yellow and red/green blended page boundary
+    needs: [host,build]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: foj-stage309-nro-and-dksh
+          path: native
+      - name: Install NeXium Vulkan software renderer, Xvfb and screenshot tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl jq xvfb xauth xdotool imagemagick python3-pil \
+            libgtk-3-0t64 libasound2t64 libudev1 libxkbcommon0 libxkbcommon-x11-0 \
+            libx11-xcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 \
+            libxcb-randr0 libxcb-render0 libxcb-shape0 libxcb-xkb1 \
+            libvulkan1 mesa-vulkan-drivers
+      - name: Pin NeXium downloaded binary identity
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-evidence /tmp/nexium
+          release="$(curl -fsSL --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/nexium-emu/nexium-nightly/releases/tags/nightly)"
+          asset="$(printf '%s' "$release" | jq -er \
+            '.assets[] | select(.name=="nexium-linux-x86_64.tar.gz") | .browser_download_url')"
+          curl -fL --retry 3 --retry-all-errors "$asset" -o /tmp/nexium.tar.gz
+          sha256sum /tmp/nexium.tar.gz > runtime-evidence/nexium-archive.sha256
+          tar -xzf /tmp/nexium.tar.gz -C /tmp/nexium
+          bin="$(find /tmp/nexium -type f -executable \
+            \( -name 'nexium-gui' -o -name 'nexium' \) -print -quit)"
+          test -n "$bin"
+          echo "NEXIUM_BIN=$bin" >> "$GITHUB_ENV"
+      - name: Prepare only Stage293 generated DDS fixtures and pin inputs before launch
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n tools/foj_stage309_nexium_drive.sh
+          icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 -name 'lvp_icd*.json' -print -quit)"
+          test -n "$icd"
+          echo "VK_ICD_FILENAMES=$icd" >> "$GITHUB_ENV"
+          work="$RUNNER_TEMP/stage309-invented-input"
+          evidence="$GITHUB_WORKSPACE/runtime-evidence/bridge"
+          python3 -m tools.foj_stage293_converted_dds_guest prepare \
+            --work-root "$work" --shaders native/gpu/build --evidence "$evidence"
+          python3 -m tools.foj_stage293_converted_dds_guest attest \
+            --work-root "$work" --evidence "$evidence" --phase before
+          echo "NEXIUM_DATA_ROOT=$work/staged" >> "$GITHUB_ENV"
+          echo "FOJ_EVIDENCE_DIR=$evidence" >> "$GITHUB_ENV"
+      - name: Render two true NeXium screenshots with mixed RGB crossing two BC1 pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          export FOJ_NRO="$GITHUB_WORKSPACE/native/build/foj-deko3d-stage309-gutter.nro"
+          native_receipt="$NEXIUM_DATA_ROOT/sdmc/switch/foj/gpu/foj-native-stage309-gutter-pass.txt"
+          test ! -e "$native_receipt" && test ! -L "$native_receipt"
+          timeout --kill-after=5s 270s xvfb-run -a \
+            -s "-screen 0 1280x720x24" \
+            bash tools/foj_stage309_nexium_drive.sh
+          test -f "$native_receipt" && test ! -L "$native_receipt"
+          python3 -m tools.foj_stage293_converted_dds_guest attest \
+            --work-root "$(dirname "$NEXIUM_DATA_ROOT")" \
+            --evidence "$FOJ_EVIDENCE_DIR" --phase after
+      - name: Independently verify two distinct pairs of contrasting edge colors and GPU midpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage309_gutter_gpu_guest audit \
+            --evidence runtime-evidence/bridge
+          echo STAGE309_REAL_NEIXUM_CROSS_PAGE_GPU_GUTTER_MIX_PASS
+      - name: Publish only eight verified invented-only files, never source DDS or logs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage309_gutter_gpu_guest publish \
+            --source runtime-evidence --output runtime-evidence-public
+          echo STAGE309_STRICT_GENERATED_ONLY_EVIDENCE_EXPORT_PASS
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: foj-stage309-real-gpu-generated-bc1-gutter
+          path: runtime-evidence-public/
+          if-no-files-found: error
