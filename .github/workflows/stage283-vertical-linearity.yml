@@ -172,7 +172,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: foj-stage282-vertical-program
+          name: foj-stage283-vertical-program
           path: native
       - name: Install headless display Vulkan and Pillow
         shell: bash
