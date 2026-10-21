@@ -28,6 +28,7 @@ WIDTH = 64
 # screenshot crossings are round(native_y * 694/720) -> 363 / 428.
 NATIVE_FRAME_HEIGHT = 720
 CAPTURE_VIEWPORT_HEIGHT = 694
+CAPTURE_VIEWPORT_PROBE_X = 1000
 NATIVE_EXPECTED_Y = {"edge-v40": 376.254, "edge-v52": 443.727}
 EXPECTED_Y = {"edge-v40": 363, "edge-v52": 428}
 PROBE_X = 630
@@ -103,6 +104,7 @@ def install_masked(root: Path, shaders: Path, case: str) -> dict:
         "native_expected_half_transition_y": NATIVE_EXPECTED_Y[case],
         "native_framebuffer_height": NATIVE_FRAME_HEIGHT,
         "capture_viewport_height": CAPTURE_VIEWPORT_HEIGHT,
+        "capture_viewport_probe_x": CAPTURE_VIEWPORT_PROBE_X,
         "capture_scale_y": round(CAPTURE_VIEWPORT_HEIGHT / NATIVE_FRAME_HEIGHT, 8),
         "near_texture_dimensions": [WIDTH, WIDTH],
         "profile_x_columns": list(COLUMNS),
