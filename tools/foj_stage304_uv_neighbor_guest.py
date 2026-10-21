@@ -152,9 +152,15 @@ def pair(left:Path,right:Path)->dict:
         with Image.open(left/"bridge"/name) as a,Image.open(right/"bridge"/name) as b:
             if ImageChops.difference(a.convert("RGB"),b.convert("RGB")).getbbox() is None:
                 raise ValueError("Stage304 both neighbor sides produced identical GPU frames")
-        if pixel_probe(left/"bridge"/name,"right")>=116 or (
-                pixel_probe(right/"bridge"/name,"left")>=116):
-            raise ValueError("Stage304 opposite UV side accepted same framebuffer")
+        # The opposite-side probe must *refuse* (it raises ValueError
+        # when fewer than 116 samples match). A silent pass is a collision.
+        for folder,wrong_side in ((left,"right"),(right,"left")):
+            try:
+                pixel_probe(folder/"bridge"/name,wrong_side)
+            except ValueError:
+                pass
+            else:
+                raise ValueError("Stage304 opposite page color also accepted")
     return {
         "schema":"foj.stage304.two_actual_neixum_neighbor_pages_verified.v1",
         "case_count":2,"total_real_guest_frames":4,
