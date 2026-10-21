@@ -43,6 +43,9 @@
 #if defined(FOJ_GPU_STAGE306_PATTERNED_SPLIT)
 #include "stage306_patterned_gpu_scene.h"
 #endif
+#if defined(FOJ_GPU_STAGE309_GUTTER_SCENE)
+#include "stage309_seam_gutter_scene.h"
+#endif
 #if defined(FOJ_GPU_STAGE304_UV_NEIGHBOR_PROBE)
 #include "stage304_uv_seam_probe.h"
 #ifndef FOJ_STAGE304_SIDE
@@ -221,6 +224,36 @@ int main(int argc,char **argv) {
                 foj_gpu_private_bundle_status_name(private_status));
         return 7;
     }
+#if defined(FOJ_GPU_STAGE309_GUTTER_SCENE)
+#if !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) || !defined(FOJ_GPU_THREE_LAYER_BLEND)
+#error "Stage309 requires the exact generated three-material DDS intake"
+#endif
+#if defined(FOJ_GPU_DYNAMIC_ALPHA_SORT) || defined(FOJ_GPU_DYNAMIC_PASS_CONTRACT)
+#error "Stage309 6/6/6 topology is incompatible with 3/3/3 sort"
+#endif
+    if (!foj_stage309_prepare_gutter_scene(&private_payload)) {
+        fprintf(stderr,"FoJ Stage309 generated BC1 gutter scene refused\n");
+        foj_gpu_private_bundle_free(&private_payload);
+        return 15;
+    }
+    FILE *const seam_marker=fopen(
+        "sdmc:/switch/foj/gpu/foj-native-stage309-gutter-pass.txt","wx");
+    if (!seam_marker) {
+        foj_gpu_private_bundle_free(&private_payload);
+        return 15;
+    }
+    static const char seam_marker_text[]=
+        "FOJ_NATIVE_STAGE309_GUTTER_V1 pages=1,1+2,1 contrast=blue-yellow/red-green verts=18 uv=interpolated\n";
+    const size_t seam_n=fwrite(
+        seam_marker_text,1,sizeof(seam_marker_text)-1u,seam_marker);
+    const int seam_flushed=fflush(seam_marker);
+    const int seam_closed=fclose(seam_marker);
+    if (seam_n!=sizeof(seam_marker_text)-1u ||
+        seam_flushed || seam_closed) {
+        foj_gpu_private_bundle_free(&private_payload);
+        return 15;
+    }
+#endif
 #if defined(FOJ_GPU_STAGE306_PATTERNED_SPLIT)
 #if !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) || !defined(FOJ_GPU_THREE_LAYER_BLEND)
 #error "Stage306 requires the exact generated three-material intake"
@@ -983,6 +1016,10 @@ int main(int argc,char **argv) {
     if (!dds_fatal) {
     DkSampler sampler;
     dkSamplerDefaults(&sampler);
+#if defined(FOJ_GPU_STAGE309_LINEAR_GUTTER)
+    sampler.minFilter=DkFilter_Linear;
+    sampler.magFilter=DkFilter_Linear;
+#endif
 #if defined(FOJ_GPU_STAGE307_FILTER)
 #if FOJ_GPU_STAGE307_FILTER == 0
     sampler.minFilter=DkFilter_Nearest;
