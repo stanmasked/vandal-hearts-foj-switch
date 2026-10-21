@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Stage283 independent physical-color auditor for vertical DDS-V alpha edges.
 
-Host-created mock PNGs exercise this code only. Runtime proof needs four
+Host-created mock PNGs exercise this code only. Runtime proof needs six
 original actual NeXium window captures and native receipts from the guest.
 """
 from __future__ import annotations
