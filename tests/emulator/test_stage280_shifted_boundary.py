@@ -155,7 +155,7 @@ class Stage280BoundaryTests(unittest.TestCase):
             mock_files(root)
             path=root/CASES[0]/"gpu-initial.png"
             im=Image.open(path).convert("RGB")
-            im.putpixel((661,PROFILE_Y),(255,255,255))
+            im.putpixel((FRAME_CROSSINGS[CASES[0]]+1,PROFILE_Y),(255,255,255))
             im.save(path)
             with self.assertRaisesRegex(ValueError,"out-of-envelope"):
                 verify(root)
@@ -166,7 +166,7 @@ class Stage280BoundaryTests(unittest.TestCase):
             mock_files(root)
             path=root/CASES[0]/"gpu-initial.png"
             im=Image.open(path).convert("RGB")
-            im.putpixel((653,PROFILE_Y),target_rgb(255))
+            im.putpixel((FRAME_CROSSINGS[CASES[0]]-7,PROFILE_Y),target_rgb(255))
             im.save(path)
             with self.assertRaisesRegex(ValueError,"nonmonotone"):
                 verify(root)
