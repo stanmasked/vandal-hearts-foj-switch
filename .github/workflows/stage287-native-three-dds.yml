@@ -1,0 +1,92 @@
+name: Stage287 actual C three-atlas bundle parity
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage287-native-three-dds.yml'
+      - 'tests/foj_stage287_native_three_atlas_binding.c'
+      - 'tools/foj_stage287_generated_bundle_fixture.py'
+      - 'docs/GPU_STAGE287_NATIVE_THREE_DDS_PARITY.md'
+      - 'gpu/private_bundle_intake.*'
+      - 'gpu/atlas_dds.*'
+      - 'gpu/alpha_material_contract.*'
+      - 'gpu/private_actor_bridge.*'
+      - 'tools/foj_stage286_private_three_dds_material_bridge.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage287-actual-c-three-atlas-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host:
+    name: Actual C three-atlas loader (${{ matrix.compiler }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build actual C bundle loader with three-atlas and opaque-rear guards
+        shell: bash
+        env:
+          CC: ${{ matrix.compiler }}
+        run: |
+          set -euo pipefail
+          sources="tests/foj_stage287_native_three_atlas_binding.c \
+            gpu/private_bundle_intake.c gpu/private_actor_bridge.c \
+            gpu/actor_upload_plan.c gpu/atlas_dds.c \
+            gpu/alpha_material_contract.c \
+            core/rigmesh_io.c core/material_table.c \
+            core/gpu_vertex_stream.c core/gpu_draw_plan.c"
+          "$CC" -std=c11 -O2 -Wall -Wextra -Werror -pedantic \
+            -DFOJ_GPU_THREE_LAYER_BLEND=1 -Icore -Igpu \
+            $sources -lm -o "$RUNNER_TEMP/foj-stage287-$CC"
+      - name: Verify actual three-atlas C decode, mapping and fail-closed negatives
+        shell: bash
+        env:
+          CC: ${{ matrix.compiler }}
+        run: |
+          set -euo pipefail
+          original="$RUNNER_TEMP/stage287-generated"
+          python3 -m tools.foj_stage287_generated_bundle_fixture --output-root "$original"
+          "$RUNNER_TEMP/foj-stage287-$CC" "$original"
+
+          for scenario in bad-header bad-rear-alpha bad-material-map; do
+            altered="$RUNNER_TEMP/stage287-negative-$scenario"
+            cp -a "$original" "$altered"
+            export STAGE287_MUTATED="$altered"
+            export STAGE287_SCENARIO="$scenario"
+            python3 - <<'PY'
+          import os
+          from pathlib import Path
+          root = Path(os.environ["STAGE287_MUTATED"])
+          kind = os.environ["STAGE287_SCENARIO"]
+          filename = ("material0.dds" if kind == "bad-header" else
+                      "material2.dds" if kind == "bad-rear-alpha" else
+                      "actor.fojmat")
+          file = root / filename
+          contents = bytearray(file.read_bytes())
+          if kind == "bad-header":
+              contents[0] ^= 0x31
+          elif kind == "bad-rear-alpha":
+              contents[-1] = 254  # far texel; first pixel remains valid
+          else:
+              contents[-4:] = (1).to_bytes(4, "little")
+          file.write_bytes(contents)
+          PY
+            if "$RUNNER_TEMP/foj-stage287-$CC" "$altered"; then
+              echo "Invalid generated three-atlas fixture unexpectedly accepted" >&2
+              exit 1
+            fi
+          done
+          echo "STAGE287_NATIVE_THREE_ATLAS_POSITIVE_NEGATIVE_PASS"
+      # Private game data never enters this workflow. No upload-artifact.
