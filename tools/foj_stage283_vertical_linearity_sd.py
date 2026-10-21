@@ -22,10 +22,10 @@ SCHEMA = "foj.stage283.vertical_alpha_dds.v1"
 SPLITS = {"edge-v40": 40, "edge-v46": 46, "edge-v52": 52}
 CASES = tuple(SPLITS)
 WIDTH = 64
-# Native C11 projection produces Y=376.254 / 443.727 in a 1280x720
+# Native C11 projection produces Y=376.254 / 409.9905 / 443.727 in a 1280x720
 # framebuffer. The real NeXium window capture scales the game viewport to
 # 694 pixels high (rows 0..693, toolbar begins at row 694), so observed
-# screenshot crossings are round(native_y * 694/720) -> 363 / 428.
+# screenshot crossings are round(native_y * 694/720) -> 363 / 395 / 428.
 NATIVE_FRAME_HEIGHT = 720
 CAPTURE_VIEWPORT_HEIGHT = 694
 CAPTURE_VIEWPORT_PROBE_X = 1000
