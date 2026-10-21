@@ -21,7 +21,7 @@ The Python CPU oracle computes expected straight-alpha source-over RGB using the
 |---|---|---|
 | Near + middle + rear overlap | (127,128,123) | (111,100,162) |
 
-The two spaced overlap probes are at `(605,400)` and `(675,400)`. The first should switch from alpha 0 to alpha 128 as the generated cases are reversed; the second should switch in the opposite direction. The rear-only probe at `(760,400)` must remain `(21,202,219)`. At each point a 9×9-pixel footprint is tested (at least 75/81 within ±8 RGB channels) to guard against antialiasing/edge artifacts.
+The two spaced overlap probes are at `(605,400)` and `(675,400)`. A new host projection regression confirms their native interpolated U coordinates are approximately **0.586** and **0.796**, safely on opposite sides of the 0.75 alpha transition. The first should switch from alpha 0 to alpha 128 as the generated cases are reversed; the second should switch in the opposite direction. The rear-only probe at `(760,400)` must remain `(21,202,219)`. At each point a 9×9-pixel footprint is tested (at least 75/81 within ±8 RGB channels) to guard against antialiasing/edge artifacts.
 
 Each real NeXium case must present two distinct 1280×720 frames, changing GPU clear-color background while preserving exact material footprint. A static screenshot or synthesized screenshot cannot prove this. The target NRO must write exact `FOJ_NATIVE_SORT_V1 2,1,0` and `FOJ_NATIVE_ALPHA_PASS_V1 2:0:1:1 1:1:1:0 0:1:1:0` receipts. A rear-alpha/topology refusal or other contradiction fails the audit.
 
@@ -29,6 +29,6 @@ Host script `foj_stage276_nexium_spatial_alpha_drive.sh` checks the actual DDS a
 
 ## CI gate and limitations
 
-The dedicated [Stage276 workflow](../.github/workflows/stage276-spatial-alpha-atlas.yml) builds the existing Stage275 deko3d research NRO on devkitA64, runs existing native C11 tests and **10 new synthetic-host checks**, then requires the two real generated-only NeXium sessions with four captured frames and both before/after DDS identities. Stage276 will remain Draft until exact-head dedicated CI passes and its actual artifact ZIPs are independently reviewed.
+The dedicated [Stage276 workflow](../.github/workflows/stage276-spatial-alpha-atlas.yml) builds the existing Stage275 deko3d research NRO on devkitA64, runs existing native C11 tests and **11 new synthetic-host checks**, then requires the two real generated-only NeXium sessions with four captured frames and both before/after DDS identities. Stage276 will remain Draft until exact-head dedicated CI passes and its actual artifact ZIPs are independently reviewed.
 
 This tests static single-material per-texel alpha and straight-alpha blending only. It does not establish PS3 material semantics, animations, battle gameplay, physical Switch behavior, or compatibility with arbitrary DDS variants.
