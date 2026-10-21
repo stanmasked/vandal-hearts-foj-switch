@@ -168,7 +168,7 @@ class OrthogonalUVAlphaTests(unittest.TestCase):
 
     def test_temporal_material_mutation_rejected(self):
         self._mutate_image("gpu-later.png",
-                           lambda im: im.putpixel((650, 440), target_rgb(0)))
+                           lambda im: im.putpixel((649, 440), target_rgb(0)))
         with self.assertRaisesRegex(ValueError, "profiles changed"):
             verify(self.root)
 
