@@ -72,7 +72,10 @@ class Stage281MultilineTests(unittest.TestCase):
                 path = root / case / name
                 with Image.open(path) as src:
                     img = src.convert("RGB")
-                for x in profile_x(case):
+                # Preserve Stage280 endpoint control windows so only the
+                # new off-center Stage281 scanline audit catches this.
+                for x in range(FRAME_CROSSINGS[case] - 8,
+                               FRAME_CROSSINGS[case] + 9):
                     img.putpixel((x, 436), (112, 145, 110))
                 img.save(path)
             with self.assertRaises(ValueError):
