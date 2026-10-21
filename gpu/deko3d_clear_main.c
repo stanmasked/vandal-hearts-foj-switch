@@ -983,12 +983,46 @@ int main(int argc,char **argv) {
     if (!dds_fatal) {
     DkSampler sampler;
     dkSamplerDefaults(&sampler);
+#if defined(FOJ_GPU_STAGE307_FILTER)
+#if FOJ_GPU_STAGE307_FILTER == 0
+    sampler.minFilter=DkFilter_Nearest;
+    sampler.magFilter=DkFilter_Nearest;
+#elif FOJ_GPU_STAGE307_FILTER == 1
+    sampler.minFilter=DkFilter_Linear;
+    sampler.magFilter=DkFilter_Linear;
+#else
+#error "Stage307 only permits explicit nearest=0 or linear=1"
+#endif
+#endif
     sampler.wrapMode[0]=DkWrapMode_ClampToEdge;
     sampler.wrapMode[1]=DkWrapMode_ClampToEdge;
     DkSamplerDescriptor sampler_desc;
     dkSamplerDescriptorInitialize(&sampler_desc,&sampler);
     memcpy(texture_data_cpu+SAMPLER_DESCRIPTORS_OFFSET,
            &sampler_desc,sizeof(sampler_desc));
+#if defined(FOJ_GPU_STAGE307_FILTER)
+#if !defined(FOJ_GPU_STAGE306_PATTERNED_SPLIT)
+#error "Stage307 filter proof requires exact Stage306 generated patterned pages"
+#endif
+    /* Guest-authored receipt proves sampler code path, not GPU filtering.
+     * Separate live NeXium pixel comparison remains mandatory. */
+    FILE *const filter_marker=fopen(
+        "sdmc:/switch/foj/gpu/foj-native-stage307-filter-pass.txt","wx");
+    if (!filter_marker)goto cleanup;
+#if FOJ_GPU_STAGE307_FILTER == 0
+    static const char filter_text[]=
+        "FOJ_NATIVE_STAGE307_FILTER_V1 mode=nearest mag=nearest min=nearest clamp=edge\n";
+#else
+    static const char filter_text[]=
+        "FOJ_NATIVE_STAGE307_FILTER_V1 mode=linear mag=linear min=linear clamp=edge\n";
+#endif
+    const size_t filter_written=fwrite(
+        filter_text,1,sizeof(filter_text)-1u,filter_marker);
+    const int filter_flush=fflush(filter_marker);
+    const int filter_close=fclose(filter_marker);
+    if (filter_written!=sizeof(filter_text)-1u || filter_flush || filter_close)
+        goto cleanup;
+#endif
 
     const DkCmdList upload_list=dkCmdBufFinishList(cmd);
     if (!upload_list)goto cleanup;

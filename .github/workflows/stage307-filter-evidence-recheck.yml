@@ -1,0 +1,48 @@
+name: Stage307 replay immutable prior two real NeXium guest captures
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage307-filter-evidence-recheck.yml'
+      - 'tools/foj_stage307_filter_gpu_compare.py'
+      - 'tests/emulator/test_stage307_filter_gpu_compare.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: stage307-evidence-replay-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  replay:
+    name: Independently compare exact Stage307 generated-only captured GPU frames
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: stanmasked/vandal-hearts-foj-switch
+          run-id: 39687152595
+          name: foj-stage307-filter-nearest-gpu-evidence
+          path: nearest
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: stanmasked/vandal-hearts-foj-switch
+          run-id: 39687152595
+          name: foj-stage307-filter-linear-gpu-evidence
+          path: linear
+      - name: Replay real NeXium evidence, with bounded diagnostic on refusal
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install Pillow
+          python3 -m tools.foj_stage307_filter_gpu_compare compare \
+            --nearest nearest --linear linear
+          echo STAGE307_EXISTING_GUEST_FRAME_FILTER_PROOF_REPLAY_PASS
+      # No original PS3 bytes, raw guest log or captured frame uploads.
