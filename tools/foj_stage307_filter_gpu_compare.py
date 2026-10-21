@@ -75,16 +75,22 @@ def compare(left:Path,right:Path)->dict:
                     exact=_pixel(n,x,400)
                     smoothed=_pixel(l,x,400)
                     if any(abs(exact[k]-nearest_color[k])>4 for k in range(3)):
-                        raise ValueError("Stage307 nearest-filter GPU edge is not nearest")
+                        raise ValueError(
+                            f"Stage307 nearest edge {side} band={band} x={x} "
+                            f"expected={nearest_color} observed={exact}")
                     if any(smoothed[k]<min(before[k],after[k])-8 or
                            smoothed[k]>max(before[k],after[k])+8 for k in range(3)):
-                        raise ValueError("Stage307 linear GPU edge not bounded by neighboring texels")
+                        raise ValueError(
+                            f"Stage307 linear edge {side} band={band} x={x} "
+                            f"endpoints={before},{after} observed={smoothed}")
                     if max(abs(exact[k]-smoothed[k]) for k in range(3))>=14:
                         differences+=1
         # Six transition pairs, two pixels each; permit GPU quantization
         # and sample position variations, but reject equal nearest outputs.
         if differences<8:
-            raise ValueError("Stage307 GPU nearest/linear frame edge behavior indistinguishable")
+            raise ValueError(
+                f"Stage307 nearest/linear transition proof: "
+                f"{differences}/{samples} pixels differed by >=14 RGB levels")
         probes[filename]={"transition_samples":samples,
                           "intermediate_differences":differences}
     return {"schema":"foj.stage307.two_real_gpu_filter_modes_compared.v1",
@@ -143,8 +149,13 @@ def main(argv=None)->int:
         if args.command=="audit": result=audit(args.root,args.mode)
         elif args.command=="publish":result=publish(args.source,args.output,args.mode)
         else:result=compare(args.nearest,args.linear)
-    except (OSError,ValueError,KeyError,TypeError,json.JSONDecodeError):
-        print("Stage307 filter evidence refused.",file=sys.stderr)
+    except (OSError,ValueError,KeyError,TypeError,json.JSONDecodeError) as exc:
+        if args.command=="compare" and isinstance(exc,ValueError):
+            # All authored ValueError strings contain generated-only pixel
+            # coordinates/quantized colors; not owner-private file paths.
+            print(str(exc),file=sys.stderr)
+        else:
+            print("Stage307 filter evidence refused.",file=sys.stderr)
         return 2
     print(json.dumps(result,sort_keys=True))
     return 0
