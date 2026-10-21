@@ -4,6 +4,7 @@ Mock screenshots prove the *checker*, never actual NeXium GPU execution.
 """
 from __future__ import annotations
 import hashlib
+import ctypes as c
 import json
 from pathlib import Path
 import tempfile
@@ -17,6 +18,7 @@ from tools.foj_stage276_spatial_alpha_sd import (
     near_atlas,target_rgb,
 )
 from tools.foj_stage276_spatial_alpha_check import inspect,verify
+from test_stage274_actual_native_chain import compile_pipeline,AtlasInfo
 
 
 def fake_evidence(root:Path):
@@ -81,6 +83,53 @@ class GeneratedSpatialAlphaTests(unittest.TestCase):
                 self.assertEqual(changed,
                     (SPLIT_X if case=="alpha-left-clear"
                      else WIDTH-SPLIT_X)*WIDTH)
+
+    def test_real_c11_dds_decoder_preserves_every_spatial_alpha_byte(self):
+        # Compile the real C11 DDS reader/decoder via the existing Stage274
+        # six-module integration harness, under both GCC and Clang. Python
+        # fixtures alone cannot prove the NRO's decoder preserves alpha.
+        pristine=generated_dds((*VIOLET,128))
+        for compiler in ("gcc","clang"):
+            with self.subTest(compiler=compiler),tempfile.TemporaryDirectory() as tmp:
+                native=compile_pipeline(compiler,Path(tmp)/"stage276-dds.so")
+                for case in CASES:
+                    with self.subTest(case=case):
+                        atlas=near_atlas(case)
+                        source=(c.c_uint8*len(atlas)).from_buffer_copy(atlas)
+                        capacity=256*256*4
+                        decoded=(c.c_uint8*capacity)()
+                        metadata=AtlasInfo()
+                        self.assertEqual(native["decode"](
+                            source,len(atlas),decoded,capacity,
+                            c.byref(metadata)),1)
+                        self.assertEqual(
+                            (metadata.width,metadata.height,
+                             metadata.pixel_bytes),(64,64,64*64*4))
+                        self.assertEqual(bytes(decoded[:64*64*4]),atlas[128:])
+                        self.assertEqual(
+                            bytes(decoded[64*64*4:64*64*4+16]),
+                            b"\\x00"*16)
+                        # A malformed size must fail before overwriting a
+                        # caller buffer or metadata: no hidden fallback to a
+                        # uniform-alpha texture or partial decoded data.
+                        preserved=(c.c_uint8*capacity)(*([0xA5]*capacity))
+                        sentinel=AtlasInfo(31,29,37)
+                        self.assertEqual(native["decode"](
+                            source,len(atlas)-1,preserved,capacity,
+                            c.byref(sentinel)),0)
+                        self.assertEqual(bytes(preserved),b"\\xA5"*capacity)
+                        self.assertEqual(
+                            (sentinel.width,sentinel.height,
+                             sentinel.pixel_bytes),(31,29,37))
+                # Confirm both original and modified textures decode to
+                # canonical RGBA8 with unchanged RGB and exact alpha mask.
+                flat_source=(c.c_uint8*len(pristine)).from_buffer_copy(pristine)
+                flat_out=(c.c_uint8*(256*256*4))()
+                flat_meta=AtlasInfo()
+                self.assertEqual(native["decode"](
+                    flat_source,len(pristine),flat_out,len(flat_out),
+                    c.byref(flat_meta)),1)
+                self.assertEqual(bytes(flat_out[:64*64*4]),pristine[128:])
 
     def test_probes_are_far_from_alpha_boundary_in_actual_projection(self):
         # Derived from the production orthographic projection scale,
