@@ -1,0 +1,59 @@
+name: Stage303 1024 BC1 UV page-boundary routing (native CPU proof)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage303-bc1-uv-page-boundary.yml'
+      - 'gpu/stage303_bc1_page_uv.c'
+      - 'gpu/stage303_bc1_page_uv.h'
+      - 'gpu/bc1_atlas_page.c'
+      - 'gpu/bc1_atlas_page.h'
+      - 'gpu/atlas_dds.c'
+      - 'core/dds_texture.c'
+      - 'tests/emulator/test_stage303_bc1_page_uv_boundaries.py'
+      - 'docs/GPU_STAGE303_BC1_UV_PAGE_BOUNDARIES.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage303-page-uv-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-routing:
+    name: Host C nearest UV seam/BC1 pixel parity / ${{ matrix.compiler }} / Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: ['gcc','clang']
+        python: ['3.11','3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile real page decoder, UV routing and legacy full-size decoder
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 -O2 -Wall -Wextra -Werror \
+            -fPIC -shared -Igpu gpu/atlas_dds.c gpu/bc1_atlas_page.c \
+            gpu/stage303_bc1_page_uv.c -o /tmp/foj-stage303-page.so -lm
+          ${{ matrix.compiler }} -std=c11 -O2 -Wall -Wextra -Werror \
+            -fPIC -shared -Icore core/dds_texture.c \
+            -o /tmp/foj-stage303-legacy.so
+      - name: Prove every seam and sampled original-size pixel matches real C
+        shell: bash
+        env:
+          FOJ_STAGE303_PAGE_SO: /tmp/foj-stage303-page.so
+          FOJ_STAGE303_LEGACY_SO: /tmp/foj-stage303-legacy.so
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage303_bc1_page_uv_boundaries.py' -v
+          echo STAGE303_NATIVE_UV_PAGE_NEAREST_SEAMS_AND_BC1_PIXEL_PARITY_PASS
+      # Generated-only BC1. No original PS3 data, preview images, raw assets or artifacts.
