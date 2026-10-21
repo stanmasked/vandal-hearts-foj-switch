@@ -1,0 +1,77 @@
+name: Stage301 native 1024 BC1 atlas page decoder (synthetic parity)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage301-bc1-1024-pages.yml'
+      - 'gpu/bc1_atlas_page.c'
+      - 'gpu/bc1_atlas_page.h'
+      - 'gpu/atlas_dds.c'
+      - 'gpu/atlas_dds.h'
+      - 'gpu/topology_reject_contract.mk'
+      - 'core/dds_texture.c'
+      - 'core/dds_texture.h'
+      - 'tests/emulator/test_stage301_bc1_1024_pages.py'
+      - 'tools/foj_stage300_real_dds_evidence_contract.py'
+      - 'docs/GPU_STAGE301_BC1_1024_PAGED_ATLAS.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage301-bc1-pages-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-page-parity:
+    name: Legacy full 1024 vs strict 16 page decode / ${{ matrix.compiler }} / Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.13']
+        compiler: ['gcc', 'clang']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile both actual native C decoders
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 -O2 -Wall -Wextra -Werror \
+            -fPIC -shared -Icore core/dds_texture.c \
+            -o /tmp/foj-stage301-legacy.so
+          ${{ matrix.compiler }} -std=c11 -O2 -Wall -Wextra -Werror \
+            -fPIC -shared -Igpu gpu/atlas_dds.c gpu/bc1_atlas_page.c \
+            -o /tmp/foj-stage301-pages.so
+      - name: Compare 16 page regions and reject malformed source without writes
+        shell: bash
+        env:
+          FOJ_STAGE301_LEGACY_SO: /tmp/foj-stage301-legacy.so
+          FOJ_STAGE301_ATLAS_SO: /tmp/foj-stage301-pages.so
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage301_bc1_1024_pages.py' -v
+          echo STAGE301_NATIVE_BC1_1024_ALL_16_PAGE_PARITY_PASS
+
+  switch-nro:
+    name: Optional BC1 page helper compiles in devkitA64 research NRO
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkita64:20260219
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and verify real Switch research NRO with page helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f gpu/topology_reject_contract.mk verify
+          python3 tools/validate_nro.py build/foj-deko3d-topology-reject-proof.nro
+          echo STAGE301_DEVKITA64_NATIVE_PAGE_HELPER_COMPILE_PASS
+      # No game files, generated pixel arrays, original PKG or NRO upload.
