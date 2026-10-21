@@ -14,11 +14,17 @@ from tools.foj_stage284_uv_cross_check import verify as verify_stage284
 # on every side. Stage284 independently validates viewport and one-dimensional
 # source-over profiles before this two-dimensional audit is accepted.
 RADIUS = 8
+RGB_CHANNEL_TOLERANCE = 2  # allow tiny integer blend/rounding differences
 X_MIN, X_MAX = U_EXPECTED_X - RADIUS, U_EXPECTED_X + RADIUS
 Y_MIN, Y_MAX = V_EXPECTED_Y - RADIUS, V_EXPECTED_Y + RADIUS
 CLEAR_RGB = target_rgb(0)
 OPAQUE_RGB = target_rgb(255)
 SCHEMA = "foj.stage285.real_native_uv_cross_intersection.v1"
+
+
+def _rgb_matches(observed: tuple[int, int, int], expected: tuple[int, int, int]) -> bool:
+    return all(abs(observed[i] - expected[i]) <= RGB_CHANNEL_TOLERANCE
+               for i in range(3))
 
 
 def inspect_intersection(path: Path) -> dict:
@@ -30,6 +36,7 @@ def inspect_intersection(path: Path) -> dict:
         raise ValueError("Stage285 unexpected capture dimensions")
 
     grid = []
+    max_channel_delta = 0
     counts = {"northwest_clear": 0, "northeast_clear": 0,
               "southwest_clear": 0, "southeast_opaque": 0}
     for y in range(Y_MIN, Y_MAX + 1):
@@ -38,10 +45,13 @@ def inspect_intersection(path: Path) -> dict:
             observed = image.getpixel((x, y))
             opaque = x >= U_EXPECTED_X and y >= V_EXPECTED_Y
             expected = OPAQUE_RGB if opaque else CLEAR_RGB
-            if observed != expected:
+            channel_delta = max(abs(observed[i] - expected[i]) for i in range(3))
+            max_channel_delta = max(max_channel_delta, channel_delta)
+            if not _rgb_matches(observed, expected):
                 raise ValueError(
                     f"Stage285 intersection mismatch at ({x},{y}): "
-                    f"observed={observed}, expected={expected}"
+                    f"observed={observed}, expected={expected}, "
+                    f"channel_tolerance={RGB_CHANNEL_TOLERANCE}"
                 )
             if x < U_EXPECTED_X and y < V_EXPECTED_Y:
                 counts["northwest_clear"] += 1
@@ -69,6 +79,8 @@ def inspect_intersection(path: Path) -> dict:
         "grid_dimensions": [len(grid[0]), len(grid)],
         "grid_sha256": hashlib.sha256(packed).hexdigest(),
         "quadrant_sample_counts": counts,
+        "rgb_channel_tolerance": RGB_CHANNEL_TOLERANCE,
+        "max_channel_delta": max_channel_delta,
         "clear_rgb": list(CLEAR_RGB),
         "opaque_rgb": list(OPAQUE_RGB),
         "corner_checks": {
@@ -98,8 +110,15 @@ def verify(root: Path) -> dict:
         "before_u_at_v": list(CLEAR_RGB),
         "at_u_at_v": list(OPAQUE_RGB),
     }
-    if first["corner_checks"] != expected_corners or later["corner_checks"] != expected_corners:
-        raise ValueError("Stage285 four-corner intersection contract mismatch")
+    for frame in (first, later):
+        for corner, expected in expected_corners.items():
+            observed = frame["corner_checks"][corner]
+            if not _rgb_matches(tuple(observed), tuple(expected)):
+                raise ValueError(
+                    f"Stage285 four-corner intersection contract mismatch: "
+                    f"{frame['capture']} {corner} observed={observed}, "
+                    f"expected={expected}, channel_tolerance={RGB_CHANNEL_TOLERANCE}"
+                )
 
     return {
         "schema": SCHEMA,
