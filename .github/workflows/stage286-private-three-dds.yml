@@ -60,6 +60,7 @@ jobs:
         run: |
           set -euo pipefail
           make -f gpu/topology_reject_contract.mk verify
+          make -f gpu/Makefile triangle-verify
           python3 tools/validate_nro.py build/foj-deko3d-topology-reject-proof.nro
           python3 -m tools.validate_dksh --expect-stage vertex gpu/build/foj_actor.vert.dksh
           python3 -m tools.validate_dksh --expect-stage fragment gpu/build/foj_triangle.frag.dksh
