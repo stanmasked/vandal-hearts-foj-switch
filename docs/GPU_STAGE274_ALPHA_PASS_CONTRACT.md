@@ -108,6 +108,28 @@ actual GPU screenshots via the Stage273 RGB oracle, then requires
 both Stage274 native receipts. Host-synthesized image/marker unit
 fixtures **are not evidence of real NeXium execution**.
 
+## Verify the actual guest input before and after execution
+
+The negative guest driver now executes
+`tools/foj_stage274_rear_dds_witness.py` **twice**: before launching
+NeXium and after observing the NRO-authored pre-GPU rejection. Both
+measure the actual local `material2.dds` file byte for byte against a
+freshly rebuilt generated-only reference and save an exclusive,
+phase-tagged `rear-dds-before.json` / `rear-dds-after.json` in the
+archived CI artifact. An altered input file aborts the driver.
+
+The final independent verifier checks the exact contents of both
+observations, their phase labels, 16,512-byte size, SHA-256 digests,
+and the single alpha mutation at offset 131. It rejects absent or
+tampered receipts. Three more synthetic-only classifier regressions
+cover missing post-guest evidence, a fabricated post-guest digest,
+and swapped phase labels.
+
+These observations verify the test input's identity at two points,
+**not** GPU behavior or continuous immutability during execution.
+The separate native NRO rejection marker and real NeXium CI job
+remain mandatory.
+
 ## Cryptographic identity of the negative synthetic DDS
 
 The third NeXium guest now records **both** the pristine and modified
