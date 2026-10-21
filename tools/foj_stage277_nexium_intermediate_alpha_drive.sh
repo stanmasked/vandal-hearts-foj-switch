@@ -118,7 +118,7 @@ for attempt in $(seq 1 28); do
                  "$FOJ_EVIDENCE_DIR/gpu-later.png" <<'PY'
 from pathlib import Path
 from PIL import Image
-from tools.foj_stage277_spatial_alpha_check import inspect
+from tools.foj_stage277_intermediate_alpha_check import inspect
 import os
 import sys
 a,b=(Path(x) for x in sys.argv[1:])
