@@ -25,7 +25,7 @@ from tools.foj_stage280_shifted_boundary_check import (
 from tools.foj_stage282_vertical_boundary_sd import (
     SCHEMA, CASES, SPLITS, WIDTH, COLUMNS, PROBE_X, EXPECTED_Y,
     NATIVE_EXPECTED_Y, NATIVE_FRAME_HEIGHT, CAPTURE_VIEWPORT_HEIGHT,
-    positions, profile_y, expected_at, near_atlas,
+    CAPTURE_VIEWPORT_PROBE_X, positions, profile_y, expected_at, near_atlas,
 )
 
 CROSSING_TOLERANCE = 5
@@ -40,6 +40,17 @@ def inspect(path: Path, case: str) -> dict:
         if source.size != (1280, 720):
             raise ValueError("Stage282 unexpected NeXium framebuffer size")
         image = source.convert("RGB")
+    # NeXium's window capture includes a bottom toolbar. Derive the game
+    # viewport height from a background-only column instead of assuming that
+    # native framebuffer Y equals captured-window Y.
+    top_background = image.getpixel((CAPTURE_VIEWPORT_PROBE_X, 0))
+    viewport_height = next(
+        (y for y in range(1, image.height)
+         if image.getpixel((CAPTURE_VIEWPORT_PROBE_X, y)) != top_background),
+        image.height,
+    )
+    if viewport_height != CAPTURE_VIEWPORT_HEIGHT:
+        raise ValueError("Stage282 unexpected capture viewport scaling")
     controls = {}
     for name, (cx, cy) in positions(case).items():
         want = expected_at(case, name)
@@ -87,6 +98,7 @@ def inspect(path: Path, case: str) -> dict:
     if max(crossings) - min(crossings) > COLUMN_SPREAD:
         raise ValueError("Stage282 V boundary drifts across columns")
     return {"controls": controls, "columns": columns,
+            "capture_viewport_height": viewport_height,
             "sampler_filter_mode": "NOT_INFERRED"}
 
 
@@ -115,6 +127,7 @@ def verify(root: Path) -> dict:
                 or manifest.get("native_expected_half_transition_y") != NATIVE_EXPECTED_Y[case]
                 or manifest.get("native_framebuffer_height") != NATIVE_FRAME_HEIGHT
                 or manifest.get("capture_viewport_height") != CAPTURE_VIEWPORT_HEIGHT
+                or manifest.get("capture_viewport_probe_x") != CAPTURE_VIEWPORT_PROBE_X
                 or manifest.get("capture_scale_y") != round(CAPTURE_VIEWPORT_HEIGHT / NATIVE_FRAME_HEIGHT, 8)
                 or manifest.get("near_texture_dimensions") != [WIDTH, WIDTH]
                 or manifest.get("profile_x_columns") != list(COLUMNS)
