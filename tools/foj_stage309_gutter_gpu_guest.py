@@ -40,10 +40,16 @@ def _frame(p:Path):
             ("left",570,left,4),("right",710,right,4),
             ("mixed",640,middle,22),
         ):
+            # The center gradient spans a narrow 37px foreground quad.
+            # At x+/-3 its physically valid bilinear color can be >22
+            # levels from the exact 50/50 midpoint. Check a tighter
+            # 5x7 footprint at the center; keep 7x7 for flat endpoints.
+            radius=2 if label=="mixed" else 3
+            minimum=33 if label=="mixed" else 45
             count=sum(_color_close(rgb.getpixel((px,py)),expected,tol)
                       for py in range(y-3,y+4)
-                      for px in range(x-3,x+4))
-            if count<45:
+                      for px in range(x-radius,x+radius+1))
+            if count<minimum:
                 raise ValueError("Stage309 missing contrasting endpoints or seam mix")
             report[f"{y}_{label}"]=count
         center=rgb.getpixel((640,y))
