@@ -1,0 +1,51 @@
+name: Stage308 native cross-page BC1 bilinear reference and seam failure gate
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage308-cross-page-bilinear-reference.yml'
+      - 'gpu/stage308_cross_page_bilinear.c'
+      - 'gpu/stage308_cross_page_bilinear.h'
+      - 'gpu/stage303_bc1_page_uv.c'
+      - 'gpu/stage303_bc1_page_uv.h'
+      - 'gpu/bc1_atlas_page.c'
+      - 'gpu/bc1_atlas_page.h'
+      - 'tests/gpu/test_stage308_cross_page_bilinear.c'
+      - 'docs/GPU_STAGE308_CROSS_PAGE_BILINEAR_REFERENCE.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage308-bc1-cross-page-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native_reference:
+    name: Native 1024 BC1 cross-page reference / ${{ matrix.compiler }} / ${{ matrix.mode }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {compiler: gcc, mode: release, flags: '-O2'}
+          - {compiler: clang, mode: release, flags: '-O2'}
+          - {compiler: gcc, mode: ubsan, flags: '-O1 -g -fsanitize=undefined -fno-sanitize-recover=all'}
+          - {compiler: clang, mode: asan, flags: '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile actual C decoder, UV mapper and cross-page bilinear reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 -Wall -Wextra -Werror ${{ matrix.flags }} \
+            -Igpu -Icore \
+            gpu/atlas_dds.c gpu/bc1_atlas_page.c \
+            gpu/stage303_bc1_page_uv.c gpu/stage308_cross_page_bilinear.c \
+            tests/gpu/test_stage308_cross_page_bilinear.c \
+            -lm -o /tmp/foj-stage308-real-native-c
+          /tmp/foj-stage308-real-native-c
+          echo STAGE308_REAL_C_CROSS_PAGE_REFERENCE_AND_MEMORY_SAFETY_PASS
+      # 100% generated BC1. No original NPEB00148 textures or guest assets.
