@@ -88,6 +88,20 @@ def generate_fixture(width: int = 64, height: int = 64,
     return result
 
 
+def generate_solid_fixture(color: tuple[int, int, int, int]) -> bytes:
+    """Stage293 opt-in: invented solid BGRA texture; NOT a real PS3 decoder."""
+    if (type(color) is not tuple or len(color) != 4 or
+            any(type(v) is not int or not 0 <= v <= 255 for v in color)):
+        raise ValueError("Stage293 synthetic solid color must be four uint8 values")
+    width = height = 64
+    header = bytearray(_synthetic_header(width, height, 1,
+                                         color[3] == 255, width * height * 4))
+    header[60] = 1
+    header[100:104] = bytes(color)
+    r, g, b, a = color
+    return bytes(header) + bytes((b, g, r, a)) * (width * height)
+
+
 def convert_fixture(blob: bytes) -> tuple[bytes, dict]:
     if (type(blob) is not bytes or
             not HEADER_BYTES <= len(blob) <= MAX_SOURCE_BYTES or
@@ -100,12 +114,29 @@ def convert_fixture(blob: bytes) -> tuple[bytes, dict]:
     opaque = bool(blob[56])
     levels = _levels(width, height, mips)
     expected_size = sum(w * h * 4 for w, h in levels)
-    if blob[:HEADER_BYTES] != _synthetic_header(
-            width, height, mips, opaque, expected_size):
+    mode = blob[60]
+    if mode == 0:
+        expected_header = _synthetic_header(
+            width, height, mips, opaque, expected_size)
+        expected_source = generate_fixture(width, height, mips, opaque)
+        expected_pixels = canonical_rgba(width, height, mips, opaque)
+    elif mode == 1:
+        # A second, explicitly tagged synthetic-only variant used to exercise
+        # the true NeXium GPU path without changing its known constant probes.
+        if (width, height, mips) != (64, 64, 1):
+            raise ValueError("Stage293 solid test dimensions/mips unsupported")
+        color = tuple(blob[100:104])
+        if opaque != (color[3] == 255):
+            raise ValueError("Stage293 synthetic alpha profile mismatch")
+        expected_source = generate_solid_fixture(color)
+        expected_header = expected_source[:HEADER_BYTES]
+        expected_pixels = bytes(color) * (width * height)
+    else:
+        raise ValueError("Stage292 unknown invented texture fixture mode")
+    if blob[:HEADER_BYTES] != expected_header:
         raise ValueError("Stage292 invented header differs from exact fixture contract")
-    # This byte-for-byte guard means actual PS3 resources can never be
-    # represented as valid inputs through this function by accident.
-    if blob != generate_fixture(width, height, mips, opaque):
+    # Never accept unknown, mutable or owner-private source bytes.
+    if blob != expected_source:
         raise ValueError("Stage292 only accepts deterministic invented pixel data")
 
     bgra = blob[HEADER_BYTES:]
@@ -113,7 +144,7 @@ def convert_fixture(blob: bytes) -> tuple[bytes, dict]:
     for i in range(0, len(bgra), 4):
         b, g, r, a = bgra[i:i + 4]
         rgba[i:i + 4] = bytes((r, g, b, a))
-    if bytes(rgba) != canonical_rgba(width, height, mips, opaque):
+    if bytes(rgba) != expected_pixels:
         raise ValueError("Stage292 channel or alpha mapping changed")
 
     hdr = bytearray(HEADER_BYTES)
@@ -140,6 +171,7 @@ def convert_fixture(blob: bytes) -> tuple[bytes, dict]:
         "input_kind": "deterministic-invented-gtf-like-only",
         "source_version_is_a_format_hypothesis": True,
         "source_channel_order_is_invented_bgra": True,
+        "synthetic_fixture_mode": "constant-gpu-probe" if mode else "gradient",
         "output_format": "native-loader-compatible-RGBA8-DDS",
         "width": width, "height": height, "mip_levels": mips,
         "alpha_profile": "opaque" if opaque else "mixed",
