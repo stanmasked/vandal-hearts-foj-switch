@@ -7,6 +7,7 @@ assets are read, copied or uploaded. Not an actual NeXium result.
 from __future__ import annotations
 import argparse
 import json
+import hashlib
 from pathlib import Path
 import sys
 
@@ -39,6 +40,12 @@ def prepare_negative(root:Path,shaders:Path)->dict:
     if sum(a!=b for a,b in zip(before,altered))!=1:
         raise ValueError("Negative fixture did not change exactly one byte")
     atlas.write_bytes(altered)
+    before_sha256=hashlib.sha256(before).hexdigest()
+    modified_sha256=hashlib.sha256(altered).hexdigest()
+    # The independent Stage274 auditor regenerates both digests from the
+    # public invented DDS formula, rather than trusting these claims.
+    if before_sha256==modified_sha256:
+        raise ValueError("Negative mutation failed to change DDS identity")
     if any((root/SUBDIR/name).exists() for name in
            ("foj-native-rear-alpha-reject.txt",
             "foj-native-sort-pass.txt","foj-native-alpha-pass.txt")):
@@ -48,6 +55,8 @@ def prepare_negative(root:Path,shaders:Path)->dict:
         "scenario":"one-rear-alpha-254",
         "changed_file":"material2.dds",
         "changed_bytes":1,
+        "original_rear_dds_sha256":before_sha256,
+        "mutated_rear_dds_sha256":modified_sha256,
         "original_alpha":255,
         "mutated_alpha":254,
         "expected_native_rejection_marker":EXPECTED_MARKER,
