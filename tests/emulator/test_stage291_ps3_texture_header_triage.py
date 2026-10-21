@@ -95,7 +95,10 @@ class Stage291SyntheticHeaderTests(unittest.TestCase):
         self.assertEqual(result["gtf_header_rejected"], 1)
 
     def test_bad_version_one_bounds_is_rejected(self):
-        self.put("bad.bin", fixture_v1(texture_bytes=1234))
+        bad = bytearray(fixture_v1())
+        # Corrupt only the claimed size; do not extend the actual file.
+        struct.pack_into(">I", bad, 20, len(bad) + 1)
+        self.put("bad.bin", bytes(bad))
         result = analyze(self.root)
         self.assertEqual(result["possible_gtf_container_headers"], 0)
         self.assertEqual(result["gtf_header_rejected"], 1)
