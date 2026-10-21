@@ -8,7 +8,7 @@ Stages280–282 demonstrated U-driven horizontal alpha-edge relocation, coherenc
 
 The prediction is derived from the frozen native C11 `foj_gpu_prepare_stream` projection. With a 1280×720 framebuffer, `extent=2`, and camera zoom 1, `ny=.84`; the near-triangle vertices are at world Y=0.69 with UV V=0 and Y=-0.50 with V=1. The native framebuffer coordinates are Y=151.344 at V=0 and Y=511.200 at V=1, so split 40 predicts **Y=376.254**, split 46 **Y=409.9905**, and split 52 **Y=443.727** in the native framebuffer. The actual Stage281 NeXium artifact shows the guest viewport scaled inside the captured 1280×720 window: its game viewport occupies rows **0–693** (694 pixels), with the emulator toolbar starting at row 694. Therefore the screen capture maps native Y to `Y_capture=Y_native*(694/720)`: split 40 predicts Y=**362.667** (target pixel 363), split 46 predicts Y=**395.185** (target pixel 395), and split 52 predicts Y=**427.704** (target pixel 428). This predicts two adjacent displacements of about **32.52 pixels** each. The auditor intentionally checks the captured-window coordinates, not unscaled native framebuffer coordinates. This projection does not assume a sampler mode.
 
-Both generated-only `64×64 RGBA8 DDS` inputs change exactly **4096 alpha bytes** relative to the canonical violet-alpha128 DDS, and **zero header/RGB bytes**:
+All three generated-only `64×64 RGBA8 DDS` inputs change exactly **4096 alpha bytes** relative to the canonical violet-alpha128 DDS, and **zero header/RGB bytes**:
 
 | New case | Alpha when DDS y is above split | Alpha at/under split | Expected screen crossing |
 |---|---|---|---|
