@@ -1,0 +1,44 @@
+name: Stage299 multiple private reference witnesses (synthetic only)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage299-private-multi-witness.yml'
+      - 'tools/foj_stage299_private_multi_witness_consensus.py'
+      - 'tests/emulator/test_stage299_private_multi_witness_consensus.py'
+      - 'tools/foj_stage298_inverse_tile_ambiguity.py'
+      - 'tools/foj_stage297_private_tile_reference_gate.py'
+      - 'tools/foj_fd_bound_reader.py'
+      - 'docs/GPU_STAGE299_PRIVATE_MULTI_WITNESS_CONSENSUS.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage299-multi-witness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-consensus:
+    name: Multiple invented textures reject non-discriminating witness / Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Test cross-texture consensus and private evidence refusal
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tools/foj_stage299_private_multi_witness_consensus.py
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage299_private_multi_witness_consensus.py' -v
+          echo STAGE299_SYNTHETIC_MULTI_WITNESS_CONSENSUS_PASS
+      # No original PS3 assets, screenshots, source hashes or public artifacts.
