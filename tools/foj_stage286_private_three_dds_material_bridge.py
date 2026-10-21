@@ -44,16 +44,21 @@ def _destination_guard(source: Path, root: Path) -> None:
     """Refuse creating game-derived data in tracked portions of this repo."""
     if not NOFOLLOW or not DIRECTORY:
         raise ValueError("Stage286 requires secure local no-follow opens")
+    # A lexical gitignored prefix must not authorize a path that walks out
+    # into a tracked project directory through '..' components.
+    if ".." in root.parts:
+        raise ValueError("Stage286 destination path traversal rejected")
+    lexical = root.absolute()
+    for parent in (lexical.parent, *lexical.parent.parents):
+        if parent.is_symlink():
+            raise ValueError("Stage286 private destination has a symlink ancestor")
     if root.exists() or root.is_symlink() or not root.parent.is_dir():
         raise ValueError("Stage286 destination must be a new private directory")
-    destination = root.absolute()
-    source_absolute = source.absolute()
+    destination = lexical.resolve(strict=False)
+    source_absolute = source.resolve(strict=False)
     if (_is_under(destination, source_absolute) or
             _is_under(source_absolute, destination)):
         raise ValueError("Stage286 source and output directories must be separate")
-    for parent in (destination.parent, *destination.parent.parents):
-        if parent.is_symlink():
-            raise ValueError("Stage286 private destination has a symlink ancestor")
     repo = Path(__file__).resolve().parents[1]
     if _is_under(destination, repo):
         relative = destination.relative_to(repo)
