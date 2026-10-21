@@ -256,12 +256,46 @@ int main(int argc,char **argv) {
         private_payload.batches[1].texture_index!=1u ||
         private_payload.batches[2].first_vertex!=6u ||
         private_payload.batches[2].vertex_count!=3u ||
-        private_payload.batches[2].texture_index!=2u ||
+        private_payload.batches[2].texture_index!=2u) {
+        fprintf(stderr,"FoJ dynamic alpha sort: unsupported actor batches\n");
+        foj_gpu_private_bundle_free(&private_payload);
+        return 8;
+    }
+    /* Stage275's separate negative guest only attests an actual UNSAFE
+     * topology decision on the same GPU-bound projected vertices.
+     * A malformed stream, truncated bundle or unsupported sort order
+     * must not masquerade as a depth-crossing rejection. */
+    const FojAlphaSortStatus dynamic_sort_status=
         foj_alpha_sort_back_to_front(
-            private_payload.vertices,3u,dynamic_three_passes,3u)
-              !=FOJ_ALPHA_SORT_OK ||
-        dynamic_three_passes[0]!=2u) {
-        fprintf(stderr,"FoJ dynamic alpha sort: unsafe or unsupported actor\n");
+            private_payload.vertices,3u,dynamic_three_passes,3u);
+    if (dynamic_sort_status!=FOJ_ALPHA_SORT_OK) {
+        fprintf(stderr,"FoJ dynamic alpha sort: %s\n",
+                dynamic_sort_status==FOJ_ALPHA_SORT_UNSAFE?
+                "unsafe triangle depth topology":"invalid triangle stream");
+#if defined(FOJ_GPU_TOPOLOGY_NEGATIVE_WITNESS)
+        if (dynamic_sort_status==FOJ_ALPHA_SORT_UNSAFE) {
+            static const char witness[]=
+                "FOJ_NATIVE_TOPOLOGY_REJECT_V1 pre_gpu=1 unsafe=1\n";
+            FILE *record=fopen(
+                "sdmc:/switch/foj/gpu/foj-native-topology-reject.txt","wx");
+            if(!record) {
+                foj_gpu_private_bundle_free(&private_payload);
+                return 9;
+            }
+            const size_t written=fwrite(witness,1,sizeof(witness)-1u,record);
+            const int flushed=fflush(record);
+            const int closed=fclose(record);
+            if(written!=sizeof(witness)-1u || flushed!=0 || closed!=0) {
+                foj_gpu_private_bundle_free(&private_payload);
+                return 9;
+            }
+        }
+#endif
+        foj_gpu_private_bundle_free(&private_payload);
+        return 8;
+    }
+    if(dynamic_three_passes[0]!=2u) {
+        fprintf(stderr,"FoJ dynamic alpha sort: opaque rear not first\n");
         foj_gpu_private_bundle_free(&private_payload);
         return 8;
     }
