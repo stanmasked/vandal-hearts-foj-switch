@@ -6,7 +6,9 @@ on:
       - '.github/workflows/stage283-vertical-linearity.yml'
       - 'tools/foj_stage282_*'
       - 'tests/emulator/test_stage282_vertical_boundary.py'
-      - 'tools/foj_stage283_*'\n      - 'tests/emulator/test_stage283_vertical_linearity.py'\n      - 'tools/foj_stage281_*'
+      - 'tools/foj_stage283_*'
+      - 'tests/emulator/test_stage283_vertical_linearity.py'
+      - 'tools/foj_stage281_*'
       - 'tests/emulator/test_stage281_multiline_boundary.py'
       - 'tools/foj_stage280_*'
       - 'tools/foj_stage279_*'
@@ -222,7 +224,7 @@ jobs:
           bash -n tools/foj_stage275_nexium_topology_reject.sh
           bash -n tools/foj_stage280_nexium_shifted_boundary_drive.sh
           bash -n tools/foj_stage283_nexium_vertical_linearity_drive.sh
-      - name: Capture four actual NeXium frames with vertically shifted source DDS alpha
+      - name: Capture six actual NeXium frames for three vertical DDS alpha splits
         shell: bash
         run: |
           set -euo pipefail
