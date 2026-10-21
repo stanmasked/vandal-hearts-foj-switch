@@ -6,14 +6,14 @@ Stages280–281 demonstrated U-driven horizontal alpha-edge relocation and the s
 
 ## Independent vertical projection and masks
 
-The prediction is derived from the frozen native C11 `foj_gpu_prepare_stream` projection, not screenshot-bound estimates. With a 1280×720 framebuffer, `extent=2`, and camera zoom 1, the code sets `ny=.84`; the near triangle vertices are at world Y=0.69 with UV V=0 (apex) and Y=-0.50 with V=1 (base). This gives framebuffer Y=151.344 at V=0 and Y=511.200 at V=1, hence `Y=151.344+359.856*(split/64)`: split 40 predicts **Y=376.254** (target pixel 376), split 52 predicts **Y=443.727** (target pixel 444), approximately **67.5 pixels apart**. The predicted crossing is checked at ±5 pixels and displacement at ±6. This is specific to the frozen NeXium guest geometry/resolution and does not assume a sampler mode.
+The prediction is derived from the frozen native C11 `foj_gpu_prepare_stream` projection. With a 1280×720 framebuffer, `extent=2`, and camera zoom 1, `ny=.84`; the near-triangle vertices are at world Y=0.69 with UV V=0 and Y=-0.50 with V=1. The native framebuffer coordinates are Y=151.344 at V=0 and Y=511.200 at V=1, so split 40 predicts **Y=376.254** and split 52 **Y=443.727** in the native framebuffer. The actual Stage281 NeXium artifact shows the guest viewport scaled inside the captured 1280×720 window: its game viewport occupies rows **0–693** (694 pixels), with the emulator toolbar starting at row 694. Therefore the screen capture maps native Y to `Y_capture=Y_native*(694/720)`: split 40 predicts Y=**362.667** (target pixel 363), split 52 predicts Y=**427.704** (target pixel 428), about **65.04 pixels apart**. The auditor intentionally checks the captured-window coordinates, not unscaled native framebuffer coordinates. This projection does not assume a sampler mode.
 
 Both generated-only `64×64 RGBA8 DDS` inputs change exactly **4096 alpha bytes** relative to the canonical violet-alpha128 DDS, and **zero header/RGB bytes**:
 
 | New case | Alpha when DDS y is above split | Alpha at/under split | Expected screen crossing |
 |---|---|---|---|
-| `edge-v40` | 0 | 255 | Y≈376 |
-| `edge-v52` | 0 | 255 | Y≈444 |
+| `edge-v40` | 0 | 255 | Y≈363 |
+| `edge-v52` | 0 | 255 | Y≈428 |
 
 Only generated `material0.dds` is modified between cases. No PS3 resources, game PKG or original game files are loaded or published. Independently check exact SHA-256 of each full DDS before and after guest.
 
@@ -24,7 +24,7 @@ For two real NeXium guest instances/four original RGB frames, check **three X co
 - Three-channel projection onto the physically possible straight-alpha RGB trajectory, including out-of-envelope/off-curve rejection.
 - Monotone clear-top to opaque-bottom progression, allowing both step and filtered transitions **without claiming which sampler mode is configured**.
 - Expected half-opacity crossing Y±5; crossings agree across all three columns (range ≤4).
-- Y displacement from the 12-texel V shift must be **68±6 pixels** for each sampled column. An unchanged screen-space edge must fail.
+- Y displacement from the 12-texel V shift must be **65±6 pixels** for each sampled column. An unchanged screen-space edge must fail.
 - Both frames of a given input mask must retain exactly the same material profiles; genuine background clear phases must differ.
 
 Retain the guest-generated precise sort receipt `2,1,0` and exact blend/depth pass receipt, forbid contradictory GPU refusal markers, and reject duplicate screenshots or mutated source input. Mock Pillow PNGs exercise the **13 new host regressions** but **do not establish GPU execution**.
