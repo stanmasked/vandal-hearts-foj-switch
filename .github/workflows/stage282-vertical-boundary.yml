@@ -1,0 +1,259 @@
+name: Stage282 native GPU vertical DDS-V alpha boundary displacement
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage282-vertical-boundary.yml'
+      - 'tools/foj_stage282_*'
+      - 'tests/emulator/test_stage282_vertical_boundary.py'
+      - 'tools/foj_stage281_*'
+      - 'tests/emulator/test_stage281_multiline_boundary.py'
+      - 'tools/foj_stage280_*'
+      - 'tools/foj_stage279_*'
+      - 'tests/emulator/test_stage279_alpha_boundary.py'
+      - 'tools/foj_stage278_*'
+      - 'tests/emulator/test_stage278_alpha_staircase.py'
+      - 'tools/foj_stage277_*'
+      - 'tests/emulator/test_stage277_intermediate_alpha.py'
+      - 'tools/foj_stage276_*'
+      - 'tests/emulator/test_stage276_spatial_alpha.py'
+      - 'tests/emulator/test_stage280_shifted_boundary.py'
+      - 'gpu/topology_reject_contract.mk'
+      - 'tools/foj_stage275_*'
+      - 'tests/emulator/test_stage275_topology_guest.py'
+      - 'gpu/alpha_pass_contract.*'
+      - 'tests/test_gpu_alpha_pass_contract.c'
+      - 'tools/foj_stage274_*'
+      - 'tests/emulator/test_stage274_guest_pass_state.py'
+      - 'tests/emulator/test_stage274_actual_native_chain.py'
+      - 'core/gpu_vertex_stream.c'
+      - 'core/gpu_draw_plan.c'
+      - 'gpu/deko3d_clear_main.c'
+      - 'gpu/alpha_pass_contract.mk'
+      - 'gpu/transparency_sort.*'
+      - 'gpu/alpha_material_contract.*'
+      - 'tests/test_gpu_alpha_material_contract.c'
+      - 'tests/emulator/test_stage273_native_atlas_chain.py'
+      - 'gpu/atlas_dds.c'
+      - 'tools/foj_stage273_*'
+      - 'tests/emulator/test_stage273_dynamic_gpu.py'
+      - 'tests/emulator/test_stage272_native_sort_parity.py'
+      - 'tests/test_gpu_transparency_sort.c'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    name: Native C11 and Stage282 vertical DDS-V alpha-edge classifier
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Pillow for synthetic RGB classifier tests
+        run: python3 -m pip install Pillow
+      - name: Validate C11 dynamic sort on GCC and Clang
+        shell: bash
+        run: |
+          set -euo pipefail
+          for compiler in gcc clang; do
+            for mode in debug release; do
+              flags="-std=c11 -O2 -Wall -Wextra -Werror -pedantic -Icore -Igpu"
+              if [[ "$mode" == release ]]; then flags="$flags -DNDEBUG"; fi
+              "$compiler" $flags tests/test_gpu_transparency_sort.c \
+                gpu/transparency_sort.c -lm -o "/tmp/stage273-$compiler-$mode"
+              "/tmp/stage273-$compiler-$mode"
+            done
+          done
+      - name: Check exact per-material GPU blend and depth pass contract on GCC and Clang
+        shell: bash
+        run: |
+          set -euo pipefail
+          for compiler in gcc clang; do
+            for mode in debug release; do
+              opts="-std=c11 -O2 -Wall -Wextra -Werror -pedantic -fsanitize=undefined -fno-sanitize-recover=all -Icore -Igpu"
+              if [[ "$mode" == release ]]; then opts="$opts -DNDEBUG"; fi
+              "$compiler" $opts tests/test_gpu_alpha_pass_contract.c \
+                gpu/alpha_pass_contract.c \
+                -o "/tmp/foj-stage274-passes-$compiler-$mode"
+              "/tmp/foj-stage274-passes-$compiler-$mode"
+            done
+          done
+      - name: Enforce strict opaque rear DDS alpha on host GCC and Clang
+        shell: bash
+        run: |
+          set -euo pipefail
+          for compiler in gcc clang; do
+            for mode in debug release; do
+              opts="-std=c11 -O2 -Wall -Wextra -Werror -pedantic -Igpu"
+              if [[ "$mode" == release ]]; then opts="$opts -DNDEBUG"; fi
+              "$compiler" $opts tests/test_gpu_alpha_material_contract.c \
+                gpu/alpha_material_contract.c \
+                -o "/tmp/foj-stage273-opaque-$compiler-$mode"
+              "/tmp/foj-stage273-opaque-$compiler-$mode"
+            done
+          done
+      - name: Test exact actual C projection-to-depth-to-material pipeline on GCC and Clang
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage274_actual_native_chain.py' -v
+      - name: Verify dynamic generated fixtures and randomized order
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage273_native_atlas_chain.py' -v
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage274_guest_pass_state.py' -v
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage275_topology_guest.py' -v
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage276_spatial_alpha.py' -v
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage277_intermediate_alpha.py' -v
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage278_alpha_staircase.py' -v
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage279_alpha_boundary.py' -v
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage280_shifted_boundary.py' -v
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage281_multiline_boundary.py' -v
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage282_vertical_boundary.py' -v
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage273_dynamic_gpu.py' -v
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage272_native_sort_parity.py' -v
+
+
+  build:
+    name: Rebuild unchanged Stage275 alpha-capable NRO on devkitA64
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: devkitpro/devkita64:20260219
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile Stage275 topology-witness deko3d NRO and public shaders
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f gpu/topology_reject_contract.mk verify
+          make -f gpu/Makefile triangle-verify
+          python3 tools/validate_nro.py build/foj-deko3d-topology-reject-proof.nro
+          python3 -m tools.validate_dksh --expect-stage vertex gpu/build/foj_actor.vert.dksh
+          python3 -m tools.validate_dksh --expect-stage fragment gpu/build/foj_triangle.frag.dksh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage282-vertical-program
+          path: |
+            build/foj-deko3d-topology-reject-proof.nro
+            gpu/build/foj_actor.vert.dksh
+            gpu/build/foj_triangle.frag.dksh
+          if-no-files-found: error
+
+  nexium:
+    name: NeXium proves three-column vertical DDS-V boundary relocation
+    needs: [build, host]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: foj-stage282-vertical-program
+          path: native
+      - name: Install headless display Vulkan and Pillow
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl jq xvfb xauth xdotool imagemagick python3-pil \
+            libgtk-3-0t64 libasound2t64 libudev1 libxkbcommon0 libxkbcommon-x11-0 \
+            libx11-xcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 \
+            libxcb-randr0 libxcb-render0 libxcb-shape0 libxcb-xkb1 \
+            libvulkan1 mesa-vulkan-drivers
+      - name: Run Stage267 synthetic-only anti-fake screenshot unit checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage260_generated_gpu_visual.py' -v
+      - name: Fetch NeXium nightly executable and record provenance
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-evidence /tmp/nexium
+          release="$(curl -fsSL --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/nexium-emu/nexium-nightly/releases/tags/nightly)"
+          asset="$(printf '%s' "$release" | jq -er \
+            '.assets[] | select(.name=="nexium-linux-x86_64.tar.gz") | .browser_download_url')"
+          curl -fL --retry 3 --retry-all-errors "$asset" -o /tmp/nexium.tar.gz
+          sha256sum /tmp/nexium.tar.gz > runtime-evidence/nexium-archive.sha256
+          tar -xzf /tmp/nexium.tar.gz -C /tmp/nexium
+          bin="$(find /tmp/nexium -type f -executable \
+            \( -name 'nexium-gui' -o -name 'nexium' \) -print -quit)"
+          test -n "$bin"
+          echo "NEXIUM_BIN=$bin" >> "$GITHUB_ENV"
+      - name: Verify both safe scene fixtures and actual guest driver syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage273_native_atlas_chain.py' -v
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage273_dynamic_gpu.py' -v
+          bash -n tools/foj_stage273_nexium_dynamic_gpu_drive.sh
+          bash -n tools/foj_stage274_nexium_pass_drive.sh
+          bash -n tools/foj_stage274_nexium_rear_alpha_reject.sh
+          bash -n tools/foj_stage275_nexium_topology_reject.sh
+          bash -n tools/foj_stage280_nexium_shifted_boundary_drive.sh
+          bash -n tools/foj_stage282_nexium_vertical_drive.sh
+      - name: Capture four actual NeXium frames with vertically shifted source DDS alpha
+        shell: bash
+        run: |
+          set -euo pipefail
+          icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 \
+            -name 'lvp_icd*.json' -print -quit)"
+          test -n "$icd"
+          export VK_ICD_FILENAMES="$icd"
+          export FOJ_NRO="$GITHUB_WORKSPACE/native/build/foj-deko3d-topology-reject-proof.nro"
+          for case in edge-v40 edge-v52; do
+            root="$RUNNER_TEMP/stage282-generated-$case"
+            mkdir -p "runtime-evidence/$case"
+            python3 -m tools.foj_stage282_vertical_boundary_sd \
+              --data-root "$root" --shaders native/gpu/build \
+              --case "$case" \
+              > "runtime-evidence/$case/generated-input.json"
+            export NEXIUM_DATA_ROOT="$root"
+            export FOJ_EVIDENCE_DIR="$GITHUB_WORKSPACE/runtime-evidence/$case"
+            export FOJ_V_CASE="$case"
+            timeout --kill-after=5s 240s xvfb-run -a \
+              -s "-screen 0 1280x720x24" \
+              bash tools/foj_stage282_nexium_vertical_drive.sh
+          done
+      - name: Audit vertical V-source GPU profiles, native receipts and original RGB frames
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage282_vertical_boundary_check \
+            --evidence runtime-evidence \
+            --report runtime-evidence/stage282-vertical-boundary-receipt.json
+      - name: Preserve generated-only guest captures and failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage282-vertical-guest-evidence
+          path: runtime-evidence/
+          if-no-files-found: warn
