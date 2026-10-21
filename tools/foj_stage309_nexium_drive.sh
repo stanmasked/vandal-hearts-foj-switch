@@ -62,11 +62,11 @@ for attempt in $(seq 1 30); do
   if python3 - "$FOJ_EVIDENCE_DIR/gpu-initial.png"                  "$FOJ_EVIDENCE_DIR/gpu-later.png" <<'PY'
 from pathlib import Path
 import sys
-from tools.foj_stage309_gutter_gpu_guest import _frame,frame_phase_changed
+from tools.foj_stage309_gutter_gpu_guest import _frame,phase_changed
 a,b=(Path(z) for z in sys.argv[1:])
 try:
     _frame(b)
-    if not frame_phase_changed(a,b):raise ValueError("No phase transition")
+    if not phase_changed(a,b):raise ValueError("No phase transition")
 except (OSError,ValueError):
     raise SystemExit(1)
 PY
