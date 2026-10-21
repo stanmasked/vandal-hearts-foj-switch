@@ -24,8 +24,8 @@ from tools.foj_stage293_converted_dds_guest import (
 SCHEMA="foj.stage302.neixum_bc1_1024_generated_page.v1"
 MARKER="native-stage302-paged-pass.txt"
 RECEIPT="stage302-paged-bc1-guest-receipt.json"
-EXPECTED_MARKER=b"FOJ_NATIVE_STAGE302_PAGE_V1 p=2,1 rgb=25,202,222 size=256\n"
-PAGE_RGB=(25,202,222)
+EXPECTED_MARKER=b"FOJ_NATIVE_STAGE302_PAGE_V1 p=2,1 rgb=24,203,222 size=256\n"
+PAGE_RGB=(24,203,222)
 PUBLIC=(
     "generated-input.json", "dds-before.json", "dds-after.json",
     "gpu-initial.png", "gpu-later.png", "native-sort-pass.txt",
