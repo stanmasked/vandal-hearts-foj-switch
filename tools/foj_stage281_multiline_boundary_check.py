@@ -96,7 +96,7 @@ def verify(root: Path) -> dict:
         "schema": "foj.stage281.real_multiline_alpha_edge.v1",
         "generated_only": True,
         "original_ps3_resources": False,
-        "real_neixum_gpu_frames_required": 4,
+        "real_nexium_gpu_frames_required": 4,
         "rechecked_stage280_source_and_native_provenance": True,
         "row_count_per_frame": len(ROWS),
         "rows": list(ROWS),
