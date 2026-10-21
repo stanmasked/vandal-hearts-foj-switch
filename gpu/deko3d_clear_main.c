@@ -30,6 +30,9 @@
 #include "transparency_sort.h"
 #include "alpha_material_contract.h"
 #endif
+#if defined(FOJ_GPU_DYNAMIC_PASS_CONTRACT)
+#include "alpha_pass_contract.h"
+#endif
 #include "atlas_dds.h"
 #include "dds_screen_status.h"
 #include "dds_command_plan.h"
@@ -121,6 +124,9 @@ static void foj_present_shader_boot_failure(
 
 int main(int argc,char **argv) {
     (void)argc;(void)argv;
+#if defined(FOJ_GPU_DYNAMIC_PASS_CONTRACT) && !defined(FOJ_GPU_DYNAMIC_ALPHA_SORT)
+#error "Stage274 GPU pass contract requires Stage273 dynamic alpha sort"
+#endif
 #if defined(FOJ_GPU_DYNAMIC_ALPHA_SORT) && \
     (!defined(FOJ_GPU_THREE_LAYER_BLEND) || \
      !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) || \
@@ -203,10 +209,39 @@ int main(int argc,char **argv) {
      * Require the sole opaque rear material to be the first pass.
      * The other two may appear in either strict back-to-front order.
      * The presumed opaque rear DDS MUST be 255-alpha in every texel. */
-    if (private_payload.report.atlas_count!=3u ||
-        !foj_gpu_opaque_rear_atlas(
+    if (private_payload.report.atlas_count!=3u) {
+        /* Missing decoded atlas is an invalid bundle, not evidence of
+         * a translucent rear pixel. Never issue the alpha-reject marker. */
+        fprintf(stderr,"FoJ dynamic alpha sort: incomplete atlas bundle\n");
+        foj_gpu_private_bundle_free(&private_payload);
+        return 8;
+    }
+    if (!foj_gpu_opaque_rear_atlas(
             private_payload.rgba[2],&private_payload.report.atlas[2])) {
         fprintf(stderr,"FoJ dynamic alpha sort: non-opaque rear atlas rejected\n");
+#if defined(FOJ_GPU_DYNAMIC_PASS_CONTRACT)
+        /* Stage274 generated-only negative guest: prove the decoded rear
+         * DDS was refused before GPU device creation. Never write source
+         * paths or source pixels to the marker. An existing marker cannot
+         * be overwritten, and a failed receipt is not proof of refusal. */
+        FILE *rear_rejection=fopen(
+            "sdmc:/switch/foj/gpu/foj-native-rear-alpha-reject.txt","wx");
+        if (!rear_rejection) {
+            foj_gpu_private_bundle_free(&private_payload);
+            return 9;
+        }
+        static const char rear_message[]=
+            "FOJ_NATIVE_REAR_ALPHA_REJECT_V1 pre_gpu=1\n";
+        const size_t rear_written=fwrite(
+            rear_message,1,sizeof(rear_message)-1u,rear_rejection);
+        const int rear_flushed=fflush(rear_rejection);
+        const int rear_closed=fclose(rear_rejection);
+        if (rear_written!=sizeof(rear_message)-1u ||
+            rear_flushed!=0 || rear_closed!=0) {
+            foj_gpu_private_bundle_free(&private_payload);
+            return 9;
+        }
+#endif
         foj_gpu_private_bundle_free(&private_payload);
         return 8;
     }
@@ -513,6 +548,34 @@ int main(int argc,char **argv) {
         actor_upload.material_mask!=
             (UINT32_C(1)<<FOJ_RESEARCH_TEXTURE_COUNT)-1u)
         goto cleanup;
+#if defined(FOJ_GPU_DYNAMIC_PASS_CONTRACT)
+    /* Build one validated immutable texture/depth plan for every pass
+     * before command-list recording. A contract error submits no GPU draw. */
+    FojGpuAlphaPass alpha_passes[FOJ_GPU_ALPHA_PASS_COUNT]={0};
+    if (foj_gpu_alpha_pass_contract(
+            draw_ranges,batch_count,dynamic_three_passes,3u,
+            alpha_passes,FOJ_GPU_ALPHA_PASS_COUNT)!=FOJ_GPU_ALPHA_PASS_OK)
+        goto cleanup;
+    /* Optional Stage274-only guest evidence. The native code first
+     * verifies all texture bindings, alpha flags and depth transitions,
+     * then writes a fresh exact descriptor record. This is not a GPU
+     * success claim: NeXium must also capture real RGB frames. */
+    char native_pass_text[128];
+    if (!foj_gpu_alpha_pass_format_receipt(
+            alpha_passes,FOJ_GPU_ALPHA_PASS_COUNT,
+            native_pass_text,sizeof(native_pass_text)))
+        goto cleanup;
+    FILE *native_pass_file=fopen(
+        "sdmc:/switch/foj/gpu/foj-native-alpha-pass.txt","wx");
+    if(!native_pass_file)goto cleanup;
+    const size_t pass_len=strlen(native_pass_text);
+    const size_t pass_saved=fwrite(native_pass_text,1,pass_len,
+                                   native_pass_file);
+    const int pass_flushed=fflush(native_pass_file);
+    const int pass_closed=fclose(native_pass_file);
+    if(pass_saved!=pass_len || pass_flushed!=0 || pass_closed!=0)
+        goto cleanup;
+#endif
     const size_t vertex_upload_bytes=vertex_count*sizeof(FojGpuVertex);
 #else
     const size_t vertex_upload_bytes=sizeof(kResearchTriangle);
@@ -911,10 +974,19 @@ int main(int argc,char **argv) {
 #endif
             for (size_t pass=0;pass<FOJ_RESEARCH_TEXTURE_COUNT;++pass) {
                 const FojGpuDrawRange *range=&draw_ranges[pass_order[pass]];
+#if defined(FOJ_GPU_DYNAMIC_PASS_CONTRACT)
+                const FojGpuAlphaPass *planned=&alpha_passes[pass];
+                if (range->material_index!=planned->material_index ||
+                    range->first_vertex!=planned->first_vertex ||
+                    range->vertex_count!=planned->vertex_count)
+                    goto cleanup;
+                const bool translucent=planned->blend_enabled!=0u;
+#else
 #if defined(FOJ_GPU_THREE_LAYER_BLEND)
                 const bool translucent=range->material_index!=2u;
 #else
                 const bool translucent=range->material_index==0u;
+#endif
 #endif
                 DkColorState pass_color=color_state;
                 dkColorStateSetBlendEnable(&pass_color,0,translucent);
@@ -922,12 +994,26 @@ int main(int argc,char **argv) {
                 if (translucent)
                     dkCmdBufBindBlendStates(cmd,0,&alpha_blend,1);
                 DkDepthStencilState pass_depth=depth_state;
+#if defined(FOJ_GPU_DYNAMIC_PASS_CONTRACT)
+                pass_depth.depthTestEnable=planned->depth_test_enabled!=0u;
+                pass_depth.depthWriteEnable=planned->depth_write_enabled!=0u;
+#else
                 pass_depth.depthWriteEnable=!translucent;
+#endif
                 dkCmdBufBindDepthStencilState(cmd,&pass_depth);
+#if defined(FOJ_GPU_DYNAMIC_PASS_CONTRACT)
+                DkResHandle handle=dkMakeTextureHandle(planned->material_index,0);
+#else
                 DkResHandle handle=dkMakeTextureHandle(range->material_index,0);
+#endif
                 dkCmdBufBindTextures(cmd,DkStage_Fragment,0,&handle,1);
+#if defined(FOJ_GPU_DYNAMIC_PASS_CONTRACT)
+                dkCmdBufDraw(cmd,DkPrimitive_Triangles,
+                             planned->vertex_count,1,planned->first_vertex,0);
+#else
                 dkCmdBufDraw(cmd,DkPrimitive_Triangles,
                              range->vertex_count,1,range->first_vertex,0);
+#endif
             }
 #else
             for (size_t batch=0;batch<batch_count;
