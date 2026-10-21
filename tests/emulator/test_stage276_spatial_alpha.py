@@ -155,6 +155,30 @@ class GeneratedSpatialAlphaTests(unittest.TestCase):
                         SPLIT_X/WIDTH)
         self.assertGreater(u_at(PROBES["right_overlap"][0])-0.03,
                            SPLIT_X/WIDTH)
+        # The entire 9x9 classifier footprint—not just the center—
+        # must lie on its assigned side of the DDS alpha transition.
+        # Compute the affine UV at the true pixel row, because the
+        # triangle's taper makes U change slightly with screen Y.
+        def uv_at(px,py):
+            local_y=(360-py)/scale
+            level=(local_y+.50)/(.69+.50)
+            lower=-.76+level*(.55)
+            upper=.34-level*(.55)
+            left_uv=.5*level
+            right_uv=1.0-.5*level
+            world_x=(px-640)/scale
+            return left_uv+(world_x-lower)/(upper-lower)*(right_uv-left_uv)
+        for name,(cx,cy) in (
+                ("left_overlap",PROBES["left_overlap"]),
+                ("right_overlap",PROBES["right_overlap"])):
+            values=[uv_at(x,y)
+                    for y in range(cy-4,cy+5)
+                    for x in range(cx-4,cx+5)]
+            self.assertEqual(len(values),81)
+            if name=="left_overlap":
+                self.assertLess(max(values),SPLIT_X/WIDTH-.03)
+            else:
+                self.assertGreater(min(values),SPLIT_X/WIDTH+.03)
 
     def test_expected_source_over_pixels_are_distinct(self):
         self.assertEqual(target_rgb(128),(111,100,162))
