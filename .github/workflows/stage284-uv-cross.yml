@@ -1,5 +1,11 @@
 name: Stage285 GPU U/V cross-intersection audit
 
+# Keep only the newest commit's guest run for this PR; old queued captures
+# are stale by construction and otherwise consume the shared Actions queue.
+concurrency:
+  group: stage285-uv-cross-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
     paths:
