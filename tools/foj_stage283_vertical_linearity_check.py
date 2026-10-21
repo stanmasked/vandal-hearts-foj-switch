@@ -190,7 +190,8 @@ def verify(root: Path) -> dict:
         "native_pass_receipts_checked": True,
         "sampler_filter_mode": "NOT_INFERRED",
         "physical_switch_verified": False,
-        "cases": cases,\n        "segment_displacements": segment_displacements,
+        "cases": cases,
+        "segment_displacements": segment_displacements,
     }
 
 
