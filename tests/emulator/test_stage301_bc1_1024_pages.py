@@ -32,7 +32,7 @@ def patterned_bc1(*, transparent=False):
             pixels = 0
             for y in range(4):
                 for x in range(4):
-                    index = (bx + 3*by + x + 2*y) % 4
+                    index = (bx + 3*by + x + 2*y + bx//64 + by//64) % 4
                     pixels |= index << (2 * (y*4+x))
             struct.pack_into("<HHI",raw,offset,c0,c1,pixels)
     return bytes(raw)
@@ -163,7 +163,7 @@ class NativeBC1PageTests(unittest.TestCase):
 
     def test_invalid_magic_or_header_sizes_rejected(self):
         original=bytearray(patterned_bc1())
-        for index,value in ((0,0),(4,0),(76,0),(108,0),(124,1)):
+        for index,value in ((0,0),(4,0),(76,0),(109,0),(124,1)):
             with self.subTest(offset=index):
                 raw=bytearray(original)
                 raw[index]=value
