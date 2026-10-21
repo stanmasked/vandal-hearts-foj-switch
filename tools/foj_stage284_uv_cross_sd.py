@@ -44,7 +44,9 @@ def expected_at(label: str) -> tuple[int, int, int]:
     raise ValueError("Unknown Stage284 probe")
 
 
-def near_atlas() -> bytes:
+def near_atlas(case: str = CASE) -> bytes:
+    if case != CASE:
+        raise ValueError("Unknown Stage284 DDS case")
     baseline = generated_dds((*VIOLET, 128))
     if len(baseline) != 128 + WIDTH * WIDTH * 4:
         raise ValueError("Unexpected generated DDS layout")
