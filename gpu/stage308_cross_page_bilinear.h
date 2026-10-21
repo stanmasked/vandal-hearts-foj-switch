@@ -5,6 +5,7 @@
  * 1024x1024 atlas split into 256x256 pages; row within pages 0..255.
  */
 #include <stdint.h>
+#include <stddef.h>
 #include "stage303_bc1_page_uv.h"
 
 /* Return 1 iff both page buffers have exactly 256x256x4 RGBA bytes,
@@ -14,7 +15,8 @@
  * unchanged on every failure. No implicitly clamped unrelated U.
  */
 int foj_stage308_cross_page_bilinear(
-    const uint8_t *left_rgba, const uint8_t *right_rgba,
+    const uint8_t *left_rgba, size_t left_bytes,
+    const uint8_t *right_rgba, size_t right_bytes,
     unsigned row_y, float atlas_u, uint8_t out_rgba[4]);
 
 /* Compare with independent clamp-to-edge lookups at the *same* seam:
