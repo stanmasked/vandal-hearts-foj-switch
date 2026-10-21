@@ -70,7 +70,28 @@ def compare(left:Path,right:Path)->dict:
         for side,locations in EDGES.items():
             for band,boundary in enumerate(locations):
                 before,after=COLORS[side][band:band+2]
-                for x,nearest_color in ((boundary-1,before),(boundary,after)):
+                # NeXium's captured client framebuffer includes a small
+                # presentation/viewport inset: 1280 pixels in the PNG do
+                # not imply clip x=-0.6 begins exactly at x=256. Locate
+                # each nearest *actual step* inside a tightly bounded
+                # +/-16px search window, preserving exact color and band
+                # order. Then compare LINEAR at that SAME measured edge.
+                candidates=[]
+                for x in range(boundary-16,boundary+17):
+                    if x<=0 or x>=1280:
+                        continue
+                    prev=_pixel(n,x-1,400)
+                    following=_pixel(n,x,400)
+                    if (all(abs(prev[k]-before[k])<=4 for k in range(3))
+                            and all(abs(following[k]-after[k])<=4
+                                    for k in range(3))):
+                        candidates.append(x)
+                if len(candidates)!=1:
+                    raise ValueError(
+                        f"Stage307 {side} band={band} expected nearest step "
+                        f"within +/-16px of x={boundary}; found={candidates}")
+                edge=candidates[0]
+                for x,nearest_color in ((edge-1,before),(edge,after)):
                     samples+=1
                     exact=_pixel(n,x,400)
                     smoothed=_pixel(l,x,400)
