@@ -8,8 +8,8 @@ Stage307 uses the same exact generated-only texture and 15-vertex split-quad sce
 
 | Build flag | Native `DkSampler` minFilter | magFilter | UV wrap |
 | --- | --- | --- | --- |
-| `STAGE307_FILTER=0` | `DkMipFilter_Nearest` | `DkMipFilter_Nearest` | ClampToEdge |
-| `STAGE307_FILTER=1` | `DkMipFilter_Linear` | `DkMipFilter_Linear` | ClampToEdge |
+| `STAGE307_FILTER=0` | `DkFilter_Nearest` | `DkFilter_Nearest` | ClampToEdge |
+| `STAGE307_FILTER=1` | `DkFilter_Linear` | `DkFilter_Linear` | ClampToEdge |
 
 deko3d permits explicit `DkSampler` min/mag filter control, according to [devkitPro's deko3d Primer](https://github.com/devkitPro/deko3d/blob/master/Primer.md). Both NROs write a distinct **native guest-authored** receipt after sampler descriptor initialization: `FOJ_NATIVE_STAGE307_FILTER_V1` with exact selected min/mag mode. Such a marker on its own does **not** establish GPU filtering; it just ties an actual native code path to the generated scene.
 
