@@ -253,7 +253,7 @@ jobs:
               -s "-screen 0 1280x720x24" \
               bash tools/foj_stage284_nexium_uv_cross_drive.sh
           done
-      - name: Audit vertical V-source GPU profiles, native receipts and original RGB frames
+      - name: Audit simultaneous U/V profiles, native receipts and original RGB frames
         shell: bash
         run: |
           set -euo pipefail
