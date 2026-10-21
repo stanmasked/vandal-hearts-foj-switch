@@ -27,7 +27,7 @@ For two real NeXium guest instances/four original RGB frames, check **three X co
 - Y displacement from the 12-texel V shift must be **65±6 pixels** for each sampled column. An unchanged screen-space edge must fail.
 - Both frames of a given input mask must retain exactly the same material profiles; genuine background clear phases must differ.
 
-Retain the guest-generated precise sort receipt `2,1,0` and exact blend/depth pass receipt, forbid contradictory GPU refusal markers, and reject duplicate screenshots or mutated source input. Mock Pillow PNGs exercise the **13 new host regressions** but **do not establish GPU execution**.
+Retain the guest-generated precise sort receipt `2,1,0` and exact blend/depth pass receipt, forbid contradictory GPU refusal markers, and reject duplicate screenshots or mutated source input. Mock Pillow PNGs exercise the **14 new host regressions** but **do not establish GPU execution**.
 
 ## CI plan / acceptance
 
