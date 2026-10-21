@@ -985,11 +985,11 @@ int main(int argc,char **argv) {
     dkSamplerDefaults(&sampler);
 #if defined(FOJ_GPU_STAGE307_FILTER)
 #if FOJ_GPU_STAGE307_FILTER == 0
-    sampler.minFilter=DkMipFilter_Nearest;
-    sampler.magFilter=DkMipFilter_Nearest;
+    sampler.minFilter=DkFilter_Nearest;
+    sampler.magFilter=DkFilter_Nearest;
 #elif FOJ_GPU_STAGE307_FILTER == 1
-    sampler.minFilter=DkMipFilter_Linear;
-    sampler.magFilter=DkMipFilter_Linear;
+    sampler.minFilter=DkFilter_Linear;
+    sampler.magFilter=DkFilter_Linear;
 #else
 #error "Stage307 only permits explicit nearest=0 or linear=1"
 #endif
