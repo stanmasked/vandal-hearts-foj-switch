@@ -26,7 +26,7 @@ static uint8_t *synthetic_dds(void) {
     for (unsigned row=0;row<256u;++row) {
         for (unsigned col=0;col<256u;++col) {
             const unsigned page_x=col/64u,page_y=row/64u;
-            const int lower_half=(row%64u)>=32u;
+            const int lower_half=row>=128u;
             uint16_t color=0x0000u;
             if (page_y==1u && page_x==1u)
                 color=(uint16_t)(lower_half?0xf800u:0x001fu); /* red/blue */
