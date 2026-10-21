@@ -30,12 +30,6 @@ class UVIntersectionTests(unittest.TestCase):
         fn(image)
         image.save(path)
 
-    @staticmethod
-    def _paint_expected_grid(frame, split_x, split_y):
-        path = Path(frame)
-        # This helper is redirected to the active temporary fixture below.
-        raise AssertionError("fixture path must be supplied by _paint_expected_grid")
-
     def _paint_expected_grid(self, frame, split_x, split_y):
         path = self.folder / frame
         with Image.open(path) as source:
