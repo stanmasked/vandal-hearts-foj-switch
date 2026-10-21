@@ -24,7 +24,7 @@ For two real NeXium guest instances/four original RGB frames, check **three X co
 - Three-channel projection onto the physically possible straight-alpha RGB trajectory, including out-of-envelope/off-curve rejection.
 - Monotone clear-top to opaque-bottom progression, allowing both step and filtered transitions **without claiming which sampler mode is configured**.
 - Expected half-opacity crossing Y±5; crossings agree across all three columns (range ≤4).
-- Y displacement from the 12-texel V shift must be **65±6 pixels** for each sampled column. An unchanged screen-space edge must fail.
+- Y displacement from the 12-texel V shift must be **68±6 pixels** for each sampled column. An unchanged screen-space edge must fail.
 - Both frames of a given input mask must retain exactly the same material profiles; genuine background clear phases must differ.
 
 Retain the guest-generated precise sort receipt `2,1,0` and exact blend/depth pass receipt, forbid contradictory GPU refusal markers, and reject duplicate screenshots or mutated source input. Mock Pillow PNGs exercise the **13 new host regressions** but **do not establish GPU execution**.
