@@ -178,4 +178,4 @@ if Path(sys.argv[1]).read_bytes()!=expected:
 PY
 cp -- "$sort_marker" "$FOJ_EVIDENCE_DIR/native-sort-pass.txt"
 cp -- "$pass_marker" "$FOJ_EVIDENCE_DIR/native-alpha-pass.txt"
-echo "Stage283: two real NeXium frames with V-direction DDS alpha and bound native pass states"
+echo "Stage283: verified six real NeXium frames across three V splits"
