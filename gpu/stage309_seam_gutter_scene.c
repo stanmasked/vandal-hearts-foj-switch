@@ -113,7 +113,7 @@ int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
     /* Draw 2 original pages first, then a narrow foreground gutter
      * patch that reconstructs both page-edge texels with GPU linear
      * filtering. It is intentionally an explicit layout choice. */
-    rect(verts+0,-.03f,.03f,.42f,127.5f/256.f,128.5f/256.f);
+    rect(verts+0,-.03f,.03f,.68f,127.5f/256.f,128.5f/256.f);
     rect(verts+6,0.f,.6f,.55f,.5f,.5f);
     rect(verts+12,-.6f,0.f,.55f,.5f,.5f);
     batches[0]=(FojGpuBatch){0u,6u,0u};
