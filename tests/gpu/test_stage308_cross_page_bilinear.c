@@ -49,7 +49,8 @@ static void check_blending(const uint8_t *left,const uint8_t *right,
                            const uint8_t expected_middle[4]) {
     uint8_t got[4]={99,98,97,96};
     const float center=.5f;
-    assert(foj_stage308_cross_page_bilinear(left,right,y,center,got));
+    assert(foj_stage308_cross_page_bilinear(left,FOJ_BC1_PAGE_RGBA_BYTES,
+        right,FOJ_BC1_PAGE_RGBA_BYTES,y,center,got));
     expect_rgba(got,expected_middle);
     assert(foj_stage308_requires_two_pages(rgb_left,rgb_right,got)==1);
     assert(foj_stage308_requires_two_pages(rgb_left,rgb_left,got)==0);
@@ -57,16 +58,20 @@ static void check_blending(const uint8_t *left,const uint8_t *right,
     assert(foj_stage308_requires_two_pages(rgb_left,rgb_right,rgb_right)==0);
 
     const float first=511.5f/1024.f,last=512.5f/1024.f;
-    assert(foj_stage308_cross_page_bilinear(left,right,y,first,got));
+    assert(foj_stage308_cross_page_bilinear(left,FOJ_BC1_PAGE_RGBA_BYTES,
+        right,FOJ_BC1_PAGE_RGBA_BYTES,y,first,got));
     expect_rgba(got,rgb_left);
-    assert(foj_stage308_cross_page_bilinear(left,right,y,last,got));
+    assert(foj_stage308_cross_page_bilinear(left,FOJ_BC1_PAGE_RGBA_BYTES,
+        right,FOJ_BC1_PAGE_RGBA_BYTES,y,last,got));
     expect_rgba(got,rgb_right);
     const float quarter=(511.75f/1024.f);
     const float three_quarters=(512.25f/1024.f);
-    assert(foj_stage308_cross_page_bilinear(left,right,y,quarter,got));
+    assert(foj_stage308_cross_page_bilinear(left,FOJ_BC1_PAGE_RGBA_BYTES,
+        right,FOJ_BC1_PAGE_RGBA_BYTES,y,quarter,got));
     for (unsigned k=0;k<4u;++k)
         assert(abs((int)got[k]-(int)lroundf(.75f*rgb_left[k]+.25f*rgb_right[k]))<=1);
-    assert(foj_stage308_cross_page_bilinear(left,right,y,three_quarters,got));
+    assert(foj_stage308_cross_page_bilinear(left,FOJ_BC1_PAGE_RGBA_BYTES,
+        right,FOJ_BC1_PAGE_RGBA_BYTES,y,three_quarters,got));
     for (unsigned k=0;k<4u;++k)
         assert(abs((int)got[k]-(int)lroundf(.25f*rgb_left[k]+.75f*rgb_right[k]))<=1);
 }
@@ -120,10 +125,26 @@ int main(void) {
     for (unsigned i=0;i<sizeof(fail)/sizeof(fail[0]);++i) {
         memcpy(out,guard,4u);
         assert(foj_stage308_cross_page_bilinear(
-            fail[i].l,fail[i].r,fail[i].y,fail[i].u,out)==0);
+            fail[i].l,FOJ_BC1_PAGE_RGBA_BYTES,
+            fail[i].r,FOJ_BC1_PAGE_RGBA_BYTES,fail[i].y,fail[i].u,out)==0);
         expect_rgba(out,guard);
     }
-    assert(foj_stage308_cross_page_bilinear(left,right,0,.5f,NULL)==0);
+    assert(foj_stage308_cross_page_bilinear(
+        left,FOJ_BC1_PAGE_RGBA_BYTES,right,FOJ_BC1_PAGE_RGBA_BYTES,
+        0,.5f,NULL)==0);
+    for (unsigned side=0;side<2u;++side) {
+        for (unsigned kind=0;kind<3u;++kind) {
+            const size_t wrong=kind==0?0u:
+                kind==1?FOJ_BC1_PAGE_RGBA_BYTES-1u:
+                        FOJ_BC1_PAGE_RGBA_BYTES+1u;
+            memcpy(out,guard,4u);
+            assert(foj_stage308_cross_page_bilinear(
+                left,side==0u?wrong:FOJ_BC1_PAGE_RGBA_BYTES,
+                right,side==1u?wrong:FOJ_BC1_PAGE_RGBA_BYTES,
+                0,.5f,out)==0);
+            expect_rgba(out,guard);
+        }
+    }
     assert(foj_stage308_requires_two_pages(NULL,blue,midpoint1)==0);
     assert(foj_stage308_requires_two_pages(blue,NULL,midpoint1)==0);
     assert(foj_stage308_requires_two_pages(blue,yellow,NULL)==0);
