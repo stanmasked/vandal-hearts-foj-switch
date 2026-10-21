@@ -1,0 +1,45 @@
+name: Stage290 owner-local DDS compatibility triage (synthetic CI)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage290-private-texture-compatibility.yml'
+      - 'tools/foj_stage290_private_texture_compatibility.py'
+      - 'tests/emulator/test_stage290_private_texture_compatibility.py'
+      - 'tools/foj_texture_probe.py'
+      - 'tools/foj_texture_relations.py'
+      - 'tools/foj_gpu_local_dds_preflight.py'
+      - 'tools/foj_fd_bound_reader.py'
+      - 'docs/GPU_STAGE290_PRIVATE_TEXTURE_COMPATIBILITY.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage290-texture-triage-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stage290-host:
+    name: Synthetic-only compatibility gate / Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Validate Stage290 source and synthetic-only fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tools/foj_stage290_private_texture_compatibility.py
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage290_private_texture_compatibility.py' -v
+          echo 'STAGE290_SYNTHETIC_PRIVATE_TRIAGE_PASS'
+      # No game data, extracted files, screenshots, or artifacts in public CI.
