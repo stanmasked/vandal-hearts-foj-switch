@@ -25,6 +25,34 @@ if compgen -G "$sd/foj-boot-*.txt" >/dev/null; then
   exit 2
 fi
 mkdir -p "$FOJ_EVIDENCE_DIR"
+# Before launching the guest, independently verify the exact DDS bytes
+# and the manifest digests. A one-byte mutation claim on its own is not
+# enough: the actual file must contain only that invented change.
+python3 - "$sd/material2.dds" "$FOJ_EVIDENCE_DIR/generated-input.json" <<'PY'
+import hashlib
+import json
+from pathlib import Path
+import sys
+from tools.foj_stage260_generated_gpu_sd import generated_dds
+from tools.foj_stage266_transparency_order import COOL
+
+actual_path,manifest_path=(Path(x) for x in sys.argv[1:])
+if actual_path.is_symlink() or manifest_path.is_symlink():
+    raise SystemExit("Stage274 refuses linked negative DDS/provenance")
+manifest=json.loads(manifest_path.read_text(encoding="utf-8"))
+clean=generated_dds((*COOL,255))
+expected=bytearray(clean)
+if len(clean)!=128+64*64*4 or expected[131]!=255:
+    raise SystemExit("Stage274 synthetic DDS contract mismatch")
+expected[131]=254
+if actual_path.read_bytes()!=expected:
+    raise SystemExit("Stage274 negative DDS changed more than one alpha byte")
+if (manifest.get("original_rear_dds_sha256")!=
+        hashlib.sha256(clean).hexdigest() or
+    manifest.get("mutated_rear_dds_sha256")!=
+        hashlib.sha256(expected).hexdigest()):
+    raise SystemExit("Stage274 negative DDS SHA-256 manifest mismatch")
+PY
 "$NEXIUM_BIN" "$FOJ_NRO" >"$FOJ_EVIDENCE_DIR/guest.log" 2>&1 &
 guest=$!
 trap 'kill -KILL "$guest" 2>/dev/null || true; wait "$guest" 2>/dev/null || true' EXIT
