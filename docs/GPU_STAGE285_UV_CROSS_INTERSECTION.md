@@ -2,14 +2,14 @@
 
 **Stacked on:** [Stage284 PR #169](https://github.com/stanmasked/vandal-hearts-foj-switch/pull/169), successful real-NeXium workflow [#39628839955](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/39628839955).
 
-Stage284 established horizontal U and vertical V boundaries independently in the same generated DDS and audited 324 one-dimensional RGB samples per two-frame capture set. Stage285 adds a strict 17×17 raster audit centered on their crossing.
+Stage284 established horizontal U and vertical V boundaries independently in the same generated DDS and audited 324 one-dimensional RGB samples across two captured frames. Stage285 adds a strict 17×17 raster audit centered on their crossing.
 
 ## Intersection contract
 
 - Expected U boundary: X = 649.
 - Expected V boundary: Y = 395.
 - Sample window: X = 641…657 and Y = 387…403 (17×17 = 289 pixels per frame).
-- Both actual NeXium frames must contain the same exact 2-D profile: clear-source RGB \`(126, 129, 123)\` everywhere except the southeast 9×9 quadrant, which must be opaque-source RGB \`(96, 72, 201)\`.
+- Both actual NeXium frames must contain the same 2-D profile: clear-source RGB near (127, 128, 123) everywhere except the southeast 9×9 quadrant, which must be opaque-source RGB (96, 72, 201). Each channel allows at most ±2 integer values to accommodate measured blend rounding; quadrant geometry remains exact.
 - Four quadrant counts must be 64 northwest-clear, 72 northeast-clear, 72 southwest-clear and 81 southeast-opaque samples.
 - The four pixels surrounding the crossing are checked explicitly; a one-pixel shift or a leak into any transparent quadrant is rejected.
 - The full 289-pixel intersection patch must be byte-for-byte stable between the two captured frames. A regression test explicitly accepts the real guest’s one-unit RGB rounding difference while rejecting spatial leaks and shifted edges.
