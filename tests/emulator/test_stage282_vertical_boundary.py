@@ -15,6 +15,7 @@ from tools.foj_stage280_shifted_boundary_sd import target_rgb
 from tools.foj_stage282_vertical_boundary_sd import (
     SCHEMA, CASES, SPLITS, WIDTH, COLUMNS, EXPECTED_Y,
     PROBE_X, near_atlas, expected_at, positions, profile_y,
+    NATIVE_EXPECTED_Y, NATIVE_FRAME_HEIGHT, CAPTURE_VIEWPORT_HEIGHT,
 )
 from tools.foj_stage282_vertical_boundary_check import inspect, verify
 
@@ -35,6 +36,10 @@ def mock_files(root: Path) -> None:
             "near_original_dds_sha256": original,
             "near_alpha_split_y": SPLITS[case],
             "expected_half_transition_y": EXPECTED_Y[case],
+            "native_expected_half_transition_y": NATIVE_EXPECTED_Y[case],
+            "native_framebuffer_height": NATIVE_FRAME_HEIGHT,
+            "capture_viewport_height": CAPTURE_VIEWPORT_HEIGHT,
+            "capture_scale_y": round(CAPTURE_VIEWPORT_HEIGHT / NATIVE_FRAME_HEIGHT, 8),
             "near_texture_dimensions": [WIDTH, WIDTH],
             "profile_x_columns": list(COLUMNS),
             "profile_y_positions": list(profile_y(case)),
@@ -101,10 +106,13 @@ class Stage282VerticalBoundaryTests(unittest.TestCase):
         bottom = (1.0 - .84 * (-.50)) * 360.0
         self.assertAlmostEqual(top, 151.344)
         self.assertAlmostEqual(bottom, 511.2)
+        scale_y = CAPTURE_VIEWPORT_HEIGHT / NATIVE_FRAME_HEIGHT
         for case in CASES:
             with self.subTest(case=case):
-                projected = top + (bottom - top) * SPLITS[case] / 64.0
-                self.assertEqual(round(projected), EXPECTED_Y[case])
+                projected_native = top + (bottom - top) * SPLITS[case] / 64.0
+                self.assertAlmostEqual(projected_native, NATIVE_EXPECTED_Y[case])
+                projected_capture = projected_native * scale_y
+                self.assertEqual(round(projected_capture), EXPECTED_Y[case])
 
     def test_324_synthetic_rgb_samples_accepted_without_sampler_inference(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -120,7 +128,7 @@ class Stage282VerticalBoundaryTests(unittest.TestCase):
                            ["half_transition_y"] for case in CASES]
                 self.assertEqual(crossings,
                                  [EXPECTED_Y[case] for case in CASES])
-                self.assertEqual(crossings[1] - crossings[0], 68)
+                self.assertEqual(crossings[1] - crossings[0], 65)
 
     def test_gradual_physically_possible_alpha_edge_is_allowed(self):
         from tools.foj_stage280_shifted_boundary_check import (
