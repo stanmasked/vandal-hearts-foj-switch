@@ -26,7 +26,10 @@ static uint8_t *synthetic_dds(void) {
     for (unsigned row=0;row<256u;++row) {
         for (unsigned col=0;col<256u;++col) {
             const unsigned page_x=col/64u,page_y=row/64u;
-            const int lower_half=row>=128u;
+            /* BC1 loop rows are 4-pixel blocks, not decoded pixel rows.
+             * Page y=1 is compressed block rows 64..127, so the
+             * local halfway point is compressed row 96. */
+            const int lower_half=(row%64u)>=32u;
             uint16_t color=0x0000u;
             if (page_y==1u && page_x==1u)
                 color=(uint16_t)(lower_half?0xf800u:0x001fu); /* red/blue */
