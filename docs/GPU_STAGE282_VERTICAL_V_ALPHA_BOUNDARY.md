@@ -6,14 +6,14 @@ Stages280–281 demonstrated U-driven horizontal alpha-edge relocation and the s
 
 ## Independent vertical projection and masks
 
-From the original verified Stage281 `1280×720` NeXium GPU artifact, the unchanged near triangle's projected upper vertex is around **Y=146** at source UV V=0 and its bottom edge around **Y=493** at V=1. An orthographic constant-V boundary therefore maps approximately to screen `Y≈146+347*(split/64)`. This projects split 40 at **363**, split 52 at **428**, approximately **65 pixels apart**. The prediction is made **before viewing Stage282 frames**, and allowed tolerance is ±5 for each measured crossing and ±6 for the displacement. It is specific to this NeXium capture geometry, not a claim about all window scaling or hardware.
+The prediction is derived from the frozen native C11 `foj_gpu_prepare_stream` projection, not screenshot-bound estimates. With a 1280×720 framebuffer, `extent=2`, and camera zoom 1, the code sets `ny=.84`; the near triangle vertices are at world Y=0.69 with UV V=0 (apex) and Y=-0.50 with V=1 (base). This gives framebuffer Y=151.344 at V=0 and Y=511.200 at V=1, hence `Y=151.344+359.856*(split/64)`: split 40 predicts **Y=376.254** (target pixel 376), split 52 predicts **Y=443.727** (target pixel 444), approximately **67.5 pixels apart**. The predicted crossing is checked at ±5 pixels and displacement at ±6. This is specific to the frozen NeXium guest geometry/resolution and does not assume a sampler mode.
 
 Both generated-only `64×64 RGBA8 DDS` inputs change exactly **4096 alpha bytes** relative to the canonical violet-alpha128 DDS, and **zero header/RGB bytes**:
 
 | New case | Alpha when DDS y is above split | Alpha at/under split | Expected screen crossing |
 |---|---|---|---|
-| `edge-v40` | 0 | 255 | Y≈363 |
-| `edge-v52` | 0 | 255 | Y≈428 |
+| `edge-v40` | 0 | 255 | Y≈376 |
+| `edge-v52` | 0 | 255 | Y≈444 |
 
 Only generated `material0.dds` is modified between cases. No PS3 resources, game PKG or original game files are loaded or published. Independently check exact SHA-256 of each full DDS before and after guest.
 
