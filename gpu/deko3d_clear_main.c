@@ -1011,10 +1011,10 @@ int main(int argc,char **argv) {
     if (!filter_marker)goto cleanup;
 #if FOJ_GPU_STAGE307_FILTER == 0
     static const char filter_text[]=
-        "FOJ_NATIVE_STAGE307_FILTER_V1 mode=nearest mag=nearest min=nearest clamp=edge\\n";
+        "FOJ_NATIVE_STAGE307_FILTER_V1 mode=nearest mag=nearest min=nearest clamp=edge\n";
 #else
     static const char filter_text[]=
-        "FOJ_NATIVE_STAGE307_FILTER_V1 mode=linear mag=linear min=linear clamp=edge\\n";
+        "FOJ_NATIVE_STAGE307_FILTER_V1 mode=linear mag=linear min=linear clamp=edge\n";
 #endif
     const size_t filter_written=fwrite(
         filter_text,1,sizeof(filter_text)-1u,filter_marker);
