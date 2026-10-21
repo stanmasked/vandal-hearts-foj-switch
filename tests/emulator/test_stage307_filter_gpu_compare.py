@@ -106,7 +106,7 @@ class FilterEvidenceMocks(unittest.TestCase):
     def test_bad_eight_band_geometry_also_refused(self):
         path=self.n/"bridge"/"gpu-initial.png"
         with Image.open(path) as im:changed=im.convert("RGB")
-        changed.putpixel((304,400),(20,20,20))
+        ImageDraw.Draw(changed).rectangle((300,396,308,404),fill=(20,20,20))
         changed.save(path)
         with self.assertRaises(ValueError):audit(self.n/"bridge","nearest")
 
