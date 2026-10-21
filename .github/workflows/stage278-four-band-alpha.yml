@@ -3,7 +3,7 @@ name: Stage278 four-band alpha 0/64/128/255 rasterized in real NeXium
 on:
   pull_request:
     paths:
-      - '.github/workflows/stage278-four-band-alpha-atlas.yml'
+      - '.github/workflows/stage278-four-band-alpha.yml'
       - 'tools/foj_stage278_*'
       - 'tools/foj_stage277_*'
       - 'tests/emulator/test_stage277_intermediate_alpha.py'
