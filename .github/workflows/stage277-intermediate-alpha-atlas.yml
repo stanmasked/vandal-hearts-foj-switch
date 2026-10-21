@@ -1,10 +1,12 @@
-name: Stage277 spatial per-texel alpha atlas in real NeXium
+name: Stage277 intermediate alpha64/192 rasterized in real NeXium
 
 on:
   pull_request:
     paths:
       - '.github/workflows/stage277-intermediate-alpha-atlas.yml'
       - 'tools/foj_stage277_*'
+      - 'tools/foj_stage276_*'
+      - 'tests/emulator/test_stage276_spatial_alpha.py'
       - 'tests/emulator/test_stage277_intermediate_alpha.py'
       - 'gpu/topology_reject_contract.mk'
       - 'tools/foj_stage275_*'
