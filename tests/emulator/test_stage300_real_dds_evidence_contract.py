@@ -177,7 +177,7 @@ class NativeHistoricalDDSParity(unittest.TestCase):
         info=self.AtlasInfo(123,456,789)
         self.assertEqual(self.atlas_decode(ptr,len(blob),untouched,16,
                                            ctypes.byref(info)),0)
-        self.assertEqual(bytes(untouched),b"\\x5a"*16)
+        self.assertEqual(bytes(untouched),bytes([0x5a])*16)
         self.assertEqual((info.width,info.height,info.pixel_bytes),(123,456,789))
 
     def test_wrong_256_dds_source_mask_rejected_by_native_atlas(self):
@@ -189,7 +189,7 @@ class NativeHistoricalDDSParity(unittest.TestCase):
         info=self.AtlasInfo(1,2,3)
         self.assertEqual(self.atlas_decode(src,len(blob),sentinel,16,
                                            ctypes.byref(info)),0)
-        self.assertEqual(bytes(sentinel),b"\\x33"*16)
+        self.assertEqual(bytes(sentinel),bytes([0x33])*16)
         self.assertEqual((info.width,info.height,info.pixel_bytes),(1,2,3))
 
     def test_bc1_transparent_palette_mode_agrees_across_c_decoders(self):
