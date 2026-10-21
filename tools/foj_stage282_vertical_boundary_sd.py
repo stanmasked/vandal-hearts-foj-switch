@@ -22,10 +22,10 @@ SCHEMA = "foj.stage282.vertical_alpha_dds.v1"
 SPLITS = {"edge-v40": 40, "edge-v52": 52}
 CASES = tuple(SPLITS)
 WIDTH = 64
-# Preselected independently from the Stage281 *real* guest triangle
-# silhouette: top pixel row ~146 (UV V=0) and bottom ~493 (UV V=1).
-# Projected source split positions 146 + 347 * split/64 -> 363, 428.
-EXPECTED_Y = {"edge-v40": 363, "edge-v52": 428}
+# Derived from frozen native C11 projection for triangle vertices y=0.69 at
+# V=0 and y=-0.50 at V=1. With 1280x720, screen Y=151.344 at the apex
+# and 511.200 at the bottom: Y=151.344+359.856*split/64 -> 376,444.
+EXPECTED_Y = {"edge-v40": 376, "edge-v52": 444}
 PROBE_X = 630
 COLUMNS = (624, 630, 636)
 ATLAS = "material0.dds"
