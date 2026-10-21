@@ -60,6 +60,16 @@ class UVIntersectionTests(unittest.TestCase):
         self.assertTrue(receipt["generated_only"])
         self.assertFalse(receipt["original_ps3_resources"])
 
+    def test_one_channel_rgb_rounding_noise_is_accepted(self):
+        # The real NeXium frame differs from the integer blend target by one
+        # channel value at clear pixels; geometry and quadrant classification
+        # must remain strict while this harmless rounding difference is allowed.
+        self._mutate("gpu-initial.png",
+                     lambda image: image.putpixel((641, 387), (126, 129, 123)))
+        receipt = verify(self.root)
+        self.assertEqual(receipt["frames"][0]["max_channel_delta"], 1)
+        self.assertEqual(receipt["frames"][0]["rgb_channel_tolerance"], 2)
+
     def test_opaque_pixel_leaking_into_northeast_quadrant_rejected(self):
         self._mutate("gpu-initial.png",
                      lambda image: image.putpixel((650, 394), target_rgb(255)))
