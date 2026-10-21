@@ -75,10 +75,10 @@ def install_masked(root:Path,shaders:Path,case:str)->dict:
         raise ValueError("Spatial DDS differs outside supported header contract")
     # Only the generated RGBA8 alpha bytes can change.
     diff=[i for i,(a,b) in enumerate(zip(payload,pristine)) if a!=b]
+    expected_changes=(SPLIT_X if case=="alpha-left-clear"
+                      else WIDTH-SPLIT_X)*WIDTH
     if (not diff or any(i<128 or (i-128)%4!=3 for i in diff)
-        or len(diff)!=SPLIT_X*WIDTH if case=="alpha-left-clear"
-        else not diff or any(i<128 or (i-128)%4!=3 for i in diff)
-        or len(diff)!=(WIDTH-SPLIT_X)*WIDTH):
+        or len(diff)!=expected_changes):
         raise ValueError("Spatial DDS changed an unexpected source byte")
     root=Path(root)
     report=install_dynamic(root,shaders,"original")
