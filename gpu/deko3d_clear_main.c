@@ -236,7 +236,13 @@ int main(int argc,char **argv) {
         foj_gpu_private_bundle_free(&private_payload);
         return 15;
     }
-#if defined(FOJ_GPU_STAGE316_CORNER_GUTTER)
+#if defined(FOJ_GPU_STAGE323_TILE_GUTTER)
+#if !defined(FOJ_GPU_STAGE316_CORNER_GUTTER) ||     !defined(FOJ_GPU_STAGE309_GUTTER_SCENE) ||     !defined(FOJ_GPU_STAGE309_LINEAR_GUTTER)
+#error "Stage323 requires linear Stage316 synthetic four-page GPU path"
+#endif
+    FILE *const seam_marker=fopen(
+        "sdmc:/switch/foj/gpu/foj-native-stage323-bounded-tile-pass.txt","wx");
+#elif defined(FOJ_GPU_STAGE316_CORNER_GUTTER)
 #if !defined(FOJ_GPU_STAGE309_GUTTER_SCENE) || !defined(FOJ_GPU_STAGE309_LINEAR_GUTTER)
 #error "Stage316 requires the separate linear Stage309 generated three-material path"
 #endif
@@ -262,7 +268,10 @@ int main(int argc,char **argv) {
         foj_gpu_private_bundle_free(&private_payload);
         return 15;
     }
-#if defined(FOJ_GPU_STAGE316_CORNER_GUTTER)
+#if defined(FOJ_GPU_STAGE323_TILE_GUTTER)
+    static const char seam_marker_text[]=
+        "FOJ_NATIVE_STAGE323_BOUNDED_TILE_V1 pages=1,1+2,1+1,2+2,2 tile=16x16 bytes=1024 verts=18\n";
+#elif defined(FOJ_GPU_STAGE316_CORNER_GUTTER)
     static const char seam_marker_text[]=
         "FOJ_NATIVE_STAGE316_FOUR_CORNER_V1 pages=1,1+2,1+1,2+2,2 colors=4 strict_center=1 verts=18\n";
 #elif defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
