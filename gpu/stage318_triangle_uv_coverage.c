@@ -69,8 +69,10 @@ int foj_stage318_triangle_page_coverage(
         if(!isfinite(u)||!isfinite(v)||
            u<0.f||u>1.f||v<0.f||v>1.f)return 0;
         original[k]=(Point){(double)u,(double)v};
-        if(u<min_u)min_u=u;if(u>max_u)max_u=u;
-        if(v<min_v)min_v=v;if(v>max_v)max_v=v;
+        if(u<min_u)min_u=u;
+        if(u>max_u)max_u=u;
+        if(v<min_v)min_v=v;
+        if(v>max_v)max_v=v;
     }
     const double area=poly_area(original,3u);
     if(area<=1e-10)return 0;
