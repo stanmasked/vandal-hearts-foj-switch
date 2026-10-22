@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - '.github/workflows/stage325-corner-tile-partition.yml'
+      - 'gpu/stage324_corner_tile_clip.c'
+      - 'gpu/stage324_corner_tile_clip.h'
       - 'gpu/stage325_corner_tile_partition.c'
       - 'gpu/stage325_corner_tile_partition.h'
       - 'tests/gpu/test_stage325_corner_tile_partition.c'
@@ -38,6 +40,7 @@ jobs:
           set -euo pipefail
           ${{ matrix.compiler }} -std=c11 ${{ matrix.flags }} \
             -Wall -Wextra -Werror -pedantic -Igpu \
+            gpu/stage324_corner_tile_clip.c \
             gpu/stage325_corner_tile_partition.c \
             tests/gpu/test_stage325_corner_tile_partition.c \
             -lm -o /tmp/foj-stage325-partition
