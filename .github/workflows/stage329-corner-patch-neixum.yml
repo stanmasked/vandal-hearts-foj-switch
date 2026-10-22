@@ -108,7 +108,7 @@ jobs:
   nexium:
     name: Real NeXium framebuffer verifies Stage328 tile upload and draw
     needs: [host, build]
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
