@@ -26,8 +26,8 @@ static uint64_t hash_bytes(const uint8_t *src,size_t count) {
 static uint8_t sample_formula(unsigned page,unsigned x,unsigned y,
                               unsigned channel) {
     const unsigned page_x=page%4u,page_y=page/4u;
-    if(channel==0u)return (uint8_t)(11u*page+3u*x+y);
-    if(channel==1u)return (uint8_t)(17u*page+x+5u*y);
+    if(channel==0u)return (uint8_t)(11u*page+3u*x+y+page_x);
+    if(channel==1u)return (uint8_t)(17u*page+x+5u*y+page_y);
     if(channel==2u)return (uint8_t)(41u*page+((x^y)&127u));
     return (uint8_t)(100u+3u*page+((x+y)&63u));
 }
