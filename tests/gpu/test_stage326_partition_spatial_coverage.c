@@ -157,7 +157,7 @@ static void all_nine_junctions(void) {
         verify_coverage(&centered,px,py,4096u);
         verify_coverage(&broad_a,px,py,1024u);
         verify_coverage(&broad_b,px,py,1024u);
-        ++cases;
+        cases+=3u;
         for(unsigned i=0u;i<56u;++i) {
             const FojStage325Triangle t=random_near_tile(px,py);
             verify_coverage(&t,px,py,192u);
