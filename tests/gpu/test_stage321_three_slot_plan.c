@@ -81,6 +81,7 @@ static void replay(const FojStage320Batch *b,unsigned count,
                 assert(idx<S);
                 const unsigned slot=c->bound_slot[idx++];
                 assert(slot<S && resident[slot]==page);
+                assert(find(resident,page)==slot);
                 if(c->uploaded_page[slot]!=page)++reuses;
             }
             for(;idx<S;++idx)
