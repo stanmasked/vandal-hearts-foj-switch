@@ -1,9 +1,9 @@
-name: Stage323 real NeXium four-page BC1 corner bilinear GPU proof
+name: Stage323 actual NeXium rendering of Stage322 16x16 four-page tile
 
 on:
   pull_request:
     paths:
-      - '.github/workflows/stage323-four-corner-neixum.yml'
+      - '.github/workflows/stage323-bounded-tile-neixum.yml'
       - 'gpu/stage323_bounded_gpu_tile.mk'
       - 'gpu/stage309_seam_gutter_scene.c'
       - 'gpu/stage309_seam_gutter_scene.h'
@@ -25,7 +25,7 @@ on:
       - 'tools/foj_stage323_nexium_drive.sh'
       - 'tools/foj_stage323_tile_gpu_guest.py'
       - 'tests/emulator/test_stage323_tile_gpu_guest.py'
-      - 'docs/GPU_STAGE323_FOUR_CORNER.md'
+      - 'docs/GPU_STAGE323_BOUNDED_GPU_TILE.md'
   workflow_dispatch:
 
 permissions:
@@ -37,7 +37,7 @@ concurrency:
 
 jobs:
   host:
-    name: Native four-page BC1 corner RGBA material / ${{ matrix.compiler }}
+    name: Native generated 16x16 four-page RGBA tile scene / ${{ matrix.compiler }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
