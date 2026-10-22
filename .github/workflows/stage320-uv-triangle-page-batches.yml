@@ -1,0 +1,51 @@
+name: Stage320 deterministic UV triangle filter-page draw batches
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage320-uv-triangle-page-batches.yml'
+      - 'gpu/stage320_uv_page_batches.c'
+      - 'gpu/stage320_uv_page_batches.h'
+      - 'gpu/stage319_bilinear_halo_support.c'
+      - 'gpu/stage319_bilinear_halo_support.h'
+      - 'gpu/stage318_triangle_uv_coverage.c'
+      - 'gpu/stage318_triangle_uv_coverage.h'
+      - 'tests/gpu/test_stage320_uv_page_batches.c'
+      - 'docs/GPU_STAGE320_BATCH_PLANNING.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage320-batches-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  batch-plan:
+    name: Geometry and bilinear source batch planning / ${{ matrix.compiler }} / ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {compiler: gcc, variant: optimized, flags: '-O2'}
+          - {compiler: clang, variant: optimized, flags: '-O2'}
+          - {compiler: gcc, variant: ubsan, flags: '-O1 -g -fsanitize=undefined -fno-sanitize-recover=all'}
+          - {compiler: clang, variant: asan-ubsan, flags: '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and validate stable 128-triangle render batches with independent atlas masks
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 ${{ matrix.flags }} \
+            -Wall -Wextra -Werror -pedantic -Igpu \
+            gpu/stage318_triangle_uv_coverage.c \
+            gpu/stage319_bilinear_halo_support.c \
+            gpu/stage320_uv_page_batches.c \
+            tests/gpu/test_stage320_uv_page_batches.c \
+            -lm -o /tmp/foj-stage320
+          /tmp/foj-stage320
+          echo STAGE320_NATIVE_BILINEAR_PAGE_BATCHES_PASS
