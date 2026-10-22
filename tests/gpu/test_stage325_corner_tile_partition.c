@@ -204,6 +204,48 @@ static void tiny_positive_intersection_refused_atomically(void) {
     assert(memcmp(&r,&saved_r,sizeof(r))==0);
 }
 
+static void near_duplicate_boundary_vertex_loss_refused_atomically(void) {
+    const float left=(float)(2u*256u-8u)/1024.0f;
+    const float right=(float)(2u*256u+8u)/1024.0f;
+    const float top=(float)(2u*256u-8u)/1024.0f;
+    const float bottom=(float)(2u*256u+8u)/1024.0f;
+    const float left_inside=nextafterf(left,INFINITY);
+    const float top_inside=nextafterf(top,INFINITY);
+    const float right_inside=nextafterf(right,-INFINITY);
+    const float bottom_inside=nextafterf(bottom,-INFINITY);
+    FojStage325Triangle t={{
+        vertex(left_inside,top_inside),
+        vertex(left-0.1f,top_inside),
+        vertex(right_inside,bottom_inside)
+    }};
+    FojStage324Vertex stage324_output[FOJ_STAGE324_MAX_OUTPUT_VERTICES];
+    FojStage324TileClipReport stage324_report={0};
+    assert(foj_stage324_clip_triangle_to_corner_tile(
+        &t,2u,2u,stage324_output,
+        FOJ_STAGE324_MAX_OUTPUT_VERTICES,&stage324_report));
+    /* Stage324's epsilon dedup drops the near-left boundary point but still
+     * leaves a nonempty triangle, so a boolean-only check is insufficient. */
+    assert(stage324_report.intersects==1u);
+    assert(stage324_report.output_vertices==3u);
+    assert(stage324_report.clipped_uv_area>0.0);
+
+    FojStage325Vertex tile[FOJ_STAGE325_TILE_VERTICES];
+    FojStage325Vertex rem[FOJ_STAGE325_REMAINDER_VERTICES];
+    FojStage325Vertex saved_tile[FOJ_STAGE325_TILE_VERTICES];
+    FojStage325Vertex saved_rem[FOJ_STAGE325_REMAINDER_VERTICES];
+    FojStage325PartitionReport r,saved_r;
+    memset(tile,0xa5,sizeof(tile));memset(rem,0x5a,sizeof(rem));
+    memset(&r,0x3c,sizeof(r));
+    memcpy(saved_tile,tile,sizeof(tile));memcpy(saved_rem,rem,sizeof(rem));
+    memcpy(&saved_r,&r,sizeof(r));
+    assert(!foj_stage325_partition_triangle_at_corner_tile(
+        &t,2u,2u,tile,FOJ_STAGE325_TILE_VERTICES,
+        rem,FOJ_STAGE325_REMAINDER_VERTICES,&r));
+    assert(memcmp(tile,saved_tile,sizeof(tile))==0);
+    assert(memcmp(rem,saved_rem,sizeof(rem))==0);
+    assert(memcmp(&r,&saved_r,sizeof(r))==0);
+}
+
 static uint32_t rng_state=UINT32_C(0x13579bdf);
 static float next_unit(void) {
     rng_state=rng_state*UINT32_C(1664525)+UINT32_C(1013904223);
@@ -295,6 +337,7 @@ int main(void) {
     wholly_inside_and_outside();
     partial_tangent_and_reverse_winding();
     tiny_positive_intersection_refused_atomically();
+    near_duplicate_boundary_vertex_loss_refused_atomically();
     randomized_area_conservation();
     deterministic_and_atomic_failures();
     puts("STAGE325_CORNER_TILE_COMPLEMENTARY_PARTITION_PASS");

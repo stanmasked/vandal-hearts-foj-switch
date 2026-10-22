@@ -171,14 +171,17 @@ int foj_stage325_partition_triangle_at_corner_tile(
         n=next_n;
     }
 
-    /* Stage324 intentionally suppresses sub-epsilon polygons. Do not let
-     * that threshold silently discard a positive-area sliver from the
-     * complementary partition: fail atomically if the exact clip still
-     * has positive area but Stage324 emitted no tile fragment. */
+    /* Compare source-UV areas, not just empty/nonempty state. Stage324's
+     * duplicate tolerance can collapse a short boundary edge while leaving
+     * a nonempty polygon; the broad whole-triangle conservation tolerance
+     * below must not hide that missing positive-area sliver. */
     const double partitioned_tile_area=polygon_area(current,n);
     if(!isfinite(partitioned_tile_area)||
-       (tile_report.intersects==0u&&partitioned_tile_area>0.0)||
-       (tile_report.intersects!=0u&&!(partitioned_tile_area>0.0)))
+       (tile_report.intersects==0u&&
+        (partitioned_tile_area>0.0||tile_report.clipped_uv_area!=0.0))||
+       (tile_report.intersects!=0u&&
+        (!(partitioned_tile_area>0.0)||
+         partitioned_tile_area!=tile_report.clipped_uv_area)))
         return 0;
 
     const double area_error=

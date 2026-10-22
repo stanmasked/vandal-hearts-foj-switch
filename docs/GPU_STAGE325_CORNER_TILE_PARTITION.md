@@ -17,6 +17,12 @@ in original atlas UV space, and the inside polygon continues to the next
 edge. This independently partitions the complement while reusing Stage324's
 tile geometry rather than implementing tile remapping a second time.
 
+Before committing outputs, Stage325 also requires the exact complementary
+clip's source-UV area to equal Stage324's reported tile area. If epsilon-based
+vertex deduplication changes even a small positive-area corner while leaving
+a nonempty polygon, the function refuses atomically rather than relying on
+the looser whole-triangle conservation tolerance.
+
 This partitions the original triangle into positive-area-disjoint regions.
 Adjacent pieces can share boundary edges, but do not duplicate area.
 Polygon fans preserve source winding. The worst-case bound is four
@@ -34,7 +40,8 @@ for deterministic byte comparisons.
 The GCC/Clang and sanitizer matrix checks all nine atlas junctions,
 full-tile coverage, triangles fully inside or outside, partial intersections,
 edge tangency, reversed winding, affine XYZ interpolation, exact tile UV
-range, deterministic output, area conservation and atomic refusal paths.
+range, deterministic output, area conservation, sub-epsilon full suppression,
+near-duplicate partial-area loss and atomic refusal paths.
 All test geometry is generated numeric data.
 
 ## Limits

@@ -40,9 +40,9 @@ typedef struct {
  *
  * Capacities are exact and fixed to make the memory bound explicit.
  * On valid input with no positive-area tile intersection, tile output is
- * all zero and the remainder contains the complete triangle. If the tile
- * clipper suppresses a positive-area sliver but the complementary clip still
- * detects it, return 0 atomically instead of silently losing geometry.
+ * all zero and the remainder contains the complete triangle. Return 0
+ * atomically if the tile clipper suppresses a positive-area sliver or its
+ * reported clipped area differs from the independently clipped polygon.
  * Invalid input, aliases or capacity mismatch return 0 and leave all
  * caller output and report bytes unchanged. No original assets are read.
  */
