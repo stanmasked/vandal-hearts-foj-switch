@@ -76,7 +76,12 @@ jobs:
             -p 'test_stage329_corner_patch_guest.py' -v
           python3 -m compileall -q tools/foj_stage329_corner_patch_guest.py
           bash -n tools/foj_stage329_nexium_drive.sh
-          echo STAGE329_HOST_AUDITOR_NEGATIVES_PASS
+          cc -std=c11 -Wall -Wextra -Werror -pedantic \
+            -DFOJ_GPU_DRAW_TRIANGLE=1 \
+            -DFOJ_GPU_STAGE329_PATCH_STREAM=1 \
+            -DFOJ_GPU_STAGE309_LINEAR_GUTTER=1 -fsyntax-only \
+            -Itests/mock_switch_sdk -Icore -Igpu gpu/deko3d_clear_main.c
+          echo STAGE329_HOST_AUDITOR_AND_NATIVE_BRANCH_SYNTAX_PASS
 
   build:
     name: Build Stage329 native deko3d NRO and generated shaders
