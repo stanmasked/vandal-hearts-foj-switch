@@ -27,8 +27,8 @@ typedef struct {
  * triangles, all using the same source atlas and one generated corner tile.
  *
  * Each source triangle is partitioned by Stage325. Its remainder fragment(s)
- * are appended first with source_material_index, followed immediately by its
- * tile fragment(s) with tile_material_index. This preserves source-triangle
+ * are appended first with source_texture_index, followed immediately by its
+ * tile fragment(s) with tile_texture_index. This preserves source-triangle
  * order; the two regions of a single triangle have disjoint positive area.
  * Empty pieces are omitted. Sections are deliberately not merged across
  * source triangles, so transparent shape order stays explicit.
@@ -51,8 +51,8 @@ int foj_stage327_build_ordered_partition_stream(
     size_t source_triangle_count,
     unsigned junction_page_x,
     unsigned junction_page_y,
-    unsigned source_material_index,
-    unsigned tile_material_index,
+    unsigned source_texture_index,
+    unsigned tile_texture_index,
     size_t texture_count,
     FojTexturedVertex *vertices_out,
     size_t vertex_capacity,
