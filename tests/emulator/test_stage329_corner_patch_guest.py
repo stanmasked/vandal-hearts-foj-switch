@@ -91,10 +91,8 @@ class Stage329GuestAuditTests(unittest.TestCase):
         path = self.bridge / "gpu-initial.png"
         with Image.open(path) as source:
             image = source.convert("RGB")
-        ImageDraw.Draw(image).rectangle((618, 338, 620, 340), fill=(0, 0, 0))
-        # Destroy a larger sample region so the quadrant check cannot rely on
-        # a single unaffected pixel.
-        ImageDraw.Draw(image).rectangle((618, 338, 620, 340), fill=(0, 0, 0))
+        # Destroy the northwest sample and its immediate neighborhood.
+        ImageDraw.Draw(image).rectangle((618, 338, 622, 342), fill=(0, 0, 0))
         image.save(path)
         with self.assertRaises(ValueError):
             audit(self.bridge)
