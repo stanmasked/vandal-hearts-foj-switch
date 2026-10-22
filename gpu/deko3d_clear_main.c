@@ -866,24 +866,36 @@ int main(int argc,char **argv) {
     /* In the default research mode vertices are invented; Stage259 swaps
      * in only validated, retained user-local actor vertices and batches. */
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
+    FojGpuDrawRange draw_ranges[FOJ_GPU_MAX_BATCHES];
+    FojGpuActorUploadPlan actor_upload={0};
+    const FojGpuVertex *vertex_source=NULL;
+    const FojGpuBatch *batch_source=NULL;
+    size_t vertex_count=0u;
+    size_t batch_count=0u;
+#if defined(FOJ_GPU_STAGE329_PATCH_STREAM)
+    if(!stage329_prepare_corner_patch())goto cleanup;
+    vertex_source=stage329_gpu_vertices;
+    batch_source=stage329_gpu_batches;
+    vertex_count=stage329_gpu_info.vertices_written;
+    batch_count=stage329_gpu_info.batches_written;
+#else
     FojGpuVertex research_vertices[FOJ_RESEARCH_VERTEX_COUNT];
     FojGpuBatch research_batches[FOJ_RESEARCH_BATCH_COUNT];
     FojGpuStreamInfo research_info;
-    FojGpuDrawRange draw_ranges[FOJ_GPU_MAX_BATCHES];
-    FojGpuActorUploadPlan actor_upload={0};
     if (foj_gpu_research_mesh(research_vertices,FOJ_RESEARCH_VERTEX_COUNT,
                               research_batches,FOJ_RESEARCH_BATCH_COUNT,
                               &research_info)!=FOJ_GPU_STREAM_OK)
         goto cleanup;
-    const FojGpuVertex *vertex_source=research_vertices;
-    const FojGpuBatch *batch_source=research_batches;
-    size_t vertex_count=research_info.vertices_written;
-    size_t batch_count=research_info.batches_written;
+    vertex_source=research_vertices;
+    batch_source=research_batches;
+    vertex_count=research_info.vertices_written;
+    batch_count=research_info.batches_written;
 #if defined(FOJ_GPU_PRIVATE_ACTOR_DRAW)
     vertex_source=private_payload.vertices;
     batch_source=private_payload.batches;
     vertex_count=private_payload.report.actor.stream.vertices_written;
     batch_count=private_payload.report.actor.stream.batches_written;
+#endif
 #endif
     if (foj_gpu_build_draw_plan(batch_source,batch_count,vertex_count,
                                  FOJ_RESEARCH_TEXTURE_COUNT,
@@ -892,8 +904,12 @@ int main(int argc,char **argv) {
                                   FOJ_RESEARCH_TEXTURE_COUNT,
                                   DK_MEMBLOCK_ALIGNMENT,&actor_upload)!=FOJ_GPU_STREAM_OK ||
         actor_upload.payload_bytes!=vertex_count*sizeof(FojGpuVertex) ||
+#if defined(FOJ_GPU_STAGE329_PATCH_STREAM)
+        actor_upload.material_mask!=(UINT32_C(1)<<1u))
+#else
         actor_upload.material_mask!=
             (UINT32_C(1)<<FOJ_RESEARCH_TEXTURE_COUNT)-1u)
+#endif
         goto cleanup;
 #if defined(FOJ_GPU_DYNAMIC_PASS_CONTRACT)
     /* Build one validated immutable texture/depth plan for every pass
