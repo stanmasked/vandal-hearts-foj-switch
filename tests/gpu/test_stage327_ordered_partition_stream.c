@@ -13,6 +13,10 @@ static FojTextureSection sections_b[FOJ_STAGE327_MAX_SECTIONS];
 static FojTextureSection saved_sections[FOJ_STAGE327_MAX_SECTIONS];
 static FojGpuVertex gpu_vertices[FOJ_STAGE327_MAX_VERTICES];
 static FojGpuBatch gpu_batches[FOJ_STAGE327_MAX_SECTIONS];
+static union {
+    FojTexturedVertex vertices[FOJ_STAGE327_MAX_VERTICES];
+    FojTextureSection sections[FOJ_STAGE327_MAX_SECTIONS];
+} alias_buffer;
 
 static FojStage325Vertex vertex(float u,float v,float z) {
     FojStage325Vertex p={2.0f*u+v,-u+3.0f*v,z,u,v};
@@ -139,11 +143,13 @@ static void test_fail_closed_preflight(void) {
     assert(memcmp(&report,&saved_report,sizeof(report))==0);
 
     input[2].point[1].u=.504f;
+    memset(alias_buffer.vertices,0xa5,sizeof(alias_buffer.vertices));
+    memcpy(saved_stream,alias_buffer.vertices,sizeof(saved_stream));
     assert(!foj_stage327_build_ordered_partition_stream(
         input,3u,2u,2u,0u,1u,2u,
-        stream_a,FOJ_STAGE327_MAX_VERTICES,
-        (FojTextureSection *)stream_a,FOJ_STAGE327_MAX_SECTIONS,&report));
-    assert(memcmp(stream_a,saved_stream,sizeof(stream_a))==0);
+        alias_buffer.vertices,FOJ_STAGE327_MAX_VERTICES,
+        alias_buffer.sections,FOJ_STAGE327_MAX_SECTIONS,&report));
+    assert(memcmp(alias_buffer.vertices,saved_stream,sizeof(saved_stream))==0);
     assert(memcmp(&report,&saved_report,sizeof(report))==0);
 }
 int main(void) {
