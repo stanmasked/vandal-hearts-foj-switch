@@ -184,10 +184,11 @@ static void randomized_area_conservation(void) {
     FojStage325Vertex rem[FOJ_STAGE325_REMAINDER_VERTICES];
     unsigned checked=0u;
     for(unsigned i=0u;i<2048u;++i) {
+        const float u0=next_unit(),v0=next_unit();
+        const float u1=next_unit(),v1=next_unit();
+        const float u2=next_unit(),v2=next_unit();
         FojStage325Triangle t={{
-            vertex(next_unit(),next_unit()),
-            vertex(next_unit(),next_unit()),
-            vertex(next_unit(),next_unit())
+            vertex(u0,v0),vertex(u1,v1),vertex(u2,v2)
         }};
         if(fabs(signed_area2(t.point,t.point+1u,t.point+2u))<1e-7)
             continue;
