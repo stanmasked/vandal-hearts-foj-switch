@@ -3,6 +3,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 typedef struct { double u, v; } Point2;
 
@@ -140,8 +141,8 @@ static FojStage325Triangle random_near_tile(unsigned px,unsigned py) {
         }};
         if(fabs(tri_area2(t.point,t.point+1u,t.point+2u))>1e-5)return t;
     }
-    assert(!"unable to generate a non-degenerate synthetic triangle");
-    return around_tile(px,py);
+    fputs("unable to generate a non-degenerate synthetic triangle\n",stderr);
+    abort();
 }
 static void all_nine_junctions(void) {
     const FojStage325Triangle broad_a={{
