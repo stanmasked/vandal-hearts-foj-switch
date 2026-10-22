@@ -1082,7 +1082,8 @@ int main(int argc,char **argv) {
     if (!texture_data_cpu || texture_data_addr==DK_GPU_ADDR_INVALID)
         goto cleanup;
 
-#if !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW)
+#if !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) && \
+    !defined(FOJ_GPU_STAGE329_PATCH_STREAM)
     const char *const atlas_paths[FOJ_RESEARCH_TEXTURE_COUNT]={
         "sdmc:/switch/foj/gpu/material0.dds",
         "sdmc:/switch/foj/gpu/material1.dds"
@@ -1093,7 +1094,24 @@ int main(int argc,char **argv) {
                         i*PIXEL_STAGING_STRIDE;
         FojAtlasRgba8Info atlas={0};
         FojAtlasDdsStatus dds_status=FOJ_ATLAS_DDS_INVALID_ARGUMENT;
-#if defined(FOJ_GPU_PRIVATE_ACTOR_DRAW)
+#if defined(FOJ_GPU_STAGE329_PATCH_STREAM)
+        /* Stage329 never reads user DDS files. Slot 0 is an invented fallback;
+         * slot 1 is the tile prepared by Stage328 from four generated pages. */
+        const int loaded=1;
+        dds_status=FOJ_ATLAS_DDS_MISSING;
+        if(i==0u) {
+            if(!foj_research_texture_rgba8(i,pixels,PIXEL_STAGING_STRIDE))
+                goto cleanup;
+            atlas=(FojAtlasRgba8Info){FOJ_RESEARCH_TEXTURE_WIDTH,
+                                      FOJ_RESEARCH_TEXTURE_HEIGHT,
+                                      FOJ_RESEARCH_TEXTURE_BYTES};
+        } else if(i==1u) {
+            memcpy(pixels,stage329_tile,sizeof(stage329_tile));
+            atlas=(FojAtlasRgba8Info){16u,16u,sizeof(stage329_tile)};
+        } else {
+            goto cleanup;
+        }
+#elif defined(FOJ_GPU_PRIVATE_ACTOR_DRAW)
         const int loaded=1;
         atlas=private_payload.report.atlas[i];
         if (atlas.pixel_bytes>PIXEL_STAGING_STRIDE)goto cleanup;
