@@ -1,0 +1,48 @@
+name: Stage315 generated four-page BC1 corner quadrant material
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage315-four-page-corner-material.yml'
+      - 'gpu/stage315_corner_patch.c'
+      - 'gpu/stage315_corner_patch.h'
+      - 'gpu/stage314_four_page_corner.c'
+      - 'gpu/stage314_four_page_corner.h'
+      - 'tests/gpu/test_stage315_corner_patch.c'
+      - 'docs/GPU_STAGE315_CORNER_MATERIAL.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage315-corner-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  corner:
+    name: 65,536 pixels and 81 UVs / ${{ matrix.compiler }} / ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {compiler: gcc, variant: optimized, flags: '-O2'}
+          - {compiler: clang, variant: optimized, flags: '-O2'}
+          - {compiler: gcc, variant: ubsan, flags: '-O1 -g -fsanitize=undefined -fno-sanitize-recover=all'}
+          - {compiler: clang, variant: asan-ubsan, flags: '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test native corner material, full transpose and fail-closed rejection
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 ${{ matrix.flags }} \
+            -Wall -Wextra -Werror -Igpu -Icore \
+            gpu/atlas_dds.c gpu/bc1_atlas_page.c \
+            gpu/stage303_bc1_page_uv.c \
+            gpu/stage314_four_page_corner.c gpu/stage315_corner_patch.c \
+            tests/gpu/test_stage315_corner_patch.c \
+            -lm -o /tmp/foj-stage315-corner
+          /tmp/foj-stage315-corner
+          echo STAGE315_GENERATED_ONLY_CORNER_MATERIAL_PASS
