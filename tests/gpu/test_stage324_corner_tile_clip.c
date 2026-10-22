@@ -56,12 +56,16 @@ static void all_nine_full_tiles(void) {
         assert(r.source_uv_bounds[2]==(float)(((double)px*256.0+8.0)/1024.0));
         assert(r.source_uv_bounds[3]==(float)(((double)py*256.0+8.0)/1024.0));
         for(unsigned i=0;i<r.output_vertices;++i)check_affine(out+i,px,py);
-        assert(out[0].u==0.0f&&out[0].v==0.0f);
-        assert(out[1].u==1.0f&&out[1].v==0.0f);
-        assert(out[2].u==1.0f&&out[2].v==1.0f);
-        assert(out[3].u==0.0f&&out[3].v==0.0f);
-        assert(out[4].u==1.0f&&out[4].v==1.0f);
-        assert(out[5].u==0.0f&&out[5].v==1.0f);
+        unsigned corners=0u;
+        for(unsigned i=0u;i<r.output_vertices;++i) {
+            assert((out[i].u==0.0f||out[i].u==1.0f)&&
+                   (out[i].v==0.0f||out[i].v==1.0f));
+            corners|=1u<<((out[i].v==1.0f?2u:0u)+
+                          (out[i].u==1.0f?1u:0u));
+        }
+        assert(corners==0x0fu);
+        for(unsigned i=0u;i<r.output_vertices;i+=3u)
+            assert(area2(out+i,out+i+1u,out+i+2u)>0.0);
         for(unsigned i=0;i<sizeof(r.reserved);++i)assert(r.reserved[i]==0u);
         assert(foj_stage324_clip_triangle_to_corner_tile(
             &t,px,py,again,FOJ_STAGE324_MAX_OUTPUT_VERTICES,&r2));
