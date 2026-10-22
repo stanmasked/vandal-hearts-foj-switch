@@ -236,7 +236,13 @@ int main(int argc,char **argv) {
         foj_gpu_private_bundle_free(&private_payload);
         return 15;
     }
-#if defined(FOJ_GPU_STAGE310_ROW_PATTERNED_GUTTER)
+#if defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
+#if !defined(FOJ_GPU_STAGE309_GUTTER_SCENE) || !defined(FOJ_GPU_STAGE309_LINEAR_GUTTER)
+#error "Stage312 requires the linear Stage309 native 18-vertex gutter path"
+#endif
+    FILE *const seam_marker=fopen(
+        "sdmc:/switch/foj/gpu/foj-native-stage312-horizontal-gutter-pass.txt","wx");
+#elif defined(FOJ_GPU_STAGE310_ROW_PATTERNED_GUTTER)
 #if !defined(FOJ_GPU_STAGE309_GUTTER_SCENE)
 #error "Stage310 requires Stage309 18-vertex scene infrastructure"
 #endif
@@ -250,7 +256,10 @@ int main(int argc,char **argv) {
         foj_gpu_private_bundle_free(&private_payload);
         return 15;
     }
-#if defined(FOJ_GPU_STAGE310_ROW_PATTERNED_GUTTER)
+#if defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
+    static const char seam_marker_text[]=
+        "FOJ_NATIVE_STAGE312_HORIZONTAL_GUTTER_V1 pairs=8 columns=256 strict_mix=256 pages=1,1+1,2 verts=18\n";
+#elif defined(FOJ_GPU_STAGE310_ROW_PATTERNED_GUTTER)
     static const char seam_marker_text[]=
         "FOJ_NATIVE_STAGE310_ROW_GUTTER_V1 pairs=8 rows=256 strict_mix=256 pages=1,1+2,1 verts=18\n";
 #else
