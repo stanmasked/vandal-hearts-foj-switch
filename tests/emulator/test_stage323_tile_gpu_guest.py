@@ -58,6 +58,17 @@ class Stage323HostOnlyNegatives(unittest.TestCase):
             image=read.convert("RGB")
         ImageDraw.Draw(image).rectangle(rect,fill=color)
         image.save(path)
+    def test_native_and_driver_marker_contract_matches_auditor(self):
+        # Prevent a false-green CPU fixture when the actual guest writes a
+        # different receipt. The exact literal must agree across all layers.
+        literal = (
+            b'"FOJ_NATIVE_STAGE323_BOUNDED_TILE_V1 '
+            b'pages=1,1+2,1+1,2+2,2 tile=16x16 bytes=1024 verts=18\\n"'
+        )
+        self.assertEqual(MARKER_BYTES, literal[1:-1].replace(b"\\\\n", b"\\n"))
+        self.assertIn(literal, Path("gpu/deko3d_clear_main.c").read_bytes())
+        self.assertIn(literal, Path("tools/foj_stage323_nexium_drive.sh").read_bytes())
+
     def test_host_mock_shape_not_gpu_proof(self):
         result=audit(self.bridge)
         self.assertTrue(result["generated_only"])
