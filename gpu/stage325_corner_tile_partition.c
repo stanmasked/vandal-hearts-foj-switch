@@ -4,7 +4,6 @@
 #include <string.h>
 
 enum { POLY_CAP=FOJ_STAGE325_MAX_POLYGON_VERTICES };
-static const float DUP_EPS=1e-7f;
 
 static int overlap(const void *ap,size_t an,const void *bp,size_t bn) {
     const uintptr_t a=(uintptr_t)ap,b=(uintptr_t)bp;
@@ -29,7 +28,7 @@ static double polygon_area(const FojStage325Vertex *p,unsigned n) {
     return fabs(signed_area2(p,n))*0.5;
 }
 static int same_uv(const FojStage325Vertex *a,const FojStage325Vertex *b) {
-    return fabsf(a->u-b->u)<=DUP_EPS&&fabsf(a->v-b->v)<=DUP_EPS;
+    return a->u==b->u&&a->v==b->v;
 }
 static unsigned append_unique(FojStage325Vertex *out,unsigned n,
                               const FojStage325Vertex *v) {
@@ -96,7 +95,7 @@ static int emit_fan(const FojStage325Vertex *poly,unsigned n,
     const double area=polygon_area(poly,n);
     if(n<3u||!(area>0.0))return 1;
     const unsigned count=3u*(n-2u);
-    if(count>capacity-*written)return 0;
+    if(*written>capacity||count>capacity-*written)return 0;
     for(unsigned i=1u;i+1u<n;++i) {
         out[*written]=poly[0];
         out[*written+1u]=poly[i];
@@ -111,7 +110,7 @@ static int nondegenerate(const FojStage325Triangle *t) {
                       ((double)t->point[2].v-t->point[0].v)-
                       ((double)t->point[1].v-t->point[0].v)*
                       ((double)t->point[2].u-t->point[0].u);
-    return isfinite(area)&&fabs(area)>1e-16;
+    return isfinite(area)&&fabs(area)>0.0;
 }
 
 int foj_stage325_partition_triangle_at_corner_tile(
