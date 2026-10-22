@@ -38,7 +38,9 @@ int main(void) {
         FOJ_BC1_PAGE_RGBA_BYTES,FOJ_BC1_PAGE_RGBA_BYTES
     };
 
-    const float u0=.499f,v0=.499f,u1=.501f,v1=.499f,u2=.500f,v2=.502f;
+    const float u0=504.25f/1024.f,v0=504.25f/1024.f;
+    const float u1=519.75f/1024.f,v1=504.25f/1024.f;
+    const float u2=512.f/1024.f,v2=519.75f/1024.f;
     const FojStage318Triangle uv={{{u0,v0},{u1,v1},{u2,v2}}};
     FojStage325Triangle triangle={0};
     triangle.point[0]=(FojStage325Vertex){
@@ -83,7 +85,22 @@ int main(void) {
             assert(tile[((size_t)y*16u+x)*4u+c]==colors[corner][c]);
     }
 
-    const FojTextureCamera camera={0.f,0.f,0.f,1.2f,0.f,0.f,1.f,1};
+    const float tile_u0=(float)receipt.atlas_first_x/1024.f;
+    const float tile_v0=(float)receipt.atlas_first_y/1024.f;
+    const float tile_span=(float)FOJ_STAGE322_TILE_EDGE/1024.f;
+    float min_u=1.f,max_u=0.f,min_v=1.f,max_v=0.f;
+    for(size_t i=0u;i<receipt.output_vertices;++i) {
+        assert(stream[i].u>=tile_u0-1e-6f&&stream[i].u<=tile_u0+tile_span+1e-6f);
+        assert(stream[i].v>=tile_v0-1e-6f&&stream[i].v<=tile_v0+tile_span+1e-6f);
+        stream[i].u=(stream[i].u-tile_u0)/tile_span;
+        stream[i].v=(stream[i].v-tile_v0)/tile_span;
+        if(stream[i].u<min_u)min_u=stream[i].u;
+        if(stream[i].u>max_u)max_u=stream[i].u;
+        if(stream[i].v<min_v)min_v=stream[i].v;
+        if(stream[i].v>max_v)max_v=stream[i].v;
+    }
+    assert(min_u<.02f&&max_u>.98f&&min_v<.02f&&max_v>.98f);
+    const FojTextureCamera camera={0.f,0.f,0.f,9.5f,0.f,0.f,1.f,1};
     FojGpuStreamInfo info={0};
     assert(foj_gpu_prepare_stream(
         stream,receipt.output_vertices,sections,receipt.output_sections,2u,

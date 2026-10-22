@@ -9,12 +9,17 @@ or the three-layer demo. It creates four solid 256x256 RGBA8 page fixtures
 (2,2) atlas junction through Stage320, and invokes Stage328 to produce both
 the 16x16 corner tile and its matching tile-local geometry stream.
 
-The test triangle is wholly inside the tile, so the resulting draw stream has
-three vertices and one material section that selects texture slot 1. Slot 0
-contains a separate generated fallback and is not used by the triangle. The
-projected vertices use V flipping to match the native texture row orientation,
-and the sampler is explicitly linear. The resulting midpoint should sample
-the average RGBA value (128,128,128,255).
+The test triangle spans nearly the full 16x16 tile while remaining
+strictly inside its atlas bounds, so the draw stream has three vertices and
+one material section that selects texture slot 1. Stage327 deliberately
+retains original-atlas UVs for source remainders; this Stage329 tile-only
+target validates those UVs and remaps them to [0,1] before GPU projection.
+Slot 0 contains a separate generated fallback and is not used by the triangle.
+The projected vertices use V flipping to match the native texture row
+orientation, and the sampler is explicitly linear. The resulting midpoint
+should sample the average RGBA value (128,128,128,255), while the four
+surrounding samples should retain their respective red, green, blue and white
+quadrant colors.
 
 ## Native evidence boundary
 

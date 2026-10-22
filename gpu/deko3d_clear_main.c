@@ -119,9 +119,11 @@ static int stage329_prepare_corner_patch(void) {
         FOJ_BC1_PAGE_RGBA_BYTES,FOJ_BC1_PAGE_RGBA_BYTES,
         FOJ_BC1_PAGE_RGBA_BYTES,FOJ_BC1_PAGE_RGBA_BYTES
     };
-    const float u0=.499f,v0=.499f;
-    const float u1=.501f,v1=.499f;
-    const float u2=.500f,v2=.502f;
+    /* Keep the synthetic triangle just inside the complete 16x16 tile
+     * bounds. Stage327 preserves atlas UVs, so remap tile-section UVs below. */
+    const float u0=504.25f/1024.f,v0=504.25f/1024.f;
+    const float u1=519.75f/1024.f,v1=504.25f/1024.f;
+    const float u2=512.f/1024.f,v2=519.75f/1024.f;
     FojStage318Triangle uv_triangle={{{u0,v0},{u1,v1},{u2,v2}}};
     uint16_t ids[1]={0u};
     FojStage320Batch batches[1]={{0}};
@@ -169,7 +171,30 @@ static int stage329_prepare_corner_patch(void) {
        stage329_sections[0].texture_index!=1u)
         return 0;
 
-    const FojTextureCamera camera={0.f,0.f,0.f,1.2f,0.f,0.f,1.f,1};
+    /* The complete tile should occupy about 192x192 framebuffer pixels. */
+    /* Stage327 keeps original-atlas UVs for source remainders.
+     * This Stage329 target has only a tile section, so validate and remap its
+     * UVs into the generated tile's [0,1] coordinate system before projection. */
+    const float tile_u0=(float)stage329_receipt.atlas_first_x/1024.f;
+    const float tile_v0=(float)stage329_receipt.atlas_first_y/1024.f;
+    const float tile_span=(float)FOJ_STAGE322_TILE_EDGE/1024.f;
+    for(size_t i=0u;i<stage329_receipt.output_vertices;++i) {
+        FojTexturedVertex *const vertex=stage329_cpu_vertices+i;
+        if(vertex->u<tile_u0-1e-6f ||
+           vertex->u>tile_u0+tile_span+1e-6f ||
+           vertex->v<tile_v0-1e-6f ||
+           vertex->v>tile_v0+tile_span+1e-6f)
+            return 0;
+        float local_u=(vertex->u-tile_u0)/tile_span;
+        float local_v=(vertex->v-tile_v0)/tile_span;
+        if(local_u<0.f)local_u=0.f;
+        if(local_u>1.f)local_u=1.f;
+        if(local_v<0.f)local_v=0.f;
+        if(local_v>1.f)local_v=1.f;
+        vertex->u=local_u;
+        vertex->v=local_v;
+    }
+    const FojTextureCamera camera={0.f,0.f,0.f,9.5f,0.f,0.f,1.f,1};
     if(foj_gpu_prepare_stream(
         stage329_cpu_vertices,stage329_receipt.output_vertices,
         stage329_sections,stage329_receipt.output_sections,

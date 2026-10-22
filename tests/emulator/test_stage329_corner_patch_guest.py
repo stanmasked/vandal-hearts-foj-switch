@@ -16,26 +16,44 @@ COLORS = (
 )
 
 def fake_frame(path: Path, background: tuple[int, int, int]) -> None:
-    """Paint a host-only triangle with the expected four-color bilinear pattern."""
+    """Paint a host-only approximation of the native 16x16 four-quadrant draw."""
     image = Image.new("RGB", (1280, 720), background)
     pixels = image.load()
-    for y in range(158, 462):
-        t = (y - 158) / 303.0
-        half_width = 101.0 * t
-        left = max(0, int(640 - half_width))
-        right = min(1279, int(640 + half_width))
-        for x in range(left, right + 1):
-            tu = max(0.0, min(1.0, 0.5 + (x - 640) * 0.000633663366))
-            tv = max(0.0, min(1.0, 0.5 + (y - 360) * 0.000633663366))
-            tx = max(0.0, min(1.0, tu * 16.0 - 7.5))
-            ty = max(0.0, min(1.0, tv * 16.0 - 7.5))
-            weights = (
-                (1.0 - tx) * (1.0 - ty), tx * (1.0 - ty),
-                (1.0 - tx) * ty, tx * ty,
-            )
-            rgb = tuple(round(sum(weights[i] * COLORS[i][c] for i in range(4)))
-                        for c in range(3))
-            pixels[x, y] = rgb
+
+    def texel(ix: int, iy: int) -> tuple[int, int, int]:
+        ix = max(0, min(15, ix))
+        iy = max(0, min(15, iy))
+        return COLORS[(2 if iy >= 8 else 0) + (1 if ix >= 8 else 0)][:3]
+
+    def sample(u: float, v: float) -> tuple[int, int, int]:
+        fx, fy = u * 16.0 - 0.5, v * 16.0 - 0.5
+        x0, y0 = int(fx // 1), int(fy // 1)
+        ax, ay = fx - x0, fy - y0
+        p00, p10 = texel(x0, y0), texel(x0 + 1, y0)
+        p01, p11 = texel(x0, y0 + 1), texel(x0 + 1, y0 + 1)
+        return tuple(round(
+            (1.0 - ay) * ((1.0 - ax) * p00[k] + ax * p10[k]) +
+            ay * ((1.0 - ax) * p01[k] + ax * p11[k])
+        ) for k in range(3))
+
+    # Approximate the native projection: apex at (640,264), base at y=456.
+    # Host-painted fixtures test the auditor only and are never GPU evidence.
+    for y in range(264, 457):
+        apex_weight = (456.0 - y) / 192.0
+        if not 0.0 <= apex_weight <= 1.0:
+            continue
+        base_weight = 1.0 - apex_weight
+        half_width = 96.0 * base_weight
+        if half_width <= 0.0:
+            continue
+        left, right = 640.0 - half_width, 640.0 + half_width
+        for x in range(max(0, int(left)), min(1279, int(right)) + 1):
+            if not left <= x <= right:
+                continue
+            across = (x - left) / (2.0 * half_width)
+            u = apex_weight * 0.5 + base_weight * (0.015625 + 0.96875 * across)
+            v = apex_weight * 0.015625 + base_weight * 0.984375
+            pixels[x, y] = sample(u, v)
     image.save(path)
 
 def mock_evidence(root: Path) -> tuple[Path, Path]:
@@ -151,7 +169,11 @@ class Stage329GuestAuditTests(unittest.TestCase):
         marker_index = source.index("FOJ_NATIVE_STAGE329_CORNER_PATCH_UPLOAD_V1")
         self.assertGreater(source.rfind("dkQueueWaitIdle(queue);", 0, marker_index), -1)
         self.assertIn("0xd5565bfb7360b325", source)
-        self.assertIn("1.2f,0.f,0.f,1.f,1};", source)
+        self.assertIn("504.25f/1024.f", source)
+        self.assertIn("519.75f/1024.f", source)
+        self.assertIn("const float tile_span=(float)FOJ_STAGE322_TILE_EDGE/1024.f", source)
+        self.assertIn("vertex->u=local_u", source)
+        self.assertIn("9.5f,0.f,0.f,1.f,1};", source)
         self.assertIn("memcpy(pixels,stage329_tile,sizeof(stage329_tile))", source)
         self.assertIn("gpu/stage328_atomic_corner_patch_stream.c", makefile)
         self.assertIn("FOJ_GPU_STAGE329_PATCH_STREAM=1", makefile)
