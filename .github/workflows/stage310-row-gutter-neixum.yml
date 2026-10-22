@@ -9,6 +9,9 @@ on:
       - 'gpu/stage309_seam_gutter_scene.h'
       - 'gpu/stage308_cross_page_bilinear.c'
       - 'gpu/stage308_cross_page_bilinear.h'
+      - 'gpu/stage310_page_edge_gutter.c'
+      - 'gpu/stage310_page_edge_gutter.h'
+      - 'tests/gpu/test_stage310_page_edge_gutter.c'
       - 'gpu/deko3d_clear_main.c'
       - 'tests/gpu/test_stage310_gutter_scene.c'
       - 'tools/foj_stage310_nexium_drive.sh'
@@ -43,7 +46,8 @@ jobs:
             -DFOJ_GPU_THREE_LAYER_BLEND=1 \
             -DFOJ_GPU_STAGE310_ROW_PATTERNED_GUTTER=1 -Igpu -Icore \
             gpu/atlas_dds.c gpu/bc1_atlas_page.c gpu/stage303_bc1_page_uv.c \
-            gpu/stage308_cross_page_bilinear.c gpu/stage309_seam_gutter_scene.c \
+            gpu/stage308_cross_page_bilinear.c gpu/stage310_page_edge_gutter.c \
+            gpu/stage309_seam_gutter_scene.c \
             tests/gpu/test_stage310_gutter_scene.c -lm \
             -o /tmp/stage310-actual-c
           /tmp/stage310-actual-c
