@@ -171,6 +171,16 @@ int foj_stage325_partition_triangle_at_corner_tile(
         n=next_n;
     }
 
+    /* Stage324 intentionally suppresses sub-epsilon polygons. Do not let
+     * that threshold silently discard a positive-area sliver from the
+     * complementary partition: fail atomically if the exact clip still
+     * has positive area but Stage324 emitted no tile fragment. */
+    const double partitioned_tile_area=polygon_area(current,n);
+    if(!isfinite(partitioned_tile_area)||
+       (tile_report.intersects==0u&&partitioned_tile_area>0.0)||
+       (tile_report.intersects!=0u&&!(partitioned_tile_area>0.0)))
+        return 0;
+
     const double area_error=
         fabs(value.input_uv_area-value.tile_uv_area-remainder_area);
     double uv_perimeter=0.0;

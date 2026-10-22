@@ -174,6 +174,36 @@ static void partial_tangent_and_reverse_winding(void) {
     assert(fabs(r.input_uv_area-r.remainder_uv_area)<1e-9);
 }
 
+static void tiny_positive_intersection_refused_atomically(void) {
+    const float left=(float)(2u*256u-8u)/1024.0f;
+    const float top=(float)(2u*256u-8u)/1024.0f;
+    const float left_out=nextafterf(left,-INFINITY);
+    const float left_in=nextafterf(left,INFINITY);
+    const float top_out=nextafterf(top,-INFINITY);
+    const float top_in=nextafterf(top,INFINITY);
+    FojStage325Triangle tiny={{
+        vertex(left_out,top_in),
+        vertex(left_in,top_out),
+        vertex(left_in,top_in)
+    }};
+    assert(fabs(signed_area2(tiny.point,tiny.point+1u,tiny.point+2u))>1e-16);
+    FojStage325Vertex tile[FOJ_STAGE325_TILE_VERTICES];
+    FojStage325Vertex rem[FOJ_STAGE325_REMAINDER_VERTICES];
+    FojStage325Vertex saved_tile[FOJ_STAGE325_TILE_VERTICES];
+    FojStage325Vertex saved_rem[FOJ_STAGE325_REMAINDER_VERTICES];
+    FojStage325PartitionReport r,saved_r;
+    memset(tile,0xa5,sizeof(tile));memset(rem,0x5a,sizeof(rem));
+    memset(&r,0x3c,sizeof(r));
+    memcpy(saved_tile,tile,sizeof(tile));memcpy(saved_rem,rem,sizeof(rem));
+    memcpy(&saved_r,&r,sizeof(r));
+    assert(!foj_stage325_partition_triangle_at_corner_tile(
+        &tiny,2u,2u,tile,FOJ_STAGE325_TILE_VERTICES,
+        rem,FOJ_STAGE325_REMAINDER_VERTICES,&r));
+    assert(memcmp(tile,saved_tile,sizeof(tile))==0);
+    assert(memcmp(rem,saved_rem,sizeof(rem))==0);
+    assert(memcmp(&r,&saved_r,sizeof(r))==0);
+}
+
 static uint32_t rng_state=UINT32_C(0x13579bdf);
 static float next_unit(void) {
     rng_state=rng_state*UINT32_C(1664525)+UINT32_C(1013904223);
@@ -264,6 +294,7 @@ int main(void) {
     all_nine_corners();
     wholly_inside_and_outside();
     partial_tangent_and_reverse_winding();
+    tiny_positive_intersection_refused_atomically();
     randomized_area_conservation();
     deterministic_and_atomic_failures();
     puts("STAGE325_CORNER_TILE_COMPLEMENTARY_PARTITION_PASS");
