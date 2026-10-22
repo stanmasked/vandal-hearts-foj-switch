@@ -159,6 +159,6 @@ int foj_stage324_clip_triangle_to_corner_tile(
         value.intersects=1u;
     }
     memcpy(output,staged,sizeof(staged));
-    *report=value;
+    memcpy(report,&value,sizeof(value));
     return 1;
 }
