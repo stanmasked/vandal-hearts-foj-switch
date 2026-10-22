@@ -13,7 +13,6 @@ on:
       - 'gpu/stage314_four_page_corner.h'
       - 'gpu/stage315_corner_patch.c'
       - 'gpu/stage315_corner_patch.h'
-      - 'gpu/stage314_four_page_corner.h'
       - 'gpu/deko3d_clear_main.c'
       - 'tests/gpu/test_stage316_corner_gpu_scene.c'
       - 'tools/foj_stage316_nexium_drive.sh'
