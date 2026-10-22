@@ -63,11 +63,11 @@ class Stage323HostOnlyNegatives(unittest.TestCase):
         # different receipt. The exact literal must agree across all layers.
         literal = (
             b'"FOJ_NATIVE_STAGE323_BOUNDED_TILE_V1 '
-            b'pages=1,1+2,1+1,2+2,2 tile=16x16 bytes=1024 verts=18\\n"'
+            b'pages=1,1+2,1+1,2+2,2 tile=16x16 bytes=1024 verts=18\n"'
         )
         expected = (
             b"FOJ_NATIVE_STAGE323_BOUNDED_TILE_V1 "
-            b"pages=1,1+2,1+1,2+2,2 tile=16x16 bytes=1024 verts=18\\n"
+            b"pages=1,1+2,1+1,2+2,2 tile=16x16 bytes=1024 verts=18\n"
         )
         self.assertEqual(MARKER_BYTES, expected)
         self.assertIn(literal, Path("gpu/deko3d_clear_main.c").read_bytes())
