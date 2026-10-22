@@ -1,0 +1,48 @@
+name: Stage319 bilinear half-texel halo support across 16 BC1 pages
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage319-bilinear-halo-page-support.yml'
+      - 'gpu/stage319_bilinear_halo_support.c'
+      - 'gpu/stage319_bilinear_halo_support.h'
+      - 'gpu/stage318_triangle_uv_coverage.c'
+      - 'gpu/stage318_triangle_uv_coverage.h'
+      - 'tests/gpu/test_stage319_bilinear_halo_support.c'
+      - 'docs/GPU_STAGE319_FILTER_PAGE_SUPPORT.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage319-halo-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host:
+    name: Geometry and bilinear filter masks / ${{ matrix.compiler }} / ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {compiler: gcc, variant: optimized, flags: '-O2'}
+          - {compiler: clang, variant: optimized, flags: '-O2'}
+          - {compiler: gcc, variant: ubsan, flags: '-O1 -g -fsanitize=undefined -fno-sanitize-recover=all'}
+          - {compiler: clang, variant: asan-ubsan, flags: '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify half-texel halo at every atlas page boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 ${{ matrix.flags }} \
+            -Wall -Wextra -Werror -pedantic -Igpu \
+            gpu/stage318_triangle_uv_coverage.c \
+            gpu/stage319_bilinear_halo_support.c \
+            tests/gpu/test_stage319_bilinear_halo_support.c \
+            -lm -o /tmp/foj-stage319
+          /tmp/foj-stage319
+          echo STAGE319_BILINEAR_HALO_PAGE_FILTER_PROOF_PASS
