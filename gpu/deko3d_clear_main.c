@@ -236,14 +236,27 @@ int main(int argc,char **argv) {
         foj_gpu_private_bundle_free(&private_payload);
         return 15;
     }
+#if defined(FOJ_GPU_STAGE310_ROW_PATTERNED_GUTTER)
+#if !defined(FOJ_GPU_STAGE309_GUTTER_SCENE)
+#error "Stage310 requires Stage309 18-vertex scene infrastructure"
+#endif
+    FILE *const seam_marker=fopen(
+        "sdmc:/switch/foj/gpu/foj-native-stage310-row-gutter-pass.txt","wx");
+#else
     FILE *const seam_marker=fopen(
         "sdmc:/switch/foj/gpu/foj-native-stage309-gutter-pass.txt","wx");
+#endif
     if (!seam_marker) {
         foj_gpu_private_bundle_free(&private_payload);
         return 15;
     }
+#if defined(FOJ_GPU_STAGE310_ROW_PATTERNED_GUTTER)
+    static const char seam_marker_text[]=
+        "FOJ_NATIVE_STAGE310_ROW_GUTTER_V1 pairs=8 rows=256 strict_mix=256 pages=1,1+2,1 verts=18\n";
+#else
     static const char seam_marker_text[]=
         "FOJ_NATIVE_STAGE309_GUTTER_V1 pages=1,1+2,1 contrast=blue-yellow/red-green verts=18 uv=interpolated\n";
+#endif
     const size_t seam_n=fwrite(
         seam_marker_text,1,sizeof(seam_marker_text)-1u,seam_marker);
     const int seam_flushed=fflush(seam_marker);
