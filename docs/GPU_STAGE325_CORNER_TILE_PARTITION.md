@@ -42,4 +42,4 @@ The caller must submit tile and remainder fragments with correct source
 texture/material bindings while retaining the original draw ordering.
 Transparent overlap, actual FoJ mesh UV conventions, texture uploads,
 original PS3 resources and physical Switch rendering are not verified here.
-Keep the work Draft and do not alter \`main\`.
+Keep the work Draft and do not alter `main`.
