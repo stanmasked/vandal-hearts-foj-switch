@@ -173,9 +173,16 @@ int foj_stage325_partition_triangle_at_corner_tile(
 
     const double area_error=
         fabs(value.input_uv_area-value.tile_uv_area-remainder_area);
-    const double area_tolerance=fmax(1e-12,value.input_uv_area*1e-5);
+    double uv_perimeter=0.0;
+    for(unsigned i=0u;i<3u;++i) {
+        const FojStage325Vertex *a=triangle->point+i;
+        const FojStage325Vertex *b=triangle->point+((i+1u)%3u);
+        uv_perimeter+=hypot((double)a->u-b->u,(double)a->v-b->v);
+    }
+    const double area_tolerance=fmax(
+        1e-12,fmax(value.input_uv_area*1e-5,uv_perimeter*5e-7));
     if(!isfinite(remainder_area)||!isfinite(area_error)||
-       area_error>area_tolerance)return 0;
+       !isfinite(uv_perimeter)||area_error>area_tolerance)return 0;
     value.remainder_uv_area=remainder_area;
     value.tile_vertices=tile_written;
     value.tile_triangles=tile_written/3u;
