@@ -51,8 +51,9 @@ def mock_evidence(root: Path) -> tuple[Path, Path]:
     )
     (bridge / MARKER).write_bytes(MARKER_BYTES)
     (bridge / "guest.log").write_text("host-only mock; not a NeXium log\n")
-    fake_frame(bridge / "gpu-initial.png", (15, 45, 68))
-    fake_frame(bridge / "gpu-later.png", (62, 24, 42))
+    # Match the two actual foj_smoke_color_for_frame clear colors.
+    fake_frame(bridge / "gpu-initial.png", (23, 31, 59))
+    fake_frame(bridge / "gpu-later.png", (112, 145, 110))
     (root / "source" / "nexium-archive.sha256").write_text(
         "a" * 64 + "  /tmp/nexium.tar.gz\n"
     )
