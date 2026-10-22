@@ -42,6 +42,7 @@ on:
       - 'tools/foj_stage329_corner_patch_guest.py'
       - 'tools/foj_stage329_nexium_drive.sh'
       - 'tests/emulator/test_stage329_corner_patch_guest.py'
+      - 'tests/gpu/test_stage329_generated_corner_patch.c'
       - 'gpu/Makefile'
       - 'gpu/clear.mk'
       - 'gpu/shaders/foj_actor.vert'
@@ -80,7 +81,39 @@ jobs:
             -DFOJ_GPU_DRAW_TRIANGLE=1 \
             -DFOJ_GPU_STAGE329_PATCH_STREAM=1 -fsyntax-only \
             -Itests/mock_switch_sdk -Icore -Igpu gpu/deko3d_clear_main.c
-          echo STAGE329_HOST_AUDITOR_AND_NATIVE_BRANCH_SYNTAX_PASS
+          for compiler in gcc clang; do
+            "$compiler" -std=c11 -O2 -Wall -Wextra -Werror -pedantic \
+              -Icore -Igpu \
+              gpu/stage318_triangle_uv_coverage.c \
+              gpu/stage319_bilinear_halo_support.c \
+              gpu/stage320_uv_page_batches.c \
+              gpu/stage321_three_slot_plan.c \
+              gpu/stage322_bounded_corner_tile.c \
+              gpu/stage324_corner_tile_clip.c \
+              gpu/stage325_corner_tile_partition.c \
+              gpu/stage327_ordered_partition_stream.c \
+              gpu/stage328_atomic_corner_patch_stream.c \
+              core/gpu_vertex_stream.c \
+              tests/gpu/test_stage329_generated_corner_patch.c \
+              -lm -o "/tmp/stage329-corner-$compiler"
+            "/tmp/stage329-corner-$compiler"
+          done
+          gcc -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic \
+            -fsanitize=undefined -fno-sanitize-recover=all -Icore -Igpu \
+            gpu/stage318_triangle_uv_coverage.c \
+            gpu/stage319_bilinear_halo_support.c \
+            gpu/stage320_uv_page_batches.c \
+            gpu/stage321_three_slot_plan.c \
+            gpu/stage322_bounded_corner_tile.c \
+            gpu/stage324_corner_tile_clip.c \
+            gpu/stage325_corner_tile_partition.c \
+            gpu/stage327_ordered_partition_stream.c \
+            gpu/stage328_atomic_corner_patch_stream.c \
+            core/gpu_vertex_stream.c \
+            tests/gpu/test_stage329_generated_corner_patch.c \
+            -lm -o /tmp/stage329-corner-ubsan
+          /tmp/stage329-corner-ubsan
+          echo STAGE329_HOST_AUDITOR_CPU_AND_NATIVE_BRANCH_SYNTAX_PASS
 
   build:
     name: Build Stage329 native deko3d NRO and generated shaders
