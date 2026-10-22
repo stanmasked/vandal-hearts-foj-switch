@@ -171,9 +171,11 @@ int foj_stage325_partition_triangle_at_corner_tile(
         n=next_n;
     }
 
-    if(!isfinite(remainder_area)||
-       fabs(value.input_uv_area-value.tile_uv_area-remainder_area)>1e-6)
-        return 0;
+    const double area_error=
+        fabs(value.input_uv_area-value.tile_uv_area-remainder_area);
+    const double area_tolerance=fmax(1e-12,value.input_uv_area*1e-5);
+    if(!isfinite(remainder_area)||!isfinite(area_error)||
+       area_error>area_tolerance)return 0;
     value.remainder_uv_area=remainder_area;
     value.tile_vertices=tile_written;
     value.tile_triangles=tile_written/3u;
