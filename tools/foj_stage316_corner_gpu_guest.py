@@ -54,6 +54,11 @@ def _frame(path: Path) -> dict:
     if not candidates:
         raise ValueError("Stage316 genuine four-source midpoint absent")
     _,cx,cy,mid_count = min(candidates)
+    # A painted 2D midpoint *bar* can mimic the central 5x5 color.
+    # Independently demand a nonconstant local gradient around it too.
+    if pixels[cx+7,cy][1]-pixels[cx-7,cy][1] < 4 or \
+       pixels[cx,cy+7][2]-pixels[cx,cy-7][2] < 6:
+        raise ValueError("Stage316 a flat painted center bar is not GPU filtering")
     sample = {}
     for i,dy in enumerate((-45, 0, 45)):
         for j,dx in enumerate((-65, 0, 65)):
