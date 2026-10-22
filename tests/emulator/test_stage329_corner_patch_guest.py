@@ -150,6 +150,7 @@ class Stage329GuestAuditTests(unittest.TestCase):
         self.assertIn("FOJ_NATIVE_STAGE329_CORNER_PATCH_UPLOAD_V1", source)
         self.assertIn("gpu/stage328_atomic_corner_patch_stream.c", makefile)
         self.assertIn("FOJ_GPU_STAGE329_PATCH_STREAM=1", makefile)
+        self.assertIn("FOJ_GPU_STAGE309_LINEAR_GUTTER=1", makefile)
 
 if __name__ == "__main__":
     unittest.main()
