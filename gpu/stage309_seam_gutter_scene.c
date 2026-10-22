@@ -1,5 +1,19 @@
 #include "stage309_seam_gutter_scene.h"
 #include "stage308_cross_page_bilinear.h"
+#if defined(FOJ_GPU_STAGE310_ROW_PATTERNED_GUTTER)
+#include "stage310_page_edge_gutter.h"
+static const uint16_t stage310_bands[2][8]={
+    {0x001fu,0xf800u,0x07e0u,0xffe0u,0xf81fu,0x07ffu,0xffffu,0x0000u},
+    {0xffe0u,0x07e0u,0x001fu,0xf800u,0x07ffu,0xf81fu,0x0000u,0xffffu}
+};
+static void stage310_expand565(uint16_t v,uint8_t rgba[4]) {
+    const unsigned r=(v>>11u)&31u,g=(v>>5u)&63u,b=v&31u;
+    rgba[0]=(uint8_t)((r<<3u)|(r>>2u));
+    rgba[1]=(uint8_t)((g<<2u)|(g>>4u));
+    rgba[2]=(uint8_t)((b<<3u)|(b>>2u));
+    rgba[3]=255u;
+}
+#endif
 #include "bc1_atlas_page.h"
 #include <stdint.h>
 #include <stdlib.h>
@@ -58,11 +72,16 @@ int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
     for (unsigned block_y=0;block_y<256u;++block_y) {
         for (unsigned block_x=0;block_x<256u;++block_x) {
             const unsigned px=block_x/64u,py=block_y/64u;
+#if defined(FOJ_GPU_STAGE310_ROW_PATTERNED_GUTTER)
+            const uint16_t color=(py==1u && (px==1u || px==2u))?
+                stage310_bands[px-1u][(block_y%64u)/8u]:0u;
+#else
             const int bottom=(block_y%64u)>=32u;
             const uint16_t color=(py==1u && px==1u)?
                 (uint16_t)(bottom?0xf800u:0x001fu):
                 (py==1u && px==2u)?
                 (uint16_t)(bottom?0x07e0u:0xffe0u):0u;
+#endif
             const size_t at=128u+((size_t)block_y*256u+block_x)*8u;
             src[at]=(uint8_t)color;src[at+1]=(uint8_t)(color>>8u);
             /* BC1 palette index zero throughout every 4x4 block. */
@@ -85,6 +104,25 @@ int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
         left_meta.pixel_bytes!=FOJ_BC1_PAGE_RGBA_BYTES ||
         right_meta.width!=256u || right_meta.height!=256u ||
         right_meta.pixel_bytes!=FOJ_BC1_PAGE_RGBA_BYTES)goto end;
+#if defined(FOJ_GPU_STAGE310_ROW_PATTERNED_GUTTER)
+    FojStage310GutterReport evidence={0};
+    if (!foj_stage310_build_page_edge_gutter(
+            left,FOJ_BC1_PAGE_RGBA_BYTES,
+            right,FOJ_BC1_PAGE_RGBA_BYTES,
+            bridge,FOJ_BC1_PAGE_RGBA_BYTES,&evidence) ||
+        evidence.rows!=256u || evidence.contrasting_edge_rows!=256u ||
+        evidence.strictly_mixed_rows!=256u)
+        goto end;
+    for (unsigned y=0;y<256u;++y) {
+        const unsigned band=y/32u;
+        uint8_t expected_left[4],expected_right[4];
+        stage310_expand565(stage310_bands[0][band],expected_left);
+        stage310_expand565(stage310_bands[1][band],expected_right);
+        if (memcmp(left+((size_t)y*256u+255u)*4u,expected_left,4u) ||
+            memcmp(right+(size_t)y*256u*4u,expected_right,4u))
+            goto end;
+    }
+#else
     const uint8_t blue[4]={0,0,255,255};
     const uint8_t yellow[4]={255,255,0,255};
     const uint8_t red[4]={255,0,0,255};
@@ -107,6 +145,7 @@ int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
             memcpy(bridge+((size_t)y*256u+x)*4u,source,4u);
         }
     }
+#endif
     verts=(FojGpuVertex*)calloc(18u,sizeof(FojGpuVertex));
     batches=(FojGpuBatch*)calloc(3u,sizeof(FojGpuBatch));
     if (!verts || !batches)goto end;
