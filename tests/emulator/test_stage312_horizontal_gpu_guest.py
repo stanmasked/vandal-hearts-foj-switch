@@ -59,7 +59,9 @@ class HorizontalGPUHostOnlyNegativeTests(unittest.TestCase):
         self.assertEqual(r["real_neixum_guest_frames_verified"],2)
         for values in r["per_frame_pixel_probes"].values():
             self.assertEqual(len(values),32)
-            self.assertTrue(all(v>=33 for k,v in values.items()
+            # Midpoint now uses a bounded 7x3 measured footprint;
+            # acceptance remains 18 of 21 for an actual GPU frame.
+            self.assertTrue(all(18<=v<=21 for k,v in values.items()
                                 if k.endswith("_mixed")))
         self.assertFalse(r["independent_page_bilinear_reconstruction_verified"])
         self.assertFalse(r["physical_switch_verified"])
