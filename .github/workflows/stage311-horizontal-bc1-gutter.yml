@@ -1,0 +1,51 @@
+name: Stage311 horizontal BC1 page-edge gutter native reference and safety matrix
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage311-horizontal-bc1-gutter.yml'
+      - 'gpu/stage311_horizontal_gutter.c'
+      - 'gpu/stage311_horizontal_gutter.h'
+      - 'tests/gpu/test_stage311_horizontal_gutter.c'
+      - 'gpu/stage303_bc1_page_uv.c'
+      - 'gpu/stage303_bc1_page_uv.h'
+      - 'gpu/bc1_atlas_page.c'
+      - 'gpu/bc1_atlas_page.h'
+      - 'docs/GPU_STAGE311_HORIZONTAL_BC1_GUTTER.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage311-horizontal-bc1-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  horizontal:
+    name: Actual native horizontal BC1 page gutter / ${{ matrix.compiler }} / ${{ matrix.mode }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {compiler: gcc, mode: release, flags: '-O2'}
+          - {compiler: clang, mode: release, flags: '-O2'}
+          - {compiler: gcc, mode: ubsan, flags: '-O1 -g -fsanitize=undefined -fno-sanitize-recover=all'}
+          - {compiler: clang, mode: asan-ubsan, flags: '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decode actual native invented BC1 pages, sample horizontal seam and refuse overlaps
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 ${{ matrix.flags }} \
+            -Wall -Wextra -Werror -Igpu -Icore \
+            gpu/atlas_dds.c gpu/bc1_atlas_page.c \
+            gpu/stage303_bc1_page_uv.c gpu/stage311_horizontal_gutter.c \
+            tests/gpu/test_stage311_horizontal_gutter.c -lm \
+            -o /tmp/foj-stage311-horizontal-c
+          /tmp/foj-stage311-horizontal-c
+          echo STAGE311_GENERATED_NATIVE_HORIZONTAL_BC1_GUTTER_PASS
+      # No original FoJ NPEB00148 bytes, DDS files or guest traces.
