@@ -2,6 +2,9 @@
 #include "stage308_cross_page_bilinear.h"
 #if defined(FOJ_GPU_STAGE316_CORNER_GUTTER)
 #include "stage315_corner_patch.h"
+#if defined(FOJ_GPU_STAGE323_TILE_GUTTER)
+#include "stage322_bounded_corner_tile.h"
+#endif
 /* Four invented BC1 colors, NW/NE/SW/SE. */
 static const uint16_t stage316_color565[4]={
     0xf800u,0x07e0u,0x001fu,0xffffu
@@ -87,7 +90,11 @@ static void stage312_rect(FojGpuVertex *out,float y0,float y1,float z,
 static void stage316_quad(FojGpuVertex *out) {
     /* The quad spans exactly one source texel in each axis; linear
      * filtering of its midpoint must incorporate all four originals. */
+    #if defined(FOJ_GPU_STAGE323_TILE_GUTTER)
+    const float lo=7.5f/16.f,hi=8.5f/16.f;
+#else
     const float lo=127.5f/256.f,hi=128.5f/256.f;
+#endif
     vertex(out+0,-.52f,-.48f,.68f,lo,hi);
     vertex(out+1, .52f,-.48f,.68f,hi,hi);
     vertex(out+2,-.52f, .48f,.68f,lo,lo);
@@ -145,7 +152,11 @@ int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
     int success=0;
     left=(uint8_t*)malloc(FOJ_BC1_PAGE_RGBA_BYTES);
     right=(uint8_t*)malloc(FOJ_BC1_PAGE_RGBA_BYTES);
+    #if defined(FOJ_GPU_STAGE323_TILE_GUTTER)
+    bridge=(uint8_t*)malloc(FOJ_STAGE322_TILE_BYTES);
+#else
     bridge=(uint8_t*)malloc(FOJ_BC1_PAGE_RGBA_BYTES);
+#endif
     if (!left || !right || !bridge)goto end;
     if (!foj_bc1_1024_decode_page(src,BC1_LEN,1u,1u,left,
             FOJ_BC1_PAGE_RGBA_BYTES,&left_meta) ||
@@ -180,6 +191,36 @@ int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
         FOJ_BC1_PAGE_RGBA_BYTES,FOJ_BC1_PAGE_RGBA_BYTES,
         FOJ_BC1_PAGE_RGBA_BYTES,FOJ_BC1_PAGE_RGBA_BYTES
     };
+#if defined(FOJ_GPU_STAGE323_TILE_GUTTER)
+    /* Actually route a generated UV triangle through Stage319→320→321;
+     * Stage321 must DEFER all four physical source pages. Stage322 then
+     * creates a single 16x16 material with the exact source texels. */
+    const FojStage318Triangle tri={{{.49960f,.49960f},
+                                    {.49988f,.49960f},
+                                    {.49960f,.49988f}}};
+    uint16_t tri_id[1]={0};
+    FojStage320Batch planned[1]={{0}};
+    FojStage320Plan planned_info={0};
+    FojStage321Command deferred[1]={{0}};
+    FojStage321Report deferred_info={0};
+    FojStage322TileReceipt tile_info={0};
+    const uint8_t midpoint[4]={128u,128u,128u,255u};
+    if (!foj_stage320_plan_triangle_batches(
+            &tri,1u,tri_id,1u,planned,1u,&planned_info) ||
+        planned_info.batch_count!=1u || tri_id[0]!=0u ||
+        !foj_stage321_plan_three_slots(
+            planned,1u,deferred,1u,&deferred_info) ||
+        deferred_info.patch_required_batches!=1u ||
+        deferred_info.direct_batches!=0u ||
+        !foj_stage322_build_bounded_corner_tile(
+            deferred,2u,2u,pages,page_lengths,bridge,
+            FOJ_STAGE322_TILE_BYTES,&tile_info) ||
+        tile_info.bytes_written!=FOJ_STAGE322_TILE_BYTES ||
+        tile_info.source_page_mask!=(uint16_t)(
+            (1u<<5u)|(1u<<6u)|(1u<<9u)|(1u<<10u)) ||
+        memcmp(tile_info.midpoint_rgba,midpoint,4u))
+        goto end;
+#else
     FojStage315CornerReport corner={0};
     const uint8_t midpoint[4]={128u,128u,128u,255u};
     if (!foj_stage315_build_corner_patch(
@@ -189,6 +230,7 @@ int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
         corner.strict_four_page_midpoint!=1u ||
         memcmp(corner.midpoint_rgba,midpoint,4u))
         goto end;
+#endif
 #elif defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
     FojStage311HorizontalReport evidence={0};
     if (!foj_stage311_build_horizontal_gutter(
@@ -270,7 +312,13 @@ int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
     for (unsigned i=0;i<3u;++i)free(b->rgba[i]);
     free(b->vertices);free(b->batches);
     b->rgba[0]=bridge;b->rgba[1]=right;b->rgba[2]=left;
+    #if defined(FOJ_GPU_STAGE323_TILE_GUTTER)
+    b->report.atlas[0]=(FojAtlasRgba8Info){
+        FOJ_STAGE322_TILE_EDGE,FOJ_STAGE322_TILE_EDGE,
+        FOJ_STAGE322_TILE_BYTES};
+#else
     b->report.atlas[0]=(FojAtlasRgba8Info){256u,256u,FOJ_BC1_PAGE_RGBA_BYTES};
+#endif
     b->report.atlas[1]=right_meta;b->report.atlas[2]=left_meta;
     b->vertices=verts;b->batches=batches;
     b->report.actor.stream.vertices_written=18u;
