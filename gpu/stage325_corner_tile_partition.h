@@ -1,23 +1,18 @@
 #ifndef FOJ_STAGE325_CORNER_TILE_PARTITION_H
 #define FOJ_STAGE325_CORNER_TILE_PARTITION_H
-/* Stage325: partition one UV triangle into a bounded corner-tile fragment
- * and a disjoint remainder. CPU geometry only; no GPU calls or PS3 assets. */
+/* Stage325 builds on Stage324's canonical tile clip/remap primitive. */
 #include <stddef.h>
 #include <stdint.h>
+#include "stage324_corner_tile_clip.h"
 
 enum {
     FOJ_STAGE325_MAX_POLYGON_VERTICES=12u,
-    FOJ_STAGE325_TILE_VERTICES=15u,
+    FOJ_STAGE325_TILE_VERTICES=FOJ_STAGE324_MAX_OUTPUT_VERTICES,
     FOJ_STAGE325_REMAINDER_VERTICES=42u
 };
 
-typedef struct {
-    float x,y,z,u,v;
-} FojStage325Vertex;
-
-typedef struct {
-    FojStage325Vertex point[3];
-} FojStage325Triangle;
+typedef FojStage324Vertex FojStage325Vertex;
+typedef FojStage324Triangle FojStage325Triangle;
 
 typedef struct {
     uint32_t atlas_first_x,atlas_first_y;
@@ -35,7 +30,8 @@ typedef struct {
 
 /* Partition a source-UV triangle against one of the nine 16x16 corner
  * tiles centered on an internal 256x256 page junction in a 1024x1024 atlas.
- * Tile output uses remapped [0,1] UVs; remainder output preserves source UV.
+ * The tile fragment and its local UVs come from Stage324. Remainder pieces
+ * preserve source-atlas UVs and are emitted in a disjoint triangle soup.
  *
  * The remainder is decomposed into at most 14 non-overlapping triangles by
  * successively splitting against the four tile half-planes. Together the
