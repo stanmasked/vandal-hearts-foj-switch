@@ -3,6 +3,7 @@
 from __future__ import annotations
 import argparse
 import hashlib
+import io
 import json
 import re
 import shutil
@@ -164,7 +165,8 @@ def _close_rgb(a, b, tolerance: int) -> bool:
 
 
 def _frame(path: Path) -> dict:
-    with Image.open(path) as source:
+    data = _regular(path, 12 * 1024 * 1024)
+    with Image.open(io.BytesIO(data)) as source:
         image = source.convert("RGB")
     if image.size != (1280, 720):
         raise ValueError("Stage329 screenshot is not a 1280x720 NeXium frame")
@@ -238,7 +240,8 @@ def audit(folder: Path) -> dict:
     if _regular(folder / MARKER) != MARKER_BYTES:
         raise ValueError("Stage329 native upload receipt mismatch")
     frames = {name: _frame(folder / name) for name in FRAMES}
-    with Image.open(folder / FRAMES[0]) as first, Image.open(folder / FRAMES[1]) as later:
+    with Image.open(io.BytesIO(_regular(folder / FRAMES[0], 12 * 1024 * 1024))) as first, \
+         Image.open(io.BytesIO(_regular(folder / FRAMES[1], 12 * 1024 * 1024))) as later:
         a, b = first.convert("RGB"), later.convert("RGB")
     if ImageChops.difference(a, b).getbbox() is None:
         raise ValueError("Stage329 captured duplicate GPU frames")
