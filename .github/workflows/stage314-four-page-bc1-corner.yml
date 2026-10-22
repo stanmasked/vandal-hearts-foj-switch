@@ -1,0 +1,48 @@
+name: Stage314 native four-page BC1 corner bilinear mathematical reference
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage314-four-page-bc1-corner.yml'
+      - 'gpu/stage314_four_page_corner.c'
+      - 'gpu/stage314_four_page_corner.h'
+      - 'tests/gpu/test_stage314_four_page_corner.c'
+      - 'gpu/stage303_bc1_page_uv.c'
+      - 'gpu/bc1_atlas_page.c'
+      - 'docs/GPU_STAGE314_FOUR_PAGE_CORNER.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage314-bc1-four-corner-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reference:
+    name: Four decoded BC1 pages and 25 UVs / ${{ matrix.compiler }} / ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {compiler: gcc, variant: optimized, flags: '-O2'}
+          - {compiler: clang, variant: optimized, flags: '-O2'}
+          - {compiler: gcc, variant: ubsan, flags: '-O1 -g -fsanitize=undefined -fno-sanitize-recover=all'}
+          - {compiler: clang, variant: asan-ubsan, flags: '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decode actual synthetic 1024 BC1 DDS into four pages and verify 25 mixed positions
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 ${{ matrix.flags }} \
+            -Wall -Wextra -Werror -Igpu -Icore \
+            gpu/atlas_dds.c gpu/bc1_atlas_page.c \
+            gpu/stage303_bc1_page_uv.c gpu/stage314_four_page_corner.c \
+            tests/gpu/test_stage314_four_page_corner.c -lm \
+            -o /tmp/foj-stage314-corner
+          /tmp/foj-stage314-corner
+          echo STAGE314_GENERATED_ONLY_FOUR_PAGE_BILINEAR_CORNER_C_PASS
