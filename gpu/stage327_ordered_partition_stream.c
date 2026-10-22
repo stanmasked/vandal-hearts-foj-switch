@@ -50,7 +50,7 @@ static void append_section(FojTextureSection *out,size_t *written,
 
 int foj_stage327_build_ordered_partition_stream(
     const FojStage325Triangle *triangles,size_t triangle_count,
-    unsigned px,unsigned py,unsigned source_material,unsigned tile_material,
+    unsigned px,unsigned py,unsigned source_texture,unsigned tile_texture,
     size_t texture_count,FojTexturedVertex *vertices_out,size_t vertex_capacity,
     FojTextureSection *sections_out,size_t section_capacity,
     FojStage327StreamReport *report_out) {
@@ -58,8 +58,8 @@ int foj_stage327_build_ordered_partition_stream(
     if(triangle_count==0u||triangle_count>FOJ_STAGE327_MAX_SOURCE_TRIANGLES||
        px==0u||py==0u||px>=4u||py>=4u||
        texture_count<2u||texture_count>FOJ_GPU_MAX_TEXTURES||
-       source_material>=texture_count||tile_material>=texture_count||
-       source_material==tile_material)return 0;
+       source_texture>=texture_count||tile_texture>=texture_count||
+       source_texture==tile_texture)return 0;
 
     const size_t max_vertices=triangle_count*
         (FOJ_STAGE325_TILE_VERTICES+FOJ_STAGE325_REMAINDER_VERTICES);
@@ -125,13 +125,13 @@ int foj_stage327_build_ordered_partition_stream(
             const size_t first=vertex_written;
             append_vertices(vertices_out,&vertex_written,remainder,remainder_count);
             append_section(sections_out,&section_written,first,remainder_count,
-                           source_material);
+                           source_texture);
         }
         if(tile_count) {
             const size_t first=vertex_written;
             append_vertices(vertices_out,&vertex_written,tile,tile_count);
             append_section(sections_out,&section_written,first,tile_count,
-                           tile_material);
+                           tile_texture);
         }
     }
     if(vertex_written!=total_vertices||section_written!=total_sections)return 0;
