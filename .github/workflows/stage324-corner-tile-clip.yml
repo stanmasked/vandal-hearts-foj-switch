@@ -1,0 +1,45 @@
+name: Stage324 bounded corner-tile triangle clipping
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage324-corner-tile-clip.yml'
+      - 'gpu/stage324_corner_tile_clip.c'
+      - 'gpu/stage324_corner_tile_clip.h'
+      - 'tests/gpu/test_stage324_corner_tile_clip.c'
+      - 'docs/GPU_STAGE324_CORNER_TILE_CLIP.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage324-corner-tile-clip-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    name: Triangle-to-tile clipping / ${{ matrix.compiler }} / ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {compiler: gcc, variant: optimized, flags: '-O2'}
+          - {compiler: clang, variant: optimized, flags: '-O2'}
+          - {compiler: gcc, variant: ubsan, flags: '-O1 -g -fsanitize=undefined -fno-sanitize-recover=all'}
+          - {compiler: clang, variant: asan-ubsan, flags: '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bounded clipping, all nine corners, UV remap and fail-closed behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 ${{ matrix.flags }} \
+            -Wall -Wextra -Werror -pedantic -Igpu \
+            gpu/stage324_corner_tile_clip.c \
+            tests/gpu/test_stage324_corner_tile_clip.c \
+            -lm -o /tmp/foj-stage324-corner-clip
+          /tmp/foj-stage324-corner-clip
+          echo STAGE324_CORNER_TILE_TRIANGLE_CLIP_PASS
