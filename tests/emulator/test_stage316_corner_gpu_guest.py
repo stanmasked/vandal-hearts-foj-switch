@@ -71,6 +71,11 @@ class Stage316HostOnlyNegatives(unittest.TestCase):
             self.assertGreaterEqual(frame["midpoint_matching_pixels"],22)
             self.assertTrue(all(v>=20 for v in
                                 frame["independent_corner_color_regions"].values()))
+    def test_false_constant_midpoint_bar(self):
+        # A host-painted center can match 128/128/128 but it is not a
+        # physically varying bilinear surface in either direction.
+        self.corrupt("gpu-initial.png",(627,333,653,359),(128,128,128))
+        with self.assertRaises(ValueError):audit(self.bridge)
     def test_missing_2d_center(self):
         self.corrupt("gpu-initial.png",(604,308,676,387),(2,2,2))
         with self.assertRaises(ValueError):audit(self.bridge)
