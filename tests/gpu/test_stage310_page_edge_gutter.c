@@ -137,6 +137,22 @@ static void run(void) {
             for(size_t j=0;j<FOJ_BC1_PAGE_RGBA_BYTES;j+=4u)
                 assert(memcmp(testout+j,guard,4u)==0);
     }
+    /* Caller report may not write into either supposedly immutable
+     * decoded source page. A partially overlapping report is refused. */
+    for (unsigned side=0;side<2u;++side) {
+        FojStage310GutterReport *report_alias=
+            (FojStage310GutterReport*)(void*)(side==0u?left:right);
+        memset(testout,0x5a,FOJ_BC1_PAGE_RGBA_BYTES);
+        assert(foj_stage310_build_page_edge_gutter(
+            left,FOJ_BC1_PAGE_RGBA_BYTES,
+            right,FOJ_BC1_PAGE_RGBA_BYTES,
+            testout,FOJ_BC1_PAGE_RGBA_BYTES,report_alias)==0);
+        for(size_t k=0;k<FOJ_BC1_PAGE_RGBA_BYTES;++k)
+            assert(testout[k]==0x5au);
+    }
+    assert(memcmp(copy_left,left,FOJ_BC1_PAGE_RGBA_BYTES)==0);
+    assert(memcmp(copy_right,right,FOJ_BC1_PAGE_RGBA_BYTES)==0);
+
     assert(memcmp(copy_left,left,FOJ_BC1_PAGE_RGBA_BYTES)==0);
     assert(memcmp(copy_right,right,FOJ_BC1_PAGE_RGBA_BYTES)==0);
 
