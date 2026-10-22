@@ -1,0 +1,71 @@
+name: Stage327 ordered partition GPU stream
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage327-ordered-partition-stream.yml'
+      - 'gpu/stage324_corner_tile_clip.c'
+      - 'gpu/stage324_corner_tile_clip.h'
+      - 'gpu/stage325_corner_tile_partition.c'
+      - 'gpu/stage325_corner_tile_partition.h'
+      - 'gpu/stage327_ordered_partition_stream.c'
+      - 'gpu/stage327_ordered_partition_stream.h'
+      - 'core/gpu_vertex_stream.c'
+      - 'core/gpu_vertex_stream.h'
+      - 'core/textured_triangles.h'
+      - 'tests/gpu/test_stage326_partition_spatial_coverage.c'
+      - 'tests/gpu/test_stage327_ordered_partition_stream.c'
+      - 'docs/GPU_STAGE327_ORDERED_PARTITION_STREAM.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage327-ordered-partition-stream-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stream:
+    name: Ordered stream / ${{ matrix.compiler }} / ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {compiler: gcc, variant: optimized, flags: '-O2'}
+          - {compiler: clang, variant: optimized, flags: '-O2'}
+          - {compiler: gcc, variant: ubsan, flags: '-O1 -g -fsanitize=undefined -fno-sanitize-recover=all'}
+          - {compiler: clang, variant: asan-ubsan, flags: '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'}
+    env:
+      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Re-run Stage326 spatial coverage oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 ${{ matrix.flags }} \
+            -Wall -Wextra -Werror -pedantic -Igpu \
+            gpu/stage324_corner_tile_clip.c \
+            gpu/stage325_corner_tile_partition.c \
+            tests/gpu/test_stage326_partition_spatial_coverage.c \
+            -lm -o /tmp/foj-stage326-spatial-coverage
+          /tmp/foj-stage326-spatial-coverage
+          echo STAGE326_PARTITION_SPATIAL_COVERAGE_PASS
+      - name: Validate ordered partition stream and shared GPU depth staging
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 ${{ matrix.flags }} \
+            -Wall -Wextra -Werror -pedantic -Icore -Igpu \
+            gpu/stage324_corner_tile_clip.c \
+            gpu/stage325_corner_tile_partition.c \
+            gpu/stage327_ordered_partition_stream.c \
+            core/gpu_vertex_stream.c \
+            tests/gpu/test_stage327_ordered_partition_stream.c \
+            -lm -o /tmp/foj-stage327-ordered-stream
+          /tmp/foj-stage327-ordered-stream
+          echo STAGE327_ORDERED_PARTITION_STREAM_PASS
