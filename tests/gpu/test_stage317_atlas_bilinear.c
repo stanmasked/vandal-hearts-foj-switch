@@ -60,13 +60,18 @@ static void validate_source(const FojStage317RoutingReport *r,
 }
 static void nine_intersections(void) {
     unsigned samples=0;
+    /* Use five exactly representable subtexel fractions in [0,1).
+     * Excluding 1 keeps all four original corner-address candidates
+     * present, including at the positive side of the seam. */
+    static const unsigned steps[5]={0u,2u,4u,6u,7u};
     for(unsigned page_y=1u;page_y<4u;++page_y)
       for(unsigned page_x=1u;page_x<4u;++page_x)
         for(unsigned iy=0u;iy<=4u;++iy)
           for(unsigned ix=0u;ix<=4u;++ix) {
             const unsigned xb=page_x*256u,yb=page_y*256u;
-            const float u=((float)xb-0.5f+(float)ix/4.f)/1024.f;
-            const float v=((float)yb-0.5f+(float)iy/4.f)/1024.f;
+            const unsigned qx=steps[ix],qy=steps[iy];
+            const float u=((float)xb-0.5f+(float)qx/8.f)/1024.f;
+            const float v=((float)yb-0.5f+(float)qy/8.f)/1024.f;
             const unsigned xs[4]={xb-1u,xb,xb-1u,xb};
             const unsigned ys[4]={yb-1u,yb-1u,yb,yb};
             uint8_t got[4]={0};
@@ -81,9 +86,9 @@ static void nine_intersections(void) {
                 const unsigned sw=oracle_texel(xs[2],ys[2],k);
                 const unsigned se=oracle_texel(xs[3],ys[3],k);
                 const unsigned weighted=
-                    nw*(4u-ix)*(4u-iy)+ne*ix*(4u-iy)+
-                    sw*(4u-ix)*iy+se*ix*iy;
-                const unsigned expected=(weighted+8u)/16u;
+                    nw*(8u-qx)*(8u-qy)+ne*qx*(8u-qy)+
+                    sw*(8u-qx)*qy+se*qx*qy;
+                const unsigned expected=(weighted+32u)/64u;
                 assert(got[k]==expected);
             }
             ++samples;
