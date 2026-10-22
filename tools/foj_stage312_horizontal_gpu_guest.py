@@ -40,28 +40,63 @@ def _frame(path:Path)->dict:
         raise ValueError("Stage312 wrong real NeXium screenshot dimensions")
     pixel=im.load()
     found={}
+    seam_centers=[]
     for stripe,x in enumerate(X_CENTERS):
         top=rgb565(PAIRS565[0][stripe])
         bottom=rgb565(PAIRS565[1][stripe])
         mixed=tuple((top[k]+bottom[k]+1)//2 for k in range(3))
-        for label,y,rgb,epsilon,radius,minimum in (
-            ("top",280,top,4,3,45),
-            ("bottom",460,bottom,4,3,45),
-            ("mixed",360,mixed,22,2,33)
-        ):
-            count=sum(close_rgb(pixel[px,py],rgb,epsilon)
+        # Endpoint stripes are independently verified away from the
+        # seam: do not infer their colors from a mixed RGB midpoint.
+        for label,y,rgb in (("top",280,top),("bottom",460,bottom)):
+            count=sum(close_rgb(pixel[px,py],rgb,4)
                       for px in range(x-3,x+4)
-                      for py in range(y-radius,y+radius+1))
-            if count<minimum:
+                      for py in range(y-3,y+4))
+            if count<45:
                 raise ValueError(
                     f"Stage312 stripe={stripe} {label} GPU colors absent")
             found[f"band{stripe}_{label}"]=count
-        center=pixel[x,360]
-        if close_rgb(center,top,8) or close_rgb(center,bottom,8):
-            raise ValueError("Stage312 seam incorrectly clamps to a page")
-        for y in (355,365):
-            if close_rgb(pixel[x,y],top,8) or close_rgb(pixel[x,y],bottom,8):
-                raise ValueError("Stage312 horizontal gutter has endpoint leak")
+
+        # NeXium's presentation viewport shifts the projected seam.
+        # A previous real frame placed the actual 50/50 reconstruction
+        # near Y=346, not nominal Y=360. Locate the midpoint by COLOR
+        # in a strictly bounded 326..370 search rather than accepting
+        # any isolated intermediate pixel.
+        candidates=[]
+        for y in range(326,371):
+            rgb=pixel[x,y]
+            if close_rgb(rgb,mixed,16):
+                error=max(abs(rgb[k]-mixed[k]) for k in range(3))
+                candidates.append((error,y))
+        if not candidates:
+            raise ValueError(
+                f"Stage312 stripe={stripe} missing real GPU midpoint")
+        _,center=min(candidates)
+        count=sum(close_rgb(pixel[px,py],mixed,22)
+                  for px in range(x-3,x+4)
+                  for py in range(center-1,center+2))
+        if count<18:
+            raise ValueError(
+                f"Stage312 stripe={stripe} midpoint not a coherent 7x3 region")
+        # Two physically separated interior points must have different
+        # intermediate colors. This rejects an abrupt independent-page
+        # step, a solid synthetic midpoint bar, and leaked endpoints.
+        before=pixel[x,center-6]
+        after=pixel[x,center+6]
+        for sample in (before,after,pixel[x,center]):
+            if close_rgb(sample,top,8) or close_rgb(sample,bottom,8):
+                raise ValueError(
+                    f"Stage312 stripe={stripe} seam leaks a page endpoint")
+        if max(abs(before[k]-after[k]) for k in range(3))<16:
+            raise ValueError(
+                f"Stage312 stripe={stripe} no actual GPU color gradient")
+        seam_centers.append(center)
+        found[f"band{stripe}_mixed"]=count
+        found[f"band{stripe}_seam_y"]=center
+
+    # Every stripe uses the same native horizontal quad, so the screen
+    # midpoint cannot jump independently between neighboring stripes.
+    if max(seam_centers)-min(seam_centers)>2:
+        raise ValueError("Stage312 incoherent horizontal GPU seam location")
     return found
 
 def audit(folder:Path):
