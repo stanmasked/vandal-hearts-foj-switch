@@ -1236,6 +1236,29 @@ int main(int argc,char **argv) {
     if (!upload_list)goto cleanup;
     dkQueueSubmitCommands(queue,upload_list);
     dkQueueWaitIdle(queue);
+#if defined(FOJ_GPU_STAGE329_PATCH_STREAM)
+    /* This receipt attests only that the generated tile upload command
+     * completed. NeXium's independently sampled framebuffer is separate. */
+    char tile_upload_text[256];
+    const int tile_upload_len=snprintf(
+        tile_upload_text,sizeof(tile_upload_text),
+        "FOJ_NATIVE_STAGE329_CORNER_PATCH_UPLOAD_V1 junction=2,2 "
+        "tile=16x16 bytes=1024 fnv1a64=%016llx "
+        "midpoint=128,128,128,255 vertices=3 sections=1 texture=1\n",
+        (unsigned long long)stage329_receipt.tile_fnv1a64);
+    if(tile_upload_len<=0||(size_t)tile_upload_len>=sizeof(tile_upload_text))
+        goto cleanup;
+    FILE *const tile_upload_file=fopen(
+        "sdmc:/switch/foj/gpu/foj-native-stage329-corner-patch-upload.txt",
+        "wx");
+    if(!tile_upload_file)goto cleanup;
+    const size_t tile_upload_saved=fwrite(
+        tile_upload_text,1u,(size_t)tile_upload_len,tile_upload_file);
+    const int tile_upload_flushed=fflush(tile_upload_file);
+    const int tile_upload_closed=fclose(tile_upload_file);
+    if(tile_upload_saved!=(size_t)tile_upload_len||
+       tile_upload_flushed!=0||tile_upload_closed!=0)goto cleanup;
+#endif
     dkCmdBufClear(cmd);
     } else {
         /* Discard pending copies from earlier slots after DDS failure. */
