@@ -68,9 +68,8 @@ static unsigned soup_hits(const FojStage325Vertex *soup,unsigned n,
         if(triangle_contains(soup+i,soup+i+1u,soup+i+2u,u,v))++hits;
     return hits;
 }
-static Point2 sample_source_triangle(const FojStage325Triangle *t) {
-    double a=unit(),b=unit();
-    if(a+b>1.0){a=1.0-a;b=1.0-b;}
+static Point2 sample_source_triangle(const FojStage325Triangle *t,
+                                    double a,double b) {
     const double u0=t->point[0].u,v0=t->point[0].v;
     const double u1=t->point[1].u,v1=t->point[1].v;
     const double u2=t->point[2].u,v2=t->point[2].v;
@@ -98,7 +97,7 @@ static void verify_coverage(const FojStage325Triangle *t,unsigned px,unsigned py
         if(a+b>1.0){a=1.0-a;b=1.0-b;}
         /* Avoid the source triangle's own boundary so point location is strict. */
         if(a<1e-8||b<1e-8||a+b>1.0-1e-8)continue;
-        const Point2 p=sample_source_triangle(t);
+        const Point2 p=sample_source_triangle(t,a,b);
         const double u=p.u,v=p.v;
         if(fabs(u-left)<1e-12||fabs(u-right)<1e-12||
            fabs(v-top)<1e-12||fabs(v-bottom)<1e-12)continue;
