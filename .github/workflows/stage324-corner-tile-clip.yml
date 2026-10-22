@@ -14,12 +14,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: stage324-corner-tile-clip-\${{ github.event.pull_request.number || github.ref }}
+  group: stage324-corner-tile-clip-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   native:
-    name: Triangle-to-tile clipping / \${{ matrix.compiler }} / \${{ matrix.variant }}
+    name: Triangle-to-tile clipping / ${{ matrix.compiler }} / ${{ matrix.variant }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     strategy:
@@ -36,7 +36,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          \${{ matrix.compiler }} -std=c11 \${{ matrix.flags }} \
+          ${{ matrix.compiler }} -std=c11 ${{ matrix.flags }} \
             -Wall -Wextra -Werror -pedantic -Igpu \
             gpu/stage324_corner_tile_clip.c \
             tests/gpu/test_stage324_corner_tile_clip.c \
