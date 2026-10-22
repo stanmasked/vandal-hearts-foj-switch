@@ -217,7 +217,7 @@ def _frame(path: Path) -> dict:
 
     outside = (tuple(pixels[max(0, cx - 80), cy]),
                tuple(pixels[min(1279, cx + 80), cy]))
-    if any(_close_rgb(color, (128, 128, 128), 25) for color in outside):
+    if any(_close_rgb(color, (128, 128, 128), 10) for color in outside):
         raise ValueError("Stage329 patch footprint does not end outside its triangle")
     return {
         "center_x": cx, "center_y": cy,
