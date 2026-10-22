@@ -99,6 +99,22 @@ int foj_stage328_prepare_corner_patch_stream(
        spans_overlap(triangles,triangle_bytes,pages,page_array_bytes)||
        spans_overlap(triangles,triangle_bytes,lengths,length_array_bytes)||
        spans_overlap(pages,page_array_bytes,lengths,length_array_bytes)||
+       spans_overlap(batch,sizeof(*batch),tile_out,tile_capacity)||
+       spans_overlap(batch,sizeof(*batch),vertices_out,vertex_bytes)||
+       spans_overlap(batch,sizeof(*batch),sections_out,section_bytes)||
+       spans_overlap(batch,sizeof(*batch),receipt_out,sizeof(*receipt_out))||
+       spans_overlap(triangles,triangle_bytes,tile_out,tile_capacity)||
+       spans_overlap(triangles,triangle_bytes,vertices_out,vertex_bytes)||
+       spans_overlap(triangles,triangle_bytes,sections_out,section_bytes)||
+       spans_overlap(triangles,triangle_bytes,receipt_out,sizeof(*receipt_out))||
+       spans_overlap(pages,page_array_bytes,tile_out,tile_capacity)||
+       spans_overlap(pages,page_array_bytes,vertices_out,vertex_bytes)||
+       spans_overlap(pages,page_array_bytes,sections_out,section_bytes)||
+       spans_overlap(pages,page_array_bytes,receipt_out,sizeof(*receipt_out))||
+       spans_overlap(lengths,length_array_bytes,tile_out,tile_capacity)||
+       spans_overlap(lengths,length_array_bytes,vertices_out,vertex_bytes)||
+       spans_overlap(lengths,length_array_bytes,sections_out,section_bytes)||
+       spans_overlap(lengths,length_array_bytes,receipt_out,sizeof(*receipt_out))||
        spans_overlap(tile_out,tile_capacity,vertices_out,vertex_bytes)||
        spans_overlap(tile_out,tile_capacity,sections_out,section_bytes)||
        spans_overlap(tile_out,tile_capacity,receipt_out,sizeof(*receipt_out))||
