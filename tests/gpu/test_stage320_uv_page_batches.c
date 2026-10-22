@@ -115,14 +115,9 @@ static void verify_plan(const FojStage318Triangle *t,unsigned count,
 static void sorted_stability(void) {
     FojStage318Triangle input[CAP];examples(input);
     known_geometry_and_source_masks(input);
-    const FojStage318Triangle original[CAP]={
-        /* only a first-element exemplar; complete identity is verified
-         * below with a dedicated copy of the whole array. */
-        {{{.08f,.10f},{.13f,.10f},{.08f,.17f}}}
-    };
-    (void)original;
     FojStage318Triangle copy[CAP];memcpy(copy,input,sizeof(copy));
-    for(unsigned n=1u;n<=CAP;n=(n==1u?10u:CAP+1u)) {
+    for(unsigned k=0u;k<3u;++k) {
+        const unsigned n=k==0u?1u:(k==1u?10u:CAP);
         uint16_t ids[CAP],again_ids[CAP];
         FojStage320Batch batches[CAP],again_batches[CAP];
         FojStage320Plan info={0},again={0};
@@ -161,11 +156,6 @@ static void reject_without_mutation(void) {
     memset(ids,0xa5,sizeof(ids));
     memset(batches,0x5a,sizeof(batches));
     memset(&report,0xdd,sizeof(report));
-    const uint16_t original_ids[CAP]={
-        /* empty initializer prohibited in strict ISO C; use memcpy below */
-        0u
-    };
-    (void)original_ids;
     uint16_t saved_ids[CAP];memcpy(saved_ids,ids,sizeof(ids));
     FojStage320Batch saved_batches[CAP];
     memcpy(saved_batches,batches,sizeof(batches));
