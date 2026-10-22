@@ -10,11 +10,6 @@ static int overlap(const void *ap,size_t an,const void *bp,size_t bn) {
     if(an>UINTPTR_MAX-a || bn>UINTPTR_MAX-b)return 1;
     return a<b+bn && b<a+an;
 }
-static int finite_vertex(const FojStage325Vertex *v) {
-    return isfinite(v->x)&&isfinite(v->y)&&isfinite(v->z)&&
-           isfinite(v->u)&&isfinite(v->v)&&
-           v->u>=0.0f&&v->u<=1.0f&&v->v>=0.0f&&v->v<=1.0f;
-}
 static double signed_area2(const FojStage325Vertex *p,unsigned n) {
     double sum=0.0;
     if(n<3u)return 0.0;
@@ -105,14 +100,6 @@ static int emit_fan(const FojStage325Vertex *poly,unsigned n,
     *area_sum+=area;
     return 1;
 }
-static int nondegenerate(const FojStage325Triangle *t) {
-    const double area=((double)t->point[1].u-t->point[0].u)*
-                      ((double)t->point[2].v-t->point[0].v)-
-                      ((double)t->point[1].v-t->point[0].v)*
-                      ((double)t->point[2].u-t->point[0].u);
-    return isfinite(area)&&fabs(area)>0.0;
-}
-
 int foj_stage325_partition_triangle_at_corner_tile(
     const FojStage325Triangle *triangle,unsigned px,unsigned py,
     FojStage325Vertex *tile_output,size_t tile_capacity,
@@ -133,10 +120,6 @@ int foj_stage325_partition_triangle_at_corner_tile(
        overlap(tile_output,tile_bytes,report,sizeof(*report))||
        overlap(remainder_output,remainder_bytes,report,sizeof(*report)))
         return 0;
-    for(unsigned i=0u;i<3u;++i)
-        if(!finite_vertex(triangle->point+i))return 0;
-    if(!nondegenerate(triangle))return 0;
-
     const double left=((double)px*256.0-8.0)/1024.0;
     const double right=((double)px*256.0+8.0)/1024.0;
     const double top=((double)py*256.0-8.0)/1024.0;
@@ -156,9 +139,17 @@ int foj_stage325_partition_triangle_at_corner_tile(
     FojStage325Vertex current[POLY_CAP]={{0}};
     FojStage325Vertex next[POLY_CAP]={{0}};
     FojStage325Vertex outside[POLY_CAP]={{0}};
+    FojStage324TileClipReport tile_report;
+    memset(&tile_report,0,sizeof(tile_report));
+    if(!foj_stage324_clip_triangle_to_corner_tile(
+        triangle,px,py,tile_stage,FOJ_STAGE324_MAX_OUTPUT_VERTICES,
+        &tile_report))return 0;
     memcpy(current,triangle->point,sizeof(triangle->point));
-    unsigned n=3u,tile_written=0u,remainder_written=0u;
+    unsigned n=3u,tile_written=tile_report.output_vertices;
+    unsigned remainder_written=0u;
     double remainder_area=0.0;
+    value.tile_uv_area=tile_report.clipped_uv_area;
+    value.tile_intersects=tile_report.intersects;
 
     const double bounds[4]={left,right,top,bottom};
     for(unsigned edge=0u;edge<4u;++edge) {
@@ -173,24 +164,6 @@ int foj_stage325_partition_triangle_at_corner_tile(
         n=next_n;
     }
 
-    const double tile_source_area=polygon_area(current,n);
-    if(n>=3u&&tile_source_area>0.0) {
-        for(unsigned i=0u;i<n;++i) {
-            const double u=((double)current[i].u-left)/(right-left);
-            const double v=((double)current[i].v-top)/(bottom-top);
-            if(!isfinite(u)||!isfinite(v)||u < -1e-6||u > 1.000001||
-               v < -1e-6||v > 1.000001)return 0;
-            current[i].u=(float)(u<0.0?0.0:(u>1.0?1.0:u));
-            current[i].v=(float)(v<0.0?0.0:(v>1.0?1.0:v));
-        }
-        double local_area=0.0;
-        if(!emit_fan(current,n,tile_stage,FOJ_STAGE325_TILE_VERTICES,
-                     &tile_written,&local_area))return 0;
-        value.tile_uv_area=tile_source_area;
-        value.tile_intersects=1u;
-    } else {
-        value.tile_uv_area=0.0;
-    }
     value.remainder_uv_area=remainder_area;
     value.tile_vertices=tile_written;
     value.tile_triangles=tile_written/3u;
