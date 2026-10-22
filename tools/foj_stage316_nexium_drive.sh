@@ -83,8 +83,8 @@ python3 - "$marker" <<'PY'
 from pathlib import Path
 import sys
 m=Path(sys.argv[1]).read_bytes()
-if m!=b"FOJ_NATIVE_STAGE316_HORIZONTAL_GUTTER_V1 pairs=8 columns=256 strict_mix=256 pages=1,1+1,2 verts=18\n":
+if m!=b"FOJ_NATIVE_STAGE316_FOUR_CORNER_V1 pages=1,1+2,1+1,2+2,2 colors=4 strict_center=1 verts=18\n":
     raise SystemExit("Stage316 guest-native page/vertex receipt disagrees")
 PY
 cp -- "$marker" "$FOJ_EVIDENCE_DIR/native-stage316-four-corner-pass.txt"
-echo STAGE316_REAL_NEIXUM_SAME_FRAME_BC1_PAGES_CAPTURED
+echo STAGE316_REAL_NEIXUM_FOUR_CORNER_GPU_FRAMES_CAPTURED
