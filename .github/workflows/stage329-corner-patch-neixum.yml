@@ -6,6 +6,7 @@ on:
       - '.github/workflows/stage329-corner-patch-neixum.yml'
       - 'gpu/deko3d_clear_main.c'
       - 'gpu/stage329_corner_patch_draw.mk'
+      - 'docs/GPU_STAGE329_NATIVE_CORNER_PATCH_DRAW.md'
       - 'gpu/stage318_triangle_uv_coverage.c'
       - 'gpu/stage318_triangle_uv_coverage.h'
       - 'gpu/stage319_bilinear_halo_support.c'
