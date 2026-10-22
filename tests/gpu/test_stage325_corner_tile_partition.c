@@ -173,6 +173,35 @@ static void partial_tangent_and_reverse_winding(void) {
     assert(r.remainder_vertices==3u);
     assert(fabs(r.input_uv_area-r.remainder_uv_area)<1e-9);
 }
+
+static uint32_t rng_state=UINT32_C(0x13579bdf);
+static float next_unit(void) {
+    rng_state=rng_state*UINT32_C(1664525)+UINT32_C(1013904223);
+    return (float)(rng_state>>8)*(1.0f/16777216.0f);
+}
+static void randomized_area_conservation(void) {
+    FojStage325Vertex tile[FOJ_STAGE325_TILE_VERTICES];
+    FojStage325Vertex rem[FOJ_STAGE325_REMAINDER_VERTICES];
+    unsigned checked=0u;
+    for(unsigned i=0u;i<2048u;++i) {
+        FojStage325Triangle t={{
+            vertex(next_unit(),next_unit()),
+            vertex(next_unit(),next_unit()),
+            vertex(next_unit(),next_unit())
+        }};
+        if(fabs(signed_area2(t.point,t.point+1u,t.point+2u))<1e-7)
+            continue;
+        const unsigned px=1u+(i%3u);
+        const unsigned py=1u+((i/3u)%3u);
+        FojStage325PartitionReport r={0};
+        run_partition(&t,px,py,tile,rem,&r);
+        assert(r.tile_vertices<=FOJ_STAGE325_TILE_VERTICES);
+        assert(r.remainder_vertices<=FOJ_STAGE325_REMAINDER_VERTICES);
+        ++checked;
+    }
+    assert(checked>=2040u);
+}
+
 static void deterministic_and_atomic_failures(void) {
     FojStage325Triangle t=covering_triangle(2u,2u);
     FojStage325Vertex tile[FOJ_STAGE325_TILE_VERTICES],tile2[FOJ_STAGE325_TILE_VERTICES];
@@ -234,6 +263,7 @@ int main(void) {
     all_nine_corners();
     wholly_inside_and_outside();
     partial_tangent_and_reverse_winding();
+    randomized_area_conservation();
     deterministic_and_atomic_failures();
     puts("STAGE325_CORNER_TILE_COMPLEMENTARY_PARTITION_PASS");
     return 0;
