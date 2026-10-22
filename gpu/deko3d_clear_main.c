@@ -160,7 +160,7 @@ static int stage329_prepare_corner_patch(void) {
        stage329_sections[0].texture_index!=1u)
         return 0;
 
-    const FojTextureCamera camera={0.f,0.f,0.f,1.2f,0.f,0.f,1.f,0};
+    const FojTextureCamera camera={0.f,0.f,0.f,1.2f,0.f,0.f,1.f,1};
     if(foj_gpu_prepare_stream(
         stage329_cpu_vertices,stage329_receipt.output_vertices,
         stage329_sections,stage329_receipt.output_sections,
