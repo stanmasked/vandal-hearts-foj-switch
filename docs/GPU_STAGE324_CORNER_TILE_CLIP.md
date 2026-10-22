@@ -58,4 +58,4 @@ the renderer must also retain original draw order and handle overlapping
 patches, transparency, and GPU texture upload. Stage324 does not parse
 original FoJ meshes, infer their real UV conventions, issue GPU commands,
 or claim physical Nintendo Switch validation. Keep this work Draft and
-leave \`main\` unchanged.
+leave `main` unchanged.
