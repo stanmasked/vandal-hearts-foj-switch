@@ -1,0 +1,58 @@
+name: Stage322 bounded 4-page BC1 corner tile and bilinear UV proof
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage322-four-page-bounded-tile.yml'
+      - 'gpu/stage322_bounded_corner_tile.c'
+      - 'gpu/stage322_bounded_corner_tile.h'
+      - 'gpu/stage321_three_slot_plan.c'
+      - 'gpu/stage321_three_slot_plan.h'
+      - 'gpu/stage320_uv_page_batches.c'
+      - 'gpu/stage319_bilinear_halo_support.c'
+      - 'gpu/stage318_triangle_uv_coverage.c'
+      - 'gpu/stage317_atlas_bilinear.c'
+      - 'gpu/stage303_bc1_page_uv.c'
+      - 'tests/gpu/test_stage322_bounded_corner_tile.c'
+      - 'docs/GPU_STAGE322_BOUNDED_CORNER_TILE.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage322-bounded-four-page-tile-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    name: Nine bounded corner tiles and exact bilinear oracle / ${{ matrix.compiler }} / ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {compiler: gcc, variant: optimized, flags: '-O2'}
+          - {compiler: clang, variant: optimized, flags: '-O2'}
+          - {compiler: gcc, variant: ubsan, flags: '-O1 -g -fsanitize=undefined -fno-sanitize-recover=all'}
+          - {compiler: clang, variant: asan-ubsan, flags: '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Stage319 to Stage322 native chain for all 9 atlas junctions
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 ${{ matrix.flags }} \
+            -Wall -Wextra -Werror -pedantic -Igpu \
+            gpu/stage303_bc1_page_uv.c \
+            gpu/stage317_atlas_bilinear.c \
+            gpu/stage318_triangle_uv_coverage.c \
+            gpu/stage319_bilinear_halo_support.c \
+            gpu/stage320_uv_page_batches.c \
+            gpu/stage321_three_slot_plan.c \
+            gpu/stage322_bounded_corner_tile.c \
+            tests/gpu/test_stage322_bounded_corner_tile.c \
+            -lm -o /tmp/foj-stage322
+          /tmp/foj-stage322
+          echo STAGE322_NATIVE_BOUNDED_FOUR_PAGE_BC1_TILES_PASS
