@@ -150,11 +150,20 @@ static int stage329_prepare_corner_patch(void) {
        stage329_receipt.atlas_first_y!=504u||
        stage329_receipt.tile_fnv1a64!=UINT64_C(0xd5565bfb7360b325)||
        memcmp(stage329_receipt.midpoint_rgba,expected_midpoint,4u)||
+       stage329_receipt.source_page_mask!=
+           (uint16_t)((1u<<5u)|(1u<<6u)|(1u<<9u)|(1u<<10u))||
+       stage329_receipt.page_id[0]!=5u||stage329_receipt.page_id[1]!=6u||
+       stage329_receipt.page_id[2]!=9u||stage329_receipt.page_id[3]!=10u||
        stage329_receipt.tile_bytes_written!=FOJ_STAGE322_TILE_BYTES||
+       stage329_receipt.source_triangles!=1u||
        stage329_receipt.output_vertices!=3u||
        stage329_receipt.output_sections!=1u||
        stage329_receipt.tile_fragments!=1u||
        stage329_receipt.remainder_fragments!=0u||
+       stage329_receipt.tile_triangles!=1u||
+       stage329_receipt.remainder_triangles!=0u||
+       stage329_receipt.source_texture_index!=0u||
+       stage329_receipt.tile_texture_index!=1u||
        stage329_sections[0].first_vertex!=0u||
        stage329_sections[0].vertex_count!=3u||
        stage329_sections[0].texture_index!=1u)
