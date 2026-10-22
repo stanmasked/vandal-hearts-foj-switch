@@ -9,11 +9,13 @@ adds the complementary geometry needed to preserve coverage.
 
 ## Partition algorithm
 
-The source triangle is successively split by the tile's left, right, top
-and bottom half-planes. At each edge, the outside polygon is emitted to a
-remainder triangle soup in original atlas UV space, and the inside polygon
-continues to the next edge. After four splits, the surviving polygon is
-the tile fragment and its UVs are remapped to tile-local coordinates.
+The source triangle is first passed to Stage324 for the canonical clipped
+tile fragment and tile-local UV remapping. Separately, the original triangle
+is successively split by the tile's left, right, top and bottom half-planes.
+At each edge, the outside polygon is emitted to a remainder triangle soup
+in original atlas UV space, and the inside polygon continues to the next
+edge. This independently partitions the complement while reusing Stage324's
+tile geometry rather than implementing tile remapping a second time.
 
 This partitions the original triangle into positive-area-disjoint regions.
 Adjacent pieces can share boundary edges, but do not duplicate area.
