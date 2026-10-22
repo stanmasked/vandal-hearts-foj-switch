@@ -1,0 +1,46 @@
+name: Stage321 three-slot GPU texture residency and patch deferral
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage321-three-slot-texture-plan.yml'
+      - 'gpu/stage321_three_slot_plan.c'
+      - 'gpu/stage321_three_slot_plan.h'
+      - 'gpu/stage320_uv_page_batches.h'
+      - 'gpu/stage320_uv_page_batches.c'
+      - 'tests/gpu/test_stage321_three_slot_plan.c'
+      - 'docs/GPU_STAGE321_THREE_SLOT_PLAN.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage321-three-slot-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    name: Three-slot residency and deferred patch / ${{ matrix.compiler }} / ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {compiler: gcc, variant: optimized, flags: '-O2'}
+          - {compiler: clang, variant: optimized, flags: '-O2'}
+          - {compiler: gcc, variant: ubsan, flags: '-O1 -g -fsanitize=undefined -fno-sanitize-recover=all'}
+          - {compiler: clang, variant: asan-ubsan, flags: '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and replay 3 GPU slots, retain textures and block >3 page draws
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 ${{ matrix.flags }} -Wall -Wextra -Werror -pedantic -Igpu \
+            gpu/stage321_three_slot_plan.c \
+            tests/gpu/test_stage321_three_slot_plan.c \
+            -o /tmp/foj-stage321
+          /tmp/foj-stage321
+          echo STAGE321_THREE_SLOT_CPU_NATIVE_PROOF_PASS
