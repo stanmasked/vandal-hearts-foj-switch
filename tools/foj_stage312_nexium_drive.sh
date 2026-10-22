@@ -52,6 +52,31 @@ PY
 done
 if [[ "$found" != 1 ]]; then
   echo "Stage312 horizontal eight-band BC1 gutter never reached actual GPU frame" >&2
+  # Diagnostic is limited to invented-only screen-color probes. Never
+  # export raw guest logs or accept these samples in place of _frame().
+  python3 - "$FOJ_EVIDENCE_DIR/gpu-initial.png" "$marker" <<'PY'
+from pathlib import Path
+import sys
+from PIL import Image
+from tools.foj_stage312_horizontal_gpu_guest import MARKER_BYTES,X_CENTERS
+file,receipt=map(Path,sys.argv[1:])
+if not file.is_file() or receipt.is_symlink() or not receipt.is_file():
+    print("STAGE312_DIAGNOSTIC_NO_ATTESTED_FRAME_OR_NATIVE_MARKER")
+    raise SystemExit(0)
+if receipt.read_bytes()!=MARKER_BYTES:
+    print("STAGE312_DIAGNOSTIC_NATIVE_RECEIPT_DISAGREES")
+    raise SystemExit(0)
+with Image.open(file) as raw:
+    image=raw.convert("RGB")
+if image.size!=(1280,720):
+    print("STAGE312_DIAGNOSTIC_UNEXPECTED_FRAME_SIZE")
+    raise SystemExit(0)
+for index in (0,2,4,7):
+    x=X_CENTERS[index]
+    rgb=[image.getpixel((x,y)) for y in
+         (280,320,340,350,360,370,380,400,460)]
+    print(f"STAGE312_GENERATED_ONLY_RGB_PROBE_BAND_{index}={rgb}")
+PY
   exit 1
 fi
 phase=0
