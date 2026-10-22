@@ -11,10 +11,11 @@ the 16x16 corner tile and its matching tile-local geometry stream.
 
 The test triangle spans nearly the full 16x16 tile while remaining
 strictly inside its atlas bounds, so the draw stream has three vertices and
-one material section that selects texture slot 1. Stage327 deliberately
-retains original-atlas UVs for source remainders; this Stage329 tile-only
-target validates those UVs and remaps them to [0,1] before GPU projection.
-Slot 0 contains a separate generated fallback and is not used by the triangle.
+one material section that selects texture slot 1. Stage324 already remaps the
+tile fragment to tile-local UVs; Stage327 retains original-atlas UVs only for
+source remainders. This Stage329 fixture has no remainder, so it validates the
+local UV range and passes it to the GPU unchanged. Slot 0 contains a separate
+generated fallback and is not used by the triangle.
 The projected vertices use V flipping to match the native texture row
 orientation, and the sampler is explicitly linear. The resulting midpoint
 should sample the average RGBA value (128,128,128,255), while the four

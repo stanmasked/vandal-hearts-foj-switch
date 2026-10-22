@@ -171,28 +171,15 @@ static int stage329_prepare_corner_patch(void) {
        stage329_sections[0].texture_index!=1u)
         return 0;
 
-    /* The complete tile should occupy about 192x192 framebuffer pixels. */
-    /* Stage327 keeps original-atlas UVs for source remainders.
-     * This Stage329 target has only a tile section, so validate and remap its
-     * UVs into the generated tile's [0,1] coordinate system before projection. */
-    const float tile_u0=(float)stage329_receipt.atlas_first_x/1024.f;
-    const float tile_v0=(float)stage329_receipt.atlas_first_y/1024.f;
-    const float tile_span=(float)FOJ_STAGE322_TILE_EDGE/1024.f;
+    /* Stage324 already remaps tile-fragment UVs to [0,1].
+     * Stage327 preserves atlas UVs only for source-remainder sections; this
+     * synthetic Stage329 batch has no remainder. Validate, do not remap again.
+     * The complete tile should occupy about 192x192 framebuffer pixels. */
     for(size_t i=0u;i<stage329_receipt.output_vertices;++i) {
-        FojTexturedVertex *const vertex=stage329_cpu_vertices+i;
-        if(vertex->u<tile_u0-1e-6f ||
-           vertex->u>tile_u0+tile_span+1e-6f ||
-           vertex->v<tile_v0-1e-6f ||
-           vertex->v>tile_v0+tile_span+1e-6f)
+        const FojTexturedVertex *const vertex=stage329_cpu_vertices+i;
+        if(vertex->u<0.f || vertex->u>1.f ||
+           vertex->v<0.f || vertex->v>1.f)
             return 0;
-        float local_u=(vertex->u-tile_u0)/tile_span;
-        float local_v=(vertex->v-tile_v0)/tile_span;
-        if(local_u<0.f)local_u=0.f;
-        if(local_u>1.f)local_u=1.f;
-        if(local_v<0.f)local_v=0.f;
-        if(local_v>1.f)local_v=1.f;
-        vertex->u=local_u;
-        vertex->v=local_v;
     }
     const FojTextureCamera camera={0.f,0.f,0.f,9.5f,0.f,0.f,1.f,1};
     if(foj_gpu_prepare_stream(

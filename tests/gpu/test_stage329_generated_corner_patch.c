@@ -85,15 +85,11 @@ int main(void) {
             assert(tile[((size_t)y*16u+x)*4u+c]==colors[corner][c]);
     }
 
-    const float tile_u0=(float)receipt.atlas_first_x/1024.f;
-    const float tile_v0=(float)receipt.atlas_first_y/1024.f;
-    const float tile_span=(float)FOJ_STAGE322_TILE_EDGE/1024.f;
     float min_u=1.f,max_u=0.f,min_v=1.f,max_v=0.f;
     for(size_t i=0u;i<receipt.output_vertices;++i) {
-        assert(stream[i].u>=tile_u0-1e-6f&&stream[i].u<=tile_u0+tile_span+1e-6f);
-        assert(stream[i].v>=tile_v0-1e-6f&&stream[i].v<=tile_v0+tile_span+1e-6f);
-        stream[i].u=(stream[i].u-tile_u0)/tile_span;
-        stream[i].v=(stream[i].v-tile_v0)/tile_span;
+        /* Stage324/327 already emits tile-section UVs in local [0,1]. */
+        assert(stream[i].u>=0.f&&stream[i].u<=1.f);
+        assert(stream[i].v>=0.f&&stream[i].v<=1.f);
         if(stream[i].u<min_u)min_u=stream[i].u;
         if(stream[i].u>max_u)max_u=stream[i].u;
         if(stream[i].v<min_v)min_v=stream[i].v;
