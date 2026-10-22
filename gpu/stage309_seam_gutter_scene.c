@@ -1,5 +1,12 @@
 #include "stage309_seam_gutter_scene.h"
 #include "stage308_cross_page_bilinear.h"
+#if defined(FOJ_GPU_STAGE316_CORNER_GUTTER)
+#include "stage315_corner_patch.h"
+/* Four invented BC1 colors, NW/NE/SW/SE. */
+static const uint16_t stage316_color565[4]={
+    0xf800u,0x07e0u,0x001fu,0xffffu
+};
+#endif
 #if defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
 #include "stage311_horizontal_gutter.h"
 static const uint16_t stage312_colors[2][8]={
@@ -76,6 +83,19 @@ static void stage312_rect(FojGpuVertex *out,float y0,float y1,float z,
     vertex(out+5,-.6f,y1,z,0.f,vt);
 }
 #endif
+#if defined(FOJ_GPU_STAGE316_CORNER_GUTTER)
+static void stage316_quad(FojGpuVertex *out) {
+    /* The quad spans exactly one source texel in each axis; linear
+     * filtering of its midpoint must incorporate all four originals. */
+    const float lo=127.5f/256.f,hi=128.5f/256.f;
+    vertex(out+0,-.52f,-.48f,.68f,lo,hi);
+    vertex(out+1, .52f,-.48f,.68f,hi,hi);
+    vertex(out+2,-.52f, .48f,.68f,lo,lo);
+    vertex(out+3, .52f,-.48f,.68f,hi,hi);
+    vertex(out+4, .52f, .48f,.68f,hi,lo);
+    vertex(out+5,-.52f, .48f,.68f,lo,lo);
+}
+#endif
 int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
     if (!valid_source(b))return 0;
     uint8_t *src=(uint8_t*)calloc(BC1_LEN,1u);
@@ -92,7 +112,11 @@ int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
     for (unsigned block_y=0;block_y<256u;++block_y) {
         for (unsigned block_x=0;block_x<256u;++block_x) {
             const unsigned px=block_x/64u,py=block_y/64u;
-#if defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
+#if defined(FOJ_GPU_STAGE316_CORNER_GUTTER)
+            const uint16_t color=(px>=1u && px<=2u &&
+                                   py>=1u && py<=2u)?
+                stage316_color565[(py-1u)*2u+px-1u]:0u;
+#elif defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
             const uint16_t color=(px==1u && (py==1u || py==2u))?
                 stage312_colors[py-1u][(block_x%64u)/8u]:0u;
 #elif defined(FOJ_GPU_STAGE310_ROW_PATTERNED_GUTTER)
@@ -112,6 +136,10 @@ int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
         }
     }
     uint8_t *left=NULL,*right=NULL,*bridge=NULL;
+#if defined(FOJ_GPU_STAGE316_CORNER_GUTTER)
+    uint8_t *northeast=NULL,*southwest=NULL;
+    FojAtlasRgba8Info ne_meta={0},sw_meta={0};
+#endif
     FojGpuVertex *verts=NULL;FojGpuBatch *batches=NULL;
     FojAtlasRgba8Info left_meta={0},right_meta={0};
     int success=0;
@@ -122,7 +150,9 @@ int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
     if (!foj_bc1_1024_decode_page(src,BC1_LEN,1u,1u,left,
             FOJ_BC1_PAGE_RGBA_BYTES,&left_meta) ||
         !foj_bc1_1024_decode_page(src,BC1_LEN,
-#if defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
+#if defined(FOJ_GPU_STAGE316_CORNER_GUTTER)
+            2u,2u,right,
+#elif defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
             1u,2u,right,
 #else
             2u,1u,right,
@@ -132,7 +162,34 @@ int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
         left_meta.pixel_bytes!=FOJ_BC1_PAGE_RGBA_BYTES ||
         right_meta.width!=256u || right_meta.height!=256u ||
         right_meta.pixel_bytes!=FOJ_BC1_PAGE_RGBA_BYTES)goto end;
-#if defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
+#if defined(FOJ_GPU_STAGE316_CORNER_GUTTER)
+    northeast=(uint8_t*)malloc(FOJ_BC1_PAGE_RGBA_BYTES);
+    southwest=(uint8_t*)malloc(FOJ_BC1_PAGE_RGBA_BYTES);
+    if (!northeast || !southwest ||
+        !foj_bc1_1024_decode_page(src,BC1_LEN,2u,1u,northeast,
+            FOJ_BC1_PAGE_RGBA_BYTES,&ne_meta) ||
+        !foj_bc1_1024_decode_page(src,BC1_LEN,1u,2u,southwest,
+            FOJ_BC1_PAGE_RGBA_BYTES,&sw_meta) ||
+        ne_meta.width!=256u || ne_meta.height!=256u ||
+        ne_meta.pixel_bytes!=FOJ_BC1_PAGE_RGBA_BYTES ||
+        sw_meta.width!=256u || sw_meta.height!=256u ||
+        sw_meta.pixel_bytes!=FOJ_BC1_PAGE_RGBA_BYTES)
+        goto end;
+    const uint8_t *const pages[4]={left,northeast,southwest,right};
+    const size_t page_lengths[4]={
+        FOJ_BC1_PAGE_RGBA_BYTES,FOJ_BC1_PAGE_RGBA_BYTES,
+        FOJ_BC1_PAGE_RGBA_BYTES,FOJ_BC1_PAGE_RGBA_BYTES
+    };
+    FojStage315CornerReport corner={0};
+    const uint8_t midpoint[4]={128u,128u,128u,255u};
+    if (!foj_stage315_build_corner_patch(
+           pages,page_lengths,bridge,FOJ_BC1_PAGE_RGBA_BYTES,&corner) ||
+        corner.pixels_written!=65536u ||
+        corner.distinct_corner_pairs!=6u ||
+        corner.strict_four_page_midpoint!=1u ||
+        memcmp(corner.midpoint_rgba,midpoint,4u))
+        goto end;
+#elif defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
     FojStage311HorizontalReport evidence={0};
     if (!foj_stage311_build_horizontal_gutter(
             left,FOJ_BC1_PAGE_RGBA_BYTES,
@@ -190,7 +247,11 @@ int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
     /* Draw 2 original pages first, then a narrow foreground gutter
      * patch that reconstructs both page-edge texels with GPU linear
      * filtering. It is intentionally an explicit layout choice. */
-#if defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
+#if defined(FOJ_GPU_STAGE316_CORNER_GUTTER)
+    stage316_quad(verts+0);
+    rect(verts+6,.52f,.82f,.55f,.5f,.5f);
+    rect(verts+12,-.82f,-.52f,.55f,.5f,.5f);
+#elif defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
     /* Reverse Z: greater depth is physically nearer. Draw top page
      * material 2 first, bottom page 1, then front horizontal patch 0. */
     stage312_rect(verts+0,-.03f,.03f,.68f,
@@ -217,6 +278,9 @@ int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
     bridge=NULL;left=NULL;right=NULL;verts=NULL;batches=NULL;
     success=1;
 end:
+#if defined(FOJ_GPU_STAGE316_CORNER_GUTTER)
+    free(northeast);free(southwest);
+#endif
     free(src);free(left);free(right);free(bridge);
     free(verts);free(batches);
     return success;
