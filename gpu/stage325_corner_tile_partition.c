@@ -144,6 +144,13 @@ int foj_stage325_partition_triangle_at_corner_tile(
     if(!foj_stage324_clip_triangle_to_corner_tile(
         triangle,px,py,tile_stage,FOJ_STAGE324_MAX_OUTPUT_VERTICES,
         &tile_report))return 0;
+    if(tile_report.output_vertices>FOJ_STAGE325_TILE_VERTICES||
+       tile_report.output_vertices%3u!=0u||
+       tile_report.output_triangles!=tile_report.output_vertices/3u||
+       tile_report.intersects>1u||
+       (tile_report.intersects!=0u)!=(tile_report.output_vertices!=0u)||
+       !isfinite(tile_report.clipped_uv_area)||
+       tile_report.clipped_uv_area<0.0)return 0;
     memcpy(current,triangle->point,sizeof(triangle->point));
     unsigned n=3u,tile_written=tile_report.output_vertices;
     unsigned remainder_written=0u;
@@ -164,6 +171,9 @@ int foj_stage325_partition_triangle_at_corner_tile(
         n=next_n;
     }
 
+    if(!isfinite(remainder_area)||
+       fabs(value.input_uv_area-value.tile_uv_area-remainder_area)>1e-6)
+        return 0;
     value.remainder_uv_area=remainder_area;
     value.tile_vertices=tile_written;
     value.tile_triangles=tile_written/3u;
