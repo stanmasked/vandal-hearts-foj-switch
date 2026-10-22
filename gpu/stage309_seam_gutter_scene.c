@@ -54,6 +54,7 @@ static void put32(uint8_t *dst,unsigned n) {
 static void vertex(FojGpuVertex *out,float x,float y,float z,float u,float v) {
     *out=(FojGpuVertex){x,y,z,1.f,u,v};
 }
+#if !defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
 static void rect(FojGpuVertex *out,float x0,float x1,float z,
                  float u0,float u1) {
     vertex(out+0,x0,-.5f,z,u0,1.f);
@@ -63,6 +64,7 @@ static void rect(FojGpuVertex *out,float x0,float x1,float z,
     vertex(out+4,x1, .5f,z,u1,0.f);
     vertex(out+5,x0, .5f,z,u0,0.f);
 }
+#endif
 #if defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
 static void stage312_rect(FojGpuVertex *out,float y0,float y1,float z,
                           float vb,float vt) {
