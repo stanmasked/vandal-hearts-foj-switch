@@ -31,8 +31,8 @@ def mock(root:Path):
             bottom=rgb565(PAIRS565[1][i])
             d.rectangle((lo,180,hi,359),fill=top)
             d.rectangle((lo,360,hi,539),fill=bottom)
-            for yy in range(341,380):
-                t=(yy-341)/38
+            for yy in range(327,366):
+                t=(yy-327)/38
                 mixed=tuple(round(top[k]*(1-t)+bottom[k]*t)
                             for k in range(3))
                 d.line(((lo,yy),(hi,yy)),fill=mixed)
@@ -58,7 +58,7 @@ class HorizontalGPUHostOnlyNegativeTests(unittest.TestCase):
         self.assertEqual(r["column_color_pairs_per_frame"],8)
         self.assertEqual(r["real_neixum_guest_frames_verified"],2)
         for values in r["per_frame_pixel_probes"].values():
-            self.assertEqual(len(values),24)
+            self.assertEqual(len(values),32)
             self.assertTrue(all(v>=33 for k,v in values.items()
                                 if k.endswith("_mixed")))
         self.assertFalse(r["independent_page_bilinear_reconstruction_verified"])
@@ -73,9 +73,27 @@ class HorizontalGPUHostOnlyNegativeTests(unittest.TestCase):
         with self.assertRaises(ValueError):audit(self.bridge)
     def test_clamped_midpoint(self):
         i=4;x=X_CENTERS[i]
-        self.corrupt("gpu-initial.png",(x-5,351,x+5,369),
+        self.corrupt("gpu-initial.png",(x-5,338,x+5,354),
                      rgb565(PAIRS565[0][i]))
         with self.assertRaises(ValueError):audit(self.bridge)
+    def test_shifted_but_genuine_gradient_has_consistent_realistic_seam(self):
+        # Fabricated host-only mock models the measured NeXium inset:
+        # physical mixing around y=346 instead of nominal y=360.
+        result=audit(self.bridge)
+        for probes in result["per_frame_pixel_probes"].values():
+            ys=[probes[f"band{i}_seam_y"] for i in range(8)]
+            self.assertLessEqual(max(ys)-min(ys),2)
+            self.assertTrue(all(342<=y<=351 for y in ys))
+
+    def test_false_constant_midpoint_bar_is_refused(self):
+        i=2
+        x=X_CENTERS[i]
+        top=rgb565(PAIRS565[0][i])
+        bottom=rgb565(PAIRS565[1][i])
+        constant=tuple((top[k]+bottom[k]+1)//2 for k in range(3))
+        self.corrupt("gpu-initial.png",(x-5,326,x+5,370),constant)
+        with self.assertRaises(ValueError):audit(self.bridge)
+
     def test_missing_color_band(self):
         x=X_CENTERS[6]
         self.corrupt("gpu-initial.png",(x-5,260,x+5,480),(1,2,3))
