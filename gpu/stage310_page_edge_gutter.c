@@ -23,7 +23,9 @@ int foj_stage310_build_page_edge_gutter(
         out_bytes!=FOJ_BC1_PAGE_RGBA_BYTES ||
         intersect(out_rgba,out_bytes,left_rgba,left_bytes) ||
         intersect(out_rgba,out_bytes,right_rgba,right_bytes) ||
-        intersect(out_rgba,out_bytes,report,sizeof(*report)))
+        intersect(out_rgba,out_bytes,report,sizeof(*report)) ||
+        intersect(report,sizeof(*report),left_rgba,left_bytes) ||
+        intersect(report,sizeof(*report),right_rgba,right_bytes))
         return 0;
 
     uint8_t *temporary=(uint8_t*)malloc(FOJ_BC1_PAGE_RGBA_BYTES);
