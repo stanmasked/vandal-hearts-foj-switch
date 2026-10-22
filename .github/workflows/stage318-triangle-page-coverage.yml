@@ -1,0 +1,45 @@
+name: Stage318 exact triangle UV coverage across 16 atlas pages
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage318-triangle-page-coverage.yml'
+      - 'gpu/stage318_triangle_uv_coverage.c'
+      - 'gpu/stage318_triangle_uv_coverage.h'
+      - 'tests/gpu/test_stage318_triangle_uv_coverage.c'
+      - 'docs/GPU_STAGE318_TRIANGLE_UV_COVERAGE.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage318-triangle-uv-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage:
+    name: Exact triangle/page area / ${{ matrix.compiler }} / ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {compiler: gcc, variant: optimized, flags: '-O2'}
+          - {compiler: clang, variant: optimized, flags: '-O2'}
+          - {compiler: gcc, variant: ubsan, flags: '-O1 -g -fsanitize=undefined -fno-sanitize-recover=all'}
+          - {compiler: clang, variant: asan-ubsan, flags: '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate 16 pages, nine intersections, transpose and fail-closed triangle clipping
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 ${{ matrix.flags }} \
+            -Wall -Wextra -Werror -pedantic -Igpu \
+            gpu/stage318_triangle_uv_coverage.c \
+            tests/gpu/test_stage318_triangle_uv_coverage.c \
+            -lm -o /tmp/foj-stage318
+          /tmp/foj-stage318
+          echo STAGE318_NATIVE_EXACT_TRIANGLE_PAGE_COVERAGE_PASS
