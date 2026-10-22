@@ -1,0 +1,47 @@
+name: Stage317 arbitrary 16-page BC1 atlas bilinear UV routing
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage317-atlas-page-bilinear.yml'
+      - 'gpu/stage317_atlas_bilinear.c'
+      - 'gpu/stage317_atlas_bilinear.h'
+      - 'gpu/stage303_bc1_page_uv.c'
+      - 'gpu/stage303_bc1_page_uv.h'
+      - 'tests/gpu/test_stage317_atlas_bilinear.c'
+      - 'docs/GPU_STAGE317_ATLAS_ROUTING.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage317-atlas-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host:
+    name: 16-page atlas and nine corners / ${{ matrix.compiler }} / ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {compiler: gcc, variant: optimized, flags: '-O2'}
+          - {compiler: clang, variant: optimized, flags: '-O2'}
+          - {compiler: gcc, variant: ubsan, flags: '-O1 -g -fsanitize=undefined -fno-sanitize-recover=all'}
+          - {compiler: clang, variant: asan-ubsan, flags: '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify 225 exact UVs, 9 corners, straight edges and clamp rejection
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 ${{ matrix.flags }} \
+            -Wall -Wextra -Werror -Igpu -Icore \
+            gpu/atlas_dds.c gpu/bc1_atlas_page.c \
+            gpu/stage303_bc1_page_uv.c gpu/stage317_atlas_bilinear.c \
+            tests/gpu/test_stage317_atlas_bilinear.c -lm \
+            -o /tmp/foj-stage317
+          /tmp/foj-stage317
+          echo STAGE317_GENERATED_ONLY_16_PAGE_ATLAS_ROUTING_PASS
