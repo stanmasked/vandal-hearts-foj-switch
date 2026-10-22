@@ -23,6 +23,10 @@
 #include "gpu_draw_plan.h"
 #include "actor_upload_plan.h"
 #include "research_texture.h"
+#if defined(FOJ_GPU_STAGE329_PATCH_STREAM)
+#include "stage328_atomic_corner_patch_stream.h"
+#include "stage320_uv_page_batches.h"
+#endif
 #if defined(FOJ_GPU_NATIVE_ALPHA_ORDER_GUARD)
 #include "three_layer_preflight.h"
 #endif
@@ -87,6 +91,91 @@ _Static_assert(offsetof(FojGpuVertex,x)==0,
                "shader position must start at byte zero");
 _Static_assert(offsetof(FojGpuVertex,u)==16,
                "shader UV must start at byte sixteen");
+#if defined(FOJ_GPU_STAGE329_PATCH_STREAM)
+static uint8_t stage329_pages[4][FOJ_BC1_PAGE_RGBA_BYTES];
+static uint8_t stage329_tile[FOJ_STAGE322_TILE_BYTES];
+static FojTexturedVertex stage329_cpu_vertices[FOJ_STAGE328_MAX_VERTICES];
+static FojTextureSection stage329_sections[FOJ_STAGE328_MAX_SECTIONS];
+static FojStage328Receipt stage329_receipt;
+static FojGpuVertex stage329_gpu_vertices[FOJ_STAGE328_MAX_VERTICES];
+static FojGpuBatch stage329_gpu_batches[FOJ_STAGE328_MAX_SECTIONS];
+static FojGpuStreamInfo stage329_gpu_info;
+
+static int stage329_prepare_corner_patch(void) {
+    static const uint8_t colors[4][4]={
+        {255u,0u,0u,255u},{0u,255u,0u,255u},
+        {0u,0u,255u,255u},{255u,255u,255u,255u}
+    };
+    for(unsigned page=0u;page<4u;++page)
+        for(unsigned y=0u;y<256u;++y)
+            for(unsigned x=0u;x<256u;++x)
+                memcpy(stage329_pages[page]+((size_t)y*256u+x)*4u,
+                       colors[page],4u);
+    const uint8_t *const pages[4]={
+        stage329_pages[0],stage329_pages[1],
+        stage329_pages[2],stage329_pages[3]
+    };
+    const size_t page_lengths[4]={
+        FOJ_BC1_PAGE_RGBA_BYTES,FOJ_BC1_PAGE_RGBA_BYTES,
+        FOJ_BC1_PAGE_RGBA_BYTES,FOJ_BC1_PAGE_RGBA_BYTES
+    };
+    const float u0=.499f,v0=.499f;
+    const float u1=.501f,v1=.499f;
+    const float u2=.500f,v2=.502f;
+    FojStage318Triangle uv_triangle={{{u0,v0},{u1,v1},{u2,v2}}};
+    uint16_t ids[1]={0u};
+    FojStage320Batch batches[1]={{0}};
+    FojStage320Plan plan={0};
+    if(!foj_stage320_plan_triangle_batches(
+        &uv_triangle,1u,ids,1u,batches,1u,&plan)||
+       plan.batch_count!=1u||ids[0]!=0u||batches[0].index_count!=1u)
+        return 0;
+
+    FojStage325Triangle triangle={0};
+    triangle.point[0]=(FojStage325Vertex){
+        (u0-.5f)*200.f,(v0-.5f)*200.f,.5f,u0,v0};
+    triangle.point[1]=(FojStage325Vertex){
+        (u1-.5f)*200.f,(v1-.5f)*200.f,.5f,u1,v1};
+    triangle.point[2]=(FojStage325Vertex){
+        (u2-.5f)*200.f,(v2-.5f)*200.f,.5f,u2,v2};
+    if(!foj_stage328_prepare_corner_patch_stream(
+        batches,&triangle,1u,2u,2u,pages,page_lengths,
+        0u,1u,FOJ_RESEARCH_TEXTURE_COUNT,
+        stage329_tile,sizeof(stage329_tile),
+        stage329_cpu_vertices,FOJ_STAGE328_MAX_VERTICES,
+        stage329_sections,FOJ_STAGE328_MAX_SECTIONS,&stage329_receipt))
+        return 0;
+    static const uint8_t expected_midpoint[4]={128u,128u,128u,255u};
+    if(stage329_receipt.atlas_first_x!=504u||
+       stage329_receipt.atlas_first_y!=504u||
+       stage329_receipt.tile_fnv1a64!=UINT64_C(0xd5565bfb7360b325)||
+       memcmp(stage329_receipt.midpoint_rgba,expected_midpoint,4u)||
+       stage329_receipt.tile_bytes_written!=FOJ_STAGE322_TILE_BYTES||
+       stage329_receipt.output_vertices!=3u||
+       stage329_receipt.output_sections!=1u||
+       stage329_receipt.tile_fragments!=1u||
+       stage329_receipt.remainder_fragments!=0u||
+       stage329_sections[0].first_vertex!=0u||
+       stage329_sections[0].vertex_count!=3u||
+       stage329_sections[0].texture_index!=1u)
+        return 0;
+
+    const FojTextureCamera camera={0.f,0.f,0.f,1.2f,0.f,0.f,1.f,0};
+    if(foj_gpu_prepare_stream(
+        stage329_cpu_vertices,stage329_receipt.output_vertices,
+        stage329_sections,stage329_receipt.output_sections,
+        FOJ_RESEARCH_TEXTURE_COUNT,&camera,SCREEN_WIDTH,SCREEN_HEIGHT,
+        stage329_gpu_vertices,FOJ_STAGE328_MAX_VERTICES,
+        stage329_gpu_batches,FOJ_STAGE328_MAX_SECTIONS,
+        &stage329_gpu_info)!=FOJ_GPU_STREAM_OK||
+       stage329_gpu_info.vertices_written!=3u||
+       stage329_gpu_info.batches_written!=1u||
+       stage329_gpu_batches[0].texture_index!=1u)
+        return 0;
+    return 1;
+}
+#endif
+
 #if !defined(FOJ_GPU_DRAW_TRIANGLE)
 static const FojGpuVertex kResearchTriangle[3]={
     {-0.60f,-0.55f,0.5f,1.0f,0.0f,0.0f},
@@ -145,6 +234,14 @@ static void foj_present_shader_boot_failure(
 
 int main(int argc,char **argv) {
     (void)argc;(void)argv;
+#if defined(FOJ_GPU_STAGE329_PATCH_STREAM) && \
+    (!defined(FOJ_GPU_DRAW_TRIANGLE) || \
+     defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) || \
+     defined(FOJ_GPU_PRIVATE_BUNDLE_PREFLIGHT) || \
+     defined(FOJ_GPU_THREE_LAYER_BLEND) || \
+     defined(FOJ_GPU_ALPHA_BLEND) || defined(FOJ_GPU_DEPTH_PROOF))
+#error "Stage329 is a standalone generated-only two-texture patch draw"
+#endif
 #if defined(FOJ_GPU_DYNAMIC_PASS_CONTRACT) && !defined(FOJ_GPU_DYNAMIC_ALPHA_SORT)
 #error "Stage274 GPU pass contract requires Stage273 dynamic alpha sort"
 #endif
