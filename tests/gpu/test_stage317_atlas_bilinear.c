@@ -95,6 +95,25 @@ static void nine_intersections(void) {
           }
     assert(samples==225u);
 }
+static void exact_positive_face_ownership(void) {
+    /* At exactly the upper/right texel center the zero-weight neighbor
+     * has disappeared. Four-way routing must not be falsely reported. */
+    for(unsigned py=1u;py<4u;++py)for(unsigned px=1u;px<4u;++px) {
+        const unsigned x=px*256u,y=py*256u;
+        const float u=((float)x+0.5f)/1024.f;
+        const float v=((float)y+0.5f)/1024.f;
+        uint8_t rgba[4]={0};FojStage317RoutingReport report={0};
+        assert(foj_stage317_sample_atlas(pages,sizes,u,v,rgba,&report));
+        assert(report.distinct_pages==1u);
+        assert(!report.crosses_page_x && !report.crosses_page_y);
+        assert(report.texel[0].atlas_x==x);
+        assert(report.texel[0].atlas_y==y);
+        assert(report.texel[0].page_x==px);
+        assert(report.texel[0].page_y==py);
+        for(unsigned k=0;k<4u;++k)
+            assert(rgba[k]==oracle_texel(x,y,k));
+    }
+}
 static void straight_edges_and_outer_clamp(void) {
     for(unsigned boundary=1u;boundary<4u;++boundary) {
         const unsigned xb=boundary*256u;
@@ -184,6 +203,7 @@ static void rejection_and_immutability(void) {
 int main(void) {
     init();
     nine_intersections();
+    exact_positive_face_ownership();
     straight_edges_and_outer_clamp();
     rejection_and_immutability();
     for(unsigned i=0;i<16u;++i)free(owned[i]);
