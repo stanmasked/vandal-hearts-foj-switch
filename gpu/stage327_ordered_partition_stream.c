@@ -24,7 +24,10 @@ static int partition_one(const FojStage325Triangle *triangle,
     if(!foj_stage325_partition_triangle_at_corner_tile(
         triangle,px,py,tile,FOJ_STAGE325_TILE_VERTICES,
         remainder,FOJ_STAGE325_REMAINDER_VERTICES,report))return 0;
-    return valid_partition_report(report);
+    if(!valid_partition_report(report))return 0;
+    *tile_count=report->tile_vertices;
+    *remainder_count=report->remainder_vertices;
+    return 1;
 }
 static void append_vertices(FojTexturedVertex *out,size_t *written,
                             const FojStage325Vertex *in,unsigned count) {
@@ -88,8 +91,6 @@ int foj_stage327_build_ordered_partition_stream(
         FojStage325PartitionReport partition;
         if(!partition_one(triangles+i,px,py,tile,&tile_count,
                           remainder,&remainder_count,&partition))return 0;
-        tile_count=partition.tile_vertices;
-        remainder_count=partition.remainder_vertices;
         if(remainder_count) {
             total_vertices+=remainder_count;
             ++total_sections;
@@ -120,8 +121,6 @@ int foj_stage327_build_ordered_partition_stream(
         FojStage325PartitionReport partition;
         if(!partition_one(triangles+i,px,py,tile,&tile_count,
                           remainder,&remainder_count,&partition))return 0;
-        tile_count=partition.tile_vertices;
-        remainder_count=partition.remainder_vertices;
         if(remainder_count) {
             const size_t first=vertex_written;
             append_vertices(vertices_out,&vertex_written,remainder,remainder_count);
