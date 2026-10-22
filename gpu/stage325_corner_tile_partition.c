@@ -174,8 +174,8 @@ int foj_stage325_partition_triangle_at_corner_tile(
         n=next_n;
     }
 
-    value.tile_uv_area=polygon_area(current,n);
-    if(n>=3u&&value.tile_uv_area>0.0) {
+    const double tile_source_area=polygon_area(current,n);
+    if(n>=3u&&tile_source_area>0.0) {
         for(unsigned i=0u;i<n;++i) {
             const double u=((double)current[i].u-left)/(right-left);
             const double v=((double)current[i].v-top)/(bottom-top);
@@ -184,19 +184,10 @@ int foj_stage325_partition_triangle_at_corner_tile(
             current[i].u=(float)(u<0.0?0.0:(u>1.0?1.0:u));
             current[i].v=(float)(v<0.0?0.0:(v>1.0?1.0:v));
         }
-        if(!emit_fan(current,n,tile_stage,FOJ_STAGE325_TILE_VERTICES,
-                     &tile_written,&value.tile_uv_area))return 0;
-        /* emit_fan adds polygon area; replace doubled accounting below. */
-        value.tile_uv_area=polygon_area(triangle->point,3u);
-        /* The actual tile source-space area is the pre-remap polygon area.
-         * It was saved separately before UV remapping in the next field. */
-    }
-    /* Recompute exact source-space intersection area from tile-local UV. */
-    if(tile_written) {
         double local_area=0.0;
-        for(unsigned i=0u;i<tile_written;i+=3u)
-            local_area+=polygon_area(tile_stage+i,3u);
-        value.tile_uv_area=local_area*(right-left)*(bottom-top);
+        if(!emit_fan(current,n,tile_stage,FOJ_STAGE325_TILE_VERTICES,
+                     &tile_written,&local_area))return 0;
+        value.tile_uv_area=tile_source_area;
         value.tile_intersects=1u;
     } else {
         value.tile_uv_area=0.0;
