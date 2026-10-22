@@ -1,0 +1,104 @@
+name: Stage328 atomic corner patch stream
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage328-atomic-corner-patch-stream.yml'
+      - 'gpu/stage318_triangle_uv_coverage.c'
+      - 'gpu/stage318_triangle_uv_coverage.h'
+      - 'gpu/stage319_bilinear_halo_support.c'
+      - 'gpu/stage319_bilinear_halo_support.h'
+      - 'gpu/stage320_uv_page_batches.c'
+      - 'gpu/stage320_uv_page_batches.h'
+      - 'gpu/stage321_three_slot_plan.c'
+      - 'gpu/stage321_three_slot_plan.h'
+      - 'gpu/stage322_bounded_corner_tile.c'
+      - 'gpu/stage322_bounded_corner_tile.h'
+      - 'gpu/stage324_corner_tile_clip.c'
+      - 'gpu/stage324_corner_tile_clip.h'
+      - 'gpu/stage325_corner_tile_partition.c'
+      - 'gpu/stage325_corner_tile_partition.h'
+      - 'gpu/stage327_ordered_partition_stream.c'
+      - 'gpu/stage327_ordered_partition_stream.h'
+      - 'gpu/stage328_atomic_corner_patch_stream.c'
+      - 'gpu/stage328_atomic_corner_patch_stream.h'
+      - 'core/gpu_vertex_stream.c'
+      - 'core/gpu_vertex_stream.h'
+      - 'tests/gpu/test_stage326_partition_spatial_coverage.c'
+      - 'tests/gpu/test_stage327_ordered_partition_stream.c'
+      - 'tests/gpu/test_stage328_atomic_corner_patch_stream.c'
+      - 'gpu/stage323_bounded_gpu_tile.mk'
+      - 'docs/GPU_STAGE328_ATOMIC_CORNER_PATCH_STREAM.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage328-atomic-corner-patch-stream-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  atomic-stream:
+    name: Atomic stream / ${{ matrix.compiler }} / ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {compiler: gcc, variant: optimized, flags: '-O2'}
+          - {compiler: clang, variant: optimized, flags: '-O2'}
+          - {compiler: gcc, variant: ubsan, flags: '-O1 -g -fsanitize=undefined -fno-sanitize-recover=all'}
+          - {compiler: clang, variant: asan-ubsan, flags: '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'}
+    env:
+      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stage326 independent spatial coverage regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 ${{ matrix.flags }} \
+            -Wall -Wextra -Werror -pedantic -Igpu \
+            gpu/stage324_corner_tile_clip.c \
+            gpu/stage325_corner_tile_partition.c \
+            tests/gpu/test_stage326_partition_spatial_coverage.c \
+            -lm -o /tmp/foj-stage326-oracle
+          /tmp/foj-stage326-oracle
+          echo STAGE326_PARTITION_SPATIAL_COVERAGE_PASS
+      - name: Stage327 ordered GPU stream regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 ${{ matrix.flags }} \
+            -Wall -Wextra -Werror -pedantic -Icore -Igpu \
+            gpu/stage324_corner_tile_clip.c \
+            gpu/stage325_corner_tile_partition.c \
+            gpu/stage327_ordered_partition_stream.c \
+            core/gpu_vertex_stream.c \
+            tests/gpu/test_stage327_ordered_partition_stream.c \
+            -lm -o /tmp/foj-stage327-stream
+          /tmp/foj-stage327-stream
+          echo STAGE327_ORDERED_PARTITION_STREAM_PASS
+      - name: Stage328 atomic tile and ordered stream integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 ${{ matrix.flags }} \
+            -Wall -Wextra -Werror -pedantic -Icore -Igpu \
+            gpu/stage318_triangle_uv_coverage.c \
+            gpu/stage319_bilinear_halo_support.c \
+            gpu/stage320_uv_page_batches.c \
+            gpu/stage321_three_slot_plan.c \
+            gpu/stage322_bounded_corner_tile.c \
+            gpu/stage324_corner_tile_clip.c \
+            gpu/stage325_corner_tile_partition.c \
+            gpu/stage327_ordered_partition_stream.c \
+            gpu/stage328_atomic_corner_patch_stream.c \
+            core/gpu_vertex_stream.c \
+            tests/gpu/test_stage328_atomic_corner_patch_stream.c \
+            -lm -o /tmp/foj-stage328-atomic-stream
+          /tmp/foj-stage328-atomic-stream
+          echo STAGE328_ATOMIC_CORNER_PATCH_STREAM_PASS
