@@ -1,5 +1,12 @@
 #include "stage309_seam_gutter_scene.h"
 #include "stage308_cross_page_bilinear.h"
+#if defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
+#include "stage311_horizontal_gutter.h"
+static const uint16_t stage312_colors[2][8]={
+    {0x001fu,0xf800u,0x07e0u,0xffe0u,0xf81fu,0x07ffu,0xffffu,0x0000u},
+    {0xffe0u,0x07e0u,0x001fu,0xf800u,0x07ffu,0xf81fu,0x0000u,0xffffu}
+};
+#endif
 #if defined(FOJ_GPU_STAGE310_ROW_PATTERNED_GUTTER)
 #include "stage310_page_edge_gutter.h"
 static const uint16_t stage310_bands[2][8]={
@@ -47,6 +54,7 @@ static void put32(uint8_t *dst,unsigned n) {
 static void vertex(FojGpuVertex *out,float x,float y,float z,float u,float v) {
     *out=(FojGpuVertex){x,y,z,1.f,u,v};
 }
+#if !defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
 static void rect(FojGpuVertex *out,float x0,float x1,float z,
                  float u0,float u1) {
     vertex(out+0,x0,-.5f,z,u0,1.f);
@@ -56,6 +64,18 @@ static void rect(FojGpuVertex *out,float x0,float x1,float z,
     vertex(out+4,x1, .5f,z,u1,0.f);
     vertex(out+5,x0, .5f,z,u0,0.f);
 }
+#endif
+#if defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
+static void stage312_rect(FojGpuVertex *out,float y0,float y1,float z,
+                          float vb,float vt) {
+    vertex(out+0,-.6f,y0,z,0.f,vb);
+    vertex(out+1, .6f,y0,z,1.f,vb);
+    vertex(out+2,-.6f,y1,z,0.f,vt);
+    vertex(out+3, .6f,y0,z,1.f,vb);
+    vertex(out+4, .6f,y1,z,1.f,vt);
+    vertex(out+5,-.6f,y1,z,0.f,vt);
+}
+#endif
 int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
     if (!valid_source(b))return 0;
     uint8_t *src=(uint8_t*)calloc(BC1_LEN,1u);
@@ -72,7 +92,10 @@ int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
     for (unsigned block_y=0;block_y<256u;++block_y) {
         for (unsigned block_x=0;block_x<256u;++block_x) {
             const unsigned px=block_x/64u,py=block_y/64u;
-#if defined(FOJ_GPU_STAGE310_ROW_PATTERNED_GUTTER)
+#if defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
+            const uint16_t color=(px==1u && (py==1u || py==2u))?
+                stage312_colors[py-1u][(block_x%64u)/8u]:0u;
+#elif defined(FOJ_GPU_STAGE310_ROW_PATTERNED_GUTTER)
             const uint16_t color=(py==1u && (px==1u || px==2u))?
                 stage310_bands[px-1u][(block_y%64u)/8u]:0u;
 #else
@@ -98,13 +121,28 @@ int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
     if (!left || !right || !bridge)goto end;
     if (!foj_bc1_1024_decode_page(src,BC1_LEN,1u,1u,left,
             FOJ_BC1_PAGE_RGBA_BYTES,&left_meta) ||
-        !foj_bc1_1024_decode_page(src,BC1_LEN,2u,1u,right,
+        !foj_bc1_1024_decode_page(src,BC1_LEN,
+#if defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
+            1u,2u,right,
+#else
+            2u,1u,right,
+#endif
             FOJ_BC1_PAGE_RGBA_BYTES,&right_meta) ||
         left_meta.width!=256u || left_meta.height!=256u ||
         left_meta.pixel_bytes!=FOJ_BC1_PAGE_RGBA_BYTES ||
         right_meta.width!=256u || right_meta.height!=256u ||
         right_meta.pixel_bytes!=FOJ_BC1_PAGE_RGBA_BYTES)goto end;
-#if defined(FOJ_GPU_STAGE310_ROW_PATTERNED_GUTTER)
+#if defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
+    FojStage311HorizontalReport evidence={0};
+    if (!foj_stage311_build_horizontal_gutter(
+            left,FOJ_BC1_PAGE_RGBA_BYTES,
+            right,FOJ_BC1_PAGE_RGBA_BYTES,
+            bridge,FOJ_BC1_PAGE_RGBA_BYTES,&evidence) ||
+        evidence.columns_processed!=256u ||
+        evidence.contrasting_columns!=256u ||
+        evidence.genuinely_mixed_columns!=256u)
+        goto end;
+#elif defined(FOJ_GPU_STAGE310_ROW_PATTERNED_GUTTER)
     FojStage310GutterReport evidence={0};
     if (!foj_stage310_build_page_edge_gutter(
             left,FOJ_BC1_PAGE_RGBA_BYTES,
@@ -152,9 +190,18 @@ int foj_stage309_prepare_gutter_scene(FojGpuPrivateBundleData *b) {
     /* Draw 2 original pages first, then a narrow foreground gutter
      * patch that reconstructs both page-edge texels with GPU linear
      * filtering. It is intentionally an explicit layout choice. */
+#if defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
+    /* Reverse Z: greater depth is physically nearer. Draw top page
+     * material 2 first, bottom page 1, then front horizontal patch 0. */
+    stage312_rect(verts+0,-.03f,.03f,.68f,
+                  128.5f/256.f,127.5f/256.f);
+    stage312_rect(verts+6,-.5f,0.f,.55f,.5f,.5f);
+    stage312_rect(verts+12,0.f,.5f,.55f,.5f,.5f);
+#else
     rect(verts+0,-.03f,.03f,.68f,127.5f/256.f,128.5f/256.f);
     rect(verts+6,0.f,.6f,.55f,.5f,.5f);
     rect(verts+12,-.6f,0.f,.55f,.5f,.5f);
+#endif
     batches[0]=(FojGpuBatch){0u,6u,0u};
     batches[1]=(FojGpuBatch){6u,6u,1u};
     batches[2]=(FojGpuBatch){12u,6u,2u};
