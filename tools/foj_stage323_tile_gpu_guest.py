@@ -19,8 +19,8 @@ from tools.foj_stage309_gutter_gpu_guest import phase_changed
 MARKER = "native-stage323-bounded-tile-pass.txt"
 RECEIPT = "stage323-bounded-tile-gpu-receipt.json"
 MARKER_BYTES = (
-    b"FOJ_NATIVE_STAGE323_FOUR_CORNER_V1 "
-    b"pages=1,1+2,1+1,2+2,2 colors=4 strict_center=1 verts=18\n"
+    b"FOJ_NATIVE_STAGE323_BOUNDED_TILE_V1 "
+    b"pages=1,1+2,1+1,2+2,2 tile=16x16 bytes=1024 verts=18\n"
 )
 SOURCE = {"nexium-archive.sha256"} | {"bridge/"+f for f in (
     "generated-input.json", "dds-before.json", "dds-after.json",
