@@ -112,7 +112,8 @@ int foj_stage324_clip_triangle_to_corner_tile(
     const double right=((double)px*256.0+8.0)/1024.0;
     const double top=((double)py*256.0-8.0)/1024.0;
     const double bottom=((double)py*256.0+8.0)/1024.0;
-    FojStage324TileClipReport value={0};
+    FojStage324TileClipReport value;
+    memset(&value,0,sizeof(value));
     value.atlas_first_x=px*256u-8u;
     value.atlas_first_y=py*256u-8u;
     value.source_uv_bounds[0]=(float)left;
