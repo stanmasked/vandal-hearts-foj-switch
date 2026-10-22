@@ -1,0 +1,52 @@
+name: Stage313 orientation-aware BC1 gutter transpose and fail-closed matrix
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage313-oriented-bc1-gutter.yml'
+      - 'gpu/stage313_oriented_gutter.c'
+      - 'gpu/stage313_oriented_gutter.h'
+      - 'gpu/stage310_page_edge_gutter.c'
+      - 'gpu/stage311_horizontal_gutter.c'
+      - 'tests/gpu/test_stage313_oriented_gutter.c'
+      - 'docs/GPU_STAGE313_ORIENTED_GUTTER.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage313-orientation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  transpose:
+    name: Native 65,536-pixel EAST/SOUTH transpose / ${{ matrix.compiler }} / ${{ matrix.sanitize }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {compiler: gcc, sanitize: optimized, flags: '-O2'}
+          - {compiler: clang, sanitize: optimized, flags: '-O2'}
+          - {compiler: gcc, sanitize: ubsan, flags: '-O1 -g -fsanitize=undefined -fno-sanitize-recover=all'}
+          - {compiler: clang, sanitize: asan-ubsan, flags: '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove orientation parity, source immutability and invalid input refusal
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 ${{ matrix.flags }} \
+            -Wall -Wextra -Werror -Igpu -Icore \
+            gpu/atlas_dds.c gpu/bc1_atlas_page.c \
+            gpu/stage303_bc1_page_uv.c \
+            gpu/stage308_cross_page_bilinear.c \
+            gpu/stage310_page_edge_gutter.c \
+            gpu/stage311_horizontal_gutter.c \
+            gpu/stage313_oriented_gutter.c \
+            tests/gpu/test_stage313_oriented_gutter.c \
+            -lm -o /tmp/foj-stage313-orientation
+          /tmp/foj-stage313-orientation
+          echo STAGE313_NATIVE_EAST_SOUTH_METAMORPHIC_CONTRACT_PASS
