@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: foj-research-tools-${{ github.event.pull_request.number || github.ref_name }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+
 jobs:
   test:
     name: Synthetic tests / Python ${{ matrix.python }}
@@ -19,6 +24,11 @@ jobs:
         python: ["3.11", "3.13"]
     steps:
       - uses: actions/checkout@v4
+      - name: Validate workflow YAML syntax
+        if: matrix.python == '3.11'
+        shell: bash
+        run: |
+          ruby -ryaml -e 'Dir.glob(".github/workflows/*.{yml,yaml}").sort.each { |file| YAML.parse_file(file); puts "YAML syntax OK: #{file}" }'
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}

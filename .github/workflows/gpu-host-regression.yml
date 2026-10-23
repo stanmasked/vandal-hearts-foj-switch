@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/gpu-host-regression.yml"
       - "gpu/**"
       - "tools/foj_gpu_local_dds_preflight.py"
       - "tests/test_foj_gpu_local_dds_preflight.py"
@@ -34,7 +33,6 @@ on:
       - "tests/mock_switch_sdk/**"
   pull_request:
     paths:
-      - ".github/workflows/gpu-host-regression.yml"
       - "gpu/**"
       - "tools/foj_gpu_local_dds_preflight.py"
       - "tests/test_foj_gpu_local_dds_preflight.py"
@@ -66,6 +64,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: foj-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   host-gpu:
