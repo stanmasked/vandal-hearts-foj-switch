@@ -3,7 +3,6 @@ name: Stage281 native GPU alpha-edge consistency across five scanlines
 on:
   pull_request:
     paths:
-      - '.github/workflows/stage281-multiline-boundary.yml'
       - 'tools/foj_stage281_*'
       - 'tests/emulator/test_stage281_multiline_boundary.py'
       - 'tools/foj_stage280_*'
@@ -41,6 +40,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: foj-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   host:
