@@ -33,7 +33,7 @@ cleanup() {
     # FOJBOOT1 is a fixed numeric format written by our own NRO.
     # Ignore any unexpected text and all other guest-generated files.
     local boot_file line
-    for boot_file in "$sd"/foj-boot-0?.txt; do
+    for boot_file in "$sd"/foj-boot-??.txt; do
       [[ -f "$boot_file" && ! -L "$boot_file" ]] || continue
       line="$(tail -n 1 "$boot_file" 2>/dev/null || true)"
       if [[ "$line" =~ ^FOJBOOT1\ slot=[0-9]{2}\ step=([0-9]{2})\ event=([0-9])\ frames=([0-9]{10})$ ]]; then
