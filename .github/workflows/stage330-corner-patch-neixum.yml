@@ -79,7 +79,8 @@ jobs:
           bash -n tools/foj_stage330_nexium_drive.sh
           cc -std=c11 -Wall -Wextra -Werror -pedantic \
             -DFOJ_GPU_DRAW_TRIANGLE=1 \
-            -DFOJ_GPU_STAGE330_PATCH_STREAM=1 -fsyntax-only \
+            -DFOJ_GPU_STAGE329_PATCH_STREAM=1 \
+            -DFOJ_GPU_STAGE330_PARTITION_DRAW=1 -fsyntax-only \
             -Itests/mock_switch_sdk -Icore -Igpu gpu/deko3d_clear_main.c
           for compiler in gcc clang; do
             "$compiler" -std=c11 -O2 -Wall -Wextra -Werror -pedantic \
@@ -211,7 +212,7 @@ jobs:
           set -euo pipefail
           timeout --kill-after=5s 390s xvfb-run -a \
             -s "-screen 0 1280x720x24" bash tools/foj_stage330_nexium_drive.sh
-          echo STAGE330_REAL_NEIXIUM_CORNER_PATCH_DRAW_PASS
+          echo STAGE330_REAL_NEIXIUM_MIXED_PARTITION_GPU_PASS
       - name: Publish only the strict generated-only proof allowlist
         shell: bash
         run: |
