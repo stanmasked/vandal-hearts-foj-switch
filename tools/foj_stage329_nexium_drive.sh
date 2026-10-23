@@ -41,7 +41,7 @@ cleanup() {
         break
       fi
     done
-    printf 'STAGE329_EARLY_EXIT_DIAG_V1 guest_exit=%s upload_marker=%s guest_log_bytes=%s boot=%s\\n' \\
+    printf 'STAGE329_EARLY_EXIT_DIAG_V1 guest_exit=%s upload_marker=%s guest_log_bytes=%s boot=%s\n' \
       "$guest_exit_code" "$marker_present" "$log_bytes" "$boot_record" >&2
   fi
   kill -KILL "$guest" 2>/dev/null || true
