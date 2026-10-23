@@ -3,7 +3,6 @@ name: Stage275 native unsafe topology refusals in real NeXium
 on:
   pull_request:
     paths:
-      - '.github/workflows/stage275-native-topology-reject.yml'
       - 'gpu/topology_reject_contract.mk'
       - 'tools/foj_stage275_*'
       - 'tests/emulator/test_stage275_topology_guest.py'
@@ -29,6 +28,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: foj-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   host:
