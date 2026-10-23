@@ -1,6 +1,8 @@
 """Stage329 screenshot auditor tests use host-painted fixtures only, never GPU evidence."""
 from __future__ import annotations
 import json
+import os
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
@@ -159,6 +161,39 @@ class Stage329GuestAuditTests(unittest.TestCase):
         (self.root / "sdmc" / "switch" / "foj" / "gpu" / "material0.dds").write_bytes(b"not allowed")
         with self.assertRaises(ValueError):
             prepare(self.root / "sdmc", self.root / "new-evidence")
+
+    def test_early_guest_exit_diagnostic_is_bounded_and_keeps_log_private(self):
+        # Pure host fixture: no NeXium and no original game assets are launched.
+        fake = self.root / "fake-nexium"
+        fake.write_text(
+            "#!/bin/sh\n"
+            "printf '%s\n' 'UNSAFE_RUNTIME_LINE_ONLY_IN_GUEST_LOG'\n"
+            "printf '%s\n' 'FOJBOOT1 slot=00 step=06 event=2 frames=0000000000' "
+            '> "$NEXIUM_DATA_ROOT/sdmc/switch/foj/gpu/foj-boot-00.txt"\n'
+            "exit 23\n"
+        )
+        fake.chmod(0o700)
+        nro = self.root / "generated-fixture.nro"
+        nro.write_bytes(b"mock-only NRO input")
+        env = os.environ.copy()
+        env.update({
+            "NEXIUM_BIN": str(fake),
+            "FOJ_NRO": str(nro),
+            "NEXIUM_DATA_ROOT": str(self.root),
+            "FOJ_EVIDENCE_DIR": str(self.bridge),
+        })
+        result = subprocess.run(
+            ["bash", "tools/foj_stage329_nexium_drive.sh"],
+            env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, check=False, timeout=15,
+        )
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("STAGE329_EARLY_EXIT_DIAG_V1", result.stderr)
+        self.assertIn("guest_exit=23", result.stderr)
+        self.assertIn("upload_marker=0", result.stderr)
+        self.assertIn("boot=step=06,event=2,frames=0000000000", result.stderr)
+        self.assertNotIn("UNSAFE_RUNTIME_LINE_ONLY_IN_GUEST_LOG",
+                         result.stdout + result.stderr)
 
     def test_native_source_wires_stage328_and_upload_receipt(self):
         source = Path("gpu/deko3d_clear_main.c").read_text()
