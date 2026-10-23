@@ -121,9 +121,17 @@ static int stage329_prepare_corner_patch(void) {
     };
     /* Keep the synthetic triangle just inside the complete 16x16 tile
      * bounds. Stage327 preserves atlas UVs, so remap tile-section UVs below. */
+#if defined(FOJ_GPU_STAGE330_PARTITION_DRAW)
+    /* The source triangle fully covers the tile but leaves visible source
+     * atlas geometry on all sides. Its junction crosses all four pages. */
+    const float u0=480.f/1024.f,v0=480.f/1024.f;
+    const float u1=544.f/1024.f,v1=480.f/1024.f;
+    const float u2=512.f/1024.f,v2=544.f/1024.f;
+#else
     const float u0=504.25f/1024.f,v0=504.25f/1024.f;
     const float u1=519.75f/1024.f,v1=504.25f/1024.f;
     const float u2=512.f/1024.f,v2=519.75f/1024.f;
+#endif
     FojStage318Triangle uv_triangle={{{u0,v0},{u1,v1},{u2,v2}}};
     uint16_t ids[1]={0u};
     FojStage320Batch batches[1]={{0}};
@@ -158,29 +166,74 @@ static int stage329_prepare_corner_patch(void) {
        stage329_receipt.page_id[2]!=9u||stage329_receipt.page_id[3]!=10u||
        stage329_receipt.tile_bytes_written!=FOJ_STAGE322_TILE_BYTES||
        stage329_receipt.source_triangles!=1u||
-       stage329_receipt.output_vertices!=3u||
+       stage329_receipt.source_texture_index!=0u||
+       stage329_receipt.tile_texture_index!=1u)
+        return 0;
+#if defined(FOJ_GPU_STAGE330_PARTITION_DRAW)
+    if(stage329_receipt.output_vertices<9u||
+       stage329_receipt.output_vertices>57u||
+       stage329_receipt.output_sections!=2u||
+       stage329_receipt.tile_fragments!=1u||
+       stage329_receipt.remainder_fragments!=1u||
+       stage329_receipt.tile_triangles!=2u||
+       stage329_receipt.remainder_triangles==0u||
+       stage329_receipt.output_vertices!=
+           3u*(stage329_receipt.tile_triangles+
+               stage329_receipt.remainder_triangles)||
+       stage329_sections[0].first_vertex!=0u||
+       stage329_sections[0].vertex_count!=
+           3u*stage329_receipt.remainder_triangles||
+       stage329_sections[0].texture_index!=0u||
+       stage329_sections[1].first_vertex!=stage329_sections[0].vertex_count||
+       stage329_sections[1].vertex_count!=6u||
+       stage329_sections[1].texture_index!=1u)
+        return 0;
+#else
+    if(stage329_receipt.output_vertices!=3u||
        stage329_receipt.output_sections!=1u||
        stage329_receipt.tile_fragments!=1u||
        stage329_receipt.remainder_fragments!=0u||
        stage329_receipt.tile_triangles!=1u||
        stage329_receipt.remainder_triangles!=0u||
-       stage329_receipt.source_texture_index!=0u||
-       stage329_receipt.tile_texture_index!=1u||
        stage329_sections[0].first_vertex!=0u||
        stage329_sections[0].vertex_count!=3u||
        stage329_sections[0].texture_index!=1u)
         return 0;
+#endif
 
-    /* Stage324 already remaps tile-fragment UVs to [0,1].
-     * Stage327 preserves atlas UVs only for source-remainder sections; this
-     * synthetic Stage329 batch has no remainder. Validate, do not remap again.
-     * The complete tile should occupy about 192x192 framebuffer pixels. */
+    /* Stage324/327 remap only tile-fragment UVs to [0,1]; remainder UVs
+     * must remain in atlas coordinates. Never normalize a source remainder twice. */
+#if defined(FOJ_GPU_STAGE330_PARTITION_DRAW)
+    const size_t source_end=stage329_sections[0].vertex_count;
+    for(size_t i=0u;i<source_end;++i) {
+        const FojTexturedVertex *const vertex=stage329_cpu_vertices+i;
+        if(vertex->u<480.f/1024.f-1e-6f ||
+           vertex->u>544.f/1024.f+1e-6f ||
+           vertex->v<480.f/1024.f-1e-6f ||
+           vertex->v>544.f/1024.f+1e-6f)
+            return 0;
+    }
+    float min_u=1.f,max_u=0.f,min_v=1.f,max_v=0.f;
+    for(size_t i=source_end;i<stage329_receipt.output_vertices;++i) {
+        const FojTexturedVertex *const vertex=stage329_cpu_vertices+i;
+        if(vertex->u<0.f || vertex->u>1.f ||
+           vertex->v<0.f || vertex->v>1.f)
+            return 0;
+        if(vertex->u<min_u)min_u=vertex->u;
+        if(vertex->u>max_u)max_u=vertex->u;
+        if(vertex->v<min_v)min_v=vertex->v;
+        if(vertex->v>max_v)max_v=vertex->v;
+    }
+    if(min_u>1e-6f||min_v>1e-6f||max_u<.999999f||max_v<.999999f)
+        return 0;
+#else
     for(size_t i=0u;i<stage329_receipt.output_vertices;++i) {
         const FojTexturedVertex *const vertex=stage329_cpu_vertices+i;
         if(vertex->u<0.f || vertex->u>1.f ||
            vertex->v<0.f || vertex->v>1.f)
             return 0;
     }
+#endif
     const FojTextureCamera camera={0.f,0.f,0.f,9.5f,0.f,0.f,1.f,1};
     if(foj_gpu_prepare_stream(
         stage329_cpu_vertices,stage329_receipt.output_vertices,
@@ -189,10 +242,18 @@ static int stage329_prepare_corner_patch(void) {
         stage329_gpu_vertices,FOJ_STAGE328_MAX_VERTICES,
         stage329_gpu_batches,FOJ_STAGE328_MAX_SECTIONS,
         &stage329_gpu_info)!=FOJ_GPU_STREAM_OK||
-       stage329_gpu_info.vertices_written!=3u||
-       stage329_gpu_info.batches_written!=1u||
+       stage329_gpu_info.vertices_written!=stage329_receipt.output_vertices)
+        return 0;
+#if defined(FOJ_GPU_STAGE330_PARTITION_DRAW)
+    if(stage329_gpu_info.batches_written!=2u||
+       stage329_gpu_batches[0].texture_index!=0u||
+       stage329_gpu_batches[1].texture_index!=1u)
+        return 0;
+#else
+    if(stage329_gpu_info.batches_written!=1u||
        stage329_gpu_batches[0].texture_index!=1u)
         return 0;
+#endif
     return 1;
 }
 #endif
@@ -1121,11 +1182,30 @@ int main(int argc,char **argv) {
         const int loaded=1;
         dds_status=FOJ_ATLAS_DDS_MISSING;
         if(i==0u) {
+#if defined(FOJ_GPU_STAGE330_PARTITION_DRAW)
+            /* Synthetic 256x256 atlas: the four quadrants mirror the four
+             * generated pages. Its UV=.5 junction matches the 16x16 tile. */
+            static const uint8_t source_colors[4][4]={
+                {255u,0u,0u,255u},{0u,255u,0u,255u},
+                {0u,0u,255u,255u},{255u,255u,255u,255u}
+            };
+            for(unsigned y=0u;y<256u;++y) {
+                for(unsigned x=0u;x<256u;++x) {
+                    const unsigned quadrant=(y>=128u?2u:0u)+
+                                            (x>=128u?1u:0u);
+                    memcpy(pixels+((size_t)y*256u+x)*4u,
+                           source_colors[quadrant],4u);
+                }
+            }
+            atlas=(FojAtlasRgba8Info){
+                256u,256u,FOJ_BC1_PAGE_RGBA_BYTES};
+#else
             if(!foj_research_texture_rgba8(i,pixels,PIXEL_STAGING_STRIDE))
                 goto cleanup;
             atlas=(FojAtlasRgba8Info){FOJ_RESEARCH_TEXTURE_WIDTH,
                                       FOJ_RESEARCH_TEXTURE_HEIGHT,
                                       FOJ_RESEARCH_TEXTURE_BYTES};
+#endif
         } else if(i==1u) {
             memcpy(pixels,stage329_tile,sizeof(stage329_tile));
             atlas=(FojAtlasRgba8Info){16u,16u,sizeof(stage329_tile)};
@@ -1258,20 +1338,35 @@ int main(int argc,char **argv) {
     dkQueueSubmitCommands(queue,upload_list);
     dkQueueWaitIdle(queue);
 #if defined(FOJ_GPU_STAGE329_PATCH_STREAM)
-    /* This receipt attests only that the generated tile upload command
-     * completed. NeXium's independently sampled framebuffer is separate. */
-    char tile_upload_text[256];
+    /* This receipt attests only that the generated upload command completed.
+     * Real framebuffer sampling remains the independent GPU-render proof. */
+    char tile_upload_text[384];
+#if defined(FOJ_GPU_STAGE330_PARTITION_DRAW)
+    const int tile_upload_len=snprintf(
+        tile_upload_text,sizeof(tile_upload_text),
+        "FOJ_NATIVE_STAGE330_PARTITION_DRAW_UPLOAD_V1 junction=2,2 "
+        "tile=16x16 bytes=1024 fnv1a64=%016llx "
+        "midpoint=128,128,128,255 vertices=%u sections=2 "
+        "source_texture=0 tile_texture=1 remainder_fragments=1 "
+        "tile_fragments=1 remainder_triangles=%u tile_triangles=2\n",
+        (unsigned long long)stage329_receipt.tile_fnv1a64,
+        (unsigned)stage329_receipt.output_vertices,
+        (unsigned)stage329_receipt.remainder_triangles);
+    const char *const tile_upload_path=
+        "sdmc:/switch/foj/gpu/foj-native-stage330-partition-draw-upload.txt";
+#else
     const int tile_upload_len=snprintf(
         tile_upload_text,sizeof(tile_upload_text),
         "FOJ_NATIVE_STAGE329_CORNER_PATCH_UPLOAD_V1 junction=2,2 "
         "tile=16x16 bytes=1024 fnv1a64=%016llx "
         "midpoint=128,128,128,255 vertices=3 sections=1 texture=1\n",
         (unsigned long long)stage329_receipt.tile_fnv1a64);
+    const char *const tile_upload_path=
+        "sdmc:/switch/foj/gpu/foj-native-stage329-corner-patch-upload.txt";
+#endif
     if(tile_upload_len<=0||(size_t)tile_upload_len>=sizeof(tile_upload_text))
         goto cleanup;
-    FILE *const tile_upload_file=fopen(
-        "sdmc:/switch/foj/gpu/foj-native-stage329-corner-patch-upload.txt",
-        "wx");
+    FILE *const tile_upload_file=fopen(tile_upload_path,"wx");
     if(!tile_upload_file)goto cleanup;
     const size_t tile_upload_saved=fwrite(
         tile_upload_text,1u,(size_t)tile_upload_len,tile_upload_file);
