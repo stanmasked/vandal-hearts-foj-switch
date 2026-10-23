@@ -125,7 +125,7 @@ test "$phase" = 1 || {
   echo "Stage330 did not capture two distinct real GPU frames" >&2
   exit 1
 }
-cp -- "$marker" "$FOJ_EVIDENCE_DIR/native-stage330-corner-patch-upload.txt"
+cp -- "$marker" "$FOJ_EVIDENCE_DIR/native-stage330-partition-draw-upload.txt"
 python3 -m tools.foj_stage330_corner_patch_guest audit \
   --evidence "$FOJ_EVIDENCE_DIR"
 echo STAGE330_REAL_NEIXIUM_MIXED_PARTITION_GPU_PASS
