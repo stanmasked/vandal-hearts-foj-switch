@@ -3,7 +3,6 @@ name: Stage260 generated two-material GPU NeXium visual proof
 on:
   pull_request:
     paths:
-      - '.github/workflows/stage260-generated-gpu-nexium.yml'
       - 'tools/foj_stage260_*'
       - 'tests/emulator/test_stage260_generated_gpu_visual.py'
       - 'gpu/deko3d_clear_main.c'
@@ -12,7 +11,6 @@ on:
   push:
     branches: [main]
     paths:
-      - '.github/workflows/stage260-generated-gpu-nexium.yml'
       - 'tools/foj_stage260_*'
       - 'tests/emulator/test_stage260_generated_gpu_visual.py'
       - 'gpu/deko3d_clear_main.c'
@@ -21,6 +19,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: foj-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
