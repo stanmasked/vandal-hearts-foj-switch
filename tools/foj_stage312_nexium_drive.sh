@@ -62,13 +62,21 @@ for attempt in $(seq 1 30); do
   if [[ -n "$window" ]]; then break; fi
 done
 test -n "$window" || { echo "Stage312 missing real NeXium GUI" >&2;exit 1; }
+capture_window_png() {
+  local output="$1"
+  local xwd_file="${output%.png}.xwd"
+  timeout --kill-after=2s 12s xwd -silent -id "$window" -out "$xwd_file"
+  timeout --kill-after=2s 12s bash -o pipefail -c \
+    'xwdtopnm "$1" | pnmtopng > "$2"' _ "$xwd_file" "$output"
+  rm -f -- "$xwd_file"
+}
 # Never conflate the initial 360 diagnostic guest frames with the
 # actual texture GPU draw; require BOTH colors in a single screenshot.
 found=0
 for attempt in $(seq 1 38); do
   sleep 5
   alive
-  timeout --kill-after=2s 12s import -window "$window"     "$FOJ_EVIDENCE_DIR/gpu-initial.png"
+  capture_window_png "$FOJ_EVIDENCE_DIR/gpu-initial.png"
   if python3 - "$FOJ_EVIDENCE_DIR/gpu-initial.png" <<'PY'
 from pathlib import Path
 import sys
@@ -86,7 +94,7 @@ phase=0
 for attempt in $(seq 1 30); do
   sleep .5
   alive
-  timeout --kill-after=2s 12s import -window "$window"     "$FOJ_EVIDENCE_DIR/gpu-later.png"
+  capture_window_png "$FOJ_EVIDENCE_DIR/gpu-later.png"
   if python3 - "$FOJ_EVIDENCE_DIR/gpu-initial.png"                  "$FOJ_EVIDENCE_DIR/gpu-later.png" <<'PY'
 from pathlib import Path
 import sys
