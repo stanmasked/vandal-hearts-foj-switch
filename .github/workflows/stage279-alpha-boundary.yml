@@ -3,7 +3,6 @@ name: Stage279 actual GPU alpha boundary transition in NeXium
 on:
   pull_request:
     paths:
-      - '.github/workflows/stage279-alpha-boundary.yml'
       - 'tools/foj_stage279_*'
       - 'tools/foj_stage278_*'
       - 'tests/emulator/test_stage278_alpha_staircase.py'
@@ -37,6 +36,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: foj-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   host:
