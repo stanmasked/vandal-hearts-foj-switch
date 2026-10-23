@@ -26,3 +26,8 @@ The Python host-generated PNG tests are **only negative regressions**; successfu
 ## Scope limits
 
 This demonstrates one explicit CPU-assembled horizontal gutter rendered with GPU linear interpolation. It does **not** prove automatic bilinear reconstruction between independently bound page textures, arbitrary original FoJ geometry/UV topology, rotation/resizing for non-square pages, or operation on physical Nintendo Switch hardware. The next research step is generalized arbitrary-direction geometry crossings after private validation of actual game UV mapping.
+
+
+## First-frame stall diagnostics (CI-only)
+
+The Stage312-specific NRO entry point wraps the first guest input/acquire/submit/present sequence with a bounded fixed-code progress file. It records only `FOJ312P1 phase=0..7`, never paths, assets, pixels, shader bytes, or raw guest output. The failure handler prints only the last validated phase and the existing numeric boot-journal record; the progress file and raw `guest.log` are not published. Phase 0/1 brackets first `padUpdate`, 2/3 brackets first swapchain image acquire, 4/5 brackets first frame command submission, and 6/7 brackets first presentation. The existing independent eight-band screenshot/color audit remains mandatory and unchanged.

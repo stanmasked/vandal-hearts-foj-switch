@@ -1,0 +1,89 @@
+/*
+ * Stage312-only runtime breadcrumbs for isolating a missing first GPU frame.
+ * The wrapped calls are still the real libnx/deko3d functions. Diagnostics
+ * are fixed-code, bounded, best-effort, and never affect the return values.
+ */
+#include <switch.h>
+#include <deko3d.h>
+#include <stdio.h>
+
+#if !defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
+#error "Stage312 diagnostic wrapper must only be built for the horizontal gutter NRO"
+#endif
+
+enum { STAGE312_PROGRESS_MAX_RECORDS=8 };
+static FILE *stage312_progress_file;
+static unsigned stage312_progress_records;
+static int stage312_progress_disabled;
+
+static void stage312_progress(unsigned phase) {
+    if (stage312_progress_disabled ||
+        stage312_progress_records>=STAGE312_PROGRESS_MAX_RECORDS)
+        return;
+    if (!stage312_progress_file) {
+        stage312_progress_file=fopen(
+            "sdmc:/switch/foj/gpu/foj-stage312-frame-progress.txt","wx");
+        if (!stage312_progress_file) {
+            stage312_progress_disabled=1;
+            return;
+        }
+    }
+    if (fprintf(stage312_progress_file,"FOJ312P1 phase=%u\n",phase)<0 ||
+        fflush(stage312_progress_file)!=0) {
+        fclose(stage312_progress_file);
+        stage312_progress_file=NULL;
+        stage312_progress_disabled=1;
+        return;
+    }
+    ++stage312_progress_records;
+    if (phase==7u) {
+        fclose(stage312_progress_file);
+        stage312_progress_file=NULL;
+        stage312_progress_disabled=1;
+    }
+}
+
+static void stage312_diag_pad_update(PadState *state) {
+    static unsigned calls;
+    if (calls==0u)stage312_progress(0u);
+    padUpdate(state);
+    if (calls==0u)stage312_progress(1u);
+    ++calls;
+}
+
+static int stage312_diag_acquire(DkQueue queue,DkSwapchain swapchain) {
+    static unsigned calls;
+    if (calls==0u)stage312_progress(2u);
+    const int slot=dkQueueAcquireImage(queue,swapchain);
+    if (calls==0u)stage312_progress(3u);
+    ++calls;
+    return slot;
+}
+
+static void stage312_diag_submit(DkQueue queue,DkCmdList commands) {
+    static unsigned calls;
+    /* Submit #0 is the generated texture upload; #1 is the first frame. */
+    const unsigned call=calls++;
+    if (call==1u)stage312_progress(4u);
+    dkQueueSubmitCommands(queue,commands);
+    if (call==1u)stage312_progress(5u);
+}
+
+static void stage312_diag_present(DkQueue queue,DkSwapchain swapchain,
+                                  int image_slot) {
+    static unsigned calls;
+    if (calls==0u)stage312_progress(6u);
+    dkQueuePresentImage(queue,swapchain,image_slot);
+    if (calls==0u)stage312_progress(7u);
+    ++calls;
+}
+
+#define padUpdate(state) stage312_diag_pad_update((state))
+#define dkQueueAcquireImage(queue,swapchain) \
+    stage312_diag_acquire((queue),(swapchain))
+#define dkQueueSubmitCommands(queue,commands) \
+    stage312_diag_submit((queue),(commands))
+#define dkQueuePresentImage(queue,swapchain,image_slot) \
+    stage312_diag_present((queue),(swapchain),(image_slot))
+
+#include "deko3d_clear_main.c"

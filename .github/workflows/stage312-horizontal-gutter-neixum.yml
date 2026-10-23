@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/stage312-horizontal-gutter-neixum.yml'
       - 'gpu/stage312_horizontal_gutter_gpu.mk'
+      - 'gpu/stage312_diagnostic_main.c'
       - 'gpu/stage309_seam_gutter_scene.c'
       - 'gpu/stage309_seam_gutter_scene.h'
       - 'gpu/stage308_cross_page_bilinear.c'

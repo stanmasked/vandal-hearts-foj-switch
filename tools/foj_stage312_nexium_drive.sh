@@ -22,7 +22,8 @@ guest_exit_code=unavailable
 cleanup() {
   local run_status=$?
   if (( run_status != 0 )); then
-    local log_bytes=0 boot_record=none
+    local log_bytes=0 boot_record=none progress_record=none
+    local progress_file="$sd/foj-stage312-frame-progress.txt" progress_line
     if [[ -f "$FOJ_EVIDENCE_DIR/guest.log" &&
           ! -L "$FOJ_EVIDENCE_DIR/guest.log" ]]; then
       log_bytes="$(wc -c < "$FOJ_EVIDENCE_DIR/guest.log")"
@@ -38,8 +39,14 @@ cleanup() {
         break
       fi
     done
-    printf 'STAGE312_EARLY_EXIT_DIAG_V1 guest_exit=%s guest_log_bytes=%s boot=%s\n' \
-      "$guest_exit_code" "$log_bytes" "$boot_record" >&2
+    if [[ -f "$progress_file" && ! -L "$progress_file" ]]; then
+      progress_line="$(tail -n 1 "$progress_file" 2>/dev/null || true)"
+      if [[ "$progress_line" =~ ^FOJ312P1\ phase=([0-7])$ ]]; then
+        progress_record="phase=${BASH_REMATCH[1]}"
+      fi
+    fi
+    printf 'STAGE312_EARLY_EXIT_DIAG_V2 guest_exit=%s guest_log_bytes=%s boot=%s progress=%s\n' \
+      "$guest_exit_code" "$log_bytes" "$boot_record" "$progress_record" >&2
   fi
   kill -KILL "$guest" 2>/dev/null || true
   wait "$guest" 2>/dev/null || true
@@ -110,6 +117,13 @@ PY
 done
 test "$phase" = 1 || {
   echo "Stage312 guest did not display two different GPU clear phases" >&2
+  exit 1
+}
+progress_file="$sd/foj-stage312-frame-progress.txt"
+test -f "$progress_file" && test ! -L "$progress_file"
+progress_line="$(tail -n 1 "$progress_file")"
+[[ "$progress_line" == "FOJ312P1 phase=7" ]] || {
+  echo "Stage312 first-frame presentation checkpoint incomplete" >&2
   exit 1
 }
 test -s "$FOJ_EVIDENCE_DIR/gpu-initial.png"
