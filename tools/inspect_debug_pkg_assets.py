@@ -221,7 +221,21 @@ class PSARC:
                 try:
                     unpacked = zlib.decompress(packed)
                 except zlib.error as exc:
-                    raise FormatError("Invalid PSARC zlib block") from exc
+                    # A short incompressible final block can store its
+                    # literal byte length instead of the full-block zero
+                    # sentinel. Admit ONLY an exact short final remainder,
+                    # never a malformed stream with a plausible zlib header.
+                    cmf_flg = ((packed[0] << 8) | packed[1]) if len(packed) >= 2 else -1
+                    zlib_header = (
+                        len(packed) >= 2 and (packed[0] & 15) == 8
+                        and (packed[0] >> 4) <= 7 and cmf_flg % 31 == 0
+                    )
+                    if not (0 < remaining < self.block_size
+                            and raw_len == remaining
+                            and len(packed) == remaining
+                            and not zlib_header):
+                        raise FormatError("Invalid PSARC zlib block") from exc
+                    unpacked = packed
             else:
                 unpacked = packed
             if len(unpacked) > self.block_size or len(unpacked) > remaining:
