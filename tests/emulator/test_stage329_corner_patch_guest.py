@@ -169,7 +169,7 @@ class Stage329GuestAuditTests(unittest.TestCase):
             "#!/bin/sh\n"
             "printf '%s\n' 'UNSAFE_RUNTIME_LINE_ONLY_IN_GUEST_LOG'\n"
             "printf '%s\n' 'FOJBOOT1 slot=00 step=06 event=2 frames=0000000000' "
-            '> "$NEXIUM_DATA_ROOT/sdmc/switch/foj/gpu/foj-boot-00.txt"\n'
+            '> "$NEXIUM_DATA_ROOT/sdmc/switch/foj/gpu/foj-boot-12.txt"\n'
             "exit 23\n"
         )
         fake.chmod(0o700)
