@@ -94,10 +94,30 @@ class HorizontalGPUHostOnlyNegativeTests(unittest.TestCase):
         self.assertEqual(r["real_neixum_guest_frames_verified"],2)
         for values in r["per_frame_pixel_probes"].values():
             self.assertEqual(len(values),24)
-            self.assertTrue(all(v>=33 for k,v in values.items()
+            self.assertTrue(all(v>=18 for k,v in values.items()
                                 if k.endswith("_mixed")))
         self.assertFalse(r["independent_page_bilinear_reconstruction_verified"])
         self.assertFalse(r["physical_switch_verified"])
+    def test_realistic_22_pixel_gradient_passes_three_row_midpoint_core(self):
+        # Actual foreground gutter is ~22px tall; 255/22 ~= 12 RGB/px.
+        # The five-row cluster incorrectly rejects valid outer gradient rows.
+        p=self.bridge/"gpu-initial.png"
+        with Image.open(p) as opened:im=opened.convert("RGB")
+        draw=ImageDraw.Draw(im)
+        for i,x in enumerate(X_CENTERS):
+            top=rgb565(PAIRS565[0][i])
+            bottom=rgb565(PAIRS565[1][i])
+            for yy in range(SEAM_CENTER_Y-11,SEAM_CENTER_Y+12):
+                t=(yy-(SEAM_CENTER_Y-11))/22
+                mix=tuple(round(top[k]*(1-t)+bottom[k]*t)
+                          for k in range(3))
+                draw.line((x-42,yy,x+42,yy),fill=mix)
+        im.save(p)
+        probes=_frame(p)
+        self.assertEqual(len(probes),24)
+        self.assertTrue(all(v>=18 for k,v in probes.items()
+                            if k.endswith("_mixed")))
+
     def test_missing_upper_color(self):
         x=X_CENTERS[0]
         self.corrupt("gpu-initial.png",(x-5,275,x+5,285),(1,2,3))

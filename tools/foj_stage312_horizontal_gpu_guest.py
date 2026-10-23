@@ -49,7 +49,7 @@ def _frame(path:Path)->dict:
         for label,y,rgb,epsilon,radius,minimum in (
             ("top",280,top,4,3,45),
             ("bottom",460,bottom,4,3,45),
-            ("mixed",SEAM_CENTER_Y,mixed,22,2,33)
+            ("mixed",SEAM_CENTER_Y,mixed,22,1,18)
         ):
             count=sum(close_rgb(pixel[px,py],rgb,epsilon)
                       for px in range(x-3,x+4)
