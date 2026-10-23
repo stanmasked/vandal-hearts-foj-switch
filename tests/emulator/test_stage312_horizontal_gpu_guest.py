@@ -53,6 +53,25 @@ class HorizontalGPUHostOnlyNegativeTests(unittest.TestCase):
         with Image.open(p) as f:im=f.convert("RGB")
         ImageDraw.Draw(im).rectangle(rect,fill=color)
         im.save(p)
+    def test_stage312_status_warmup_is_only_twelve_frames(self):
+        # Static guard: host-painted mocks are never guest GPU evidence.
+        source=Path("gpu/stage312_diagnostic_main.c").read_text()
+        baseline='#include "dds_screen_status.h"'
+        shorten='#define FOJ_GPU_DDS_STATUS_FRAMES_PER_SLOT 4u'
+        entry='#include "deko3d_clear_main.c"'
+        self.assertIn(baseline,source)
+        self.assertIn(shorten,source)
+        self.assertIn(entry,source)
+        self.assertLess(source.index(baseline),source.index(shorten))
+        self.assertLess(source.index(shorten),source.index(entry))
+        renderer=Path("gpu/deko3d_clear_main.c").read_text()
+        self.assertIn(
+            'const unsigned status_frames=FOJ_GPU_DDS_STATUS_FRAMES_PER_SLOT;',
+            renderer)
+        self.assertIn('frame<3u*status_frames;',renderer)
+        self.assertIn('commands[slot][foj_smoke_color_for_frame(frame)]',
+                      renderer)
+
     def test_all_eight_horizontal_seams(self):
         r=audit(self.bridge)
         self.assertEqual(r["column_color_pairs_per_frame"],8)

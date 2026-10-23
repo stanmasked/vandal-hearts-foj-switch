@@ -31,3 +31,20 @@ This demonstrates one explicit CPU-assembled horizontal gutter rendered with GPU
 ## First-frame stall diagnostics (CI-only)
 
 The Stage312-specific NRO entry point wraps the first guest input/acquire/submit/present sequence with a bounded fixed-code progress file. It records only `FOJ312P1 phase=0..7`, never paths, assets, pixels, shader bytes, or raw guest output. The failure handler prints only the last validated phase and the existing numeric boot-journal record; the progress file and raw `guest.log` are not published. Phase 0/1 brackets first `padUpdate`, 2/3 brackets first swapchain image acquire, 4/5 brackets first frame command submission, and 6/7 brackets first presentation. The existing independent eight-band screenshot/color audit remains mandatory and unchanged.
+
+
+## Stage312-only twelve-frame boot-status warmup
+
+An actual NeXium job reached the first swapchain presentation (`FOJ312P1 phase=7`)
+but did not reach the required eight-band texture image within its observation
+window. The first presentation is **not** texture evidence: the inherited
+three-material path normally shows 120 diagnostic status frames **per slot**,
+or 360 flat-color frames, before submitting the textured scene.
+
+The Stage312-only entry point now includes the original status enum before
+locally substituting four frames per slot (12 total). All three DDS status
+screens still render, but the textured scene is submitted much earlier.
+Other research NROs keep their original 120-frames-per-slot behavior.
+The independent eight-band / two-frame color audits, source attestations,
+native receipt and eight-file privacy allowlist are unchanged. Success
+is not claimed until a real NeXium capture passes the original checks.

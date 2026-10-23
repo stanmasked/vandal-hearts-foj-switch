@@ -6,6 +6,16 @@
 #include <switch.h>
 #include <deko3d.h>
 #include <stdio.h>
+#include "dds_screen_status.h"
+
+/* Stage312 alone samples generated DDS statuses for four frames per slot,
+ * then reaches its actual texture GPU scene after 12 frames, not 360.
+ * The shared 120-frame policy stays unchanged for all other NROs.
+ * Include the enum declaration before the macro to avoid rewriting it.
+ */
+_Static_assert(FOJ_GPU_DDS_STATUS_FRAMES_PER_SLOT==120,
+               "Stage312 status-frame baseline changed");
+#define FOJ_GPU_DDS_STATUS_FRAMES_PER_SLOT 4u
 
 #if !defined(FOJ_GPU_STAGE312_HORIZONTAL_GUTTER)
 #error "Stage312 diagnostic wrapper must only be built for the horizontal gutter NRO"
