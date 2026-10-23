@@ -1,0 +1,35 @@
+name: Stage333 generated-only PSARC short-tail integrity
+
+on:
+  pull_request:
+    paths:
+      - 'tools/inspect_debug_pkg_assets.py'
+      - 'tests/test_stage333_psarc_tail.py'
+      - '.github/workflows/stage333-psarc-tail.yml'
+      - 'docs/GPU_STAGE333_PSARC_SHORT_TAIL.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source_tests:
+    name: Stage333 synthetic PSARC blocks - Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Assert full, compressed and bounded raw PSARC blocks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_stage333_psarc_tail.py' -v
+          python -m compileall -q tools/inspect_debug_pkg_assets.py
+          echo STAGE333_SYNTHETIC_PSARC_RAW_TAIL_GUARD_PASS

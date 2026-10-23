@@ -1,0 +1,228 @@
+name: Stage329 native corner patch GPU draw in NeXium
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage329-corner-patch-neixum.yml'
+      - 'gpu/deko3d_clear_main.c'
+      - 'gpu/stage329_corner_patch_draw.mk'
+      - 'docs/GPU_STAGE329_NATIVE_CORNER_PATCH_DRAW.md'
+      - 'gpu/stage318_triangle_uv_coverage.c'
+      - 'gpu/stage318_triangle_uv_coverage.h'
+      - 'gpu/stage319_bilinear_halo_support.c'
+      - 'gpu/stage319_bilinear_halo_support.h'
+      - 'gpu/stage320_uv_page_batches.c'
+      - 'gpu/stage320_uv_page_batches.h'
+      - 'gpu/stage321_three_slot_plan.c'
+      - 'gpu/stage321_three_slot_plan.h'
+      - 'gpu/stage322_bounded_corner_tile.c'
+      - 'gpu/stage322_bounded_corner_tile.h'
+      - 'gpu/stage324_corner_tile_clip.c'
+      - 'gpu/stage324_corner_tile_clip.h'
+      - 'gpu/stage325_corner_tile_partition.c'
+      - 'gpu/stage325_corner_tile_partition.h'
+      - 'gpu/stage327_ordered_partition_stream.c'
+      - 'gpu/stage327_ordered_partition_stream.h'
+      - 'gpu/stage328_atomic_corner_patch_stream.c'
+      - 'gpu/stage328_atomic_corner_patch_stream.h'
+      - 'core/gpu_vertex_stream.c'
+      - 'core/gpu_vertex_stream.h'
+      - 'core/gpu_draw_plan.c'
+      - 'core/gpu_draw_plan.h'
+      - 'gpu/research_texture.c'
+      - 'gpu/research_texture.h'
+      - 'gpu/atlas_dds.c'
+      - 'gpu/atlas_dds.h'
+      - 'gpu/dds_screen_status.c'
+      - 'gpu/dds_screen_status.h'
+      - 'gpu/dds_command_plan.c'
+      - 'gpu/dds_command_plan.h'
+      - 'gpu/actor_upload_plan.c'
+      - 'gpu/actor_upload_plan.h'
+      - 'tools/foj_stage329_corner_patch_guest.py'
+      - 'tools/foj_stage329_nexium_drive.sh'
+      - 'tests/emulator/test_stage329_corner_patch_guest.py'
+      - 'tests/gpu/test_stage329_generated_corner_patch.c'
+      - 'gpu/Makefile'
+      - 'gpu/clear.mk'
+      - 'gpu/shaders/foj_actor.vert'
+      - 'gpu/shaders/foj_triangle.frag'
+      - 'tools/validate_nro.py'
+      - 'tools/validate_dksh.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage329-native-corner-patch-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host:
+    name: Host-side evidence auditor and negative fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run generated-only GPU evidence and source-contract tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install Pillow
+          python3 -m unittest discover -s tests/emulator \
+            -p 'test_stage329_corner_patch_guest.py' -v
+          python3 -m compileall -q tools/foj_stage329_corner_patch_guest.py
+          bash -n tools/foj_stage329_nexium_drive.sh
+          cc -std=c11 -Wall -Wextra -Werror -pedantic \
+            -DFOJ_GPU_DRAW_TRIANGLE=1 \
+            -DFOJ_GPU_STAGE329_PATCH_STREAM=1 -fsyntax-only \
+            -Itests/mock_switch_sdk -Icore -Igpu gpu/deko3d_clear_main.c
+          for compiler in gcc clang; do
+            "$compiler" -std=c11 -O2 -Wall -Wextra -Werror -pedantic \
+              -Icore -Igpu \
+              gpu/stage318_triangle_uv_coverage.c \
+              gpu/stage319_bilinear_halo_support.c \
+              gpu/stage320_uv_page_batches.c \
+              gpu/stage321_three_slot_plan.c \
+              gpu/stage322_bounded_corner_tile.c \
+              gpu/stage324_corner_tile_clip.c \
+              gpu/stage325_corner_tile_partition.c \
+              gpu/stage327_ordered_partition_stream.c \
+              gpu/stage328_atomic_corner_patch_stream.c \
+              core/gpu_vertex_stream.c \
+              tests/gpu/test_stage329_generated_corner_patch.c \
+              -lm -o "/tmp/stage329-corner-$compiler"
+            "/tmp/stage329-corner-$compiler"
+          done
+          gcc -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic \
+            -fsanitize=undefined -fno-sanitize-recover=all -Icore -Igpu \
+            gpu/stage318_triangle_uv_coverage.c \
+            gpu/stage319_bilinear_halo_support.c \
+            gpu/stage320_uv_page_batches.c \
+            gpu/stage321_three_slot_plan.c \
+            gpu/stage322_bounded_corner_tile.c \
+            gpu/stage324_corner_tile_clip.c \
+            gpu/stage325_corner_tile_partition.c \
+            gpu/stage327_ordered_partition_stream.c \
+            gpu/stage328_atomic_corner_patch_stream.c \
+            core/gpu_vertex_stream.c \
+            tests/gpu/test_stage329_generated_corner_patch.c \
+            -lm -o /tmp/stage329-corner-ubsan
+          /tmp/stage329-corner-ubsan
+          echo STAGE329_HOST_AUDITOR_CPU_AND_NATIVE_BRANCH_SYNTAX_PASS
+
+  build:
+    name: Build Stage329 native deko3d NRO and generated shaders
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    container:
+      image: devkitpro/devkita64:20260219
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and validate generated-only corner patch NRO
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f gpu/stage329_corner_patch_draw.mk verify
+          make -f gpu/Makefile triangle-verify
+          python3 tools/validate_nro.py build/foj-deko3d-stage329-corner-patch.nro
+          python3 tools/validate_dksh.py gpu/build/foj_actor.vert.dksh
+          python3 tools/validate_dksh.py gpu/build/foj_triangle.frag.dksh
+          echo STAGE329_DEVKITA64_CORNER_PATCH_NRO_PASS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage329-corner-patch-nro-and-dksh
+          path: |
+            build/foj-deko3d-stage329-corner-patch.nro
+            gpu/build/foj_actor.vert.dksh
+            gpu/build/foj_triangle.frag.dksh
+          if-no-files-found: error
+          retention-days: 7
+
+  nexium:
+    name: Real NeXium framebuffer verifies Stage328 tile upload and draw
+    needs: [host, build]
+    # Match Stage323/Stage261 NeXium GPU evidence jobs, which passed on 26.04.
+    runs-on: ubuntu-26.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: foj-stage329-corner-patch-nro-and-dksh
+          path: native
+      - name: Install NeXium Vulkan renderer and screenshot tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt_options=(-o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+          timeout --kill-after=15s 360s sudo apt-get "${apt_options[@]}" update
+          timeout --kill-after=15s 1500s sudo apt-get "${apt_options[@]}" install -y \
+            curl jq xvfb xauth xdotool imagemagick python3-pil \
+            libgtk-3-0t64 libasound2t64 libudev1 libxkbcommon0 libxkbcommon-x11-0 \
+            libx11-xcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 \
+            libxcb-randr0 libxcb-render0 libxcb-shape0 libxcb-xkb1 \
+            libvulkan1 mesa-vulkan-drivers
+          icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 -name 'lvp_icd*.json' -print -quit)"
+          test -n "$icd"
+          echo "VK_ICD_FILENAMES=$icd" >> "$GITHUB_ENV"
+      - name: Pin downloaded NeXium binary identity
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-evidence /tmp/nexium
+          release="$(curl -fsSL --retry 3 --retry-all-errors --connect-timeout 20 --max-time 120 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/nexium-emu/nexium-nightly/releases/tags/nightly)"
+          asset="$(printf '%s' "$release" | jq -er \
+            '.assets[] | select(.name=="nexium-linux-x86_64.tar.gz") | .browser_download_url')"
+          curl -fL --retry 3 --retry-all-errors --connect-timeout 20 --max-time 300 \
+            "$asset" -o /tmp/nexium.tar.gz
+          sha256sum /tmp/nexium.tar.gz > runtime-evidence/nexium-archive.sha256
+          tar -xzf /tmp/nexium.tar.gz -C /tmp/nexium
+          bin="$(find /tmp/nexium -type f -executable \
+            \( -name 'nexium-gui' -o -name 'nexium' \) -print -quit)"
+          test -n "$bin"
+          echo "NEXIUM_BIN=$bin" >> "$GITHUB_ENV"
+      - name: Stage only generated shaders and synthetic-only SD evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/stage329-sdroot"
+          gpu="$work/sdmc/switch/foj/gpu"
+          mkdir -p "$gpu"
+          cp native/gpu/build/foj_actor.vert.dksh "$gpu/"
+          cp native/gpu/build/foj_triangle.frag.dksh "$gpu/"
+          python3 -m tools.foj_stage329_corner_patch_guest prepare \
+            --sd-root "$work/sdmc" --evidence runtime-evidence/bridge
+          echo "NEXIUM_DATA_ROOT=$work" >> "$GITHUB_ENV"
+          echo "FOJ_NRO=$GITHUB_WORKSPACE/native/build/foj-deko3d-stage329-corner-patch.nro" >> "$GITHUB_ENV"
+          echo "FOJ_EVIDENCE_DIR=$GITHUB_WORKSPACE/runtime-evidence/bridge" >> "$GITHUB_ENV"
+      - name: Capture and independently verify the real GPU patch frame
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --kill-after=5s 390s xvfb-run -a \
+            -s "-screen 0 1280x720x24" bash tools/foj_stage329_nexium_drive.sh
+          echo STAGE329_REAL_NEIXIUM_CORNER_PATCH_DRAW_PASS
+      - name: Publish only the strict generated-only proof allowlist
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m tools.foj_stage329_corner_patch_guest publish \
+            --source runtime-evidence --output runtime-evidence-public
+          echo STAGE329_STRICT_PUBLIC_EVIDENCE_EXPORT_PASS
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: foj-stage329-real-gpu-corner-patch-evidence
+          path: runtime-evidence-public/
+          if-no-files-found: error
+          retention-days: 7

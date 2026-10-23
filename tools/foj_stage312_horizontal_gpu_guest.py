@@ -21,6 +21,8 @@ PAIRS565=(
     (0xffe0,0x07e0,0x001f,0xf800,0x07ff,0xf81f,0x0000,0xffff)
 )
 X_CENTERS=(315,407,500,592,685,777,870,962)
+# Genuine Stage323 NeXium frame on this same revision measured Y=346.
+SEAM_CENTER_Y=346
 SOURCE={"nexium-archive.sha256"}|{"bridge/"+n for n in (
     "generated-input.json","dds-before.json","dds-after.json",
     "gpu-initial.png","gpu-later.png",MARKER,RECEIPT,"guest.log")}
@@ -47,7 +49,7 @@ def _frame(path:Path)->dict:
         for label,y,rgb,epsilon,radius,minimum in (
             ("top",280,top,4,3,45),
             ("bottom",460,bottom,4,3,45),
-            ("mixed",360,mixed,22,2,33)
+            ("mixed",SEAM_CENTER_Y,mixed,22,1,18)
         ):
             count=sum(close_rgb(pixel[px,py],rgb,epsilon)
                       for px in range(x-3,x+4)
@@ -56,10 +58,10 @@ def _frame(path:Path)->dict:
                 raise ValueError(
                     f"Stage312 stripe={stripe} {label} GPU colors absent")
             found[f"band{stripe}_{label}"]=count
-        center=pixel[x,360]
+        center=pixel[x,SEAM_CENTER_Y]
         if close_rgb(center,top,8) or close_rgb(center,bottom,8):
             raise ValueError("Stage312 seam incorrectly clamps to a page")
-        for y in (355,365):
+        for y in (SEAM_CENTER_Y-4,SEAM_CENTER_Y+4):
             if close_rgb(pixel[x,y],top,8) or close_rgb(pixel[x,y],bottom,8):
                 raise ValueError("Stage312 horizontal gutter has endpoint leak")
     return found

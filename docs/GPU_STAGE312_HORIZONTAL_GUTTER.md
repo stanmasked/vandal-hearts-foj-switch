@@ -19,10 +19,78 @@ The scene retains strict generated-only Stage293 source intake. The native NRO w
 
 GCC and Clang compile and execute both an independent Stage312 native scene test and the actual Stage311 256-column synthetic BC1 reference. The guest NRO is compiled by devkitA64, along with generated UAM shaders. The real NeXium test must capture two distinguishable 1280×720 GPU frames **after** source attestations and native guest startup.
 
-For each of eight X locations approximately at 315, 407, 500, 592, 685, 777, 870, and 962 pixels, the independent screenshot verifier requires the expected upper RGB color near screen Y=280, expected lower color at Y=460, and a strictly intermediate RGB near Y=360. The upper/lower 7×7 regions must match ≥45/49 pixels, middle 7×5 ≥33/35, plus individual tests rejecting a clamp-to-edge endpoint leak near the seam. Those are expected capture coordinates based on prior real deko3d viewport observations, not proof until NeXium actually completes.
+For each of eight X locations approximately at 315, 407, 500, 592, 685, 777, 870, and 962 pixels, the independent screenshot verifier requires the expected upper RGB color near screen Y=280, expected lower color at Y=460, and a strictly intermediate RGB near Y=346. The upper/lower 7×7 regions must match ≥45/49 pixels, middle 7×3 ≥18/21, plus individual tests rejecting a clamp-to-edge endpoint leak near the seam. Those are expected capture coordinates based on prior real deko3d viewport observations, not proof until NeXium actually completes.
 
 The Python host-generated PNG tests are **only negative regressions**; successful host mocks never count as emulator evidence. True positive GPU status requires two real NeXium frames, strict native marker, identity of Stage293 synthetic DDS source before/after the guest run, and a privacy-safe eight-file public allowlist. No raw guest log or private PS3 files are uploaded.
 
 ## Scope limits
 
 This demonstrates one explicit CPU-assembled horizontal gutter rendered with GPU linear interpolation. It does **not** prove automatic bilinear reconstruction between independently bound page textures, arbitrary original FoJ geometry/UV topology, rotation/resizing for non-square pages, or operation on physical Nintendo Switch hardware. The next research step is generalized arbitrary-direction geometry crossings after private validation of actual game UV mapping.
+
+
+## First-frame stall diagnostics (CI-only)
+
+The Stage312-specific NRO entry point wraps the first guest input/acquire/submit/present sequence with a bounded fixed-code progress file. It records only `FOJ312P1 phase=0..7`, never paths, assets, pixels, shader bytes, or raw guest output. The failure handler prints only the last validated phase and the existing numeric boot-journal record; the progress file and raw `guest.log` are not published. Phase 0/1 brackets first `padUpdate`, 2/3 brackets first swapchain image acquire, 4/5 brackets first frame command submission, and 6/7 brackets first presentation. The existing independent eight-band screenshot/color audit remains mandatory and unchanged.
+
+
+## Stage312-only twelve-frame boot-status warmup
+
+An actual NeXium job reached the first swapchain presentation (`FOJ312P1 phase=7`)
+but did not reach the required eight-band texture image within its observation
+window. The first presentation is **not** texture evidence: the inherited
+three-material path normally shows 120 diagnostic status frames **per slot**,
+or 360 flat-color frames, before submitting the textured scene.
+
+The Stage312-only entry point now includes the original status enum before
+locally substituting four frames per slot (12 total). All three DDS status
+screens still render, but the textured scene is submitted much earlier.
+Other research NROs keep their original 120-frames-per-slot behavior.
+The independent eight-band / two-frame color audits, source attestations,
+native receipt and eight-file privacy allowlist are unchanged. Success
+is not claimed until a real NeXium capture passes the original checks.
+
+
+## Further Stage312 diagnosis — bounded present-frame milestones
+
+The twelve-frame diagnostic warmup passed host/native build checks but
+still failed the real NeXium GPU frame audit. The first-present phase marker
+does not measure the number of frames presented. This revision now records
+only fixed frame-count milestones (1, 2, 4, 8, 12, 13, 16, 32, 64, 128,
+256, 360, 512, 1024) in a bounded numeric journal. On failure, CI prints
+the last validated count and ten fixed numeric RGB probes from the most
+recent attested generated-only screenshot. Raw failing screenshots and guest
+logs are still excluded from published artifacts. A screenshot/progress
+diagnostic is not a substitute for the unchanged independent two-frame
+eight-band GPU color audit, source attestations and native receipt.
+
+
+## Stage312 empirical viewport center — 2026-10-24
+
+Actual NeXium Stage312 run 40029834375 reached at least 1024 presentations,
+but the fixed Y=360 probes sampled the **lower page** RGB values in every
+examined stripe; the top and lower page colors were correct. Independent
+successful real NeXium Stage323 run 40029834469 on exactly the same revision
+reports GPU center=(640,346). The Stage312 gutter is only ~22px tall,
+so Y=360 samples below its actual midpoint.
+
+The Stage312 auditor now checks the expected bilinear seam at screenshot Y=346
+and rejects source-edge color leaks at Y=342/350. The negative test fixtures
+are adjusted to the empirical viewport origin, and a legacy Y=360-centered
+false positive is explicitly rejected. All eight stripe source colors,
+previous color tolerances, two distinct real guest screenshots, native receipt
+and public evidence privacy gates remain strict. Native mesh/UV/texture
+generation and shaders are unchanged.
+
+The bounded progress journal appends frame counts after phase=7; the runner
+now validates phase=7 using a fixed-format grep rather than tail on the entire
+journal. This prevents an otherwise correct real GPU result being rejected
+due to an unrelated later diagnostic record.
+
+
+## Stage312 mixed-region aperture correction — 2026-10-24
+
+Run [40031967377](https://github.com/stanmasked/vandal-hearts-foj-switch/actions/runs/40031967377) passed GCC, Clang, Python and NRO/DKSH. The actual NeXium guest reached at least 1024 presented frames, but the five-row mixed-color pixel gate refused the capture. Strict synthetic-only diagnostics measured RGB (122,122,133) for blue/yellow (ideal 128,128,128), (133,122,255) for magenta/cyan, and (122,122,122) for black/white at Y=346; their corresponding upper/lower endpoints were also observed.
+
+The foreground gutter spans approximately 22 screen pixels. A full 255-level gradient varies about 11–12 levels per vertical pixel, so requiring ≥33/35 mixed-color matches across five rows with per-channel tolerance 22 is too strict for the outer ±2 rows of a legitimate linear gradient. The test now uses the physically supported three-row core (7×3, requiring ≥18/21), retaining tolerance 22, endpoint 45/49 tests, ±4-pixel clamping/refusal tests, all eight bands, both real frames, immutable synthetic DDS receipts, and strict eight-file publication allowlist. A host-only regression exercises a 22-pixel gradient and does not count as real GPU evidence.
+
+The code adjustment is not itself a pass: a new actual NeXium two-frame audit is required. No original PS3 assets are touched; PR #216 remains Draft.

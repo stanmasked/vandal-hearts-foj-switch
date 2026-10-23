@@ -7,7 +7,7 @@ import unittest
 from PIL import Image,ImageDraw
 from tools.foj_stage293_converted_dds_guest import _origin,_attestation
 from tools.foj_stage312_horizontal_gpu_guest import (
-    MARKER,MARKER_BYTES,RECEIPT,PAIRS565,X_CENTERS,rgb565,
+    MARKER,MARKER_BYTES,RECEIPT,PAIRS565,X_CENTERS,SEAM_CENTER_Y,rgb565,
     _frame,audit,publish,PUBLIC
 )
 
@@ -29,10 +29,10 @@ def mock(root:Path):
             lo,hi=x-42,x+42
             top=rgb565(PAIRS565[0][i])
             bottom=rgb565(PAIRS565[1][i])
-            d.rectangle((lo,180,hi,359),fill=top)
-            d.rectangle((lo,360,hi,539),fill=bottom)
-            for yy in range(341,380):
-                t=(yy-341)/38
+            d.rectangle((lo,166,hi,345),fill=top)
+            d.rectangle((lo,346,hi,525),fill=bottom)
+            for yy in range(327,366):
+                t=(yy-327)/38
                 mixed=tuple(round(top[k]*(1-t)+bottom[k]*t)
                             for k in range(3))
                 d.line(((lo,yy),(hi,yy)),fill=mixed)
@@ -53,16 +53,71 @@ class HorizontalGPUHostOnlyNegativeTests(unittest.TestCase):
         with Image.open(p) as f:im=f.convert("RGB")
         ImageDraw.Draw(im).rectangle(rect,fill=color)
         im.save(p)
+    def test_bounded_stage312_presented_frame_diagnostics(self):
+        native=Path("gpu/stage312_diagnostic_main.c").read_text()
+        driver=Path("tools/foj_stage312_nexium_drive.sh").read_text()
+        self.assertIn("STAGE312_PROGRESS_MAX_RECORDS=24",native)
+        self.assertIn("FOJ312F1 frames=%010u",native)
+        self.assertIn("stage312_presented_checkpoint(presented);",native)
+        self.assertIn("frames!=13u",native)
+        self.assertIn("frames!=1024u",native)
+        self.assertIn("STAGE312_EARLY_EXIT_DIAG_V3",driver)
+        self.assertIn("present_frames=%s",driver)
+        self.assertIn("STAGE312_LAST_FRAME_RGB_V1",driver)
+        self.assertIn("opened.size != (1280,720)",driver)
+        self.assertIn("grep -E '^FOJ312F1 frames=[0-9]{10}$'",driver)
+        self.assertIn("grep -E '^FOJ312P1 phase=[0-7]$'",driver)
+
+    def test_stage312_status_warmup_is_only_twelve_frames(self):
+        # Static guard: host-painted mocks are never guest GPU evidence.
+        source=Path("gpu/stage312_diagnostic_main.c").read_text()
+        baseline='#include "dds_screen_status.h"'
+        shorten='#define FOJ_GPU_DDS_STATUS_FRAMES_PER_SLOT 4u'
+        entry='#include "deko3d_clear_main.c"'
+        self.assertIn(baseline,source)
+        self.assertIn(shorten,source)
+        self.assertIn(entry,source)
+        self.assertLess(source.index(baseline),source.index(shorten))
+        self.assertLess(source.index(shorten),source.index(entry))
+        renderer=Path("gpu/deko3d_clear_main.c").read_text()
+        self.assertIn(
+            'const unsigned status_frames=FOJ_GPU_DDS_STATUS_FRAMES_PER_SLOT;',
+            renderer)
+        self.assertIn('frame<3u*status_frames;',renderer)
+        self.assertIn('commands[slot][foj_smoke_color_for_frame(frame)]',
+                      renderer)
+
     def test_all_eight_horizontal_seams(self):
         r=audit(self.bridge)
+        self.assertEqual(SEAM_CENTER_Y,346)
         self.assertEqual(r["column_color_pairs_per_frame"],8)
         self.assertEqual(r["real_neixum_guest_frames_verified"],2)
         for values in r["per_frame_pixel_probes"].values():
             self.assertEqual(len(values),24)
-            self.assertTrue(all(v>=33 for k,v in values.items()
+            self.assertTrue(all(v>=18 for k,v in values.items()
                                 if k.endswith("_mixed")))
         self.assertFalse(r["independent_page_bilinear_reconstruction_verified"])
         self.assertFalse(r["physical_switch_verified"])
+    def test_realistic_22_pixel_gradient_passes_three_row_midpoint_core(self):
+        # Actual foreground gutter is ~22px tall; 255/22 ~= 12 RGB/px.
+        # The five-row cluster incorrectly rejects valid outer gradient rows.
+        p=self.bridge/"gpu-initial.png"
+        with Image.open(p) as opened:im=opened.convert("RGB")
+        draw=ImageDraw.Draw(im)
+        for i,x in enumerate(X_CENTERS):
+            top=rgb565(PAIRS565[0][i])
+            bottom=rgb565(PAIRS565[1][i])
+            for yy in range(SEAM_CENTER_Y-11,SEAM_CENTER_Y+12):
+                t=(yy-(SEAM_CENTER_Y-11))/22
+                mix=tuple(round(top[k]*(1-t)+bottom[k]*t)
+                          for k in range(3))
+                draw.line((x-42,yy,x+42,yy),fill=mix)
+        im.save(p)
+        probes=_frame(p)
+        self.assertEqual(len(probes),24)
+        self.assertTrue(all(v>=18 for k,v in probes.items()
+                            if k.endswith("_mixed")))
+
     def test_missing_upper_color(self):
         x=X_CENTERS[0]
         self.corrupt("gpu-initial.png",(x-5,275,x+5,285),(1,2,3))
@@ -73,13 +128,32 @@ class HorizontalGPUHostOnlyNegativeTests(unittest.TestCase):
         with self.assertRaises(ValueError):audit(self.bridge)
     def test_clamped_midpoint(self):
         i=4;x=X_CENTERS[i]
-        self.corrupt("gpu-initial.png",(x-5,351,x+5,369),
+        self.corrupt("gpu-initial.png",(x-5,339,x+5,354),
                      rgb565(PAIRS565[0][i]))
         with self.assertRaises(ValueError):audit(self.bridge)
     def test_missing_color_band(self):
         x=X_CENTERS[6]
         self.corrupt("gpu-initial.png",(x-5,260,x+5,480),(1,2,3))
         with self.assertRaises(ValueError):audit(self.bridge)
+    def test_legacy_unshifted_seam_is_rejected(self):
+        # The old Y=360 midpoint must fail the independently measured Y=346.
+        x=X_CENTERS[2]
+        p=self.bridge/"gpu-initial.png"
+        with Image.open(p) as opened:im=opened.convert("RGB")
+        draw=ImageDraw.Draw(im)
+        top=rgb565(PAIRS565[0][2])
+        bottom=rgb565(PAIRS565[1][2])
+        draw.rectangle((x-5,326,x+5,359),fill=top)
+        draw.rectangle((x-5,360,x+5,382),fill=bottom)
+        for y in range(341,380):
+            t=(y-341)/38
+            color=tuple(round(top[k]*(1-t)+bottom[k]*t)
+                        for k in range(3))
+            draw.line((x-5,y,x+5,y),fill=color)
+        im.save(p)
+        with self.assertRaises(ValueError):
+            _frame(p)
+
     def test_only_one_frame_phase(self):
         (self.bridge/"gpu-later.png").write_bytes(
             (self.bridge/"gpu-initial.png").read_bytes())
