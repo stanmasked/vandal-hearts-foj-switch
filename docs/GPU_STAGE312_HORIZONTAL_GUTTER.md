@@ -62,3 +62,26 @@ recent attested generated-only screenshot. Raw failing screenshots and guest
 logs are still excluded from published artifacts. A screenshot/progress
 diagnostic is not a substitute for the unchanged independent two-frame
 eight-band GPU color audit, source attestations and native receipt.
+
+
+## Stage312 empirical viewport center — 2026-10-24
+
+Actual NeXium Stage312 run 40029834375 reached at least 1024 presentations,
+but the fixed Y=360 probes sampled the **lower page** RGB values in every
+examined stripe; the top and lower page colors were correct. Independent
+successful real NeXium Stage323 run 40029834469 on exactly the same revision
+reports GPU center=(640,346). The Stage312 gutter is only ~22px tall,
+so Y=360 samples below its actual midpoint.
+
+The Stage312 auditor now checks the expected bilinear seam at screenshot Y=346
+and rejects source-edge color leaks at Y=342/350. The negative test fixtures
+are adjusted to the empirical viewport origin, and a legacy Y=360-centered
+false positive is explicitly rejected. All eight stripe source colors,
+previous color tolerances, two distinct real guest screenshots, native receipt
+and public evidence privacy gates remain strict. Native mesh/UV/texture
+generation and shaders are unchanged.
+
+The bounded progress journal appends frame counts after phase=7; the runner
+now validates phase=7 using a fixed-format grep rather than tail on the entire
+journal. This prevents an otherwise correct real GPU result being rejected
+due to an unrelated later diagnostic record.

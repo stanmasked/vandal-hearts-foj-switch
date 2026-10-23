@@ -65,9 +65,9 @@ try:
         if opened.size != (1280,720):
             raise ValueError("Wrong dimensions")
         pixels=opened.convert("RGB")
-    positions=((315,280),(315,360),(315,460),
-               (685,280),(685,360),(685,460),
-               (962,280),(962,360),(962,460),(40,40))
+    positions=((315,280),(315,346),(315,460),
+               (685,280),(685,346),(685,460),
+               (962,280),(962,346),(962,460),(315,360))
     samples=(",".join(str(channel) for channel in pixels.getpixel(pos))
              for pos in positions)
     print("STAGE312_LAST_FRAME_RGB_V1 "+" ".join(samples),file=sys.stderr)
@@ -105,7 +105,7 @@ capture_window_png() {
     'xwdtopnm "$1" | pnmtopng > "$2"' _ "$xwd_file" "$output"
   rm -f -- "$xwd_file"
 }
-# Never conflate the initial 360 diagnostic guest frames with the
+# Never conflate the initial 12 diagnostic guest frames with the
 # actual texture GPU draw; require BOTH colors in a single screenshot.
 found=0
 for attempt in $(seq 1 38); do
@@ -149,7 +149,7 @@ test "$phase" = 1 || {
 }
 progress_file="$sd/foj-stage312-frame-progress.txt"
 test -f "$progress_file" && test ! -L "$progress_file"
-progress_line="$(tail -n 1 "$progress_file")"
+progress_line="$(grep -E '^FOJ312P1 phase=[0-7]$' "$progress_file" | tail -n 1)"
 [[ "$progress_line" == "FOJ312P1 phase=7" ]] || {
   echo "Stage312 first-frame presentation checkpoint incomplete" >&2
   exit 1
