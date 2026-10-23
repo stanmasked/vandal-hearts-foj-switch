@@ -59,7 +59,7 @@ def fake_frame(path: Path, background: tuple[int, int, int],
     lo, hi = 504.0 / 1024.0, 520.0 / 1024.0
     # The full 64-texel triangle is four times the tile size: 768 px tall.
     # Its central 16-texel tile remains 192 px tall around y=360.
-    for y in range(0, 721):
+    for y in range(720):
         apex_weight = (744.0 - y) / 768.0
         if not 0.0 <= apex_weight <= 1.0:
             continue
