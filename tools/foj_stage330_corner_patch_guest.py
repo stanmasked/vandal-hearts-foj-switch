@@ -215,10 +215,10 @@ def _frame(path: Path) -> dict:
 
     left, right = tuple(pixels[cx - 20, cy]), tuple(pixels[cx + 20, cy])
     top, bottom = tuple(pixels[cx, cy - 20]), tuple(pixels[cx, cy + 20])
-    if right[1] - left[1] < 28:
-        raise ValueError("Stage330 horizontal green interpolation is absent")
-    if bottom[2] - top[2] < 28:
-        raise ValueError("Stage330 vertical blue interpolation is absent")
+    if left[1] > 16 or right[1] < 239:
+        raise ValueError("Stage330 central tile's horizontal material transition is absent")
+    if top[2] > 16 or bottom[2] < 239:
+        raise ValueError("Stage330 central tile's vertical material transition is absent")
 
     samples = {
         "nw": tuple(pixels[cx - 20, cy - 20]),
@@ -290,6 +290,7 @@ def audit(folder: Path) -> dict:
         "real_neixium_frames_verified": 2,
         "gpu_tile_midpoint_verified": True,
         "horizontal_and_vertical_linear_interpolation_verified": True,
+        "tile_texture_sampling_verified": True,
         "four_quadrant_contributions_verified": True,
         "source_remainder_texture_verified": True,
         "ordered_source_then_tile_sections_verified": True,

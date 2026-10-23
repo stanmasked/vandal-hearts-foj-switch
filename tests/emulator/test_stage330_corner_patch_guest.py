@@ -17,7 +17,8 @@ COLORS = (
     (0, 0, 255), (255, 255, 255),
 )
 
-def fake_frame(path: Path, background: tuple[int, int, int]) -> None:
+def fake_frame(path: Path, background: tuple[int, int, int],
+               tile_enabled: bool = True) -> None:
     """Host-only fixture for the auditor; never evidence of a real GPU draw."""
     image = Image.new("RGB", (1280, 720), background)
     pixels = image.load()
@@ -70,8 +71,9 @@ def fake_frame(path: Path, background: tuple[int, int, int]) -> None:
                 continue
             across = (x - left) / (2.0 * half_width)
             u = apex_weight * 0.5 + base_weight * (0.46875 + 0.0625 * across)
-            v = apex_weight * 0.53125 + base_weight * 0.46875
-            if lo <= u <= hi and lo <= v <= hi:
+            # Match the GPU stream's explicit V flip.
+            v = apex_weight * 0.46875 + base_weight * 0.53125
+            if tile_enabled and lo <= u <= hi and lo <= v <= hi:
                 pixels[x, y] = sample_tile((u - lo) / (hi - lo),
                                            (v - lo) / (hi - lo))
             else:
@@ -111,6 +113,7 @@ class Stage330GuestAuditTests(unittest.TestCase):
         report = audit(self.bridge)
         self.assertTrue(report["gpu_tile_midpoint_verified"])
         self.assertTrue(report["horizontal_and_vertical_linear_interpolation_verified"])
+        self.assertTrue(report["tile_texture_sampling_verified"])
         self.assertTrue(report["four_quadrant_contributions_verified"])
         self.assertTrue(report["source_remainder_texture_verified"])
         self.assertTrue(report["ordered_source_then_tile_sections_verified"])
@@ -124,6 +127,12 @@ class Stage330GuestAuditTests(unittest.TestCase):
             self.assertLess(source["left"][1], 40)
             self.assertGreaterEqual(source["left"][2], 80)
             self.assertGreaterEqual(source["right"][1], 210)
+
+    def test_source_atlas_alone_does_not_prove_tile_sampling(self):
+        path = self.bridge / "gpu-initial.png"
+        fake_frame(path, (23, 31, 59), tile_enabled=False)
+        with self.assertRaises(ValueError):
+            _frame(path)
 
     def test_flat_midpoint_is_not_accepted_as_gpu_filtering(self):
         path = self.bridge / "gpu-initial.png"
