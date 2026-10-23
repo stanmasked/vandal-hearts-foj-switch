@@ -24,6 +24,7 @@ cleanup() {
   if (( run_status != 0 )); then
     local log_bytes=0 boot_record=none progress_record=none
     local progress_file="$sd/foj-stage312-frame-progress.txt" progress_line
+    local last_frames=none
     if [[ -f "$FOJ_EVIDENCE_DIR/guest.log" &&
           ! -L "$FOJ_EVIDENCE_DIR/guest.log" ]]; then
       log_bytes="$(wc -c < "$FOJ_EVIDENCE_DIR/guest.log")"
@@ -40,13 +41,40 @@ cleanup() {
       fi
     done
     if [[ -f "$progress_file" && ! -L "$progress_file" ]]; then
-      progress_line="$(tail -n 1 "$progress_file" 2>/dev/null || true)"
+      progress_line="$(grep -E '^FOJ312P1 phase=[0-7]$' "$progress_file" 2>/dev/null | tail -n 1 || true)"
       if [[ "$progress_line" =~ ^FOJ312P1\ phase=([0-7])$ ]]; then
         progress_record="phase=${BASH_REMATCH[1]}"
       fi
+      progress_line="$(grep -E '^FOJ312F1 frames=[0-9]{10}$' "$progress_file" 2>/dev/null | tail -n 1 || true)"
+      if [[ "$progress_line" =~ ^FOJ312F1\ frames=([0-9]{10})$ ]]; then
+        last_frames="${BASH_REMATCH[1]}"
+      fi
     fi
-    printf 'STAGE312_EARLY_EXIT_DIAG_V2 guest_exit=%s guest_log_bytes=%s boot=%s progress=%s\n' \
-      "$guest_exit_code" "$log_bytes" "$boot_record" "$progress_record" >&2
+    printf 'STAGE312_EARLY_EXIT_DIAG_V3 guest_exit=%s guest_log_bytes=%s boot=%s progress=%s present_frames=%s\n' \
+      "$guest_exit_code" "$log_bytes" "$boot_record" "$progress_record" "$last_frames" >&2
+    # The workflow attests all generated-only DDS inputs before launch.
+    # Print only ten fixed RGB tuples, never screenshot or raw guest logs.
+    if [[ -f "$FOJ_EVIDENCE_DIR/gpu-initial.png" &&
+          ! -L "$FOJ_EVIDENCE_DIR/gpu-initial.png" ]]; then
+      python3 - "$FOJ_EVIDENCE_DIR/gpu-initial.png" <<'PY'
+from PIL import Image
+from pathlib import Path
+import sys
+try:
+    with Image.open(Path(sys.argv[1])) as opened:
+        if opened.size != (1280,720):
+            raise ValueError("Wrong dimensions")
+        pixels=opened.convert("RGB")
+    positions=((315,280),(315,360),(315,460),
+               (685,280),(685,360),(685,460),
+               (962,280),(962,360),(962,460),(40,40))
+    samples=(",".join(str(channel) for channel in pixels.getpixel(pos))
+             for pos in positions)
+    print("STAGE312_LAST_FRAME_RGB_V1 "+" ".join(samples),file=sys.stderr)
+except (OSError,ValueError):
+    print("STAGE312_LAST_FRAME_RGB_V1 unavailable",file=sys.stderr)
+PY
+    fi
   fi
   kill -KILL "$guest" 2>/dev/null || true
   wait "$guest" 2>/dev/null || true

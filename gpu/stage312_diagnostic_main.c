@@ -21,7 +21,7 @@ _Static_assert(FOJ_GPU_DDS_STATUS_FRAMES_PER_SLOT==120,
 #error "Stage312 diagnostic wrapper must only be built for the horizontal gutter NRO"
 #endif
 
-enum { STAGE312_PROGRESS_MAX_RECORDS=8 };
+enum { STAGE312_PROGRESS_MAX_RECORDS=24 };
 static FILE *stage312_progress_file;
 static unsigned stage312_progress_records;
 static int stage312_progress_disabled;
@@ -46,11 +46,26 @@ static void stage312_progress(unsigned phase) {
         return;
     }
     ++stage312_progress_records;
-    if (phase==7u) {
+}
+
+/* Sparse numeric milestones only: no paths, pixels or guest log data. */
+static void stage312_presented_checkpoint(unsigned frames) {
+    if (frames!=1u && frames!=2u && frames!=4u && frames!=8u &&
+        frames!=12u && frames!=13u && frames!=16u && frames!=32u &&
+        frames!=64u && frames!=128u && frames!=256u &&
+        frames!=360u && frames!=512u && frames!=1024u)
+        return;
+    if (stage312_progress_disabled || !stage312_progress_file ||
+        stage312_progress_records>=STAGE312_PROGRESS_MAX_RECORDS)
+        return;
+    if (fprintf(stage312_progress_file,"FOJ312F1 frames=%010u\n",
+                frames)<0 || fflush(stage312_progress_file)!=0) {
         fclose(stage312_progress_file);
         stage312_progress_file=NULL;
         stage312_progress_disabled=1;
+        return;
     }
+    ++stage312_progress_records;
 }
 
 static void stage312_diag_pad_update(PadState *state) {
@@ -85,7 +100,8 @@ static void stage312_diag_present(DkQueue queue,DkSwapchain swapchain,
     if (calls==0u)stage312_progress(6u);
     dkQueuePresentImage(queue,swapchain,image_slot);
     if (calls==0u)stage312_progress(7u);
-    ++calls;
+    const unsigned presented=++calls;
+    stage312_presented_checkpoint(presented);
 }
 
 #define padUpdate(state) stage312_diag_pad_update((state))

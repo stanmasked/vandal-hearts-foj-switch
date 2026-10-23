@@ -48,3 +48,17 @@ Other research NROs keep their original 120-frames-per-slot behavior.
 The independent eight-band / two-frame color audits, source attestations,
 native receipt and eight-file privacy allowlist are unchanged. Success
 is not claimed until a real NeXium capture passes the original checks.
+
+
+## Further Stage312 diagnosis — bounded present-frame milestones
+
+The twelve-frame diagnostic warmup passed host/native build checks but
+still failed the real NeXium GPU frame audit. The first-present phase marker
+does not measure the number of frames presented. This revision now records
+only fixed frame-count milestones (1, 2, 4, 8, 12, 13, 16, 32, 64, 128,
+256, 360, 512, 1024) in a bounded numeric journal. On failure, CI prints
+the last validated count and ten fixed numeric RGB probes from the most
+recent attested generated-only screenshot. Raw failing screenshots and guest
+logs are still excluded from published artifacts. A screenshot/progress
+diagnostic is not a substitute for the unchanged independent two-frame
+eight-band GPU color audit, source attestations and native receipt.
