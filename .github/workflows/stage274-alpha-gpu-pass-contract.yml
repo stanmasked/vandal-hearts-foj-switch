@@ -3,7 +3,6 @@ name: Stage274 verified material and depth pass state in real NeXium
 on:
   pull_request:
     paths:
-      - '.github/workflows/stage274-alpha-gpu-pass-contract.yml'
       - 'gpu/alpha_pass_contract.*'
       - 'tests/test_gpu_alpha_pass_contract.c'
       - 'tools/foj_stage274_*'
@@ -26,6 +25,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: foj-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   host:
