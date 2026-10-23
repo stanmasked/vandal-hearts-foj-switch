@@ -215,9 +215,9 @@ def _frame(path: Path) -> dict:
 
     left, right = tuple(pixels[cx - 20, cy]), tuple(pixels[cx + 20, cy])
     top, bottom = tuple(pixels[cx, cy - 20]), tuple(pixels[cx, cy + 20])
-    if left[1] > 16 or right[1] < 239:
+    if left[1] > 8 or right[1] < 247:
         raise ValueError("Stage330 central tile's horizontal material transition is absent")
-    if top[2] > 16 or bottom[2] < 239:
+    if top[2] > 8 or bottom[2] < 247:
         raise ValueError("Stage330 central tile's vertical material transition is absent")
 
     samples = {

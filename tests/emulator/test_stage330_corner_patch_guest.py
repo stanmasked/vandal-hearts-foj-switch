@@ -123,8 +123,8 @@ class Stage330GuestAuditTests(unittest.TestCase):
         for frame in report["frames"].values():
             self.assertEqual(frame["center_x"], 640)
             self.assertEqual(frame["center_y"], 360)
-            self.assertGreaterEqual(frame["horizontal_green_delta"], 28)
-            self.assertGreaterEqual(frame["vertical_blue_delta"], 28)
+            self.assertGreaterEqual(frame["horizontal_green_delta"], 239)
+            self.assertGreaterEqual(frame["vertical_blue_delta"], 239)
             source = frame["source_remainder_samples"]
             self.assertLess(source["left"][1], 40)
             self.assertGreaterEqual(source["left"][2], 80)

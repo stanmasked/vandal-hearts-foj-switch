@@ -23,3 +23,6 @@ Only generated data is used. No original PS3 assets, user DDS files, or private 
 ## Follow-up audit — complete two-material upload reservation
 
 The native entry point now validates the actual Stage330 material mask (bits 0 and 1), rather than the Stage329 tile-only mask (bit 1). The host C test exercises the same actor upload planner and verifies payload size, aligned allocation, both material bits, and the two-batch count. This prevents the native NRO from rejecting the valid mixed source/tile stream before GPU command recording.
+
+
+The framebuffer audit also requires near-full contrast at the center tile's ±20-pixel samples. The synthetic source atlas alone produces a visibly softer transition at those positions and must fail this check; the tile-only negative path is rejected by the source-remainder samples outside the tile.
