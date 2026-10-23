@@ -986,7 +986,11 @@ int main(int argc,char **argv) {
                                   FOJ_RESEARCH_TEXTURE_COUNT,
                                   DK_MEMBLOCK_ALIGNMENT,&actor_upload)!=FOJ_GPU_STREAM_OK ||
         actor_upload.payload_bytes!=vertex_count*sizeof(FojGpuVertex) ||
-#if defined(FOJ_GPU_STAGE329_PATCH_STREAM)
+#if defined(FOJ_GPU_STAGE329_PATCH_STREAM) && \
+    defined(FOJ_GPU_STAGE330_PARTITION_DRAW)
+        actor_upload.material_mask!=
+            ((UINT32_C(1)<<0u)|(UINT32_C(1)<<1u)))
+#elif defined(FOJ_GPU_STAGE329_PATCH_STREAM)
         actor_upload.material_mask!=(UINT32_C(1)<<1u))
 #else
         actor_upload.material_mask!=

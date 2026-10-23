@@ -95,6 +95,8 @@ jobs:
               gpu/stage327_ordered_partition_stream.c \
               gpu/stage328_atomic_corner_patch_stream.c \
               core/gpu_vertex_stream.c \
+              gpu/gpu_draw_plan.c \
+              gpu/actor_upload_plan.c \
               tests/gpu/test_stage330_generated_corner_patch.c \
               -lm -o "/tmp/stage330-corner-$compiler"
             "/tmp/stage330-corner-$compiler"
@@ -111,6 +113,8 @@ jobs:
             gpu/stage327_ordered_partition_stream.c \
             gpu/stage328_atomic_corner_patch_stream.c \
             core/gpu_vertex_stream.c \
+              gpu/gpu_draw_plan.c \
+              gpu/actor_upload_plan.c \
             tests/gpu/test_stage330_generated_corner_patch.c \
             -lm -o /tmp/stage330-corner-ubsan
           /tmp/stage330-corner-ubsan

@@ -1,6 +1,7 @@
 /* Stage330 CPU preflight: one triangle must produce both source and tile draws. */
 #include "stage328_atomic_corner_patch_stream.h"
 #include "stage320_uv_page_batches.h"
+#include "actor_upload_plan.h"
 #include <assert.h>
 #include <math.h>
 #include <stdint.h>
@@ -113,6 +114,15 @@ int main(void) {
     assert(info.vertices_written==receipt.output_vertices);
     assert(info.batches_written==2u);
     assert(gpu_batches[0].texture_index==0u&&gpu_batches[1].texture_index==1u);
+    FojGpuActorUploadPlan upload_plan={0};
+    assert(foj_gpu_actor_upload_plan(
+        gpu_batches,info.batches_written,info.vertices_written,2u,0x1000u,
+        &upload_plan)==FOJ_GPU_STREAM_OK);
+    assert(upload_plan.payload_bytes==
+           info.vertices_written*sizeof(FojGpuVertex));
+    assert(upload_plan.allocation_bytes>=upload_plan.payload_bytes);
+    assert(upload_plan.material_mask==((UINT32_C(1)<<0u)|(UINT32_C(1)<<1u)));
+    assert(upload_plan.batch_count==2u);
     for(size_t i=0u;i<receipt.output_vertices;++i) {
         assert(isfinite(gpu_vertices[i].x)&&isfinite(gpu_vertices[i].y));
         assert(isfinite(gpu_vertices[i].u)&&isfinite(gpu_vertices[i].v));

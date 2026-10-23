@@ -18,3 +18,8 @@ Stage329 proved that a generated 16×16 corner tile could be uploaded and sample
 The host C test verifies the atomic Stage328 receipt, tile checksum, section ordering, texture indices, UV domains, and GPU stream preparation. The NeXium audit then samples a real framebuffer: the tile midpoint and four quadrant gradients must be visible, while pixels outside the tile must show the source texture's left/right interpolated colors. The upload marker is necessary but never accepted as a substitute for framebuffer evidence.
 
 Only generated data is used. No original PS3 assets, user DDS files, or private game resources are read or published. Passing this stage does not prove behavior on physical Nintendo Switch hardware.
+
+
+## Follow-up audit — complete two-material upload reservation
+
+The native entry point now validates the actual Stage330 material mask (bits 0 and 1), rather than the Stage329 tile-only mask (bit 1). The host C test exercises the same actor upload planner and verifies payload size, aligned allocation, both material bits, and the two-batch count. This prevents the native NRO from rejecting the valid mixed source/tile stream before GPU command recording.
