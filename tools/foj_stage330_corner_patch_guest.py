@@ -238,10 +238,13 @@ def _frame(path: Path) -> dict:
     if min(samples["se"]) < 105:
         raise ValueError("Stage330 southeast white contribution is absent")
 
-    outside = (tuple(pixels[max(0, cx - 80), cy]),
-               tuple(pixels[min(1279, cx + 80), cy]))
+    # At the center scanline the tile footprint is about +/-96 px.
+    # Sample at +/-110 px so these points are outside the tile, not inside it.
+    outside_offset = 110
+    outside = (tuple(pixels[max(0, cx - outside_offset), cy]),
+               tuple(pixels[min(1279, cx + outside_offset), cy]))
     if any(_close_rgb(color, (128, 128, 128), 10) for color in outside):
-        raise ValueError("Stage330 tile quadrants collapse to a flat midpoint")
+        raise ValueError("Stage330 outside-tile source samples collapse to the tile midpoint")
 
     source_left = tuple(pixels[max(0, cx - 130), cy])
     source_right = tuple(pixels[min(1279, cx + 130), cy])
@@ -258,6 +261,7 @@ def _frame(path: Path) -> dict:
         "horizontal_green_delta": right[1] - left[1],
         "vertical_blue_delta": bottom[2] - top[2],
         "quadrant_samples": {key: list(value) for key, value in samples.items()},
+        "outside_tile_sample_offsets_px": [-outside_offset, outside_offset],
         "outside_tile_samples": [list(value) for value in outside],
         "source_remainder_samples": {
             "left": list(source_left), "right": list(source_right),

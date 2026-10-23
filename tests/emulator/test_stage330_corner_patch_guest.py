@@ -130,6 +130,20 @@ class Stage330GuestAuditTests(unittest.TestCase):
             self.assertGreaterEqual(source["left"][2], 80)
             self.assertGreaterEqual(source["right"][1], 210)
 
+    def test_outside_tile_samples_are_beyond_tile_footprint(self):
+        report = audit(self.bridge)
+        for frame in report["frames"].values():
+            offsets = frame["outside_tile_sample_offsets_px"]
+            self.assertEqual(offsets, [-110, 110])
+            self.assertTrue(all(abs(offset) > 96 for offset in offsets))
+            outside = frame["outside_tile_samples"]
+            self.assertLess(outside[0][1], 40)
+            self.assertGreaterEqual(outside[0][0], 80)
+            self.assertGreaterEqual(outside[0][2], 80)
+            self.assertGreaterEqual(outside[1][1], 210)
+            self.assertGreaterEqual(outside[1][0], 80)
+            self.assertGreaterEqual(outside[1][2], 80)
+
     def test_source_atlas_alone_does_not_prove_tile_sampling(self):
         path = self.bridge / "gpu-initial.png"
         fake_frame(path, (23, 31, 59), tile_enabled=False)
