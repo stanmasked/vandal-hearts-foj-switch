@@ -1,0 +1,69 @@
+name: Stage332 bounded synthetic DDS format decoder
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage332-synthetic-dds-source.yml'
+      - 'gpu/stage332_dds_source.c'
+      - 'gpu/stage332_dds_source.h'
+      - 'tests/gpu/test_stage332_dds_source.c'
+      - 'docs/GPU_STAGE332_SOURCE_DDS.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    name: Stage332 synthetic DDS on ${{ matrix.compiler }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and validate BC1, BC2, BGRA, BGR with strict refusals
+        shell: bash
+        run: |
+          set -euo pipefail
+          "${{ matrix.compiler }}" -std=c11 -O2 -Wall -Wextra -Werror -pedantic \
+            -Igpu gpu/stage332_dds_source.c \
+            tests/gpu/test_stage332_dds_source.c \
+            -o /tmp/foj-stage332-dds
+          /tmp/foj-stage332-dds
+  sanitizers:
+    name: Stage332 Clang ASan and UBSan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Independent synthetic memory-safety test
+        shell: bash
+        run: |
+          set -euo pipefail
+          clang -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -fno-sanitize-recover=all -Igpu \
+            gpu/stage332_dds_source.c tests/gpu/test_stage332_dds_source.c \
+            -o /tmp/foj-stage332-sanitizers
+          /tmp/foj-stage332-sanitizers
+  switch_compile:
+    name: Stage332 devkitA64 cross-compile only
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: devkitpro/devkita64:20260219
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cross-compile standalone DDS reader without game data
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$DEVKITPRO/devkitA64/bin/aarch64-none-elf-gcc" \
+            -std=c11 -O2 -Wall -Wextra -Werror -pedantic \
+            -Igpu -c gpu/stage332_dds_source.c \
+            -o /tmp/foj-stage332-dds.o
+          test -s /tmp/foj-stage332-dds.o
+          echo STAGE332_SWITCH_CROSS_COMPILE_ONLY_PASS
