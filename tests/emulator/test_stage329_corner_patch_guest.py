@@ -206,7 +206,7 @@ class Stage329GuestAuditTests(unittest.TestCase):
         self.assertIn("0xd5565bfb7360b325", source)
         self.assertIn("504.25f/1024.f", source)
         self.assertIn("519.75f/1024.f", source)
-        self.assertIn("Stage324 already remaps tile-fragment UVs to [0,1]", source)
+        self.assertIn("Stage324/327 remap only tile-fragment UVs to [0,1]", source)
         self.assertIn("if(vertex->u<0.f || vertex->u>1.f", source)
         self.assertNotIn("vertex->u=local_u", source)
         self.assertIn("9.5f,0.f,0.f,1.f,1};", source)
