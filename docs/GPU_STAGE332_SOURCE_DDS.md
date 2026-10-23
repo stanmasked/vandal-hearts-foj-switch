@@ -30,3 +30,19 @@ asset binding, GPU draw, NRO integration, gameplay, or a physical Switch run.
 Require isolated private owner-source parity and real GPU observation in later
 stages. Preserve original PKG and raw derived assets in owner-only Google Drive;
 public GitHub contains only this decoder, synthetic fixtures and documentation.
+
+## Source DDS header shape discovered during the private Stage332 audit
+
+The owner-local Stage331/332 aggregate scan found all 1,479 original DDS
+headers use a **zero pitch/linear-size field**, no PITCH/LINEARSIZE header
+flag, and (for BGRA32 only) a legacy alpha caps bit `0x2`. Exactly seven
+known format/mipmap header combinations were observed. The decoder now accepts
+either a fully canonical pitch-and-flags profile or that exact source profile;
+hybrid profiles still fail closed. No other flags, pitch padding or channel
+masks are relaxed. Added synthetic regression fixtures for both accepted
+profiles and deliberately malformed hybrids.
+
+Private read-only metadata recheck: header shape, pixel-format masks,
+dimensions, declared complete mip-chain size and reserved/caps checks accepted
+1,479 / 1,479 DDS entries. This says nothing about full runtime pixel parity,
+texture sampling or physical Switch integration: source bytes remain private.

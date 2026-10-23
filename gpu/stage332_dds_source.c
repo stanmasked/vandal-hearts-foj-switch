@@ -63,12 +63,25 @@ int foj_stage332_dds_inspect(const uint8_t *d, size_t len,
     const int raw = fmt == FOJ_STAGE332_BGRA8 || fmt == FOJ_STAGE332_BGR8;
     const uint32_t expected_flags = (raw ? 0x100fu : 0x81007u) |
                                     (multi ? 0x20000u : 0u);
-    if (rd32(d + 8) != expected_flags ||
-        rd32(d + 108) != (multi ? 0x401008u : 0x1000u)) return 0;
+    const uint32_t expected_caps = multi ? 0x401008u : 0x1000u;
     const size_t base = level_bytes(w, h, fmt);
     const uint32_t pitch = raw ? w * (fmt == FOJ_STAGE332_BGRA8 ? 4u : 3u)
                                : (uint32_t)base;
-    if (rd32(d + 20) != pitch) return 0;
+    /* Two EXPLICIT header contracts only: standards-conformant linear
+     * pitch/size, or the zero-pitch classic DDS layout confirmed by the
+     * owner's read-only Stage331 aggregate (no other relaxed flags).
+     * The BGRA32 source profile carries the legacy alpha caps bit 0x2.
+     * In either contract full mip-chain length is checked below. */
+    const int canonical = rd32(d + 8) == expected_flags &&
+                          rd32(d + 108) == expected_caps &&
+                          rd32(d + 20) == pitch;
+    const uint32_t source_flags = 0x1007u | (multi ? 0x20000u : 0u);
+    const uint32_t source_caps = expected_caps |
+                               (fmt == FOJ_STAGE332_BGRA8 ? 0x2u : 0u);
+    const int source_profile = rd32(d + 8) == source_flags &&
+                               rd32(d + 108) == source_caps &&
+                               rd32(d + 20) == 0;
+    if (!canonical && !source_profile) return 0;
     size_t total = 128;
     tw = w; th = h;
     for (uint32_t level = 0; level < mips; ++level) {

@@ -117,6 +117,30 @@ static void test_bc2_nibbles(void) {
     memcpy(buf,same,n);
     put32(buf+84,0x35545844u); no_change(buf,n); /* DXT5 needs legacy route */
 }
+static void test_source_zero_pitch_variants(void) {
+    uint8_t buf[512], out[256]; FojStage332DdsInfo info;
+    for (FojStage332Format fmt = FOJ_STAGE332_BGRA8;
+         fmt <= FOJ_STAGE332_BC2; fmt = (FojStage332Format)(fmt+1)) {
+        /* Synthetic byte fixtures reproduce observed classic header SHAPES;
+         * no original PS3 data appears in this test. */
+        const unsigned width = fmt >= FOJ_STAGE332_BC1 ? 5u : 3u;
+        const unsigned height = fmt >= FOJ_STAGE332_BC1 ? 3u : 2u;
+        const size_t n = build(buf,sizeof(buf),fmt,width,height,2);
+        put32(buf+8,0x21007u);
+        put32(buf+20,0u);
+        put32(buf+108,0x401008u | (fmt == FOJ_STAGE332_BGRA8 ? 2u : 0u));
+        assert(foj_stage332_dds_decode(buf,n,out,sizeof(out),&info));
+        assert(info.width == width && info.height == height &&
+               info.mip_levels == 2 && info.format == fmt);
+        /* A hybrid header must never silently pass as either profile. */
+        put32(buf+20,8u); no_change(buf,n);
+        put32(buf+20,0u);
+        put32(buf+8,0x81007u); no_change(buf,n);
+        put32(buf+8,0x21007u);
+        put32(buf+108,0x401008u | (fmt == FOJ_STAGE332_BGRA8 ? 0u : 2u));
+        no_change(buf,n);
+    }
+}
 static void test_malformed_and_large(void) {
     uint8_t buf[512], out[256]; FojStage332DdsInfo info = {0};
     size_t n=build(buf,sizeof(buf),FOJ_STAGE332_BGRA8,3,2,1);
@@ -140,7 +164,7 @@ static void test_malformed_and_large(void) {
 }
 int main(void) {
     test_uncompressed(); test_bc1_partial(); test_bc2_nibbles();
-    test_malformed_and_large();
+    test_malformed_and_large(); test_source_zero_pitch_variants();
     puts("STAGE332_SYNTHETIC_DDS_BGRA_BGR_BC1_BC2_FAIL_CLOSED_PASS");
     return 0;
 }
