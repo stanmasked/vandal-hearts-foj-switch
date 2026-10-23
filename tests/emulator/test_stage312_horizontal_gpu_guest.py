@@ -65,7 +65,9 @@ class HorizontalGPUHostOnlyNegativeTests(unittest.TestCase):
         self.assertIn("present_frames=%s",driver)
         self.assertIn("STAGE312_LAST_FRAME_RGB_V1",driver)
         self.assertIn("opened.size != (1280,720)",driver)
-        self.assertIn("grep -E '^FOJ312F1 frames=[0-9]{10}
+        self.assertIn("grep -E '^FOJ312F1 frames=[0-9]{10}$'",driver)
+
+    def test_stage312_status_warmup_is_only_twelve_frames(self):
         # Static guard: host-painted mocks are never guest GPU evidence.
         source=Path("gpu/stage312_diagnostic_main.c").read_text()
         baseline='#include "dds_screen_status.h"'
