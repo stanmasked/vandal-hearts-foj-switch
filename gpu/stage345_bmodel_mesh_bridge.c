@@ -82,14 +82,15 @@ static int allocate_mesh(FojStage345BmodelMesh *mesh,
     mesh->mesh.bone_count = bones;
     mesh->mesh.vertex_count = vertices;
     mesh->mesh.section_count = sections;
-    mesh->mesh.bind_bones = calloc(bones, sizeof(*mesh->mesh.bind_bones));
+    mesh->mesh.bind_bones = bones != 0u ? calloc(bones, sizeof(*mesh->mesh.bind_bones)) : NULL;
     mesh->mesh.vertices = calloc(vertices, sizeof(*mesh->mesh.vertices));
     mesh->mesh.attributes = calloc(vertices, sizeof(*mesh->mesh.attributes));
     mesh->mesh.sections = calloc(sections, sizeof(*mesh->mesh.sections));
     mesh->section_material_indices =
         calloc(sections, sizeof(*mesh->section_material_indices));
-    if (mesh->mesh.bind_bones == NULL || mesh->mesh.vertices == NULL ||
-        mesh->mesh.attributes == NULL || mesh->mesh.sections == NULL ||
+    if ((bones != 0u && mesh->mesh.bind_bones == NULL) ||
+        mesh->mesh.vertices == NULL || mesh->mesh.attributes == NULL ||
+        mesh->mesh.sections == NULL ||
         mesh->section_material_indices == NULL) return 0;
     return 1;
 }
@@ -98,9 +99,12 @@ static int parse_bind_bones(const uint8_t *data, size_t size,
                             size_t footer_offset, size_t footer_bytes,
                             size_t expected_bones, FojBoneTransform *bones) {
     uint16_t count;
-    if (data == NULL || bones == NULL || footer_offset > size ||
-        footer_bytes > size - footer_offset || footer_bytes < 4u ||
-        data[footer_offset] != 0x0au ||
+    if (data == NULL || footer_offset > size ||
+        footer_bytes > size - footer_offset) return 0;
+    if (expected_bones == 0u)
+        return bones == NULL && footer_bytes == 1u &&
+               data[footer_offset] == 0x0cu;
+    if (bones == NULL || footer_bytes < 4u || data[footer_offset] != 0x0au ||
         !read_u16_at(data, size, footer_offset + 1u, &count) ||
         count != expected_bones ||
         footer_bytes != 4u + 32u * (size_t)count) return 0;
@@ -229,8 +233,14 @@ FojStage345Status foj_stage345_bmodel_to_rigmesh(
         status = FOJ_STAGE345_MATERIAL;
         goto done;
     }
-    if (!foj_stage344_bmodel_rig_validate(data, size, &view, &rig) ||
-        rig.has_rig == 0u || rig.bone_count == 0u) {
+    if (!foj_stage344_bmodel_rig_validate(data, size, &view, &rig)) {
+        status = FOJ_STAGE345_RIG;
+        goto done;
+    }
+    if ((rig.has_rig == 0u &&
+         (rig.bone_count != 0u || rig.skinned_section_count != 0u ||
+          rig.out_of_range_skinned_sections != 0u)) ||
+        (rig.has_rig != 0u && rig.bone_count == 0u)) {
         status = FOJ_STAGE345_RIG;
         goto done;
     }
@@ -305,10 +315,11 @@ done:
 
 int foj_stage345_mesh_integrity_ready(const FojStage345BmodelMesh *mesh) {
     if (mesh == NULL || mesh->source_data == NULL ||
-        mesh->source_size == 0u || mesh->mesh.bind_bones == NULL ||
+        mesh->source_size == 0u ||
+        (mesh->mesh.bone_count != 0u && mesh->mesh.bind_bones == NULL) ||
         mesh->mesh.vertices == NULL || mesh->mesh.attributes == NULL ||
         mesh->mesh.sections == NULL || mesh->section_material_indices == NULL ||
-        mesh->materials == NULL || mesh->mesh.bone_count == 0u ||
+        mesh->materials == NULL ||
         mesh->mesh.bone_count > FOJ_SKIN_MAX_BONES ||
         mesh->mesh.vertex_count < 3u ||
         mesh->mesh.vertex_count > FOJ_RIGMESH_MAX_VERTICES ||
@@ -318,6 +329,14 @@ int foj_stage345_mesh_integrity_ready(const FojStage345BmodelMesh *mesh) {
         mesh->material_count > FOJ_STAGE343_MAX_MATERIALS ||
         mesh->texture_count > FOJ_STAGE343_MAX_TEXTURE_REFS ||
         mesh->textures == NULL) return 0;
+    if (mesh->mesh.bone_count == 0u) {
+        if (mesh->footer_tag != 0x0cu || mesh->footer_bytes != 1u)
+            return 0;
+    } else if (mesh->mesh.bind_bones == NULL ||
+               mesh->footer_tag != 0x0au ||
+               mesh->footer_bytes != 4u + 32u * mesh->mesh.bone_count) {
+        return 0;
+    }
 
     for (size_t i = 0u; i < mesh->mesh.bone_count; ++i) {
         const FojBoneTransform *bone = &mesh->mesh.bind_bones[i];

@@ -117,6 +117,43 @@ static const FojTextureCamera kCamera = {
     0.0f, 0.0f, 0.0f, 9.5f, 0.0f, 0.0f, 1.0f, 0
 };
 
+static size_t make_static_fixture(uint8_t *data, size_t capacity) {
+    Writer w = {data, capacity, 0u};
+    put8(&w, 0x0bu); put8(&w, 0x09u); put8(&w, 0x00u); put8(&w, 2u);
+    put_shape(&w, "meshStaticA", "matA", 0, 0, 0.0f);
+    put_shape(&w, "meshStaticB", "matB", 1, 0, 2.0f);
+    put8(&w, 0x07u);
+    put8(&w, 0x06u); put_string16(&w, "matA");
+    put16(&w, 1u); put_string16(&w, "texA.tga");
+    put8(&w, 0x06u); put_string16(&w, "matB");
+    put16(&w, 1u); put_string16(&w, "texB.tga");
+    put8(&w, 0x0cu); /* valid static BMODEL footer; no rig or skin blocks */
+    return w.size;
+}
+
+static void test_static_two_section_two_material_bmodel_is_gpu_plannable(void) {
+    uint8_t data[4096];
+    FojGpuVertex vertices[6];
+    FojGpuBatch batches[2];
+    FojStage346BmodelGpuPlan plan = {0};
+    const size_t size = make_static_fixture(data, sizeof(data));
+    assert(foj_gpu_stage346_bmodel_prepare(
+        data, size, &kCamera, 1280u, 720u, 256u,
+        vertices, 6u, batches, 2u, &plan) == FOJ_GPU_STREAM_OK);
+    assert(plan.stream.vertices_written == 6u);
+    assert(plan.stream.batches_written == 2u);
+    assert(plan.texture_count == 2u);
+    assert(plan.upload.material_mask == 3u);
+    assert(batches[0].first_vertex == 0u && batches[0].vertex_count == 3u);
+    assert(batches[0].texture_index == 0u);
+    assert(batches[1].first_vertex == 3u && batches[1].vertex_count == 3u);
+    assert(batches[1].texture_index == 1u);
+    assert(foj_stage343_string_equals(data, size,
+           plan.texture_refs[0].basename, "texA.tga"));
+    assert(foj_stage343_string_equals(data, size,
+           plan.texture_refs[1].basename, "texB.tga"));
+}
+
 static void test_two_sections_create_ordered_gpu_batches(void) {
     uint8_t data[4096];
     FojGpuVertex vertices[6];
@@ -244,12 +281,13 @@ static void test_plan_aliasing_input_is_rejected_before_plan_read(void) {
 }
 
 int main(void) {
+    test_static_two_section_two_material_bmodel_is_gpu_plannable();
     test_two_sections_create_ordered_gpu_batches();
     test_sections_sharing_one_material_share_one_slot();
     test_multi_texture_material_is_refused_transactionally();
     test_capacity_and_camera_failures_leave_outputs_unchanged();
     test_camera_aliasing_output_is_rejected_transactionally();
     test_plan_aliasing_input_is_rejected_before_plan_read();
-    puts("Stage346 BMODEL GPU stream bridge tests passed");
+    puts("Stage346 BMODEL GPU stream bridge tests passed, including static meshes");
     return 0;
 }
