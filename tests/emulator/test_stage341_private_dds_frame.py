@@ -7,6 +7,7 @@ import unittest
 from PIL import Image
 
 from tools.foj_stage340_fixture import create, fixture_bytes
+from tools.foj_stage341_generated_diagnose import diagnose
 from tools.foj_stage341_frame_gate import (
     DDS_BYTES, EVIDENCE_FILES, FRAME_HEIGHT, FRAME_WIDTH, MARKER,
     MARKER_NAME, SAMPLE_X, SAMPLE_Y, SCHEMA, _sample_uv, audit_frames,
@@ -189,6 +190,37 @@ class Stage341FrameGateTests(unittest.TestCase):
         (self.gpu / "extra.dds").write_bytes(b"x")
         with self.assertRaises(ValueError):
             audit_frames(self.source, self.sd, self.evidence, True)
+
+
+    def test_generated_failure_diagnostic_is_non_pixel_and_never_accepts(self):
+        result = diagnose(self.sd, self.evidence)
+        self.assertTrue(result["generated_only"])
+        self.assertFalse(result["accepted"])
+        self.assertEqual(result["frame_a"]["identity_bad_channels"], 0)
+        self.assertEqual(result["frame_b"]["identity_bad_channels"], 0)
+        encoded = json.dumps(result)
+        self.assertNotIn("expected_rgb", encoded)
+        self.assertNotIn("observed_rgb", encoded)
+        self.assertNotIn("samples_private", encoded)
+
+    def test_generated_failure_diagnostic_catches_swapped_red_blue(self):
+        for name in ("gpu-initial.png", "gpu-later.png"):
+            path = self.evidence / name
+            with Image.open(path) as original:
+                source = original.convert("RGB")
+            r, g, b = source.split()
+            Image.merge("RGB", (b, g, r)).save(path)
+        result = diagnose(self.sd, self.evidence)
+        self.assertGreater(result["frame_a"]["identity_bad_channels"], 0)
+        self.assertEqual(result["frame_a"]["bad_channels_by_hypothesis"]["swap_rb"], 0)
+        self.assertFalse(result["accepted"])
+
+    def test_generated_failure_diagnostic_rejects_private_source(self):
+        source = bytearray(self.source.read_bytes())
+        source[-1] ^= 1
+        self.source.write_bytes(source)
+        with self.assertRaises(ValueError):
+            diagnose(self.sd, self.evidence)
 
     def test_no_raw_pixels_or_sample_values_in_public_result(self):
         result = audit_frames(self.source, self.sd, self.evidence, True)

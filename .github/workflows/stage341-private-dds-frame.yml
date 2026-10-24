@@ -20,6 +20,7 @@ on:
       - 'gpu/shaders/foj_triangle.frag'
       - 'tools/foj_stage340_fixture.py'
       - 'tools/foj_stage341_frame_gate.py'
+      - 'tools/foj_stage341_generated_diagnose.py'
       - 'tools/foj_stage341_private_run.py'
       - 'tools/foj_stage341_nexium_drive.sh'
       - 'tests/emulator/test_stage341_private_dds_frame.py'
@@ -159,6 +160,27 @@ jobs:
           timeout --kill-after=5s 480s xvfb-run -a \
             -s "-screen 0 1280x720x24" bash tools/foj_stage341_nexium_drive.sh
           echo STAGE341_GENERATED_DDS_GPU_FRAME_AUDIT_PASS
+      - name: Diagnose generated-only framebuffer mismatch without publishing pixels
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f runtime-evidence/gpu-initial.png && -f runtime-evidence/gpu-later.png ]]; then
+            mkdir -p runtime-evidence-public
+            python3 -m tools.foj_stage341_generated_diagnose \
+              --sd-root "$NEXIUM_DATA_ROOT/sdmc" \
+              --evidence runtime-evidence \
+              --output runtime-evidence-public/failure-summary.json
+          else
+            echo "No two-frame evidence exists for bounded diagnosis"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: foj-stage341-generated-only-failure-diagnostic
+          path: runtime-evidence-public/failure-summary.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: Export strict aggregate only
         shell: bash
         run: |
