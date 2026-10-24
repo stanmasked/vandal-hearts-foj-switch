@@ -21,14 +21,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: GCC strict C99 tests
         run: |
-          set -euo pipefail
+          set -eu
           gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
             -Igpu gpu/stage343_bmodel_source.c \
             tests/gpu/test_stage343_bmodel_source.c -lm -o /tmp/stage343-gcc
           /tmp/stage343-gcc
       - name: Clang strict C99 tests
         run: |
-          set -euo pipefail
+          set -eu
           clang -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
             -Igpu gpu/stage343_bmodel_source.c \
             tests/gpu/test_stage343_bmodel_source.c -lm -o /tmp/stage343-clang
@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run address and undefined-behavior sanitizers
         run: |
-          set -euo pipefail
+          set -eu
           clang -std=c99 -O1 -g -Wall -Wextra -Werror -pedantic \
             -fsanitize=address,undefined -fno-omit-frame-pointer \
             -Igpu gpu/stage343_bmodel_source.c \
@@ -60,7 +60,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Compile portable parser for devkitA64
         run: |
-          set -euo pipefail
+          set -eu
           aarch64-none-elf-gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
             -ffreestanding -Igpu -c gpu/stage343_bmodel_source.c \
             -o /tmp/stage343_bmodel_source.o
