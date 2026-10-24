@@ -104,6 +104,22 @@ class Stage341FrameGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "marker mismatch"):
             audit(self.source, self.evidence, generated_only=True)
 
+    def test_rejects_malformed_source_dds(self) -> None:
+        self.source.write_bytes(b"DDS " + b"\\x00" * 100)
+        with self.assertRaisesRegex(ValueError, "bounded classic"):
+            audit(self.source, self.evidence, generated_only=True)
+
+    def test_rejects_symlink_evidence_file(self) -> None:
+        (self.evidence / "guest.log").unlink()
+        (self.evidence / "guest.log").symlink_to(self.source)
+        with self.assertRaisesRegex(ValueError, "symlinks"):
+            audit(self.source, self.evidence, generated_only=True)
+
+    def test_rejects_missing_frame(self) -> None:
+        (self.evidence / FRAMES[1]).unlink()
+        with self.assertRaisesRegex(ValueError, "strict allowlist"):
+            audit(self.source, self.evidence, generated_only=True)
+
     def test_rejects_extra_evidence_file(self) -> None:
         (self.evidence / "source.png").write_bytes(b"extra")
         with self.assertRaisesRegex(ValueError, "strict allowlist"):
