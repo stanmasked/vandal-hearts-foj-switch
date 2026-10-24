@@ -1,0 +1,68 @@
+name: Stage335 bounded synthetic DDS RGBA GPU staging plan
+
+on:
+  pull_request:
+    paths:
+      - 'gpu/stage335_source_staging.c'
+      - 'gpu/stage335_source_staging.h'
+      - 'gpu/stage332_dds_source.h'
+      - 'tests/gpu/test_stage335_source_staging.c'
+      - '.github/workflows/stage335-dds-staging.yml'
+      - 'docs/GPU_STAGE335_SOURCE_STAGING.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage335-dds-staging-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    name: Stage335 synthetic staging (${{ matrix.compiler }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test synthetic GPU staging contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 -O2 -Wall -Wextra -Werror -pedantic \
+            -Igpu gpu/stage335_source_staging.c \
+            tests/gpu/test_stage335_source_staging.c -o /tmp/foj-stage335
+          /tmp/foj-stage335
+  sanitize:
+    name: Stage335 Clang ASan and UBSan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute generated safety fixtures
+        run: |
+          set -euo pipefail
+          clang -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic \
+            -fsanitize=address,undefined -fno-sanitize-recover=all \
+            -Igpu gpu/stage335_source_staging.c \
+            tests/gpu/test_stage335_source_staging.c -o /tmp/foj-stage335-san
+          /tmp/foj-stage335-san
+  cross:
+    name: Stage335 devkitA64 C cross-compile
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkita64:20260219
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile source GPU staging planner without original files
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$DEVKITPRO/devkitA64/bin/aarch64-none-elf-gcc" \
+            -std=c11 -O2 -Wall -Wextra -Werror \
+            -pedantic -Igpu -c gpu/stage335_source_staging.c \
+            -o /tmp/foj-stage335.o
+          test -s /tmp/foj-stage335.o
+          echo STAGE335_AARCH64_C_COMPILE_ONLY_PASS
