@@ -29,6 +29,7 @@ def render_reference(dds: bytes) -> Image.Image:
                 ty = min(255, max(0, int(v * 256)))
                 off = (ty * 256 + tx) * 4
                 px[x, y] = tuple(rgba[off:off + 3])
+    return image
 
 
 class Stage341FrameGateTests(unittest.TestCase):
