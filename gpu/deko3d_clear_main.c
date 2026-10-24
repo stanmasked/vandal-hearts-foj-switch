@@ -985,13 +985,15 @@ int main(int argc,char **argv) {
 #if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
     /* Fixed bounded clip-space quad. Top-left framebuffer UV is (0,0),
      * bottom-right is (1,1); samples are nearest/clamp-to-edge. */
+    /* Keep both triangles counter-clockwise in clip space, matching the
+     * established research-mesh winding even if culling defaults change. */
     FojGpuVertex stage341_quad[6]={
-        {-0.8f, 0.8f,0.5f,1.0f,0.0f,0.0f},
-        { 0.8f, 0.8f,0.5f,1.0f,1.0f,0.0f},
         {-0.8f,-0.8f,0.5f,1.0f,0.0f,1.0f},
-        { 0.8f, 0.8f,0.5f,1.0f,1.0f,0.0f},
         { 0.8f,-0.8f,0.5f,1.0f,1.0f,1.0f},
-        {-0.8f,-0.8f,0.5f,1.0f,0.0f,1.0f}
+        {-0.8f, 0.8f,0.5f,1.0f,0.0f,0.0f},
+        { 0.8f,-0.8f,0.5f,1.0f,1.0f,1.0f},
+        { 0.8f, 0.8f,0.5f,1.0f,1.0f,0.0f},
+        {-0.8f, 0.8f,0.5f,1.0f,0.0f,0.0f}
     };
     FojGpuBatch stage341_batch[1]={{0u,6u,0u}};
     vertex_source=stage341_quad;
