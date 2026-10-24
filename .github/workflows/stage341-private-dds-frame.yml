@@ -18,6 +18,7 @@ on:
       - 'gpu/shaders/foj_triangle.frag'
       - 'tools/foj_stage340_fixture.py'
       - 'tools/foj_stage341_frame_gate.py'
+      - 'tools/foj_stage341_private_run.py'
       - 'tools/foj_stage341_nexium_drive.sh'
       - 'tests/emulator/test_stage341_private_dds_frame.py'
       - 'gpu/clear.mk'
