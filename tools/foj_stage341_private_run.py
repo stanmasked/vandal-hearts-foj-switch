@@ -200,16 +200,18 @@ def run(source: Path, nexium: Path, nro: Path, shader_dir: Path,
                     pass
                 proc.wait(timeout=2)
 
+    audit = audit_frames(source_copy, sd, evidence, require_generated_metadata=False)
+    # Re-hash only after the frame audit has consumed the staged source so a
+    # mutation during either capture or reference comparison is detected.
     source_hash_after = sha_file(source)
     staged_copy_hash_after = sha_file(source_copy)
     nro_hash_after = sha_file(nro)
     runtime_hash_after = sha_file(nexium)
     if (source_hash_after != source_hash or
-            staged_copy_hash_after != source_hash or
+            staged_copy_hash_after != staged_copy_hash_before or
             nro_hash_after != nro_hash_before or
             runtime_hash_after != runtime_hash):
         raise ValueError("Stage341 source, staged copy, NRO or runtime changed during the run")
-    audit = audit_frames(source_copy, sd, evidence, require_generated_metadata=False)
     report = {
         "schema": "foj.stage341.owner_private_original_dds_shader_frame.v1",
         "owner_private": True,
