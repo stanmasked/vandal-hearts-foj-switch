@@ -77,3 +77,21 @@ may generate the exclusive success receipt. Stages 80–84 are **never**
 accepted as GPU proof, and no raw image, private game assets or guest logs
 are exported. These diagnostics isolate the next possible GPU cache/fence or
 copy-layout issue without changing the previously verified upload contract.
+
+
+## Stage337.4 — explicit GPU-cache visibility fence
+
+Previous exact-head NeXium run 40049012729 reported stage 84 after two GPU
+queue waits, with a healthy GPU queue and mixed RGB/alpha mismatch. This is
+not a successful GPU image readback. The returned content was not wholly
+the unchanged 0xA5 CPU initialization sentinel.
+
+The readback DkMemBlock is DkMemBlockFlags_CpuUncached but
+DkMemBlockFlags_GpuCached. The documented SDK GPU-to-CPU coherency contract
+calls for dkQueueSignalFence(queue, &fence, true) and
+ dkQueueWaitFence(queue, &fence) to force dirty GPU cache lines to RAM before
+CPU reads. Stage337.4 performs that explicit fence after the second wait-idle
+and before exact RGBA comparison. Stage 85 isolates any queue error during
+this new flush, with all diagnostic stages still rejected by the success
+receipt parser. Results must be judged exclusively from the fresh NeXium
+runtime check; neither compilation nor a stage code is success proof.

@@ -26,7 +26,7 @@ class TestStage337Receipt(unittest.TestCase):
         with TemporaryDirectory() as d:
             root = Path(d)
             path = root / "native.txt"
-            for stage in (0, 5, 6, 7, 10, 11, 12, 13, 80, 81, 82, 83, 84, 98):
+            for stage in (0, 5, 6, 7, 10, 11, 12, 13, 80, 81, 82, 83, 84, 85, 98):
                 path.write_text(f"FOJ337P1 stage={stage:02d}\n")
                 with self.assertRaises(ValueError):
                     check(path)

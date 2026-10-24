@@ -134,7 +134,21 @@ static int run_native(void) {
         progress(80u); /* GPU queue error after readback. */
         goto cleanup;
     }
-    progress(12u); /* Queue healthy, about to compare actual RGBA bytes. */
+    /*
+     * Readback block is CPU-uncached but GPU-cached. dkQueueWaitIdle waits
+     * for the submitted operations, whereas a flushed GPU fence explicitly
+     * makes GPU-cache writes visible to other agents such as the CPU.
+     * This is an opt-in diagnostic experiment, NOT presumed proof of
+     * correct pixels or physical Switch behaviour.
+     */
+    DkFence visibility_fence = {0};
+    dkQueueSignalFence(queue, &visibility_fence, true);
+    dkQueueWaitFence(queue, &visibility_fence);
+    if (dkQueueIsInErrorState(queue)) {
+        progress(85u); /* Fault while flushing GPU-side write visibility. */
+        goto cleanup;
+    }
+    progress(12u); /* Queue healthy and GPU-cache flushed; compare RGBA. */
     if (!verify_pixels(read_cpu, uploaded.plan.rows.row_length_pixels)) {
         /*
          * Synthetic-only failure classification. These numbers are NOT
