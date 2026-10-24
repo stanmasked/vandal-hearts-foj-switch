@@ -1798,12 +1798,11 @@ int main(int argc,char **argv) {
         if (!dds_fatal && frame==2u) {
             static const char marker[]=
                 "FOJ_STAGE341_PRIVATE_DDS_TEXTURE_SAMPLE_V1 width=256 height=256 "
-                "quad=80pct uv=top-left-00 nearest=1 frames-presented=2\\n";
+                "quad=80pct uv=top-left-00 nearest=1 frames-presented=2\n";
             FILE *const receipt=fopen(
                 "sdmc:/switch/foj/gpu/foj-stage341-texture-sample.txt","wx");
             if (!receipt) { exit_status=7; break; }
-            const size_t written=fwrite(receipt?marker:NULL,1u,
-                                        sizeof(marker)-1u,receipt);
+            const size_t written=fwrite(marker,1u,sizeof(marker)-1u,receipt);
             const int flushed=fflush(receipt);
             const int closed=fclose(receipt);
             if (written!=sizeof(marker)-1u || flushed!=0 || closed!=0) {
