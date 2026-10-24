@@ -181,12 +181,12 @@ def run(source: Path, nexium: Path, nro: Path, shader_dir: Path,
                 raise RuntimeError("Stage341 timed out waiting for a verified native sample receipt")
             # Capture after the NRO's post-present receipt; never synthesize frames.
             time.sleep(1)
-            for name in ("gpu-initial.png", "gpu-later.png"):
+            for name in ("gpu-initial.png", "gpu-later.png", "gpu-later-candidate.png"):
                 if (evidence / name).exists() or (evidence / name).is_symlink():
                     raise ValueError("Stage341 refuses stale capture output")
             first_frame = evidence / "gpu-initial.png"
             later_frame = evidence / "gpu-later.png"
-            candidate = data_root / "stage341-frame-candidate.png"
+            candidate = evidence / "gpu-later-candidate.png"
             if candidate.exists() or candidate.is_symlink():
                 raise ValueError("Stage341 refuses a stale candidate frame")
             subprocess.run(
