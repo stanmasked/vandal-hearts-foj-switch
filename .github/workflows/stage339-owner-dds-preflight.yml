@@ -1,0 +1,89 @@
+name: Stage339 generated-only DDS decoder to GPU plan bridge
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage339-owner-dds-preflight.yml'
+      - 'gpu/stage339_private_dds_bridge.c'
+      - 'gpu/stage339_private_dds_bridge.h'
+      - 'gpu/stage332_dds_source.c'
+      - 'gpu/stage332_dds_source.h'
+      - 'gpu/stage335_source_staging.c'
+      - 'gpu/stage335_source_staging.h'
+      - 'gpu/stage336_gpu_copy_plan.c'
+      - 'gpu/stage336_gpu_copy_plan.h'
+      - 'tests/gpu/test_stage339_private_dds_bridge.c'
+      - 'docs/GPU_STAGE339_PRIVATE_DDS_PREFLIGHT.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: stage339-owner-dds-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generated:
+    name: Generated DDS bridge (matrix)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and validate fail-closed DDS decode to GPU copy plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          "${{ matrix.compiler }}" -std=c11 -O2 -Wall -Wextra -Werror -pedantic \
+            -Igpu gpu/stage332_dds_source.c \
+            gpu/stage335_source_staging.c gpu/stage336_gpu_copy_plan.c \
+            gpu/stage339_private_dds_bridge.c \
+            tests/gpu/test_stage339_private_dds_bridge.c \
+            -o /tmp/foj-stage339
+          /tmp/foj-stage339
+          echo STAGE339_GENERATED_DDS_BRIDGE_PASS
+
+  sanitize:
+    name: Generated DDS bridge ASan UBSan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check malformed source bytes and transactional refusal
+        shell: bash
+        run: |
+          set -euo pipefail
+          clang -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -fno-sanitize-recover=all -Igpu \
+            gpu/stage332_dds_source.c gpu/stage335_source_staging.c \
+            gpu/stage336_gpu_copy_plan.c gpu/stage339_private_dds_bridge.c \
+            tests/gpu/test_stage339_private_dds_bridge.c \
+            -o /tmp/foj-stage339-sanitized
+          /tmp/foj-stage339-sanitized
+          echo STAGE339_ASAN_UBSAN_FAIL_CLOSED_PASS
+
+  native:
+    name: Stage339 native AArch64 pipeline syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: devkitpro/devkita64:20260219
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cross-compile original-file-agnostic bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          c="$DEVKITPRO/devkitA64/bin/aarch64-none-elf-gcc"
+          for file in gpu/stage332_dds_source.c \
+                      gpu/stage335_source_staging.c \
+                      gpu/stage336_gpu_copy_plan.c \
+                      gpu/stage339_private_dds_bridge.c; do
+            "$c" -std=c11 -O2 -Wall -Wextra -Werror -pedantic \
+              -Igpu -I"$DEVKITPRO/libnx/include" -c "$file" \
+              -o "/tmp/$(basename "$file" .c).o"
+          done
+          test -s /tmp/stage339_private_dds_bridge.o
+          echo STAGE339_NATIVE_AARCH64_DDS_BRIDGE_COMPILE_PASS
