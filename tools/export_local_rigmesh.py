@@ -42,7 +42,7 @@ def pack_rig_mesh(data: bytes) -> tuple[bytes, dict]:
     """
     model = decode_model(data)
     footer = data[-model.footer_bytes:]
-    if footer == b"\\x0c":
+    if footer == b"\x0c":
         # A single 0x0C footer denotes valid static geometry without a rig.
         bones = ()
     else:
