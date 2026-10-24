@@ -1392,11 +1392,18 @@ int main(int argc,char **argv) {
 
 #if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
         if(i==0u) {
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
             /*
-             * Stage338 samples the exact Stage336 *native-uploaded* GPU
-             * image. The 256x256 four-quadrant atlas is invented at runtime;
-             * no original PS3 data or host-painted framebuffer is loaded.
+             * Stage341 samples the exact Stage336 native-uploaded owner-local
+             * DDS image. Source intake is bounded and strict; raw source bytes
+             * and decoded pixels are never logged or exported by this NRO.
              */
+#else
+            /*
+             * Stage338 samples the exact Stage336 native-uploaded GPU image.
+             * Its 256x256 four-quadrant atlas is invented at runtime.
+             */
+#endif
             const FojStage332DdsInfo info={
                 atlas.width,atlas.height,1u,FOJ_STAGE332_BGRA8,
                 atlas.pixel_bytes
