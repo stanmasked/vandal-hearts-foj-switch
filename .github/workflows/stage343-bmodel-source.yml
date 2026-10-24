@@ -1,0 +1,69 @@
+name: Stage343 native BMODEL section and material contract
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage343-bmodel-source.yml'
+      - 'gpu/stage343_bmodel_source.c'
+      - 'gpu/stage343_bmodel_source.h'
+      - 'tests/gpu/test_stage343_bmodel_source.c'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    name: GCC and Clang synthetic BMODEL contract tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: GCC strict C99 tests
+        run: |
+          set -eu
+          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
+            -Igpu gpu/stage343_bmodel_source.c \
+            tests/gpu/test_stage343_bmodel_source.c -lm -o /tmp/stage343-gcc
+          /tmp/stage343-gcc
+      - name: Clang strict C99 tests
+        run: |
+          set -eu
+          clang -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
+            -Igpu gpu/stage343_bmodel_source.c \
+            tests/gpu/test_stage343_bmodel_source.c -lm -o /tmp/stage343-clang
+          /tmp/stage343-clang
+
+  sanitizers:
+    name: Clang ASan and UBSan synthetic tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run address and undefined-behavior sanitizers
+        run: |
+          set -eu
+          clang -std=c99 -O1 -g -Wall -Wextra -Werror -pedantic \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -Igpu gpu/stage343_bmodel_source.c \
+            tests/gpu/test_stage343_bmodel_source.c -lm -o /tmp/stage343-sanitize
+          ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
+            UBSAN_OPTIONS=halt_on_error=1 /tmp/stage343-sanitize
+
+  devkita64:
+    name: Nintendo Switch AArch64 compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      image: devkitpro/devkita64:20260219
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile portable parser for devkitA64
+        run: |
+          set -eu
+          compiler="/opt/devkitpro/devkitA64/bin/aarch64-none-elf-gcc"
+          test -x "$compiler"
+          "$compiler" -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
+            -ffreestanding -Igpu -c gpu/stage343_bmodel_source.c \
+            -o /tmp/stage343_bmodel_source.o
+          test -s /tmp/stage343_bmodel_source.o
