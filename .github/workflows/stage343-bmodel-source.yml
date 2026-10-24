@@ -61,7 +61,9 @@ jobs:
       - name: Compile portable parser for devkitA64
         run: |
           set -eu
-          aarch64-none-elf-gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
+          compiler="/opt/devkitpro/devkitA64/bin/aarch64-none-elf-gcc"
+          test -x "$compiler"
+          "$compiler" -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
             -ffreestanding -Igpu -c gpu/stage343_bmodel_source.c \
             -o /tmp/stage343_bmodel_source.o
           test -s /tmp/stage343_bmodel_source.o
