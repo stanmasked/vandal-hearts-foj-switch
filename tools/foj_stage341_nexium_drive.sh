@@ -77,12 +77,46 @@ from tools.foj_stage341_frame_gate import MARKER
 if Path(sys.argv[1]).read_bytes() != MARKER:
     raise SystemExit("Stage341 guest receipt mismatch")
 PY
-# The NRO writes this receipt only after two frame presents; wait for the
-# desktop compositor to settle before recording two independent captures.
+# The NRO writes this receipt only after two frame presents. Capture the
+# first real frame, then wait for the alternating clear phase to differ; a
+# fixed 1-second sleep can land on the same parity at 60 Hz.
 sleep 1
 timeout --kill-after=2s 12s import -window "$window" "$FOJ_EVIDENCE_DIR/gpu-initial.png"
-sleep 1
-alive
-timeout --kill-after=2s 12s import -window "$window" "$FOJ_EVIDENCE_DIR/gpu-later.png"
+candidate="${RUNNER_TEMP:-/tmp}/stage341-later-candidate.png"
+test ! -e "$candidate" && test ! -L "$candidate" || {
+  echo "Stage341 refuses a stale candidate frame" >&2
+  exit 2
+}
+distinct=0
+for attempt in $(seq 1 60); do
+  alive
+  timeout --kill-after=2s 12s import -window "$window" "$candidate"
+  if python3 - "$FOJ_EVIDENCE_DIR/gpu-initial.png" "$candidate" <<'PY'
+from PIL import Image, ImageChops
+import sys
+with Image.open(sys.argv[1]) as first, Image.open(sys.argv[2]) as later:
+    if first.size != later.size:
+        raise SystemExit(2)
+    different = ImageChops.difference(first.convert("RGB"), later.convert("RGB")).getbbox() is not None
+raise SystemExit(0 if different else 1)
+PY
+  then
+    mv "$candidate" "$FOJ_EVIDENCE_DIR/gpu-later.png"
+    distinct=1
+    break
+  else
+    status=$?
+    rm -f "$candidate"
+    if [[ "$status" -ne 1 ]]; then
+      echo "Stage341 candidate framebuffer is invalid" >&2
+      exit 1
+    fi
+  fi
+  sleep 0.05
+done
+test "$distinct" -eq 1 || {
+  echo "Stage341 could not capture a distinct presented frame" >&2
+  exit 1
+}
 python3 -m tools.foj_stage341_frame_gate audit --sd-root "$NEXIUM_DATA_ROOT/sdmc" --evidence "$FOJ_EVIDENCE_DIR" --generated-only
 echo STAGE341_REAL_NEXIUM_TEXTURE_SAMPLE_FRAME_PASS
