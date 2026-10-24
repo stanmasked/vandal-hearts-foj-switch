@@ -198,6 +198,10 @@ class Stage341FrameGateTests(unittest.TestCase):
         self.assertFalse(result["accepted"])
         self.assertEqual(result["frame_a"]["identity_bad_channels"], 0)
         self.assertEqual(result["frame_a"]["distinct_rgb_triplets_at_grid"], 25)
+        centerlines = result["frame_a"]["generated_quad_centerline_bounds"]
+        self.assertEqual(centerlines["horizontal_xy_pixels"], [128, 1151])
+        self.assertEqual(centerlines["vertical_xy_pixels"], [72, 647])
+        self.assertTrue(centerlines["independent_of_sample_grid"])
         self.assertEqual(result["frame_a"]["exact_generated_fixture_rgb_matches"], 25)
         self.assertEqual(result["frame_a"]["exact_expected_generated_texel_matches"], 25)
         self.assertEqual(result["frame_a"]["most_common_inverse_texel_offset"], [0, 0])
@@ -231,6 +235,12 @@ class Stage341FrameGateTests(unittest.TestCase):
         )
         result = diagnose(self.sd, self.evidence)
         self.assertTrue(result["frame_a"]["uniform_grid_sample"])
+        self.assertIsNone(
+            result["frame_a"]["generated_quad_centerline_bounds"]["horizontal_xy_pixels"]
+        )
+        self.assertIsNone(
+            result["frame_b"]["generated_quad_centerline_bounds"]["vertical_xy_pixels"]
+        )
         self.assertTrue(result["frame_b"]["uniform_grid_sample"])
         self.assertEqual(result["frame_a"]["distinct_rgb_triplets_at_grid"], 1)
         self.assertEqual(result["frame_b"]["largest_repeated_rgb_triplet_count"], 25)

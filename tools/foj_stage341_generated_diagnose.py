@@ -98,6 +98,41 @@ def _fit_generated_affine_texels(
     }
 
 
+def _longest_provenance_run(
+    pixels, *, horizontal: bool, position: int, extent: int,
+) -> list[int] | None:
+    """Find quad centerline bounds using only exact generated DDS RGB colors.
+
+    Accidental valid colors outside the quad cannot set the bounds unless
+    they form a contiguous run longer than one third of the capture axis.
+    The returned aggregate contains no observed color or private texture.
+    """
+    longest_start = -1
+    longest_length = 0
+    current_start = -1
+    current_length = 0
+    for axis_position in range(extent):
+        rgb = (
+            pixels[axis_position, position] if horizontal
+            else pixels[position, axis_position]
+        )
+        valid = invert_generated_rgb(rgb) is not None
+        if valid:
+            if current_start < 0:
+                current_start = axis_position
+                current_length = 0
+            current_length += 1
+        else:
+            if current_length > longest_length:
+                longest_start, longest_length = current_start, current_length
+            current_start, current_length = -1, 0
+    if current_length > longest_length:
+        longest_start, longest_length = current_start, current_length
+    if longest_start < 0 or longest_length < extent // 3:
+        return None
+    return [longest_start, longest_start + longest_length - 1]
+
+
 def diagnose(sd_root: Path, evidence: Path) -> dict:
     sd_root, evidence = Path(sd_root), Path(evidence)
     gpu = sd_root / "switch" / "foj" / "gpu"
@@ -137,6 +172,14 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
         if image.size != (FRAME_WIDTH, FRAME_HEIGHT):
             raise ValueError("Stage341 diagnosis expects 1280x720")
         pixel = image.load()
+        horizontal_bounds = _longest_provenance_run(
+            pixel, horizontal=True, position=FRAME_HEIGHT // 2,
+            extent=FRAME_WIDTH,
+        )
+        vertical_bounds = _longest_provenance_run(
+            pixel, horizontal=False, position=FRAME_WIDTH // 2,
+            extent=FRAME_HEIGHT,
+        )
         totals = {candidate: 0 for candidate in CANDIDATES}
         alpha_hypotheses = {
             "premultiplied_black": 0,
@@ -249,6 +292,13 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
                 sampled_triplets.count(value) for value in set(sampled_triplets)
             ),
             "uniform_grid_sample": len(set(sampled_triplets)) == 1,
+            "generated_quad_centerline_bounds": {
+                "horizontal_xy_pixels": horizontal_bounds,
+                "vertical_xy_pixels": vertical_bounds,
+                "expected_horizontal_xy_pixels": [128, 1151],
+                "expected_vertical_xy_pixels": [72, 647],
+                "independent_of_sample_grid": True,
+            },
             "best_integer_texel_offset": [best_shift[2], best_shift[3]],
             "best_integer_texel_offset_bad_channels": best_shift[0],
             "best_integer_texel_offset_total_absolute_error": best_shift[1],
