@@ -111,8 +111,21 @@ def run(source: Path, nexium: Path, nro: Path, shader_dir: Path,
         f"{runtime_hash}  {nexium.name}\n", encoding="ascii"
     )
     guest_log = evidence / "guest.log"
-    if shutil.which("xdotool") is None or shutil.which("import") is None:
-        raise ValueError("Stage341 requires xdotool and ImageMagick import for real window capture")
+    if shutil.which("xdotool") is None:
+        raise ValueError("Stage341 requires xdotool for real window capture")
+    import_bin = shutil.which("import")
+    magick_bin = shutil.which("magick")
+    if import_bin is None and magick_bin is None:
+        raise ValueError("Stage341 requires ImageMagick import or magick for real window capture")
+
+    def capture_window(window_id: str, destination: Path) -> None:
+        command = (
+            [import_bin, "-window", window_id, str(destination)]
+            if import_bin is not None else
+            [magick_bin, "import", "-window", window_id, str(destination)]
+        )
+        subprocess.run(command, timeout=12, check=True)
+
     env = os.environ.copy()
     env["NEXIUM_DATA_ROOT"] = str(data_root)
     if ld_library_path is not None:
@@ -189,10 +202,7 @@ def run(source: Path, nexium: Path, nro: Path, shader_dir: Path,
             candidate = evidence / "gpu-later-candidate.png"
             if candidate.exists() or candidate.is_symlink():
                 raise ValueError("Stage341 refuses a stale candidate frame")
-            subprocess.run(
-                ["import", "-window", window, str(first_frame)],
-                timeout=12, check=True,
-            )
+            capture_window(window, first_frame)
             # The scene intentionally alternates its clear phase every frame.
             # Capture until that phase changes instead of assuming a 1-second
             # delay lands on the opposite parity of a vsynced presentation loop.
@@ -200,10 +210,7 @@ def run(source: Path, nexium: Path, nro: Path, shader_dir: Path,
             for _ in range(60):
                 if proc.poll() is not None:
                     raise RuntimeError("Stage341 NeXium exited between independent captures")
-                subprocess.run(
-                    ["import", "-window", window, str(candidate)],
-                    timeout=12, check=True,
-                )
+                capture_window(window, candidate)
                 with Image.open(first_frame) as first, Image.open(candidate) as later:
                     if first.size != later.size:
                         raise ValueError("Stage341 candidate frame dimensions changed")
