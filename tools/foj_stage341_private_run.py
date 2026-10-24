@@ -47,6 +47,12 @@ def run(source: Path, nexium: Path, nro: Path, shader_dir: Path,
                         (report_path, "report")):
         if path.is_symlink() or path.exists() or under(path.resolve(strict=False), REPO_ROOT):
             raise ValueError(f"Stage341 {label} must be new and outside the checkout")
+    if not report_path.parent.is_dir() or report_path.parent.is_symlink():
+        raise ValueError("Stage341 report parent must already be a regular private directory")
+    if (data_root == evidence or data_root in evidence.parents or evidence in data_root.parents
+            or report_path == evidence or under(report_path, evidence)
+            or under(report_path, data_root)):
+        raise ValueError("Stage341 runtime, evidence and report paths must remain separate")
     if nexium.is_symlink() or not nexium.is_file() or not os.access(nexium, os.X_OK):
         raise ValueError("Stage341 NeXium launcher must be a regular executable")
     if nro.is_symlink() or not nro.is_file() or under(nro.resolve(), REPO_ROOT):
