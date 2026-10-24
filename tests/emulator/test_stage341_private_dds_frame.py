@@ -95,6 +95,14 @@ class Stage341FrameGateTests(unittest.TestCase):
         self.assertNotIn("Google Drive", workflow)
         self.assertNotIn("path: runtime-evidence/", workflow)
 
+    def test_owner_local_runner_requires_runtime_assets_outside_checkout(self):
+        runner = (Path(__file__).resolve().parents[2] /
+                  "tools" / "foj_stage341_private_run.py").read_text()
+        self.assertIn("under(nexium.resolve(), REPO_ROOT)", runner)
+        self.assertIn("under(shader_dir.resolve(), REPO_ROOT)", runner)
+        self.assertIn("under(library_path.resolve(), REPO_ROOT)", runner)
+        self.assertIn("under(icd.resolve(), REPO_ROOT)", runner)
+
     def test_capture_runners_support_imagemagick_6_and_7(self):
         root = Path(__file__).resolve().parents[2]
         private_runner = (root / "tools" / "foj_stage341_private_run.py").read_text()
