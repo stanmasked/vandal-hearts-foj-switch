@@ -25,8 +25,11 @@ for file in guest.log gpu-initial.png gpu-later.png; do
     exit 2
   }
 done
-actual_before="$(find "$FOJ_EVIDENCE_DIR" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | sort)"
-test "$actual_before" = 
+actual_entries="$(find "$FOJ_EVIDENCE_DIR" -mindepth 1 -maxdepth 1 -printf x | wc -c)"
+test "$actual_entries" -eq 2 || {
+  echo "Stage341 evidence folder has unexpected pre-run entries" >&2
+  exit 2
+}
 "$NEXIUM_BIN" "$FOJ_NRO" >"$FOJ_EVIDENCE_DIR/guest.log" 2>&1 &
 guest=$!
 cleanup() {
