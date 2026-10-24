@@ -63,3 +63,17 @@ failure code that hides it. The guest now emits stage 13 only after a successful
 byte-for-byte readback. On any failure, the last record remains the last
 completed milestone. A numeric progress record is diagnostic only and never
 accepted as a GPU success receipt.
+
+
+## Stage337.3 — real GPU readback failure classification
+
+After the second queue wait, a queue-error state emits diagnostic stage 80.
+A healthy queue reaches stage 12 *before* comparing pixels. Any mismatch
+causes a strict refusal with one synthetic-only numeric diagnostic code:
+81 means all active returned bytes still equal the 0xA5 initialization
+pattern; 82 means only alpha differs; 83 means only RGB differs; 84 means
+mixed RGBA differences. A fully matching buffer alone reaches stage 13 and
+may generate the exclusive success receipt. Stages 80–84 are **never**
+accepted as GPU proof, and no raw image, private game assets or guest logs
+are exported. These diagnostics isolate the next possible GPU cache/fence or
+copy-layout issue without changing the previously verified upload contract.

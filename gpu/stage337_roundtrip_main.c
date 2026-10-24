@@ -130,9 +130,37 @@ static int run_native(void) {
     progress(10u);
     dkQueueWaitIdle(queue);
     progress(11u);
-    if (dkQueueIsInErrorState(queue)) goto cleanup;
-    if (!verify_pixels(read_cpu, uploaded.plan.rows.row_length_pixels)) goto cleanup;
-    progress(12u);
+    if (dkQueueIsInErrorState(queue)) {
+        progress(80u); /* GPU queue error after readback. */
+        goto cleanup;
+    }
+    progress(12u); /* Queue healthy, about to compare actual RGBA bytes. */
+    if (!verify_pixels(read_cpu, uploaded.plan.rows.row_length_pixels)) {
+        /*
+         * Synthetic-only failure classification. These numbers are NOT
+         * evidence of successful GPU work and expose no source/game bytes.
+         * All reads are within the validated row-padded allocation.
+         */
+        size_t rgb_bad = 0u, alpha_bad = 0u, unchanged = 0u;
+        for (unsigned y=0; y<H; ++y) {
+            const uint8_t *got = read_cpu +
+                4u * (size_t)y * uploaded.plan.rows.row_length_pixels;
+            const uint8_t *want = source_rgba + 4u * (size_t)y * W;
+            for (unsigned k=0; k<W*4u; ++k) {
+                if (got[k] == 0xa5u) ++unchanged;
+                if (got[k] != want[k]) {
+                    if (k%4u == 3u) ++alpha_bad;
+                    else ++rgb_bad;
+                }
+            }
+        }
+        if (unchanged == PIXEL_BYTES) progress(81u); /* No visible copy. */
+        else if (!rgb_bad && alpha_bad) progress(82u); /* Alpha-only. */
+        else if (rgb_bad && !alpha_bad) progress(83u); /* RGB-only. */
+        else progress(84u); /* Mixed RGBA mismatch. */
+        goto cleanup;
+    }
+    progress(13u); /* Validated byte-for-byte copy. */
     rc = 0;
 cleanup:
     if (queue && !dkQueueIsInErrorState(queue)) dkQueueWaitIdle(queue);
