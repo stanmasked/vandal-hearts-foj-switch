@@ -95,6 +95,14 @@ class Stage341FrameGateTests(unittest.TestCase):
         self.assertNotIn("Google Drive", workflow)
         self.assertNotIn("path: runtime-evidence/", workflow)
 
+    def test_capture_runners_support_imagemagick_6_and_7(self):
+        root = Path(__file__).resolve().parents[2]
+        private_runner = (root / "tools" / "foj_stage341_private_run.py").read_text()
+        public_runner = (root / "tools" / "foj_stage341_nexium_drive.sh").read_text()
+        self.assertIn('shutil.which("magick")', private_runner)
+        self.assertIn('[magick_bin, "import", "-window"', private_runner)
+        self.assertIn("capture_cmd=(magick import)", public_runner)
+
     def test_capture_runners_wait_for_distinct_rendered_frames(self):
         root = Path(__file__).resolve().parents[2]
         private_runner = (root / "tools" / "foj_stage341_private_run.py").read_text()
