@@ -38,6 +38,17 @@
 #include "alpha_pass_contract.h"
 #endif
 #include "atlas_dds.h"
+#if defined(FOJ_GPU_STAGE340_PRIVATE_DDS_TEXTURE)
+#if !defined(FOJ_GPU_DRAW_TRIANGLE) || defined(FOJ_GPU_STAGE329_PATCH_STREAM) || \
+    defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW) || \
+    defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) || defined(FOJ_GPU_PRIVATE_BUNDLE_PREFLIGHT)
+#error "Stage340 is a standalone private DDS fullscreen-texture research NRO"
+#endif
+#include "stage332_dds_source.h"
+#include "stage339_private_dds_bridge.h"
+#include "stage336_native_upload.h"
+#include <stdlib.h>
+#endif
 #if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
 #if !defined(FOJ_GPU_STAGE329_PATCH_STREAM) || !defined(FOJ_GPU_STAGE330_PARTITION_DRAW)
 #error "Stage338 is a generated-only opt-in textured Stage330 partition draw"
@@ -97,6 +108,76 @@ _Static_assert(offsetof(FojGpuVertex,x)==0,
                "shader position must start at byte zero");
 _Static_assert(offsetof(FojGpuVertex,u)==16,
                "shader UV must start at byte sixteen");
+#if defined(FOJ_GPU_STAGE340_PRIVATE_DDS_TEXTURE) && !defined(FOJ_GPU_DRAW_TRIANGLE)
+#error "Stage340 requires the textured GPU draw pipeline"
+#endif
+#if defined(FOJ_GPU_STAGE340_PRIVATE_DDS_TEXTURE)
+enum { FOJ_STAGE340_MAX_DDS_BYTES = 32u * 1024u * 1024u };
+
+/* Load one owner-local DDS from SDMC and pass it through the Stage332/339
+ * decoder + Stage335 copy-plan path. No source bytes, path or hash are logged.
+ * The caller owns the returned RGBA8 until the GPU queue has drained. */
+static int foj_stage340_load_private_dds(
+    DkDevice device, uint8_t **out_rgba, FojStage339Prepared *out_prepared) {
+    FILE *input = NULL;
+    uint8_t *dds = NULL, *rgba = NULL;
+    FojStage332DdsInfo inspected;
+    FojStage339Prepared prepared = {0};
+    long file_size;
+    size_t dds_size;
+    int ok = 0;
+
+    if (!device || !out_rgba || !out_prepared) return 0;
+    input = fopen("sdmc:/switch/foj/gpu/material0.dds", "rb");
+    if (!input) goto done;
+    if (fseek(input, 0, SEEK_END) != 0) goto done;
+    file_size = ftell(input);
+    if (file_size < 128L ||
+        (unsigned long)file_size > (unsigned long)FOJ_STAGE340_MAX_DDS_BYTES)
+        goto done;
+    if (fseek(input, 0, SEEK_SET) != 0) goto done;
+    dds_size = (size_t)file_size;
+    dds = (uint8_t *)malloc(dds_size);
+    if (!dds) goto done;
+    if (fread(dds, 1, dds_size, input) != dds_size || ferror(input))
+        goto done;
+    if (fclose(input) != 0) { input = NULL; goto done; }
+    input = NULL;
+
+    if (!foj_stage332_dds_inspect(dds, dds_size, &inspected)) goto done;
+    rgba = (uint8_t *)malloc(inspected.rgba_bytes);
+    if (!rgba) goto done;
+
+    DkImageLayout layout;
+    DkImageLayoutMaker maker;
+    dkImageLayoutMakerDefaults(&maker, device);
+    maker.type = DkImageType_2D;
+    maker.format = DkImageFormat_RGBA8_Unorm;
+    maker.dimensions[0] = inspected.width;
+    maker.dimensions[1] = inspected.height;
+    maker.dimensions[2] = 1;
+    dkImageLayoutInitialize(&layout, &maker);
+    if (!foj_stage339_prepare_private_dds(
+            dds, dds_size, rgba, inspected.rgba_bytes, 256u,
+            dkImageLayoutGetSize(&layout),
+            dkImageLayoutGetAlignment(&layout), &prepared))
+        goto done;
+    if (prepared.image.width != inspected.width ||
+        prepared.image.height != inspected.height ||
+        prepared.image.rgba_bytes != inspected.rgba_bytes)
+        goto done;
+
+    *out_rgba = rgba;
+    *out_prepared = prepared;
+    rgba = NULL;
+    ok = 1;
+done:
+    if (input) (void)fclose(input);
+    free(dds);
+    free(rgba);
+    return ok;
+}
+#endif
 #if defined(FOJ_GPU_STAGE329_PATCH_STREAM)
 static uint8_t stage329_pages[4][FOJ_BC1_PAGE_RGBA_BYTES];
 static uint8_t stage329_tile[FOJ_STAGE322_TILE_BYTES];
@@ -788,7 +869,12 @@ int main(int argc,char **argv) {
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
     DkMemBlock shader_mem=NULL;
     DkMemBlock texture_data_mem=NULL;
-#if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
+#if defined(FOJ_GPU_STAGE340_PRIVATE_DDS_TEXTURE)
+    /* The selected DDS bytes are decoded once; RGBA remains live until idle. */
+    FojStage336NativeTexture stage340_source={0};
+    uint8_t *stage340_rgba=NULL;
+    FojStage339Prepared stage340_prepared={0};
+#elif defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
     /* Owned until all issued draw commands have completed. */
     FojStage336NativeTexture stage338_source={0};
 #endif
@@ -964,7 +1050,22 @@ int main(int argc,char **argv) {
     const FojGpuBatch *batch_source=NULL;
     size_t vertex_count=0u;
     size_t batch_count=0u;
-#if defined(FOJ_GPU_STAGE329_PATCH_STREAM)
+#if defined(FOJ_GPU_STAGE340_PRIVATE_DDS_TEXTURE)
+    /* Full-screen quad: every visible texel is sampled from texture slot 0. */
+    static const FojGpuVertex stage340_vertices[6] = {
+        {-1.f,-1.f,.5f,1.f,0.f,1.f},
+        { 1.f,-1.f,.5f,1.f,1.f,1.f},
+        { 1.f, 1.f,.5f,1.f,1.f,0.f},
+        {-1.f,-1.f,.5f,1.f,0.f,1.f},
+        { 1.f, 1.f,.5f,1.f,1.f,0.f},
+        {-1.f, 1.f,.5f,1.f,0.f,0.f}
+    };
+    static const FojGpuBatch stage340_batches[1] = {{0u,6u,0u}};
+    vertex_source=stage340_vertices;
+    batch_source=stage340_batches;
+    vertex_count=6u;
+    batch_count=1u;
+#elif defined(FOJ_GPU_STAGE329_PATCH_STREAM)
     if(!stage329_prepare_corner_patch())goto cleanup;
     vertex_source=stage329_gpu_vertices;
     batch_source=stage329_gpu_batches;
@@ -996,7 +1097,9 @@ int main(int argc,char **argv) {
                                   FOJ_RESEARCH_TEXTURE_COUNT,
                                   DK_MEMBLOCK_ALIGNMENT,&actor_upload)!=FOJ_GPU_STREAM_OK ||
         actor_upload.payload_bytes!=vertex_count*sizeof(FojGpuVertex) ||
-#if defined(FOJ_GPU_STAGE329_PATCH_STREAM) && \
+#if defined(FOJ_GPU_STAGE340_PRIVATE_DDS_TEXTURE)
+        actor_upload.material_mask!=(UINT32_C(1)<<0u))
+#elif defined(FOJ_GPU_STAGE329_PATCH_STREAM) && \
     defined(FOJ_GPU_STAGE330_PARTITION_DRAW)
         actor_upload.material_mask!=
             ((UINT32_C(1)<<0u)|(UINT32_C(1)<<1u)))
@@ -1190,7 +1293,26 @@ int main(int argc,char **argv) {
                         i*PIXEL_STAGING_STRIDE;
         FojAtlasRgba8Info atlas={0};
         FojAtlasDdsStatus dds_status=FOJ_ATLAS_DDS_INVALID_ARGUMENT;
-#if defined(FOJ_GPU_STAGE329_PATCH_STREAM)
+#if defined(FOJ_GPU_STAGE340_PRIVATE_DDS_TEXTURE)
+        int loaded;
+        if (i == 0u) {
+            loaded = foj_stage340_load_private_dds(
+                device, &stage340_rgba, &stage340_prepared) ? 1 : -1;
+            dds_status = loaded > 0 ? FOJ_ATLAS_DDS_LOADED :
+                                      FOJ_ATLAS_DDS_INVALID_ARGUMENT;
+            if (loaded > 0) {
+                atlas = (FojAtlasRgba8Info){
+                    stage340_prepared.image.width,
+                    stage340_prepared.image.height,
+                    stage340_prepared.image.rgba_bytes
+                };
+            }
+        } else {
+            /* Only slot 1 is synthetic support data; source slot 0 never falls back. */
+            loaded = 0;
+            dds_status = FOJ_ATLAS_DDS_MISSING;
+        }
+#elif defined(FOJ_GPU_STAGE329_PATCH_STREAM)
         /* Stage329 never reads user DDS files. Slot 0 is an invented fallback;
          * slot 1 is the tile prepared by Stage328 from four generated pages. */
         const int loaded=1;
@@ -1259,6 +1381,17 @@ int main(int argc,char **argv) {
                                       FOJ_RESEARCH_TEXTURE_BYTES};
         }
 
+#if defined(FOJ_GPU_STAGE340_PRIVATE_DDS_TEXTURE)
+        if (i == 0u) {
+            /* The real source DDS was decoded and planned before native upload. */
+            if (!foj_stage336_native_record_rgba_upload(
+                    device, cmd, &stage340_prepared.image, stage340_rgba,
+                    stage340_prepared.image.rgba_bytes, 256u,
+                    &stage340_source))
+                goto cleanup;
+            texture_views[i] = stage340_source.image_view;
+        } else
+#endif
 #if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
         if(i==0u) {
             /*
@@ -1336,7 +1469,10 @@ int main(int argc,char **argv) {
     if (!dds_fatal) {
     DkSampler sampler;
     dkSamplerDefaults(&sampler);
-#if defined(FOJ_GPU_STAGE309_LINEAR_GUTTER)
+#if defined(FOJ_GPU_STAGE340_PRIVATE_DDS_TEXTURE)
+    sampler.minFilter=DkFilter_Nearest;
+    sampler.magFilter=DkFilter_Nearest;
+#elif defined(FOJ_GPU_STAGE309_LINEAR_GUTTER)
     sampler.minFilter=DkFilter_Linear;
     sampler.magFilter=DkFilter_Linear;
 #endif
@@ -1709,6 +1845,27 @@ int main(int argc,char **argv) {
         dkQueueSubmitCommands(queue,commands[slot][palette]);
 #endif
         dkQueuePresentImage(queue,swapchain,slot);
+#if defined(FOJ_GPU_STAGE340_PRIVATE_DDS_TEXTURE)
+        if (frame == 0u) {
+            /* Receipt only after a real upload+draw submission has drained. */
+            dkQueueWaitIdle(queue);
+            FILE *const proof = fopen(
+                "sdmc:/switch/foj/gpu/foj-stage340-private-dds-gpu.txt", "wx");
+            static const char proof_text[] =
+                "FOJ_STAGE340_PRIVATE_DDS_GPU_V1 frame=1 upload=1 sample_draw=1\n";
+            if (!proof) {
+                exit_status = 5;
+                break;
+            }
+            const size_t saved = fwrite(proof_text, 1u,
+                                        sizeof(proof_text)-1u, proof);
+            const int close_status = fclose(proof);
+            if (saved != sizeof(proof_text)-1u || close_status != 0) {
+                exit_status = 5;
+                break;
+            }
+        }
+#endif
         ++frame;
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
         ++boot_frames;
@@ -1733,7 +1890,10 @@ cleanup:
     if (shader_mem)dkMemBlockDestroy(shader_mem);
     for (unsigned i=0;i<FOJ_RESEARCH_TEXTURE_COUNT;++i)
         if (texture_images_mem[i])dkMemBlockDestroy(texture_images_mem[i]);
-#if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
+#if defined(FOJ_GPU_STAGE340_PRIVATE_DDS_TEXTURE)
+    foj_stage336_native_release(&stage340_source);
+    free(stage340_rgba);
+#elif defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
     foj_stage336_native_release(&stage338_source);
 #endif
     if (texture_data_mem)dkMemBlockDestroy(texture_data_mem);
