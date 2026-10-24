@@ -53,12 +53,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m unittest discover -s tests/emulator -p 'test_stage340_private_dds_roundtrip.py' -v
-          python3 -m unittest discover -s tests/emulator -p 'test_stage342_private_dds_frame.py' -v
-          python3 -m compileall -q tools/foj_stage340_fixture.py tools/foj_stage340_private_run.py tools/foj_stage342_frame_gate.py tools/foj_stage342_private_run.py
+          python3 -m unittest discover -s tests/emulator -p 'test_stage342_multi_section_dds_frame.py' -v
+          python3 -m compileall -q tools/foj_stage340_fixture.py tools/foj_stage340_private_run.py tools/foj_stage342_frame_gate.py tools/foj_stage342_private_run.py tools/foj_stage342_generated_diagnose.py tools/foj_stage342_nexium_display.py
           bash -n tools/foj_stage342_nexium_drive.sh
           cc -std=c11 -Wall -Wextra -Werror -pedantic \
             -DFOJ_GPU_DRAW_TRIANGLE=1 \
-            -DFOJ_GPU_STAGE342_PRIVATE_DDS_DRAW=1 -fsyntax-only \
+            -DFOJ_GPU_STAGE342_MULTI_SECTION_DDS_DRAW=1 -fsyntax-only \
             -Itests/mock_switch_sdk -Icore -Igpu gpu/deko3d_clear_main.c
           echo STAGE342_HOST_REFERENCE_AND_SOURCE_CONTRACT_PASS
 
