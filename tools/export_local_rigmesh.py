@@ -2,8 +2,9 @@
 """Private, opt-in conversion of original BMODEL into portable FOJRM001.
 
 Only the user's own local PS3 asset is read. The output preserves real
-geometry, UV, normals, original indexed skin weights and bind-pose hierarchy.
-It DOES NOT recover original engine space, shader, material, joint retargeting,
+geometry, UVs, normals, optional indexed skin weights and bind-pose hierarchy.
+Unskinned static meshes use zero bones and zero influences per vertex. This
+DOES NOT recover original engine space, shader, material, joint retargeting,
 nor rig/animation pairing. Binary data is proprietary: never commit it.
 """
 from __future__ import annotations
@@ -43,12 +44,12 @@ def pack_rig_mesh(data: bytes) -> tuple[bytes, dict]:
     rig = parse_bmodel_rig(data[-model.footer_bytes:])
     bones = rig.bones
     vertex_count = sum(s.vertex_count for s in model.shapes)
-    if (not bones or len(bones) > MAX_BONES or
+    if (len(bones) > MAX_BONES or
         not 1 <= len(model.shapes) <= MAX_SECTIONS or
         not 3 <= vertex_count <= MAX_VERTICES):
         raise ValueError("Model rig/vertex/section counts outside research limits")
-    if not any(s.influences_per_vertex for s in model.shapes):
-        raise ValueError("Expected a model with weighted vertices")
+    if not bones and any(s.influences_per_vertex for s in model.shapes):
+        raise ValueError("Skinned vertices require an embedded rig")
     output = bytearray(HEADER.pack(MAGIC, VERSION, len(bones),
                                    vertex_count, len(model.shapes), 0))
     for b in bones:
@@ -104,7 +105,8 @@ def pack_rig_mesh(data: bytes) -> tuple[bytes, dict]:
     if len(output) != expected_size:
         raise AssertionError("FOJRM001 byte layout mismatch")
     return bytes(output), {
-        "bones": len(bones), "sections": len(model.shapes),
+        "bones": len(bones), "mesh_kind": "static" if not bones else "rigged",
+        "sections": len(model.shapes),
         "vertices": vertex_count, "triangles": vertex_count//3,
         "weighted_vertices": weighted_vertices,
         "bytes": len(output),

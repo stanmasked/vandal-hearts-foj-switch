@@ -41,9 +41,24 @@ class OriginalRigMeshExportTests(unittest.TestCase):
         self.assertEqual(INFLUENCE.unpack_from(
             payload, start+3*76+VERTEX.size), (0, 0.0))
 
-    def test_requires_rig_and_valid_bound_indices(self):
-        with self.assertRaisesRegex(ValueError, "rig"):
-            pack_rig_mesh(synthetic_complete_model())
+    def test_unskinned_static_mesh_and_valid_bound_indices(self):
+        payload, report = pack_rig_mesh(synthetic_complete_model())
+        self.assertEqual(report["bones"], 0)
+        self.assertEqual(report["mesh_kind"], "static")
+        self.assertEqual(report["sections"], 2)
+        self.assertEqual(report["vertices"], 6)
+        self.assertEqual(report["weighted_vertices"], 0)
+        self.assertEqual(len(payload), 28 + 2*8 + 6*76)
+        self.assertEqual(HEADER.unpack_from(payload, 0),
+                         (MAGIC, 1, 0, 6, 2, 0))
+        self.assertEqual(SECTION.unpack_from(payload, HEADER.size), (0, 3))
+        self.assertEqual(SECTION.unpack_from(
+            payload, HEADER.size+SECTION.size), (3, 3))
+        first_vertex = HEADER.size + 2*SECTION.size
+        self.assertEqual(VERTEX.unpack_from(payload, first_vertex)[-1], 0)
+        for i in range(5):
+            self.assertEqual(INFLUENCE.unpack_from(
+                payload, first_vertex+VERTEX.size+i*INFLUENCE.size), (0, 0.0))
         invalid = bytearray(synthetic_complete_model()[:-4] + synthetic_rig())
         influence = invalid.index(b"\x0f\x00\x06\x00\x02")
         # First influence starts five bytes after header.
