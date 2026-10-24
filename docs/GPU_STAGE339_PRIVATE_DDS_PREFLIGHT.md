@@ -22,9 +22,12 @@ Function `foj_stage339_prepare_private_dds`:
 3. Computes Stage336's aligned GPU image and staging budgets from the
    **actual native** `dkImageLayoutGetSize/Alignment` supplied by caller.
    Does not invent or infer device memory requirements.
-4. Only after all preflight checks pass, decodes BASE MIP ZERO to caller-owned
-   RGBA8 and returns the frozen image info and exact GPU copy plan.
-5. Never mutates the returned plan nor any output pixel byte on refusal.
+4. Completes all bridge-owned refusal checks before decoding BASE MIP ZERO
+   to caller-owned RGBA8. The caller must keep source bytes immutable for the
+   duration of the call. Stage332 decode failure is transactional; after a
+   successful decode, no further refusal check can reject the operation.
+5. Commits the prepared metadata only after decode succeeds. On refusal, the
+   bridge leaves the complete output pixel capacity and metadata unchanged.
    Caller owns all buffers. No automatic fallback to generated/synthetic data.
 
 Independent synthetic tests build four invented, minimal classic DDS files
