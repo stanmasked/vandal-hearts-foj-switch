@@ -168,10 +168,43 @@ static int run_native(void) {
                 }
             }
         }
-        if (unchanged == PIXEL_BYTES) progress(81u); /* No visible copy. */
-        else if (!rgb_bad && alpha_bad) progress(82u); /* Alpha-only. */
-        else if (rgb_bad && !alpha_bad) progress(83u); /* RGB-only. */
-        else progress(84u); /* Mixed RGBA mismatch. */
+        /*
+         * Disambiguate the observed mixed-channel failure without printing
+         * the synthesized pixels or copying any untrusted buffers. Every
+         * read below stays within the checked padded readback allocation.
+         */
+        size_t all_zero = 0u, all_ff = 0u;
+        int bgr_swap = 1, tight_rows = 1, upside_down = 1;
+        for (unsigned y = 0u; y < H; ++y) {
+            const uint8_t *row = read_cpu +
+                (size_t)y * uploaded.plan.rows.row_length_pixels * 4u;
+            const uint8_t *tight = read_cpu + (size_t)y * W * 4u;
+            const uint8_t *forward = source_rgba + (size_t)y * W * 4u;
+            const uint8_t *reverse = source_rgba + (size_t)(H-1u-y) * W * 4u;
+            for (unsigned x = 0u; x < W; ++x) {
+                const size_t k = (size_t)x * 4u;
+                for (unsigned n = 0u; n < 4u; ++n) {
+                    all_zero += row[k+n] == 0u;
+                    all_ff += row[k+n] == 255u;
+                }
+                if (row[k] != forward[k+2u] ||
+                    row[k+1u] != forward[k+1u] ||
+                    row[k+2u] != forward[k] ||
+                    row[k+3u] != forward[k+3u]) bgr_swap = 0;
+                if (memcmp(tight+k,forward+k,4u)) tight_rows = 0;
+                if (memcmp(row+k,reverse+k,4u)) upside_down = 0;
+            }
+        }
+        if (unchanged == PIXEL_BYTES) progress(81u);
+        else if (all_zero == PIXEL_BYTES) progress(86u); /* All zero. */
+        else if (all_ff == PIXEL_BYTES) progress(87u); /* All 0xff. */
+        else if (bgr_swap) progress(88u); /* RGBA/BGRA swap. */
+        else if (tight_rows) progress(89u); /* Row pitch mismatch. */
+        else if (upside_down) progress(90u); /* Reversed row order. */
+        else if (!memcmp(read_cpu,source_rgba,W*4u)) progress(91u);
+        else if (!rgb_bad && alpha_bad) progress(82u);
+        else if (rgb_bad && !alpha_bad) progress(83u);
+        else progress(84u); /* Other mixed-channel mismatch. */
         goto cleanup;
     }
     progress(13u); /* Validated byte-for-byte copy. */

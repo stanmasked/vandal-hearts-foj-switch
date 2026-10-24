@@ -95,3 +95,17 @@ and before exact RGBA comparison. Stage 85 isolates any queue error during
 this new flush, with all diagnostic stages still rejected by the success
 receipt parser. Results must be judged exclusively from the fresh NeXium
 runtime check; neither compilation nor a stage code is success proof.
+
+
+## Stage337.5 — classify persistent synthetic readback mismatch
+
+The Stage337.4 exact-head real NeXium job 120740430437 failed with
+STAGE337_BOUNDED_GUEST_DIAG last_stage=84 even after an explicit flushed
+GPU fence. Successful NRO build/host tests do not prove GPU copy correctness.
+Stage337.5 adds bounded numeric-only synthetic-data categorization:
+86 all zero bytes, 87 all 0xff bytes, 88 full RGBA/BGRA channel reversal,
+89 tight-packed output despite a padded copy rowLength, 90 reversed rows,
+91 first logical row matches but later rows differ. Existing 81–85 and
+12/13 semantics remain unchanged. These codes are strictly diagnostic and
+never accepted as a native success receipt. No GPU pixels, guest logs,
+original PS3 resources or paths are sent to public CI artifacts.
