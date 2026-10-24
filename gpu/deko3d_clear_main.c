@@ -1282,7 +1282,8 @@ int main(int argc,char **argv) {
         goto cleanup;
 
 #if !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) && \
-    !defined(FOJ_GPU_STAGE329_PATCH_STREAM)
+    !defined(FOJ_GPU_STAGE329_PATCH_STREAM) && \
+    !defined(FOJ_GPU_STAGE340_PRIVATE_DDS_TEXTURE)
     const char *const atlas_paths[FOJ_RESEARCH_TEXTURE_COUNT]={
         "sdmc:/switch/foj/gpu/material0.dds",
         "sdmc:/switch/foj/gpu/material1.dds"
