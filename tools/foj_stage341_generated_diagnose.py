@@ -66,10 +66,12 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
             raise ValueError("Stage341 diagnosis expects 1280x720")
         pixel = image.load()
         totals = {candidate: 0 for candidate in CANDIDATES}
+        sampled_triplets = []
         for y in SAMPLE_Y:
             for x in SAMPLE_X:
                 u, v = _sample_uv(x, y)
                 observed = pixel[x, y]
+                sampled_triplets.append(observed)
                 for candidate in CANDIDATES:
                     flip_u = candidate.endswith("flip_u") or candidate.endswith("flip_uv")
                     flip_v = candidate.endswith("flip_v") or candidate.endswith("flip_uv")
@@ -88,6 +90,11 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
             "capture_sha256": hashlib.sha256(data).hexdigest(),
             "samples_checked": len(SAMPLE_X) * len(SAMPLE_Y),
             "identity_bad_channels": totals["identity"],
+            "distinct_rgb_triplets_at_grid": len(set(sampled_triplets)),
+            "largest_repeated_rgb_triplet_count": max(
+                sampled_triplets.count(value) for value in set(sampled_triplets)
+            ),
+            "uniform_grid_sample": len(set(sampled_triplets)) == 1,
             "best_diagnostic_hypothesis": best,
             "bad_channels_by_hypothesis": totals,
         }, image)

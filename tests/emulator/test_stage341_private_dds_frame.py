@@ -197,6 +197,7 @@ class Stage341FrameGateTests(unittest.TestCase):
         self.assertTrue(result["generated_only"])
         self.assertFalse(result["accepted"])
         self.assertEqual(result["frame_a"]["identity_bad_channels"], 0)
+        self.assertEqual(result["frame_a"]["distinct_rgb_triplets_at_grid"], 25)
         self.assertEqual(result["frame_b"]["identity_bad_channels"], 0)
         encoded = json.dumps(result)
         self.assertNotIn("expected_rgb", encoded)
@@ -213,6 +214,20 @@ class Stage341FrameGateTests(unittest.TestCase):
         result = diagnose(self.sd, self.evidence)
         self.assertGreater(result["frame_a"]["identity_bad_channels"], 0)
         self.assertEqual(result["frame_a"]["bad_channels_by_hypothesis"]["swap_rb"], 0)
+        self.assertFalse(result["accepted"])
+
+    def test_generated_failure_diagnostic_detects_uniform_quad_region(self):
+        Image.new("RGB", (FRAME_WIDTH, FRAME_HEIGHT), (20, 30, 40)).save(
+            self.evidence / "gpu-initial.png"
+        )
+        Image.new("RGB", (FRAME_WIDTH, FRAME_HEIGHT), (40, 30, 20)).save(
+            self.evidence / "gpu-later.png"
+        )
+        result = diagnose(self.sd, self.evidence)
+        self.assertTrue(result["frame_a"]["uniform_grid_sample"])
+        self.assertTrue(result["frame_b"]["uniform_grid_sample"])
+        self.assertEqual(result["frame_a"]["distinct_rgb_triplets_at_grid"], 1)
+        self.assertEqual(result["frame_b"]["largest_repeated_rgb_triplet_count"], 25)
         self.assertFalse(result["accepted"])
 
     def test_generated_failure_diagnostic_rejects_private_source(self):
