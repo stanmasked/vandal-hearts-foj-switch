@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/stage340-private-dds-gpu.yml'
-      - 'gpu/deko3d_clear_main.c'
+      - 'gpu/stage340_private_dds_main.c'
       - 'gpu/stage340_private_dds.mk'
       - 'gpu/stage332_dds_source.c'
       - 'gpu/stage332_dds_source.h'
@@ -65,7 +65,7 @@ jobs:
           bash -n tools/foj_stage340_nexium_drive.sh
           cc -std=c11 -Wall -Wextra -Werror -pedantic \
             -DFOJ_GPU_DRAW_TRIANGLE=1 -DFOJ_GPU_STAGE340_PRIVATE_DDS_TEXTURE=1 \
-            -fsyntax-only -Itests/mock_switch_sdk -Icore -Igpu gpu/deko3d_clear_main.c
+            -fsyntax-only -Itests/mock_switch_sdk -Icore -Igpu gpu/stage340_private_dds_main.c
           echo STAGE340_HOST_DDS_ORACLE_AND_FAIL_CLOSED_REFUSAL_PASS
 
   build:
