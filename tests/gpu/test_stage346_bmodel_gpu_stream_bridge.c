@@ -202,11 +202,35 @@ static void test_capacity_and_camera_failures_leave_outputs_unchanged(void) {
     assert(memcmp(&plan, &before_plan, sizeof(plan)) == 0);
 }
 
+static void test_camera_aliasing_output_is_rejected_transactionally(void) {
+    uint8_t data[4096];
+    union {
+        FojGpuVertex vertices[6];
+        FojTextureCamera camera;
+    } shared;
+    FojGpuBatch batches[2], before_batches[2];
+    FojGpuVertex before_vertices[6];
+    FojStage346BmodelGpuPlan plan = {0}, before_plan = {0};
+    size_t size = make_fixture(data, sizeof(data), 0, 0);
+    memset(&shared, 0x44, sizeof(shared));
+    shared.camera = kCamera;
+    memset(batches, 0x73, sizeof(batches));
+    memcpy(before_vertices, shared.vertices, sizeof(shared.vertices));
+    memcpy(before_batches, batches, sizeof(batches));
+    assert(foj_gpu_stage346_bmodel_prepare(data, size, &shared.camera,
+           1280u, 720u, 256u, shared.vertices, 6u, batches, 2u, &plan) ==
+           FOJ_GPU_STREAM_ARGUMENT);
+    assert(memcmp(shared.vertices, before_vertices, sizeof(shared.vertices)) == 0);
+    assert(memcmp(batches, before_batches, sizeof(batches)) == 0);
+    assert(memcmp(&plan, &before_plan, sizeof(plan)) == 0);
+}
+
 int main(void) {
     test_two_sections_create_ordered_gpu_batches();
     test_duplicate_texture_names_share_one_slot();
     test_multi_texture_material_is_refused_transactionally();
     test_capacity_and_camera_failures_leave_outputs_unchanged();
+    test_camera_aliasing_output_is_rejected_transactionally();
     puts("Stage346 BMODEL GPU stream bridge tests passed");
     return 0;
 }
