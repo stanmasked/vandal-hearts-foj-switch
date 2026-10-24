@@ -20,8 +20,9 @@ typedef enum {
 } FojStage345Status;
 
 /* A native, owned CPU representation assembled from one verified BMODEL.
- * Geometry/rig/weight arrays are owned by this object. Material and texture
- * names remain offsets into source_data; the caller must keep those original
+ * Geometry arrays are owned by this object; rig arrays are present only for
+ * rigged sources. Static sources require zero bones and zero influences.
+ * Material and texture names remain offsets into source_data; the caller must keep those original
  * bytes alive and byte-identical until this object is freed.
  *
  * The output must be zero-initialized or previously freed. On failure the
@@ -45,9 +46,10 @@ FojStage345Status foj_stage345_bmodel_to_rigmesh(
     const uint8_t *data, size_t size, FojStage345BmodelMesh *out);
 void foj_stage345_bmodel_mesh_free(FojStage345BmodelMesh *mesh);
 
-/* True only when every source section has one unambiguous material and every
- * weighted vertex references a bone in the validated rig. This is a data
- * integrity gate, not proof of the original engine's transform convention. */
+/* True only when every source section has one unambiguous material and all
+ * weighted vertices reference a validated rig; static sources must have the
+ * one-byte no-rig footer and no influences. This is a data integrity gate,
+ * not proof of the original engine's transform convention. */
 int foj_stage345_mesh_integrity_ready(const FojStage345BmodelMesh *mesh);
 
 #endif

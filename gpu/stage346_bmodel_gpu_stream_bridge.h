@@ -23,6 +23,16 @@ typedef struct {
     size_t source_size;
 } FojStage346BmodelGpuPlan;
 
+/* Fit a diagnostic orthographic camera to the source mesh's bind-pose
+ * bounds. This is a debug/inspection camera, not a reconstruction of the
+ * original game's camera. Uses a conservative 0.88 clip-space half-extent.
+ * The output is unchanged on failure.
+ */
+FojGpuStreamStatus foj_gpu_stage346_fit_camera(
+    const uint8_t *bmodel_bytes, size_t bmodel_size,
+    unsigned framebuffer_width, unsigned framebuffer_height,
+    FojTextureCamera *camera_out);
+
 /* Requires exactly one texture reference per used material and no more than
  * eight unique texture basenames. All output arrays and plan remain unchanged
  * on failure. The plan must be zero-initialized before first use.

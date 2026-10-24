@@ -35,6 +35,96 @@ static int plan_is_empty(const FojStage346BmodelGpuPlan *plan) {
     return 1;
 }
 
+FojGpuStreamStatus foj_gpu_stage346_fit_camera(
+    const uint8_t *bmodel_bytes, size_t bmodel_size,
+    unsigned width, unsigned height, FojTextureCamera *camera_out) {
+    FojStage345BmodelMesh mesh = {0};
+    FojTextureCamera staged = {0};
+    FojGpuStreamStatus result = FOJ_GPU_STREAM_INVALID;
+    float min_x = INFINITY, min_y = INFINITY, min_z = INFINITY;
+    float max_x = -INFINITY, max_y = -INFINITY, max_z = -INFINITY;
+
+    if (bmodel_bytes == NULL || camera_out == NULL)
+        return FOJ_GPU_STREAM_ARGUMENT;
+    if (bmodel_size == 0u || bmodel_size > FOJ_STAGE343_MAX_MODEL_BYTES ||
+        width == 0u || height == 0u || width > 2048u || height > 2048u)
+        return FOJ_GPU_STREAM_BOUNDS;
+    if (overlaps(bmodel_bytes, bmodel_size, camera_out, sizeof(*camera_out)))
+        return FOJ_GPU_STREAM_ARGUMENT;
+
+    const FojStage345Status parse_status =
+        foj_stage345_bmodel_to_rigmesh(bmodel_bytes, bmodel_size, &mesh);
+    if (parse_status != FOJ_STAGE345_OK) {
+        result = parse_status == FOJ_STAGE345_ARGUMENT ?
+            FOJ_GPU_STREAM_ARGUMENT :
+            (parse_status == FOJ_STAGE345_LIMIT ||
+             parse_status == FOJ_STAGE345_MEMORY ?
+                FOJ_GPU_STREAM_BOUNDS : FOJ_GPU_STREAM_INVALID);
+        goto done;
+    }
+    if (!foj_stage345_mesh_integrity_ready(&mesh) ||
+        mesh.mesh.vertex_count == 0u) {
+        result = FOJ_GPU_STREAM_INVALID;
+        goto done;
+    }
+
+    for (size_t i = 0u; i < mesh.mesh.vertex_count; ++i) {
+        const FojRigMeshVertex *vertex = &mesh.mesh.vertices[i];
+        const float x = vertex->xyz[0];
+        const float y = vertex->xyz[1];
+        const float z = vertex->xyz[2];
+        if (!isfinite(x) || !isfinite(y) || !isfinite(z) ||
+            fabsf(x) > 1000000.0f || fabsf(y) > 1000000.0f ||
+            fabsf(z) > 1000000.0f) {
+            result = FOJ_GPU_STREAM_INVALID;
+            goto done;
+        }
+        if (x < min_x) min_x = x;
+        if (x > max_x) max_x = x;
+        if (y < min_y) min_y = y;
+        if (y > max_y) max_y = y;
+        if (z < min_z) min_z = z;
+        if (z > max_z) max_z = z;
+    }
+
+    const float span_x = max_x - min_x;
+    const float span_y = max_y - min_y;
+    if (!isfinite(span_x) || !isfinite(span_y) ||
+        (span_x < 1.0e-6f && span_y < 1.0e-6f)) {
+        result = FOJ_GPU_STREAM_INVALID;
+        goto done;
+    }
+
+    const float min_side = (float)(width < height ? width : height);
+    const float required_x = span_x * 0.84f * min_side / (float)width;
+    const float required_y = span_y * 0.84f * min_side / (float)height;
+    const float extent = fmaxf(required_x, required_y) / 0.88f;
+    if (!isfinite(extent) || extent <= 0.0f || extent > 1000000.0f) {
+        result = FOJ_GPU_STREAM_INVALID;
+        goto done;
+    }
+
+    staged.center_x = min_x + span_x * 0.5f;
+    staged.center_y = min_y + span_y * 0.5f;
+    staged.center_z = min_z + (max_z - min_z) * 0.5f;
+    staged.extent = fmaxf(extent, 0.05f);
+    staged.yaw = 0.0f;
+    staged.pitch = 0.0f;
+    staged.zoom = 1.0f;
+    staged.flip_v = 0;
+    if (!isfinite(staged.center_x) || !isfinite(staged.center_y) ||
+        !isfinite(staged.center_z) || !isfinite(staged.extent)) {
+        result = FOJ_GPU_STREAM_INVALID;
+        goto done;
+    }
+    *camera_out = staged;
+    result = FOJ_GPU_STREAM_OK;
+
+done:
+    foj_stage345_bmodel_mesh_free(&mesh);
+    return result;
+}
+
 FojGpuStreamStatus foj_gpu_stage346_bmodel_prepare(
     const uint8_t *bmodel_bytes, size_t bmodel_size,
     const FojTextureCamera *camera, unsigned width, unsigned height,

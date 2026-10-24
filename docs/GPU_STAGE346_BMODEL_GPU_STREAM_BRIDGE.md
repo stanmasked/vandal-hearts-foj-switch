@@ -6,7 +6,7 @@ Connect the Stage345 in-memory BMODEL-to-FojRigMesh conversion to the existing C
 
 ## Contract
 
-- Accepts only Stage345-integrity-ready BMODELs.
+- Accepts Stage345-integrity-ready rigged or static BMODELs. A static source must have zero bones, zero skin blocks and a valid one-byte no-rig footer.
 - Maps each used material to exactly one texture reference. Multi-texture materials are rejected; there is no guessed diffuse-map selection or fallback. Sections sharing the same material share a slot, but different material records keep separate slots even when their basenames match, because a basename alone does not prove that both references identify the same PSARC resource.
 - Assigns one texture slot per used material record, reusing that slot when multiple sections reference the same material. Different material records retain separate slots even if their basenames match, because basename equality alone does not prove identical PSARC asset identity. At most eight used materials are supported.
 - Reuses the existing orthographic camera projection and upload allocation planner.
