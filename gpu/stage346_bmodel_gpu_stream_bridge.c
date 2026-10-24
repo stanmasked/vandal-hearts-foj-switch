@@ -92,7 +92,10 @@ FojGpuStreamStatus foj_gpu_stage346_bmodel_prepare(
         overlaps(bmodel_bytes, bmodel_size, batches_out, batch_bytes) ||
         overlaps(vertices_out, vertex_bytes, batches_out, batch_bytes) ||
         overlaps(vertices_out, vertex_bytes, plan, sizeof(*plan)) ||
-        overlaps(batches_out, batch_bytes, plan, sizeof(*plan))) {
+        overlaps(batches_out, batch_bytes, plan, sizeof(*plan)) ||
+        overlaps(camera, sizeof(*camera), vertices_out, vertex_bytes) ||
+        overlaps(camera, sizeof(*camera), batches_out, batch_bytes) ||
+        overlaps(camera, sizeof(*camera), plan, sizeof(*plan))) {
         result = FOJ_GPU_STREAM_ARGUMENT;
         goto done;
     }
