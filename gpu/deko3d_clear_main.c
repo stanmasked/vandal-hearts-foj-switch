@@ -39,10 +39,20 @@
 #endif
 #include "atlas_dds.h"
 #if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
-#if !defined(FOJ_GPU_STAGE329_PATCH_STREAM) || !defined(FOJ_GPU_STAGE330_PARTITION_DRAW)
-#error "Stage338 is a generated-only opt-in textured Stage330 partition draw"
+#if !defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW) && \
+    (!defined(FOJ_GPU_STAGE329_PATCH_STREAM) || \
+     !defined(FOJ_GPU_STAGE330_PARTITION_DRAW))
+#error "Stage338 requires its Stage330 scene unless isolated Stage341 is selected"
 #endif
 #include "stage336_native_upload.h"
+#endif
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+#if !defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW) || \
+    !defined(FOJ_GPU_DRAW_TRIANGLE)
+#error "Stage341 requires the native Stage336 upload and shader draw path"
+#endif
+#include "stage332_dds_source.h"
+#include "stage339_private_dds_bridge.h"
 #endif
 #if defined(FOJ_GPU_STAGE302_GENERATED_PAGE_PROBE)
 #include "stage302_synthetic_page_probe.h"
@@ -261,6 +271,96 @@ static int stage329_prepare_corner_patch(void) {
         return 0;
 #endif
     return 1;
+}
+#endif
+
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+enum { FOJ_STAGE341_SOURCE_MAX_BYTES = 1024u * 1024u };
+static uint8_t stage341_source_dds[FOJ_STAGE341_SOURCE_MAX_BYTES];
+static FojStage339Prepared stage341_prepared;
+
+static int foj_stage341_load_private_dds(
+    DkDevice device,uint8_t *rgba,size_t rgba_capacity,
+    FojAtlasRgba8Info *atlas) {
+    if(!device||!rgba||!atlas)return 0;
+    FILE *const file=fopen("sdmc:/switch/foj/gpu/source.dds","rb");
+    if(!file)return 0;
+    if(fseek(file,0,SEEK_END)!=0) {
+        (void)fclose(file);
+        return 0;
+    }
+    const long end=ftell(file);
+    if(end<128L||(unsigned long)end>sizeof(stage341_source_dds)||
+       fseek(file,0,SEEK_SET)!=0) {
+        (void)fclose(file);
+        return 0;
+    }
+    const size_t length=(size_t)end;
+    const size_t got=fread(stage341_source_dds,1u,length,file);
+    const int extra=fgetc(file);
+    const int read_error=ferror(file);
+    const int close_error=fclose(file);
+    if(got!=length||extra!=EOF||read_error||close_error)return 0;
+
+    FojStage332DdsInfo inspected={0};
+    if(!foj_stage332_dds_inspect(stage341_source_dds,length,&inspected)||
+       inspected.width!=256u||inspected.height!=256u||
+       inspected.mip_levels!=1u||inspected.format!=FOJ_STAGE332_BGRA8||
+       inspected.rgba_bytes!=FOJ_BC1_PAGE_RGBA_BYTES)
+        return 0;
+
+    DkImageLayoutMaker maker;
+    dkImageLayoutMakerDefaults(&maker,device);
+    maker.type=DkImageType_2D;
+    maker.format=DkImageFormat_RGBA8_Unorm;
+    maker.dimensions[0]=inspected.width;
+    maker.dimensions[1]=inspected.height;
+    maker.dimensions[2]=1u;
+    maker.mipLevels=1u;
+    DkImageLayout layout;
+    dkImageLayoutInitialize(&layout,&maker);
+    const uint64_t layout_bytes=dkImageLayoutGetSize(&layout);
+    const uint32_t layout_alignment=dkImageLayoutGetAlignment(&layout);
+    if(!foj_stage339_prepare_private_dds(
+          stage341_source_dds,length,rgba,rgba_capacity,256u,
+          layout_bytes,layout_alignment,&stage341_prepared))
+        return 0;
+    if(stage341_prepared.image.width!=256u||
+       stage341_prepared.image.height!=256u||
+       stage341_prepared.image.format!=FOJ_STAGE332_BGRA8||
+       stage341_prepared.image.rgba_bytes!=FOJ_BC1_PAGE_RGBA_BYTES)
+        return 0;
+    *atlas=(FojAtlasRgba8Info){
+        256u,256u,FOJ_BC1_PAGE_RGBA_BYTES
+    };
+    return 1;
+}
+
+static int foj_stage341_same_gpu_plan(
+    const FojStage336GpuCopyPlan *a,const FojStage336GpuCopyPlan *b) {
+    if(!a||!b)return 0;
+    return a->rows.width==b->rows.width&&
+           a->rows.height==b->rows.height&&
+           a->rows.row_length_pixels==b->rows.row_length_pixels&&
+           a->rows.row_pitch_bytes==b->rows.row_pitch_bytes&&
+           a->rows.rgba_bytes==b->rows.rgba_bytes&&
+           a->rows.staging_bytes==b->rows.staging_bytes&&
+           a->staging_allocation_bytes==b->staging_allocation_bytes&&
+           a->image_allocation_bytes==b->image_allocation_bytes&&
+           a->image_alignment_bytes==b->image_alignment_bytes;
+}
+
+static int foj_stage341_write_ready_marker(void) {
+    static const char marker[]=
+        "FOJ_STAGE341_PRIVATE_DDS_FRAME_READY_V1 width=256 height=256 "
+        "native_upload=1 presented_frames=2\n";
+    FILE *const file=fopen(
+        "sdmc:/switch/foj/gpu/foj-stage341-private-dds-frame-ready.txt","wx");
+    if(!file)return 0;
+    const size_t saved=fwrite(marker,1u,sizeof(marker)-1u,file);
+    const int flushed=fflush(file);
+    const int closed=fclose(file);
+    return saved==sizeof(marker)-1u&&flushed==0&&closed==0;
 }
 #endif
 
@@ -964,7 +1064,21 @@ int main(int argc,char **argv) {
     const FojGpuBatch *batch_source=NULL;
     size_t vertex_count=0u;
     size_t batch_count=0u;
-#if defined(FOJ_GPU_STAGE329_PATCH_STREAM)
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+    static const FojGpuVertex stage341_vertices[6]={
+        {-0.82f, 0.82f,0.5f,1.0f,0.0f,0.0f},
+        { 0.82f, 0.82f,0.5f,1.0f,1.0f,0.0f},
+        {-0.82f,-0.82f,0.5f,1.0f,0.0f,1.0f},
+        { 0.82f, 0.82f,0.5f,1.0f,1.0f,0.0f},
+        { 0.82f,-0.82f,0.5f,1.0f,1.0f,1.0f},
+        {-0.82f,-0.82f,0.5f,1.0f,0.0f,1.0f}
+    };
+    static const FojGpuBatch stage341_batches[1]={{0u,6u,0u}};
+    vertex_source=stage341_vertices;
+    batch_source=stage341_batches;
+    vertex_count=6u;
+    batch_count=1u;
+#elif defined(FOJ_GPU_STAGE329_PATCH_STREAM)
     if(!stage329_prepare_corner_patch())goto cleanup;
     vertex_source=stage329_gpu_vertices;
     batch_source=stage329_gpu_batches;
@@ -996,7 +1110,9 @@ int main(int argc,char **argv) {
                                   FOJ_RESEARCH_TEXTURE_COUNT,
                                   DK_MEMBLOCK_ALIGNMENT,&actor_upload)!=FOJ_GPU_STREAM_OK ||
         actor_upload.payload_bytes!=vertex_count*sizeof(FojGpuVertex) ||
-#if defined(FOJ_GPU_STAGE329_PATCH_STREAM) && \
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+        actor_upload.material_mask!=(UINT32_C(1)<<0u))
+#elif defined(FOJ_GPU_STAGE329_PATCH_STREAM) && \
     defined(FOJ_GPU_STAGE330_PARTITION_DRAW)
         actor_upload.material_mask!=
             ((UINT32_C(1)<<0u)|(UINT32_C(1)<<1u)))
@@ -1190,7 +1306,22 @@ int main(int argc,char **argv) {
                         i*PIXEL_STAGING_STRIDE;
         FojAtlasRgba8Info atlas={0};
         FojAtlasDdsStatus dds_status=FOJ_ATLAS_DDS_INVALID_ARGUMENT;
-#if defined(FOJ_GPU_STAGE329_PATCH_STREAM)
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+        int loaded=0;
+        if(i==0u) {
+            loaded=foj_stage341_load_private_dds(
+                device,pixels,PIXEL_STAGING_STRIDE,&atlas)?1:-1;
+            dds_status=loaded>0?FOJ_ATLAS_DDS_LOADED:
+                                FOJ_ATLAS_DDS_INVALID_ARGUMENT;
+        } else if(i==1u) {
+            /* The second descriptor is an unused generated fallback. */
+            loaded=0;
+            dds_status=FOJ_ATLAS_DDS_MISSING;
+        } else {
+            loaded=-1;
+            dds_status=FOJ_ATLAS_DDS_INVALID_ARGUMENT;
+        }
+#elif defined(FOJ_GPU_STAGE329_PATCH_STREAM)
         /* Stage329 never reads user DDS files. Slot 0 is an invented fallback;
          * slot 1 is the tile prepared by Stage328 from four generated pages. */
         const int loaded=1;
@@ -1276,6 +1407,11 @@ int main(int argc,char **argv) {
                    device,cmd,&info,pixels,atlas.pixel_bytes,
                    256u,&stage338_source))
                 goto cleanup;
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+            if(!foj_stage341_same_gpu_plan(
+                   &stage341_prepared.gpu,&stage338_source.plan))
+                goto cleanup;
+#endif
             texture_views[i]=stage338_source.image_view;
         } else
 #endif
@@ -1647,6 +1783,9 @@ int main(int argc,char **argv) {
     padConfigureInput(1,HidNpadStyleSet_NpadStandard);
     PadState pad;
     padInitializeDefault(&pad);
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+    int stage341_ready_marker_written=0;
+#endif
     unsigned frame=0;
     while (appletMainLoop()) {
         padUpdate(&pad);
@@ -1675,7 +1814,13 @@ int main(int argc,char **argv) {
          * host simulation: never submit a scene list after a fatal DDS,
          * select only the actual acquired framebuffer's lists, and keep
          * the first 120 frames of each observed material in order. */
-#if defined(FOJ_GPU_THREE_LAYER_BLEND)
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+        if(dds_fatal) {
+            exit_status=5;
+            break;
+        }
+        const DkCmdList chosen=commands[slot][foj_smoke_color_for_frame(frame)];
+#elif defined(FOJ_GPU_THREE_LAYER_BLEND)
         /* Three-slot diagnostics are isolated from the legacy two-slot
          * host planner. Keep a failed final slot visibly displayed. */
         const unsigned status_frames=FOJ_GPU_DDS_STATUS_FRAMES_PER_SLOT;
@@ -1710,6 +1855,16 @@ int main(int argc,char **argv) {
 #endif
         dkQueuePresentImage(queue,swapchain,slot);
         ++frame;
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+        if(frame>=2u && !stage341_ready_marker_written) {
+            dkQueueWaitIdle(queue);
+            if(!foj_stage341_write_ready_marker()) {
+                exit_status=7;
+                break;
+            }
+            stage341_ready_marker_written=1;
+        }
+#endif
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
         ++boot_frames;
         exit_status=dds_fatal?5:0;
