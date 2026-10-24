@@ -135,6 +135,44 @@ static void init_view(FojStage343ModelView *view,
     view->texture_capacity = texture_capacity;
 }
 
+static size_t make_static_fixture(uint8_t *data, size_t capacity) {
+    Writer w = {data, capacity, 0u};
+    put8(&w, 0x0bu); put8(&w, 0x09u); put8(&w, 0x00u); put8(&w, 2u);
+    put_shape(&w, "meshStaticA", "matA", 0, 0, 0u, 0.0f);
+    put_shape(&w, "meshStaticB", "matB", 1, 0, 0u, 2.0f);
+    put8(&w, 0x07u);
+    put8(&w, 0x06u); put_string16(&w, "matA");
+    put16(&w, 1u); put_string16(&w, "texA.tga");
+    put8(&w, 0x06u); put_string16(&w, "matB");
+    put16(&w, 1u); put_string16(&w, "texB.tga");
+    put8(&w, 0x0cu);
+    return w.size;
+}
+
+static void test_static_no_rig_mesh_is_valid(void) {
+    uint8_t data[4096];
+    FojStage345BmodelMesh mesh = {0};
+    size_t size = make_static_fixture(data, sizeof(data));
+    assert(foj_stage345_bmodel_to_rigmesh(data, size, &mesh) == FOJ_STAGE345_OK);
+    assert(mesh.mesh.bone_count == 0u && mesh.mesh.bind_bones == NULL);
+    assert(mesh.mesh.vertex_count == 6u && mesh.mesh.section_count == 2u);
+    assert(mesh.section_material_indices[0] == 0u);
+    assert(mesh.section_material_indices[1] == 1u);
+    assert(mesh.texture_count == 2u);
+    assert(foj_stage345_mesh_integrity_ready(&mesh));
+    foj_stage345_bmodel_mesh_free(&mesh);
+
+    /* Removing the rig from a model that still contains skin blocks must fail closed. */
+    size = make_fixture(data, sizeof(data));
+    assert(size > 67u);
+    size -= 67u;
+    data[size - 1u] = 0x0cu;
+    memset(&mesh, 0, sizeof(mesh));
+    assert(foj_stage345_bmodel_to_rigmesh(data, size, &mesh) == FOJ_STAGE345_RIG);
+    assert(mesh.mesh.bind_bones == NULL && mesh.mesh.vertices == NULL &&
+           mesh.mesh.attributes == NULL && mesh.mesh.sections == NULL);
+}
+
 static void test_bridge_preserves_multisection_geometry_skin_and_materials(void) {
     uint8_t data[4096];
     FojStage345BmodelMesh mesh;
@@ -256,12 +294,13 @@ static void test_nonempty_output_is_rejected_unchanged(void) {
 }
 
 int main(void) {
+    test_static_no_rig_mesh_is_valid();
     test_bridge_preserves_multisection_geometry_skin_and_materials();
     test_bind_pose_skinning_keeps_positions_unchanged();
     test_invalid_bone_index_refuses_without_partial_output();
     test_ambiguous_material_refuses_without_partial_output();
     test_more_than_five_influences_and_truncation_are_rejected();
     test_nonempty_output_is_rejected_unchanged();
-    puts("Stage345 BMODEL native mesh bridge tests passed");
+    puts("Stage345 BMODEL native mesh bridge tests passed, including static meshes");
     return 0;
 }
