@@ -1,0 +1,169 @@
+# Stage337 — generated-only native GPU upload/readback
+
+**Purpose:** close the narrow gate between Stage336's *recorded* transfer and
+proof of GPU execution. No original PS3 package, DDS, extracted texture,
+private capture, member name, game code or proprietary pixel data is used.
+
+## The test
+
+A standalone devkitA64 NRO generates a unique 74 × 81 RGBA8 pattern with
+varying alpha. It calls the unchanged Stage336 SDK-native adapter with a
+64-byte row alignment, records and submits `dkCmdBufCopyBufferToImage`,
+waits for the GPU queue, independently records `dkCmdBufCopyImageToBuffer`,
+waits again, and compares all 5,994 RGBA pixels byte-for-byte. Any failed
+allocation, GPU command list, guest queue state, or pixel mismatch rejects the
+proof. The guest opens its success receipt **exclusively** and only after the
+guest-side GPU readback and comparison. A stale or forged receipt is refused.
+
+Stage337 deliberately uses two separate queue submissions (upload then
+readback), plus synchronization. It does not claim zero-copy performance or
+production throughput and must not be generalized to unsynchronized pipelines.
+
+## Evidence gate
+
+CI independently tests strict receipt parsing, builds and validates the NRO
+using devkitA64 and runs the new NRO inside NeXium. The guest writes only a
+fixed generated-data receipt. Public CI exports only the structured
+allowlisted aggregate result and the downloaded emulator archive digest.
+Raw guest logs are never uploaded; failure is not treated as success.
+
+**Scope:** Stage337 verifies a *native GPU image transfer roundtrip* if and only
+if the NeXium job passes. It does not draw the image to a framebuffer, capture
+an onscreen texture, or verify the Nintendo Switch physical console. A fresh,
+independent rendered-frame gate is needed before using original DDS. The
+owner-local original source and its CPU-parity reports remain in private Drive.
+
+## Stage337.1 — failure-only bounded execution telemetry
+
+The initial run on `c5ef61a6` confirmed a valid NRO and evidence parser but
+**failed** its real NeXium job: no native readback receipt appeared during 150
+seconds; the driver reported a timeout. The first run cannot distinguish
+emulator startup, device creation, upload submission, GPU idle wait or actual
+pixel comparison. Do not claim the texture reached or failed a particular GPU
+phase without fresh execution evidence.
+
+Stage337.1 therefore adds a separate, best-effort, exclusive synthetic numeric
+progress file (`FOJ337P1 stage=NN`) with a cap of 24 records and flushes between
+phases. Numeric checkpoints are recorded before and after device/queue
+creation, recording upload, waiting for GPU completion, readback, and comparing
+RGBA pixels. On failure the driver prints **only** the validated final
+2-digit phase, or `none` for absent or malformed evidence. Original/raw guest
+logs remain unpublished, and the progress file is never a success condition or
+public artifact. New unit fixtures assert that progress markers cannot be
+accepted by the receipt checker.
+
+The follow-up GitHub run is the only authority for the diagnosis. This change
+does not increase pixel/texture scope or modify Stage336's buffer allocation.
+
+
+## Stage337.2 diagnostic correction
+
+A failure must preserve the last reached stage, rather than append a generic
+failure code that hides it. The guest now emits stage 13 only after a successful
+byte-for-byte readback. On any failure, the last record remains the last
+completed milestone. A numeric progress record is diagnostic only and never
+accepted as a GPU success receipt.
+
+
+## Stage337.3 — real GPU readback failure classification
+
+After the second queue wait, a queue-error state emits diagnostic stage 80.
+A healthy queue reaches stage 12 *before* comparing pixels. Any mismatch
+causes a strict refusal with one synthetic-only numeric diagnostic code:
+81 means all active returned bytes still equal the 0xA5 initialization
+pattern; 82 means only alpha differs; 83 means only RGB differs; 84 means
+mixed RGBA differences. A fully matching buffer alone reaches stage 13 and
+may generate the exclusive success receipt. Stages 80–84 are **never**
+accepted as GPU proof, and no raw image, private game assets or guest logs
+are exported. These diagnostics isolate the next possible GPU cache/fence or
+copy-layout issue without changing the previously verified upload contract.
+
+
+## Stage337.4 — explicit GPU-cache visibility fence
+
+Previous exact-head NeXium run 40049012729 reported stage 84 after two GPU
+queue waits, with a healthy GPU queue and mixed RGB/alpha mismatch. This is
+not a successful GPU image readback. The returned content was not wholly
+the unchanged 0xA5 CPU initialization sentinel.
+
+The readback DkMemBlock is DkMemBlockFlags_CpuUncached but
+DkMemBlockFlags_GpuCached. The documented SDK GPU-to-CPU coherency contract
+calls for dkQueueSignalFence(queue, &fence, true) and
+ dkQueueWaitFence(queue, &fence) to force dirty GPU cache lines to RAM before
+CPU reads. Stage337.4 performs that explicit fence after the second wait-idle
+and before exact RGBA comparison. Stage 85 isolates any queue error during
+this new flush, with all diagnostic stages still rejected by the success
+receipt parser. Results must be judged exclusively from the fresh NeXium
+runtime check; neither compilation nor a stage code is success proof.
+
+
+## Stage337.5 — classify persistent synthetic readback mismatch
+
+The Stage337.4 exact-head real NeXium job 120740430437 failed with
+STAGE337_BOUNDED_GUEST_DIAG last_stage=84 even after an explicit flushed
+GPU fence. Successful NRO build/host tests do not prove GPU copy correctness.
+Stage337.5 adds bounded numeric-only synthetic-data categorization:
+86 all zero bytes, 87 all 0xff bytes, 88 full RGBA/BGRA channel reversal,
+89 tight-packed output despite a padded copy rowLength, 90 reversed rows,
+91 first logical row matches but later rows differ. Existing 81–85 and
+12/13 semantics remain unchanged. These codes are strictly diagnostic and
+never accepted as a native success receipt. No GPU pixels, guest logs,
+original PS3 resources or paths are sent to public CI artifacts.
+
+
+## Stage337.6 — isolate NeXium image copy row alignment
+
+The exact Stage337.5 NeXium job 120741774047 failed with stage 91:
+the first 74-pixel RGBA row matched the generated source exactly, while
+subsequent rows did not. This is NOT GPU image-copy success, and it is not
+proof that row pitch is the only cause. No generic cache flush resolved the
+previous mixed-channel error. Stage337.6 changes ONLY the synthetic test
+texture row-alignment input to Stage336 from 64 to 256 bytes. The 74x81
+RGBA8 test surface now has a 512-byte (128-pixel) source/readback pitch
+rather than the previous 320-byte (80-pixel) pitch. Both fit the strict
+Stage335/336 bounded allocation contract. All guest output remains
+synthetic-only; success still requires all 5994 RGBA pixels to match.
+A new independent native NeXium run must establish whether this alignment
+experiment works. It must not be reported as a proven SDK alignment
+requirement from one trial.
+
+
+## Stage337.7 — bounded alternate row-pitch readback probe
+
+Stage337.6's live NeXium run 40050810337 FAILED with last_stage=91
+with 256-byte requested alignment and a 512-byte row pitch (128 pixels).
+This reproduces the first-row-only success and rules out a simple
+64-byte-to-256-byte row-alignment fix. Stage337.7 keeps the generated
+74x81 texture and 512-byte declared pitch, but on FAILURE probes whether
+the complete synthetic RGBA image appears in the readback allocation with
+another uniform row byte pitch: 320 (code 92), 384 (code 93), or 448
+(code 94). Each probe explicitly bounds the final row within the original
+allocated buffer. These are numeric failure diagnostics only, not a
+success witness or permission to relax the exact pixel comparison.
+If no alternate pitch fully matches, the prior code 91 remains for a
+matching first row and mismatched later rows. A new NeXium run must prove
+any result before changing deko3d copy arguments. No private PS3 assets,
+raw guest logs or pixel arrays are exported.
+
+
+## Stage337.8 — confirmed byte-versus-pixel SDK copy contract bug
+
+The exact Stage337.7 NeXium run 40051273169 failed with code 91, so
+none of the tested alternate byte pitches resolved the first-row-only
+mismatch. Inspection of upstream **actual deko3d source**, not an assumption
+from field names, identified a concrete unit mismatch in our Stage336 and
+Stage337 code. Both `dkCmdBufCopyBufferToImage` and
+`dkCmdBufCopyImageToBuffer` in deko3d `source/dk_image.cpp` assign
+`src/dst->rowLength` directly to their internal byte stride
+`m_horizontal`. The `imageHeight` input is directly used as a byte layer
+stride, defaulting when zero. Our earlier `DkCopyBuf` values mistakenly
+supplied 80/128 **pixels** in `rowLength` where the SDK expects 320/512
+**bytes**, causing only the first row to line up. The correction passes
+`plan.rows.row_pitch_bytes` in both directions with a zero default byte
+layer-stride. Generated-only C regression tests check odd width 74 at
+64-byte and 256-byte alignments, including actual byte pitch, logical
+pixel count and padded allocation capacity. This is a source-level confirmed
+bug, but the FIX's GPU success remains pending until fresh actual NeXium
+pixel readback returns the strictly authenticated diff=0 receipt.
+
+Upstream implementation: https://github.com/devkitPro/deko3d/blob/master/source/dk_image.cpp .

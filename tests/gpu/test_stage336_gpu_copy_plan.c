@@ -18,6 +18,18 @@ static void odd_and_large(void) {
     assert(p.staging_allocation_bytes==28672u);
     assert(p.image_allocation_bytes==528384u);
     assert(p.image_alignment_bytes==4096u);
+    /* The native DkCopyBuf.rowLength MUST use row_pitch_bytes.
+     * 74 RGBA pixels = 296 bytes; 64-byte align -> 320 bytes.
+     * With 256-byte alignment the native row pitch is 512 bytes,
+     * not 80/128 pixels, respectively. */
+    assert(p.rows.row_pitch_bytes==320u &&
+           p.rows.row_pitch_bytes!=p.rows.row_length_pixels);
+    assert(foj_stage336_gpu_copy_plan(&d,d.rgba_bytes,256u,
+                                     524289u,512u,&p));
+    assert(p.rows.row_length_pixels==128u);
+    assert(p.rows.row_pitch_bytes==512u);
+    assert(p.rows.staging_bytes==41472u);
+    assert(p.staging_allocation_bytes==45056u);
     d=img(2048u,2048u);
     assert(foj_stage336_gpu_copy_plan(&d,d.rgba_bytes,4096u,
                                      16809984u,65536u,&p));
