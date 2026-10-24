@@ -44,6 +44,51 @@ static size_t make_mesh(uint8_t *data) {
     return p;
 }
 
+static size_t make_static_mesh(uint8_t *data) {
+    memset(data,0,700);
+    memcpy(data,"FOJRM001",8);
+    u32(data+8,1);u32(data+12,0);u32(data+16,6);
+    u32(data+20,2);u32(data+24,0);
+    size_t p=28;
+    u32(data+p,0);u32(data+p+4,3);p+=8;
+    u32(data+p,3);u32(data+p+4,3);p+=8;
+    for (int i=0;i<6;++i) {
+        float x=-.8f+(float)(i%3)*.2f,y=-.4f+(float)(i/3)*.8f;
+        f32(data+p,x);f32(data+p+4,y);f32(data+p+8,0);
+        f32(data+p+12,(float)(i%3)/2.f);f32(data+p+16,(float)i/6.f);
+        f32(data+p+20,0);f32(data+p+24,0);f32(data+p+28,1);
+        u32(data+p+32,0);
+        p+=36;
+        for (int j=0;j<5;++j) {u32(data+p,0);f32(data+p+4,0);p+=8;}
+    }
+    return p;
+}
+
+static void test_unskinned_static_mesh_roundtrip(void) {
+    uint8_t data[700];
+    size_t n=make_static_mesh(data);
+    assert(n==28+2*8+6*76);
+    FojRigMesh mesh={0};
+    assert(foj_rigmesh_parse(data,n,&mesh)==FOJ_RIGMESH_OK);
+    assert(mesh.bone_count==0 && mesh.bind_bones==NULL);
+    assert(mesh.vertex_count==6 && mesh.section_count==2);
+    assert(mesh.sections[0].start_vertex==0 && mesh.sections[0].vertex_count==3);
+    assert(mesh.sections[1].start_vertex==3 && mesh.sections[1].vertex_count==3);
+    for (size_t i=0;i<mesh.vertex_count;++i)
+        assert(mesh.vertices[i].influence_count==0);
+    FojAnimTrack track={.parent=-1};
+    FojAnimClip clip={.track_count=1,.tracks=&track};
+    assert(!foj_rigmesh_clip_matches(&mesh,&clip));
+    foj_rigmesh_free(&mesh);
+    assert(!mesh.bind_bones && !mesh.vertices && !mesh.attributes && !mesh.sections);
+
+    n=make_static_mesh(data);
+    u32(data+28+2*8+32,1); /* static vertex falsely claims one influence */
+    u32(data+28+2*8+36,0);f32(data+28+2*8+40,1.f);
+    assert(foj_rigmesh_parse(data,n,&mesh)==FOJ_RIGMESH_FORMAT);
+    assert(!mesh.bind_bones && !mesh.vertices);
+}
+
 static void test_synthetic_rigmesh_roundtrip(void) {
     uint8_t data[700];
     size_t n=make_mesh(data);
@@ -109,7 +154,8 @@ static void test_header_corruption_rejected_without_leaks(void) {
 
 int main(void) {
     test_synthetic_rigmesh_roundtrip();
+    test_unskinned_static_mesh_roundtrip();
     test_header_corruption_rejected_without_leaks();
-    puts("FOJRM001 parser: synthetic sections/bones/weights checked");
+    puts("FOJRM001 parser: static and rigged sections/bones/weights checked");
     return 0;
 }
