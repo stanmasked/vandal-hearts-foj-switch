@@ -103,6 +103,20 @@ class Stage341FrameGateTests(unittest.TestCase):
         self.assertEqual(result["frame_b"]["bad_channels"], 0)
         self.assertFalse(result["physical_switch_verified"])
 
+    def test_private_mode_uses_separate_runtime_checksum_and_no_public_metadata(self):
+        (self.evidence / "generated-source.json").unlink()
+        (self.evidence / "nexium-archive.sha256").rename(
+            self.evidence / "nexium-runtime.sha256"
+        )
+        (self.evidence / "nexium-runtime.sha256").write_text(
+            "b" * 64 + "  run-nexium.sh\\n", encoding="ascii"
+        )
+        result = audit_frames(self.source, self.sd, self.evidence, False)
+        self.assertEqual(result["generated_only"], False)
+        self.assertEqual(result["independent_frames_verified"], 2)
+        with self.assertRaises(ValueError):
+            audit_frames(self.source, self.sd, self.evidence, True)
+
     def test_invalid_or_compressed_dds_is_rejected(self):
         with self.assertRaises(ValueError):
             decode_bgra8_dds(b"not-a-dds")
