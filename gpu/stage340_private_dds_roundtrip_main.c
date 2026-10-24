@@ -227,10 +227,7 @@ static int run_native(void) {
     read_cmd_mem = command_memory(device);
     if (!read_cmd_mem) goto cleanup;
     read_cmd = new_command_buffer(device, read_cmd_mem);
-    if (!read_cmd) {
-        dkMemBlockDestroy(read_cmd_mem);
-        goto cleanup;
-    }
+    if (!read_cmd) goto cleanup;
     progress(8u);
 
     const DkCopyBuf destination = {
