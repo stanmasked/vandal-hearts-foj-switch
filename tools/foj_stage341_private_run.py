@@ -95,7 +95,8 @@ def run(source: Path, nexium: Path, nro: Path, shader_dir: Path,
         raise ValueError("Stage341 refuses a stale guest marker")
 
     runtime_hash = sha_file(nexium)
-    checksum_path = evidence / "nexium-archive.sha256"
+    nro_hash_before = sha_file(nro)
+    checksum_path = evidence / "nexium-runtime.sha256"
     checksum_path.write_text(
         f"{runtime_hash}  {nexium.name}\n", encoding="ascii"
     )
@@ -198,22 +199,40 @@ def run(source: Path, nexium: Path, nro: Path, shader_dir: Path,
                     pass
                 proc.wait(timeout=2)
 
-    if sha_file(source) != source_hash or sha_file(source_copy) != source_hash:
-        raise ValueError("Stage341 source or staged SD copy changed during the run")
+    source_hash_after = sha_file(source)
+    staged_copy_hash_after = sha_file(source_copy)
+    nro_hash_after = sha_file(nro)
+    runtime_hash_after = sha_file(nexium)
+    if (source_hash_after != source_hash or
+            staged_copy_hash_after != source_hash or
+            nro_hash_after != nro_hash_before or
+            runtime_hash_after != runtime_hash):
+        raise ValueError("Stage341 source, staged copy, NRO or runtime changed during the run")
+    staged_copy_hash_before = sha_file(source_copy)
+    if staged_copy_hash_before != source_hash:
+        raise ValueError("Stage341 staged source identity changed before final evidence audit")
     audit = audit_frames(source_copy, sd, evidence, require_generated_metadata=False)
     report = {
         "schema": "foj.stage341.owner_private_original_dds_shader_frame.v1",
         "owner_private": True,
         "source_sha256": source_hash,
+        "source_sha256_before": source_hash,
+        "source_sha256_after": source_hash_after,
+        "staged_copy_sha256_before": source_hash,
+        "staged_copy_sha256_after": staged_copy_hash_after,
         "decoded_rgba_sha256_reference": source_info["decoded_rgba_sha256_reference"],
         "source_format": source_info["format"],
         "source_width": source_info["width"],
         "source_height": source_info["height"],
         "source_bytes": source_info["source_bytes"],
-        "source_unchanged": True,
-        "staged_copy_unchanged": True,
-        "nro_sha256": sha_file(nro),
-        "nexium_launcher_sha256": runtime_hash,
+        "source_unchanged": source_hash_after == source_hash,
+        "staged_copy_unchanged": staged_copy_hash_after == source_hash,
+        "nro_sha256": nro_hash_after,
+        "nro_sha256_before": nro_hash_before,
+        "nro_sha256_after": nro_hash_after,
+        "nexium_launcher_sha256": runtime_hash_after,
+        "nexium_launcher_sha256_before": runtime_hash,
+        "nexium_launcher_sha256_after": runtime_hash_after,
         "native_receipt_verified": True,
         "real_window_pid_verified": True,
         "framebuffer_audit": audit,
