@@ -15,7 +15,9 @@ import subprocess
 import time
 
 from tools.foj_stage340_private_run import REPO_ROOT, private_source, write_report
-from tools.foj_stage341_frame_gate import MARKER, MARKER_NAME, audit_frames
+from tools.foj_stage341_frame_gate import (
+    MARKER, MARKER_NAME, audit_frames, decode_bgra8_dds,
+)
 
 
 def under(path: Path, parent: Path) -> bool:
@@ -85,6 +87,11 @@ def run(source: Path, nexium: Path, nro: Path, shader_dir: Path,
     staged_copy_hash_before = sha_file(source_copy)
     if staged_copy_hash_before != source_hash:
         raise ValueError("Stage341 private SD source copy differs from source")
+    reference_rgba = decode_bgra8_dds(source_copy.read_bytes())
+    reference_hash = hashlib.sha256(reference_rgba).hexdigest()
+    if reference_hash != source_info["decoded_rgba_sha256_reference"]:
+        raise ValueError("Stage341 independent CPU references disagree on the source DDS")
+    del reference_rgba
     for name, payload in shaders.items():
         target = gpu / name
         with target.open("xb") as out:
@@ -221,6 +228,8 @@ def run(source: Path, nexium: Path, nro: Path, shader_dir: Path,
         "staged_copy_sha256_before": staged_copy_hash_before,
         "staged_copy_sha256_after": staged_copy_hash_after,
         "decoded_rgba_sha256_reference": source_info["decoded_rgba_sha256_reference"],
+        "frame_gate_decoded_rgba_sha256": reference_hash,
+        "cpu_reference_parity_verified": True,
         "source_format": source_info["format"],
         "source_width": source_info["width"],
         "source_height": source_info["height"],
