@@ -186,7 +186,7 @@ def audit_frames(dds_path: Path, sd_root: Path, evidence: Path,
         raise ValueError("Stage341 private evidence must not be mislabeled as generated-only")
     runtime_hash = _regular(evidence / "nexium-archive.sha256", 256).decode("ascii").strip()
     runtime_pattern = (
-        r"[0-9a-f]{64}  nexium-linux-x86_64\\.tar\\.gz"
+        r"[0-9a-f]{64}  nexium-linux-x86_64\.tar\.gz"
         if require_generated_metadata else
         r"[0-9a-f]{64}  [A-Za-z0-9._-]{1,100}"
     )
