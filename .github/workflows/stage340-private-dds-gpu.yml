@@ -45,7 +45,22 @@ jobs:
           set -euo pipefail
           python3 -m pip install Pillow
           python3 -m unittest discover -s tests/emulator -p 'test_stage340_private_dds_gate.py' -v
-          python3 -m unittest discover -s tests/emulator -p 'test_stage339_private_dds_bridge.py' -v
+          for compiler in gcc clang; do
+            "$compiler" -std=c11 -O2 -Wall -Wextra -Werror -pedantic -Igpu \
+              gpu/stage332_dds_source.c gpu/stage335_source_staging.c \
+              gpu/stage336_gpu_copy_plan.c gpu/stage339_private_dds_bridge.c \
+              tests/gpu/test_stage339_private_dds_bridge.c \
+              -o "/tmp/foj-stage339-$compiler"
+            "/tmp/foj-stage339-$compiler"
+          done
+          clang -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -fno-sanitize-recover=all -Igpu \
+            gpu/stage332_dds_source.c gpu/stage335_source_staging.c \
+            gpu/stage336_gpu_copy_plan.c gpu/stage339_private_dds_bridge.c \
+            tests/gpu/test_stage339_private_dds_bridge.c \
+            -o /tmp/foj-stage339-sanitized
+          /tmp/foj-stage339-sanitized
           python3 -m compileall -q tools/foj_stage340_private_dds_gate.py
           bash -n tools/foj_stage340_nexium_drive.sh
           cc -std=c11 -Wall -Wextra -Werror -pedantic \
