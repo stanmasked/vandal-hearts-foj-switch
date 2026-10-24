@@ -44,6 +44,13 @@
 #endif
 #include "stage336_native_upload.h"
 #endif
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+#if !defined(FOJ_GPU_DRAW_TRIANGLE) || defined(FOJ_GPU_STAGE329_PATCH_STREAM) || defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
+#error "Stage341 requires the isolated private-DDS textured-quad path"
+#endif
+#include "stage332_dds_source.h"
+#include "stage336_native_upload.h"
+#endif
 #if defined(FOJ_GPU_STAGE302_GENERATED_PAGE_PROBE)
 #include "stage302_synthetic_page_probe.h"
 #endif
@@ -87,6 +94,97 @@ _Static_assert((size_t)FOJ_RESEARCH_MATERIAL_COUNT ==
 
 enum { SCREEN_WIDTH=1280, SCREEN_HEIGHT=720, BUFFER_COUNT=2 };
 enum { CMD_MEMORY_SIZE=0x10000 };
+
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+enum { FOJ_STAGE341_SOURCE_DDS_BYTES=128+256*256*4 };
+static uint8_t stage341_source_dds[FOJ_STAGE341_SOURCE_DDS_BYTES];
+
+/* Stage340-compatible bounded BGRA8 intake. This reads the source twice and
+ * decodes through Stage332, so the owner-profile DDS header is accepted only
+ * when the same strict parser accepts it. No synthetic fallback is permitted
+ * for material zero in Stage341. */
+static int stage341_read_source_dds(
+    const char *path,uint8_t *rgba,size_t capacity,
+    FojAtlasRgba8Info *atlas,FojAtlasDdsStatus *status) {
+    FILE *file=NULL;
+    long measured;
+    size_t length;
+    uint8_t check[4096];
+    if (!path || !rgba || !atlas || !status ||
+        capacity<256u*256u*4u) {
+        if (status) *status=FOJ_ATLAS_DDS_INVALID_ARGUMENT;
+        return -1;
+    }
+    file=fopen(path,"rb");
+    if (!file) {
+        *status=FOJ_ATLAS_DDS_MISSING;
+        return 0;
+    }
+    if (fseek(file,0,SEEK_END)!=0) {
+        *status=FOJ_ATLAS_DDS_IO_FAILURE;
+        goto fail;
+    }
+    measured=ftell(file);
+    if (measured!=(long)sizeof(stage341_source_dds) ||
+        fseek(file,0,SEEK_SET)!=0) {
+        *status=FOJ_ATLAS_DDS_INVALID_FORMAT;
+        goto fail;
+    }
+    length=(size_t)measured;
+    if (fread(stage341_source_dds,1u,length,file)!=length ||
+        fgetc(file)!=EOF || ferror(file)) {
+        *status=FOJ_ATLAS_DDS_IO_FAILURE;
+        goto fail;
+    }
+    if (fseek(file,0,SEEK_SET)!=0) {
+        *status=FOJ_ATLAS_DDS_IO_FAILURE;
+        goto fail;
+    }
+    for (size_t offset=0u;offset<length;) {
+        const size_t amount=length-offset<sizeof(check)?
+            length-offset:sizeof(check);
+        if (fread(check,1u,amount,file)!=amount ||
+            memcmp(check,stage341_source_dds+offset,amount)!=0) {
+            *status=FOJ_ATLAS_DDS_SOURCE_CHANGED;
+            goto fail;
+        }
+        offset+=amount;
+    }
+    if (fgetc(file)!=EOF || ferror(file)) {
+        *status=FOJ_ATLAS_DDS_IO_FAILURE;
+        goto fail;
+    }
+    if (fclose(file)!=0) {
+        *status=FOJ_ATLAS_DDS_IO_FAILURE;
+        return -1;
+    }
+    file=NULL;
+    FojStage332DdsInfo inspected={0},decoded={0};
+    if (!foj_stage332_dds_inspect(stage341_source_dds,length,&inspected) ||
+        inspected.width!=256u || inspected.height!=256u ||
+        inspected.mip_levels!=1u ||
+        inspected.format!=FOJ_STAGE332_BGRA8 ||
+        inspected.rgba_bytes!=256u*256u*4u ||
+        !foj_stage332_dds_decode(stage341_source_dds,length,rgba,capacity,
+                                 &decoded) ||
+        decoded.width!=inspected.width ||
+        decoded.height!=inspected.height ||
+        decoded.mip_levels!=inspected.mip_levels ||
+        decoded.format!=inspected.format ||
+        decoded.rgba_bytes!=inspected.rgba_bytes) {
+        *status=FOJ_ATLAS_DDS_INVALID_FORMAT;
+        return -1;
+    }
+    atlas->width=inspected.width;
+    atlas->height=inspected.height;
+    atlas->pixel_bytes=inspected.rgba_bytes;
+    *status=FOJ_ATLAS_DDS_LOADED;
+    return 1;
+fail:
+    if (file) (void)fclose(file);
+    return -1;
+}
+#endif
 
 /* 24-byte GPU upload format used by original FoJ vertex staging too.
  * The vertices are invented and do not encode commercial game assets.
@@ -792,6 +890,11 @@ int main(int argc,char **argv) {
     /* Owned until all issued draw commands have completed. */
     FojStage336NativeTexture stage338_source={0};
 #endif
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+    /* The selected private DDS stays external to the NRO and alive through
+     * all submitted draws. Stage341 uses Stage336's native image uploader. */
+    FojStage336NativeTexture stage341_source={0};
+#endif
     DkMemBlock texture_images_mem[FOJ_RESEARCH_TEXTURE_COUNT]={0};
     DkImage texture_images[FOJ_RESEARCH_TEXTURE_COUNT];
     DkImageView texture_views[FOJ_RESEARCH_TEXTURE_COUNT];
@@ -971,6 +1074,25 @@ int main(int argc,char **argv) {
     vertex_count=stage329_gpu_info.vertices_written;
     batch_count=stage329_gpu_info.batches_written;
 #else
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+    /* Fixed bounded clip-space quad. Top-left framebuffer UV is (0,0),
+     * bottom-right is (1,1); samples are nearest/clamp-to-edge. */
+    /* Keep both triangles counter-clockwise in clip space, matching the
+     * established research-mesh winding even if culling defaults change. */
+    FojGpuVertex stage341_quad[6]={
+        {-0.8f,-0.8f,0.5f,1.0f,0.0f,1.0f},
+        { 0.8f,-0.8f,0.5f,1.0f,1.0f,1.0f},
+        {-0.8f, 0.8f,0.5f,1.0f,0.0f,0.0f},
+        { 0.8f,-0.8f,0.5f,1.0f,1.0f,1.0f},
+        { 0.8f, 0.8f,0.5f,1.0f,1.0f,0.0f},
+        {-0.8f, 0.8f,0.5f,1.0f,0.0f,0.0f}
+    };
+    FojGpuBatch stage341_batch[1]={{0u,6u,0u}};
+    vertex_source=stage341_quad;
+    batch_source=stage341_batch;
+    vertex_count=6u;
+    batch_count=1u;
+#else
     FojGpuVertex research_vertices[FOJ_RESEARCH_VERTEX_COUNT];
     FojGpuBatch research_batches[FOJ_RESEARCH_BATCH_COUNT];
     FojGpuStreamInfo research_info;
@@ -989,6 +1111,7 @@ int main(int argc,char **argv) {
     batch_count=private_payload.report.actor.stream.batches_written;
 #endif
 #endif
+#endif
     if (foj_gpu_build_draw_plan(batch_source,batch_count,vertex_count,
                                  FOJ_RESEARCH_TEXTURE_COUNT,
                                  draw_ranges,FOJ_GPU_MAX_BATCHES)!=FOJ_GPU_STREAM_OK ||
@@ -996,7 +1119,9 @@ int main(int argc,char **argv) {
                                   FOJ_RESEARCH_TEXTURE_COUNT,
                                   DK_MEMBLOCK_ALIGNMENT,&actor_upload)!=FOJ_GPU_STREAM_OK ||
         actor_upload.payload_bytes!=vertex_count*sizeof(FojGpuVertex) ||
-#if defined(FOJ_GPU_STAGE329_PATCH_STREAM) && \
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+        actor_upload.material_mask!=(UINT32_C(1)<<0u))
+#elif defined(FOJ_GPU_STAGE329_PATCH_STREAM) && \
     defined(FOJ_GPU_STAGE330_PARTITION_DRAW)
         actor_upload.material_mask!=
             ((UINT32_C(1)<<0u)|(UINT32_C(1)<<1u)))
@@ -1178,8 +1303,13 @@ int main(int argc,char **argv) {
     if (!texture_data_cpu || texture_data_addr==DK_GPU_ADDR_INVALID)
         goto cleanup;
 
-#if !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) && \
-    !defined(FOJ_GPU_STAGE329_PATCH_STREAM)
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+    const char *const atlas_paths[FOJ_RESEARCH_TEXTURE_COUNT]={
+        "sdmc:/switch/foj/gpu/source.dds",
+        "sdmc:/switch/foj/gpu/material1.dds"
+    };
+#elif !defined(FOJ_GPU_PRIVATE_ACTOR_DRAW) && \
+      !defined(FOJ_GPU_STAGE329_PATCH_STREAM)
     const char *const atlas_paths[FOJ_RESEARCH_TEXTURE_COUNT]={
         "sdmc:/switch/foj/gpu/material0.dds",
         "sdmc:/switch/foj/gpu/material1.dds"
@@ -1190,7 +1320,16 @@ int main(int argc,char **argv) {
                         i*PIXEL_STAGING_STRIDE;
         FojAtlasRgba8Info atlas={0};
         FojAtlasDdsStatus dds_status=FOJ_ATLAS_DDS_INVALID_ARGUMENT;
-#if defined(FOJ_GPU_STAGE329_PATCH_STREAM)
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+        int loaded;
+        if (i==0u) {
+            loaded=stage341_read_source_dds(
+                atlas_paths[i],pixels,PIXEL_STAGING_STRIDE,&atlas,&dds_status);
+        } else {
+            loaded=0;
+            dds_status=FOJ_ATLAS_DDS_MISSING;
+        }
+#elif defined(FOJ_GPU_STAGE329_PATCH_STREAM)
         /* Stage329 never reads user DDS files. Slot 0 is an invented fallback;
          * slot 1 is the tile prepared by Stage328 from four generated pages. */
         const int loaded=1;
@@ -1244,6 +1383,17 @@ int main(int argc,char **argv) {
                 i,foj_atlas_dds_status_name(dds_status));
         dds_states[i]=dds_status;
         dds_observed_slots=i+1u;
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+        /* The original-source slot must be a successfully decoded DDS.
+         * Missing or rejected input is fatal; never substitute a synthetic
+         * texture for slot 0 in this owner-private evidence mode. */
+        if (i==0u && (loaded!=1 || atlas.width!=256u ||
+                      atlas.height!=256u ||
+                      atlas.pixel_bytes!=256u*256u*4u)) {
+            dds_fatal=1;
+            break;
+        }
+#endif
         if (loaded<0) {
             /* Preserve a visible GPU failure screen even when intake fails.
              * No partial source bytes are displayed as GPU pixels. */
@@ -1259,6 +1409,24 @@ int main(int argc,char **argv) {
                                       FOJ_RESEARCH_TEXTURE_BYTES};
         }
 
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+        if(i==0u) {
+            /* The same external source.dds accepted by the private intake
+             * gate is decoded to RGBA8, then uploaded through Stage336.
+             * The NRO contains no embedded source pixels or private hashes. */
+            const FojStage332DdsInfo info={
+                atlas.width,atlas.height,1u,FOJ_STAGE332_BGRA8,
+                atlas.pixel_bytes
+            };
+            if(atlas.width!=256u || atlas.height!=256u ||
+               atlas.pixel_bytes!=256u*256u*4u ||
+               !foj_stage336_native_record_rgba_upload(
+                   device,cmd,&info,pixels,atlas.pixel_bytes,
+                   256u,&stage341_source))
+                goto cleanup;
+            texture_views[i]=stage341_source.image_view;
+        } else
+#endif
 #if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
         if(i==0u) {
             /*
@@ -1310,7 +1478,8 @@ int main(int argc,char **argv) {
          * has a 64-byte (not 16-byte) RGBA8 source row.
          * Single-layer copy: imageHeight=0 uses the SDK's default.
          */
-#if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
+#if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW) || \
+    defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
         if(atlas.width>UINT32_MAX/4u)goto cleanup;
         const DkCopyBuf source={
             texture_data_addr+PIXEL_STAGING_OFFSET+i*PIXEL_STAGING_STRIDE,
@@ -1350,6 +1519,10 @@ int main(int argc,char **argv) {
 #else
 #error "Stage307 only permits explicit nearest=0 or linear=1"
 #endif
+#endif
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+    sampler.minFilter=DkFilter_Nearest;
+    sampler.magFilter=DkFilter_Nearest;
 #endif
     sampler.wrapMode[0]=DkWrapMode_ClampToEdge;
     sampler.wrapMode[1]=DkWrapMode_ClampToEdge;
@@ -1675,6 +1848,20 @@ int main(int argc,char **argv) {
          * host simulation: never submit a scene list after a fatal DDS,
          * select only the actual acquired framebuffer's lists, and keep
          * the first 120 frames of each observed material in order. */
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+        /* Do not spend the first N frames on diagnostic status screens.
+         * If source intake failed, keep the explicit failure color visible;
+         * a success marker is emitted only after two real quad presents. */
+        const unsigned status_index=dds_observed_slots?
+            dds_observed_slots-1u:0u;
+        if (dds_fatal && status_index>=FOJ_RESEARCH_TEXTURE_COUNT) {
+            exit_status=5;
+            break;
+        }
+        const DkCmdList chosen=dds_fatal?
+            dds_status_lists[slot][status_index]:
+            commands[slot][frame%2u];
+#else
 #if defined(FOJ_GPU_THREE_LAYER_BLEND)
         /* Three-slot diagnostics are isolated from the legacy two-slot
          * host planner. Keep a failed final slot visibly displayed. */
@@ -1702,6 +1889,7 @@ int main(int argc,char **argv) {
             dds_status_lists[plan.buffer][plan.index]:
             commands[plan.buffer][plan.index];
 #endif
+#endif
         if (!chosen) { exit_status=5; break; }
         dkQueueSubmitCommands(queue,chosen);
 #else
@@ -1710,6 +1898,23 @@ int main(int argc,char **argv) {
 #endif
         dkQueuePresentImage(queue,swapchain,slot);
         ++frame;
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+        if (!dds_fatal && frame==2u) {
+            static const char marker[]=
+                "FOJ_STAGE341_PRIVATE_DDS_TEXTURE_SAMPLE_V1 width=256 height=256 "
+                "quad=80pct uv=top-left-00 nearest=1 frames-presented=2\n";
+            FILE *const receipt=fopen(
+                "sdmc:/switch/foj/gpu/foj-stage341-texture-sample.txt","wx");
+            if (!receipt) { exit_status=7; break; }
+            const size_t written=fwrite(marker,1u,sizeof(marker)-1u,receipt);
+            const int flushed=fflush(receipt);
+            const int closed=fclose(receipt);
+            if (written!=sizeof(marker)-1u || flushed!=0 || closed!=0) {
+                exit_status=7;
+                break;
+            }
+        }
+#endif
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
         ++boot_frames;
         exit_status=dds_fatal?5:0;
@@ -1735,6 +1940,9 @@ cleanup:
         if (texture_images_mem[i])dkMemBlockDestroy(texture_images_mem[i]);
 #if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
     foj_stage336_native_release(&stage338_source);
+#endif
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+    foj_stage336_native_release(&stage341_source);
 #endif
     if (texture_data_mem)dkMemBlockDestroy(texture_data_mem);
 #endif
