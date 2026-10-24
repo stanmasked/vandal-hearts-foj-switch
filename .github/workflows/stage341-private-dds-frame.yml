@@ -5,6 +5,8 @@ on:
     paths:
       - '.github/workflows/stage341-private-dds-frame.yml'
       - 'gpu/deko3d_clear_main.c'
+      - 'gpu/stage332_dds_source.c'
+      - 'gpu/stage332_dds_source.h'
       - 'gpu/stage341_private_dds_frame.mk'
       - 'gpu/stage336_native_upload.c'
       - 'gpu/stage336_native_upload.h'
