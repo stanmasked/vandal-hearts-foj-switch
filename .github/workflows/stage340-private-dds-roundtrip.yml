@@ -168,29 +168,52 @@ jobs:
           bundle="$RUNNER_TEMP/stage340-owner-runtime"
           mkdir -p "$bundle/nexium" "$bundle/lib" "$bundle/icd"
           cp -a /tmp/nexium/. "$bundle/nexium/"
-          driver="$(jq -er '.ICD.library_path' "$VK_ICD_FILENAMES")"
-          test -f "$driver"
-          loader="$(ldconfig -p | awk '/libvulkan.so.1/{print $NF; exit}')"
-          test -f "$loader"
+
+          driver_spec="$(jq -er '.ICD.library_path' "$VK_ICD_FILENAMES")"
+          if [[ "$driver_spec" == /* ]]; then
+            driver="$driver_spec"
+          else
+            driver="$(ldconfig -p | awk -v name="$(basename "$driver_spec")" '$1 == name {print $NF; exit}')"
+          fi
+          if [[ ! -f "$driver" ]]; then
+            echo "Stage340 runtime bundle: cannot resolve Vulkan ICD library: $driver_spec" >&2
+            exit 1
+          fi
+          loader="$(ldconfig -p | awk '$1 == "libvulkan.so.1" {print $NF; exit}')"
+          if [[ ! -f "$loader" ]]; then
+            echo "Stage340 runtime bundle: cannot resolve Vulkan loader" >&2
+            exit 1
+          fi
           cp -L "$driver" "$bundle/lib/libvulkan_lvp.so"
           cp -L "$loader" "$bundle/lib/libvulkan.so.1"
           python3 - "$VK_ICD_FILENAMES" "$bundle/icd/lvp_icd.json" <<'PY'
           import json, sys
           source, output = sys.argv[1:]
-          data = json.load(open(source, encoding="utf-8"))
+          with open(source, encoding="utf-8") as stream:
+              data = json.load(stream)
           data["ICD"]["library_path"] = "../lib/libvulkan_lvp.so"
-          with open(output, "w", encoding="utf-8") as f:
-              json.dump(data, f, sort_keys=True)
-              f.write("\n")
+          with open(output, "w", encoding="utf-8") as stream:
+              json.dump(data, stream, sort_keys=True)
+              stream.write("\n")
           PY
           queue=("$NEXIUM_BIN" "$bundle/lib/libvulkan_lvp.so" "$bundle/lib/libvulkan.so.1")
           index=0
           while (( index < ${#queue[@]} )); do
             file="${queue[index]}"
             index=$((index+1))
-            deps="$(ldd "$file")"
+            if ! deps="$(ldd "$file" 2>&1)"; then
+              case "$deps" in
+                *"not a dynamic executable"*|*"statically linked"*)
+                  continue
+                  ;;
+                *)
+                  printf 'Stage340 runtime bundle: ldd failed for %s: %s\n' "$file" "$deps" >&2
+                  exit 1
+                  ;;
+              esac
+            fi
             if grep -q 'not found' <<< "$deps"; then
-              echo 'Stage340 runtime bundle dependency resolution failed' >&2
+              printf 'Stage340 runtime bundle dependency resolution failed for %s\n%s\n' "$file" "$deps" >&2
               exit 1
             fi
             while IFS= read -r dep; do
