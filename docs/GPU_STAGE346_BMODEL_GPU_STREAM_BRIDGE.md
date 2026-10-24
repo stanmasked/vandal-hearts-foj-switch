@@ -7,7 +7,7 @@ Connect the Stage345 in-memory BMODEL-to-FojRigMesh conversion to the existing C
 ## Contract
 
 - Accepts only Stage345-integrity-ready BMODELs.
-- Maps each used material to exactly one texture basename. Multi-texture materials are rejected; there is no guessed diffuse-map selection or fallback.
+- Maps each used material to exactly one texture reference. Multi-texture materials are rejected; there is no guessed diffuse-map selection or fallback. Sections sharing the same material share a slot, but different material records keep separate slots even when their basenames match, because a basename alone does not prove that both references identify the same PSARC resource.
 - Deduplicates repeated texture basenames into at most eight slots, then produces ordered triangle-soup sections and matching GPU batches.
 - Reuses the existing orthographic camera projection and upload allocation planner.
 - Returns only source-relative texture-name references and aggregate stream/upload metadata. The original bytes are borrowed, never copied to disk or freed by this bridge.

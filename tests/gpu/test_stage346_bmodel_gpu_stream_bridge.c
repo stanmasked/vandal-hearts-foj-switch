@@ -97,11 +97,11 @@ static void put_rig(Writer *w) {
 }
 
 static size_t make_fixture(uint8_t *data, size_t capacity,
-                           int same_texture, int multi_texture) {
+                           int same_material, int multi_texture) {
     Writer w = {data, capacity, 0u};
     put8(&w, 0x0bu); put8(&w, 0x09u); put8(&w, 0x00u); put8(&w, 2u);
     put_shape(&w, "meshA", "matA", 0, 1, 0.0f);
-    put_shape(&w, "meshB", "matB", 1, 0, 2.0f);
+    put_shape(&w, "meshB", same_material ? "matA" : "matB", 1, 0, 2.0f);
     put8(&w, 0x07u);
     put8(&w, 0x06u); put_string16(&w, "matA");
     put16(&w, (uint16_t)(multi_texture ? 2u : 1u));
@@ -147,7 +147,7 @@ static void test_two_sections_create_ordered_gpu_batches(void) {
            plan.texture_refs[1].basename, "texB.tga"));
 }
 
-static void test_duplicate_texture_names_share_one_slot(void) {
+static void test_sections_sharing_one_material_share_one_slot(void) {
     uint8_t data[4096];
     FojGpuVertex vertices[6];
     FojGpuBatch batches[2];
@@ -227,7 +227,7 @@ static void test_camera_aliasing_output_is_rejected_transactionally(void) {
 
 int main(void) {
     test_two_sections_create_ordered_gpu_batches();
-    test_duplicate_texture_names_share_one_slot();
+    test_sections_sharing_one_material_share_one_slot();
     test_multi_texture_material_is_refused_transactionally();
     test_capacity_and_camera_failures_leave_outputs_unchanged();
     test_camera_aliasing_output_is_rejected_transactionally();

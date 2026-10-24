@@ -35,14 +35,6 @@ static int plan_is_empty(const FojStage346BmodelGpuPlan *plan) {
     return 1;
 }
 
-static int refs_equal(const uint8_t *data, size_t size,
-                      FojStage343StringRef a, FojStage343StringRef b) {
-    if (data == NULL || a.offset > size || b.offset > size ||
-        a.length > size - a.offset || b.length > size - b.offset ||
-        a.length != b.length) return 0;
-    return memcmp(data + a.offset, data + b.offset, a.length) == 0;
-}
-
 FojGpuStreamStatus foj_gpu_stage346_bmodel_prepare(
     const uint8_t *bmodel_bytes, size_t bmodel_size,
     const FojTextureCamera *camera, unsigned width, unsigned height,
@@ -101,7 +93,10 @@ FojGpuStreamStatus foj_gpu_stage346_bmodel_prepare(
     }
 
     FojStage343TextureRef unique_textures[FOJ_GPU_MAX_TEXTURES];
+    uint16_t material_slots[FOJ_STAGE343_MAX_MATERIALS];
     size_t unique_count = 0u;
+    for (size_t i = 0u; i < FOJ_STAGE343_MAX_MATERIALS; ++i)
+        material_slots[i] = UINT16_MAX;
     for (size_t s = 0u; s < mesh.mesh.section_count; ++s) {
         const uint16_t material_index = mesh.section_material_indices[s];
         if (material_index >= mesh.material_count) {
@@ -114,20 +109,17 @@ FojGpuStreamStatus foj_gpu_stage346_bmodel_prepare(
             result = FOJ_GPU_STREAM_INVALID;
             goto done;
         }
-        const FojStage343TextureRef texture =
-            mesh.textures[material->first_texture];
-        size_t slot = 0u;
-        for (; slot < unique_count; ++slot) {
-            if (refs_equal(mesh.source_data, mesh.source_size,
-                           unique_textures[slot].basename,
-                           texture.basename)) break;
-        }
-        if (slot == unique_count) {
+        size_t slot = material_slots[material_index];
+        if (slot == UINT16_MAX) {
             if (unique_count >= FOJ_GPU_MAX_TEXTURES) {
                 result = FOJ_GPU_STREAM_BOUNDS;
                 goto done;
             }
-            unique_textures[unique_count++] = texture;
+            unique_textures[unique_count] =
+                mesh.textures[material->first_texture];
+            slot = unique_count;
+            material_slots[material_index] = (uint16_t)slot;
+            ++unique_count;
         }
         sections[s] = (FojTextureSection){
             mesh.mesh.sections[s].start_vertex,
