@@ -71,6 +71,27 @@ class Stage341FrameGateTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
+    def test_nro_wires_external_source_to_native_upload_and_quad_draw(self):
+        main = (Path(__file__).resolve().parents[2] / "gpu" / "deko3d_clear_main.c").read_text()
+        self.assertIn("FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW", main)
+        self.assertIn('sdmc:/switch/foj/gpu/source.dds', main)
+        self.assertIn("foj_stage336_native_record_rgba_upload", main)
+        self.assertIn("FojGpuVertex stage341_quad[6]", main)
+        self.assertIn("sampler.minFilter=DkFilter_Nearest", main)
+        self.assertIn("FOJ_STAGE341_PRIVATE_DDS_TEXTURE_SAMPLE_V1", main)
+        self.assertIn("dkQueuePresentImage(queue,swapchain,slot);", main)
+        self.assertNotIn("FOJ_GPU_STAGE329_PATCH_STREAM=1", main)
+
+    def test_public_workflow_never_uploads_raw_frames_or_private_inputs(self):
+        workflow = (Path(__file__).resolve().parents[2] /
+                    ".github" / "workflows" / "stage341-private-dds-frame.yml").read_text()
+        self.assertIn("tools.foj_stage340_fixture create", workflow)
+        self.assertIn("foj-stage341-generated-only-frame-aggregate", workflow)
+        self.assertIn("path: runtime-evidence-public/", workflow)
+        self.assertNotIn("FoJ_Stage340_Selected_Original_DDS", workflow)
+        self.assertNotIn("Google Drive", workflow)
+        self.assertNotIn("path: runtime-evidence/", workflow)
+
     def test_fixed_source_and_two_distinct_frames_pass(self):
         result = audit_frames(self.source, self.sd, self.evidence, True)
         self.assertEqual(result["schema"], SCHEMA)
