@@ -61,6 +61,14 @@ grep -qi 'nexium' <<< "$window_args" || {
   echo "Stage341 capture window is not owned by a NeXium process" >&2
   exit 1
 }
+if command -v import >/dev/null 2>&1; then
+  capture_cmd=(import)
+elif command -v magick >/dev/null 2>&1; then
+  capture_cmd=(magick import)
+else
+  echo "Stage341 requires ImageMagick import or magick" >&2
+  exit 1
+fi
 for attempt in $(seq 1 90); do
   sleep 1
   alive
@@ -81,7 +89,7 @@ PY
 # first real frame, then wait for the alternating clear phase to differ; a
 # fixed 1-second sleep can land on the same parity at 60 Hz.
 sleep 1
-timeout --kill-after=2s 12s import -window "$window" "$FOJ_EVIDENCE_DIR/gpu-initial.png"
+timeout --kill-after=2s 12s "${capture_cmd[@]}" -window "$window" "$FOJ_EVIDENCE_DIR/gpu-initial.png"
 candidate="${RUNNER_TEMP:-/tmp}/stage341-later-candidate.png"
 test ! -e "$candidate" && test ! -L "$candidate" || {
   echo "Stage341 refuses a stale candidate frame" >&2
@@ -90,7 +98,7 @@ test ! -e "$candidate" && test ! -L "$candidate" || {
 distinct=0
 for attempt in $(seq 1 60); do
   alive
-  timeout --kill-after=2s 12s import -window "$window" "$candidate"
+  timeout --kill-after=2s 12s "${capture_cmd[@]}" -window "$window" "$candidate"
   if python3 - "$FOJ_EVIDENCE_DIR/gpu-initial.png" "$candidate" <<'PY'
 from PIL import Image, ImageChops
 import sys
