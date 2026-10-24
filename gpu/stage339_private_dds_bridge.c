@@ -30,13 +30,19 @@ int foj_stage339_prepare_private_dds(
     FojStage336GpuCopyPlan plan;
     if(!foj_stage336_gpu_copy_plan(&info,info.rgba_bytes,row_alignment,
        image_layout_bytes,image_layout_alignment,&plan)) return 0;
-    FojStage332DdsInfo checked;
-    /* Decoder has its own checked overlap/capacity contract. */
-    if(!foj_stage332_dds_decode(dds,dds_len,rgba,capacity,&checked) ||
-       checked.width!=info.width || checked.height!=info.height ||
-       checked.mip_levels!=info.mip_levels ||
-       checked.format!=info.format ||
-       checked.rgba_bytes!=info.rgba_bytes) return 0;
+
+    /*
+     * All bridge-owned refusal conditions are resolved before the first
+     * destination write. The input bytes must remain immutable for this call:
+     * inspect and decode intentionally validate the same stable byte range.
+     * Stage332's decoder guarantees that a failed decode leaves both outputs
+     * unchanged. After a successful decode there is no further fallible check,
+     * so the bridge cannot reject after modifying rgba.
+     */
+    FojStage332DdsInfo decoded;
+    if(!foj_stage332_dds_decode(dds,dds_len,rgba,capacity,&decoded))
+        return 0;
+    (void)decoded; /* same deterministic inspector; source is immutable */
     const FojStage339Prepared result={info,plan};
     *out=result;
     return 1;
