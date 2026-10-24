@@ -57,16 +57,18 @@ def run(source: Path, nexium: Path, nro: Path, shader_dir: Path,
             or report_path == evidence or under(report_path, evidence)
             or under(report_path, data_root)):
         raise ValueError("Stage341 runtime, evidence and report paths must remain separate")
-    if nexium.is_symlink() or not nexium.is_file() or not os.access(nexium, os.X_OK):
-        raise ValueError("Stage341 NeXium launcher must be a regular executable")
+    if (nexium.is_symlink() or not nexium.is_file() or
+            not os.access(nexium, os.X_OK) or under(nexium.resolve(), REPO_ROOT)):
+        raise ValueError("Stage341 NeXium launcher must be a regular executable outside the checkout")
     if nro.is_symlink() or not nro.is_file() or under(nro.resolve(), REPO_ROOT):
         raise ValueError("Stage341 NRO must be a regular file outside the checkout")
     with nro.open("rb") as handle:
         handle.seek(0x10)
         if handle.read(4) != b"NRO0":
             raise ValueError("Stage341 NRO signature invalid")
-    if shader_dir.is_symlink() or not shader_dir.is_dir():
-        raise ValueError("Stage341 shader directory invalid")
+    if (shader_dir.is_symlink() or not shader_dir.is_dir() or
+            under(shader_dir.resolve(), REPO_ROOT)):
+        raise ValueError("Stage341 shader directory must be regular and outside the checkout")
     shaders = {}
     for name in ("foj_actor.vert.dksh", "foj_triangle.frag.dksh"):
         item = shader_dir / name
@@ -130,15 +132,17 @@ def run(source: Path, nexium: Path, nro: Path, shader_dir: Path,
     env["NEXIUM_DATA_ROOT"] = str(data_root)
     if ld_library_path is not None:
         library_path = Path(ld_library_path)
-        if library_path.is_symlink() or not library_path.is_dir():
-            raise ValueError("Stage341 bundled runtime library directory invalid")
+        if (library_path.is_symlink() or not library_path.is_dir() or
+                under(library_path.resolve(), REPO_ROOT)):
+            raise ValueError("Stage341 bundled runtime library directory must be outside the checkout")
         env["LD_LIBRARY_PATH"] = str(library_path.resolve()) + (
             ":" + env["LD_LIBRARY_PATH"] if env.get("LD_LIBRARY_PATH") else ""
         )
     if vulkan_icd is not None:
         icd = Path(vulkan_icd)
-        if icd.is_symlink() or not icd.is_file():
-            raise ValueError("Stage341 Vulkan ICD file invalid")
+        if (icd.is_symlink() or not icd.is_file() or
+                under(icd.resolve(), REPO_ROOT)):
+            raise ValueError("Stage341 Vulkan ICD file must be regular and outside the checkout")
         env["VK_ICD_FILENAMES"] = str(icd.resolve())
 
     command = [str(nexium.resolve()), str(nro.resolve())]
