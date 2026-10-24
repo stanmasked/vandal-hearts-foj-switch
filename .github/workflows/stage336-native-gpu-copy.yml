@@ -1,0 +1,72 @@
+name: Stage336 synthetic dynamic deko3d upload contract
+on:
+  pull_request:
+    paths:
+      - 'gpu/stage336_gpu_copy_plan.c'
+      - 'gpu/stage336_gpu_copy_plan.h'
+      - 'gpu/stage336_native_upload.c'
+      - 'gpu/stage336_native_upload.h'
+      - 'tests/gpu/test_stage336_gpu_copy_plan.c'
+      - '.github/workflows/stage336-native-gpu-copy.yml'
+      - 'docs/GPU_STAGE336_DYNAMIC_GPU_COPY.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: stage336-gpu-copy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  cpu:
+    name: Stage336 generated plan (${{ matrix.compiler }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and test generated row copy and capacity guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.compiler }} -std=c11 -O2 -Wall -Wextra -Werror -pedantic -Igpu \
+            gpu/stage335_source_staging.c gpu/stage336_gpu_copy_plan.c \
+            tests/gpu/test_stage336_gpu_copy_plan.c -o /tmp/foj-stage336
+          /tmp/foj-stage336
+  sanitize:
+    name: Stage336 Clang ASan UBSan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate fail-closed generated inputs under sanitizers
+        shell: bash
+        run: |
+          set -euo pipefail
+          clang -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -fno-sanitize-recover=all -Igpu \
+            gpu/stage335_source_staging.c gpu/stage336_gpu_copy_plan.c \
+            tests/gpu/test_stage336_gpu_copy_plan.c -o /tmp/foj-stage336-san
+          /tmp/foj-stage336-san
+  native_sdk:
+    name: Stage336 devkitA64 deko3d native API compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: devkitpro/devkita64:20260219
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile real deko3d DkCopyBuf and image allocation path
+        shell: bash
+        run: |
+          set -euo pipefail
+          c="$DEVKITPRO/devkitA64/bin/aarch64-none-elf-gcc"
+          for file in gpu/stage335_source_staging.c \
+                      gpu/stage336_gpu_copy_plan.c \
+                      gpu/stage336_native_upload.c; do
+            "$c" -std=c11 -O2 -Wall -Wextra -Werror -pedantic \
+              -Igpu -I"$DEVKITPRO/libnx/include" -c "$file" \
+              -o "/tmp/$(basename "$file" .c).o"
+          done
+          test -s /tmp/stage336_native_upload.o
+          echo STAGE336_DEVKITA64_REAL_DEKO3D_API_COMPILE_PASS
