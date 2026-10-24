@@ -127,12 +127,19 @@ jobs:
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/nexium-emu/nexium-nightly/releases/tags/nightly)"
-          asset="$(printf '%s' "$release" | jq -er \
-            '.assets[] | select(.name=="nexium-linux-x86_64.tar.gz") | .browser_download_url')"
+          asset_record="$(printf '%s' "$release" | jq -cer \
+            '.assets[] | select(.name=="nexium-linux-x86_64.tar.gz") | {url:.browser_download_url,digest:.digest}')"
+          asset="$(printf '%s' "$asset_record" | jq -er '.url | strings | select(startswith("https://"))')"
+          expected_digest="$(printf '%s' "$asset_record" | jq -er \
+            '.digest | strings | select(test("^sha256:[0-9a-f]{64}$")) | sub("^sha256:";"")')"
           curl -fL --retry 3 --retry-all-errors --connect-timeout 20 --max-time 300 \
             "$asset" -o /tmp/nexium-linux-x86_64.tar.gz
-          printf '%s  nexium-linux-x86_64.tar.gz\n' \
-            "$(sha256sum /tmp/nexium-linux-x86_64.tar.gz | awk '{print $1}')" \
+          actual_digest="$(sha256sum /tmp/nexium-linux-x86_64.tar.gz | awk '{print $1}')"
+          if [[ "$actual_digest" != "$expected_digest" ]]; then
+            echo "NeXium release asset SHA-256 differs from GitHub release metadata" >&2
+            exit 1
+          fi
+          printf '%s  nexium-linux-x86_64.tar.gz\n' "$actual_digest" \
             > runtime-evidence/nexium-archive.sha256
           tar -xzf /tmp/nexium-linux-x86_64.tar.gz -C /tmp/nexium
           bin="$(find /tmp/nexium -type f -executable \
