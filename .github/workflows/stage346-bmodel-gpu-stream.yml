@@ -1,0 +1,131 @@
+name: Stage346 BMODEL to GPU stream plan
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage346-bmodel-gpu-stream.yml'
+      - 'gpu/stage346_bmodel_gpu_stream_bridge.c'
+      - 'gpu/stage346_bmodel_gpu_stream_bridge.h'
+      - 'gpu/stage345_bmodel_mesh_bridge.c'
+      - 'gpu/stage345_bmodel_mesh_bridge.h'
+      - 'gpu/stage344_bmodel_rig.c'
+      - 'gpu/stage344_bmodel_rig.h'
+      - 'gpu/stage343_bmodel_source.c'
+      - 'gpu/stage343_bmodel_source.h'
+      - 'core/rigmesh_io.c'
+      - 'core/rigmesh_io.h'
+      - 'core/gpu_vertex_stream.c'
+      - 'core/gpu_vertex_stream.h'
+      - 'core/gpu_draw_plan.c'
+      - 'core/gpu_draw_plan.h'
+      - 'core/textured_triangles.h'
+      - 'gpu/actor_upload_plan.c'
+      - 'gpu/actor_upload_plan.h'
+      - 'tests/gpu/test_stage346_bmodel_gpu_stream_bridge.c'
+      - 'tools/foj_stage346_bmodel_gpu_audit.c'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    name: GCC and Clang strict C99 GPU-stream contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: GCC synthetic bridge tests
+        run: |
+          set -euo pipefail
+          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
+            -Igpu -Icore gpu/stage343_bmodel_source.c \
+            gpu/stage344_bmodel_rig.c gpu/stage345_bmodel_mesh_bridge.c \
+            gpu/stage346_bmodel_gpu_stream_bridge.c core/rigmesh_io.c \
+            core/gpu_vertex_stream.c core/gpu_draw_plan.c \
+            gpu/actor_upload_plan.c tests/gpu/test_stage346_bmodel_gpu_stream_bridge.c \
+            -lm -o /tmp/stage346-gcc
+          /tmp/stage346-gcc
+      - name: Clang synthetic bridge tests
+        run: |
+          set -euo pipefail
+          clang -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
+            -Igpu -Icore gpu/stage343_bmodel_source.c \
+            gpu/stage344_bmodel_rig.c gpu/stage345_bmodel_mesh_bridge.c \
+            gpu/stage346_bmodel_gpu_stream_bridge.c core/rigmesh_io.c \
+            core/gpu_vertex_stream.c core/gpu_draw_plan.c \
+            gpu/actor_upload_plan.c tests/gpu/test_stage346_bmodel_gpu_stream_bridge.c \
+            -lm -o /tmp/stage346-clang
+          /tmp/stage346-clang
+
+  sanitizers:
+    name: Clang ASan and UBSan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run sanitized GPU-stream tests
+        run: |
+          set -euo pipefail
+          clang -std=c99 -O1 -g -Wall -Wextra -Werror -pedantic \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -Igpu -Icore gpu/stage343_bmodel_source.c \
+            gpu/stage344_bmodel_rig.c gpu/stage345_bmodel_mesh_bridge.c \
+            gpu/stage346_bmodel_gpu_stream_bridge.c core/rigmesh_io.c \
+            core/gpu_vertex_stream.c core/gpu_draw_plan.c \
+            gpu/actor_upload_plan.c tests/gpu/test_stage346_bmodel_gpu_stream_bridge.c \
+            -lm -o /tmp/stage346-sanitize
+          ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
+            UBSAN_OPTIONS=halt_on_error=1 /tmp/stage346-sanitize
+
+  private-audit-cli:
+    name: Build aggregate-only owner-local BMODEL GPU-plan audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile host audit executable
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
+            -Igpu -Icore gpu/stage343_bmodel_source.c \
+            gpu/stage344_bmodel_rig.c gpu/stage345_bmodel_mesh_bridge.c \
+            gpu/stage346_bmodel_gpu_stream_bridge.c core/rigmesh_io.c \
+            core/gpu_vertex_stream.c core/gpu_draw_plan.c \
+            gpu/actor_upload_plan.c tools/foj_stage346_bmodel_gpu_audit.c \
+            -lm -o build/foj-stage346-bmodel-gpu-audit
+          test -x build/foj-stage346-bmodel-gpu-audit
+      - name: Publish code-only audit executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage346-bmodel-gpu-audit-linux-x86_64
+          path: build/foj-stage346-bmodel-gpu-audit
+          if-no-files-found: error
+          retention-days: 3
+
+  devkita64:
+    name: Nintendo Switch AArch64 compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      image: devkitpro/devkita64:20260219
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile bridge and stream-plan modules for devkitA64
+        run: |
+          set -eu
+          compiler="/opt/devkitpro/devkitA64/bin/aarch64-none-elf-gcc"
+          test -x "$compiler"
+          for source in \
+            gpu/stage343_bmodel_source.c \
+            gpu/stage344_bmodel_rig.c \
+            gpu/stage345_bmodel_mesh_bridge.c \
+            gpu/stage346_bmodel_gpu_stream_bridge.c \
+            core/rigmesh_io.c core/gpu_vertex_stream.c \
+            core/gpu_draw_plan.c gpu/actor_upload_plan.c; do
+            object="/tmp/$(basename "$source" .c).o"
+            "$compiler" -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
+              -ffreestanding -Igpu -Icore -c "$source" -o "$object"
+            test -s "$object"
+          done
