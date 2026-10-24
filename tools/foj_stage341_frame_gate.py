@@ -202,6 +202,11 @@ def audit(source_dds: Path, evidence: Path, generated_only: bool = False) -> dic
                                source_hash, len(blob))
     initial, border_initial = _frame_samples(evidence / FRAMES[0], rgba)
     later, border_later = _frame_samples(evidence / FRAMES[1], rgba)
+    reference_colors = {
+        tuple(initial[name]["expected_rgb"]) for name, _, _ in SAMPLE_POINTS
+    }
+    if len(reference_colors) < 3:
+        raise ValueError("Stage341 sample coordinates do not distinguish the source texture")
     if border_initial == border_later:
         raise ValueError("Stage341 captures are stale/duplicate at the alternating border")
     if all(initial[name]["observed_rgb"] == later[name]["observed_rgb"]
