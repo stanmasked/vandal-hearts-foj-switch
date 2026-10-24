@@ -67,11 +67,13 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
         pixel = image.load()
         totals = {candidate: 0 for candidate in CANDIDATES}
         sampled_triplets = []
+        positions_and_rgb = []
         for y in SAMPLE_Y:
             for x in SAMPLE_X:
                 u, v = _sample_uv(x, y)
                 observed = pixel[x, y]
                 sampled_triplets.append(observed)
+                positions_and_rgb.append((u, v, observed))
                 for candidate in CANDIDATES:
                     flip_u = candidate.endswith("flip_u") or candidate.endswith("flip_uv")
                     flip_v = candidate.endswith("flip_v") or candidate.endswith("flip_uv")
@@ -85,6 +87,25 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
                         abs(int(observed[channel]) - int(expected[channel])) >
                         CHANNEL_TOLERANCE for channel in range(3)
                     )
+        # Diagnostic-only exhaustive search for a *constant* whole-texel
+        # displacement. Source must already be the canonical generated DDS.
+        # Neither capture pixels nor decoded DDS bytes enter the output JSON.
+        best_shift = (len(positions_and_rgb) * 3 + 1, 1 << 40, 0, 0)
+        for shift_y in range(-32, 33):
+            for shift_x in range(-32, 33):
+                bad, total_error = 0, 0
+                for u, v, observed in positions_and_rgb:
+                    tx = min(WIDTH - 1, max(0, int(u * WIDTH) + shift_x))
+                    ty = min(HEIGHT - 1, max(0, int(v * HEIGHT) + shift_y))
+                    offset = (ty * WIDTH + tx) * 4
+                    for channel in range(3):
+                        error = abs(int(observed[channel]) - rgba[offset + channel])
+                        bad += error > CHANNEL_TOLERANCE
+                        total_error += error
+                # Prefer the smallest error, then the smallest displacement.
+                key = (bad, total_error, abs(shift_x) + abs(shift_y))
+                if key < (best_shift[0], best_shift[1], abs(best_shift[2]) + abs(best_shift[3])):
+                    best_shift = (bad, total_error, shift_x, shift_y)
         best = min(CANDIDATES, key=lambda candidate: totals[candidate])
         return ({
             "capture_sha256": hashlib.sha256(data).hexdigest(),
@@ -95,6 +116,10 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
                 sampled_triplets.count(value) for value in set(sampled_triplets)
             ),
             "uniform_grid_sample": len(set(sampled_triplets)) == 1,
+            "best_integer_texel_offset": [best_shift[2], best_shift[3]],
+            "best_integer_texel_offset_bad_channels": best_shift[0],
+            "best_integer_texel_offset_total_absolute_error": best_shift[1],
+            "integer_texel_search_range": [-32, 32],
             "best_diagnostic_hypothesis": best,
             "bad_channels_by_hypothesis": totals,
         }, image)
