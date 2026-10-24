@@ -141,6 +141,15 @@ class Stage341FrameGateTests(unittest.TestCase):
         self.assertFalse((output / FRAMES[0]).exists())
         self.assertFalse((output / "guest.log").exists())
 
+    def test_public_export_rejects_source_hash_mismatch(self) -> None:
+        report_path = self.root / "mismatched-aggregate.json"
+        report = audit(self.source, self.evidence, generated_only=True)
+        report["source_sha256"] = "b" * 64
+        report_path.write_text(json.dumps(report, sort_keys=True) + "\\n",
+                               encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "source/provenance hash mismatch"):
+            publish_public(report_path, self.evidence, self.root / "public-mismatch")
+
     def test_public_export_refuses_private_source_report(self) -> None:
         self._write_evidence(generated=False)
         report_path = self.root / "private-aggregate.json"
