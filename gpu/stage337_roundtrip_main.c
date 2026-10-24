@@ -15,6 +15,21 @@
 enum { W = 74, H = 81, PIXEL_BYTES = W * H * 4, CMD_BYTES = 0x10000 };
 
 static uint8_t source_rgba[PIXEL_BYTES];
+/* Diagnostic progress is numeric and bounded; never includes guest logs,
+ * GPU memory, filenames from user content or actual pixel data. It is NOT
+ * a pass condition, merely failure localisation for headless emulation. */
+static FILE *progress_file;
+static unsigned progress_count;
+static void progress(unsigned stage) {
+    if (!progress_file || progress_count >= 24u || stage > 99u) return;
+    if (fprintf(progress_file, "FOJ337P1 stage=%02u\n", stage) < 0 ||
+        fflush(progress_file) != 0) {
+        fclose(progress_file);
+        progress_file = NULL;
+        return;
+    }
+    ++progress_count;
+}
 static void generate(void) {
     for (unsigned y = 0; y < H; ++y)
         for (unsigned x = 0; x < W; ++x) {
@@ -59,31 +74,38 @@ static int run_native(void) {
     DkCmdBuf cmd = NULL, read_cmd = NULL;
     FojStage336NativeTexture uploaded = {0};
     generate();
+    progress(1u);
 
     DkDeviceMaker devmaker;
     dkDeviceMakerDefaults(&devmaker);
     devmaker.flags = DkDeviceFlags_DepthZeroToOne | DkDeviceFlags_OriginUpperLeft;
     device = dkDeviceCreate(&devmaker);
     if (!device) goto cleanup;
+    progress(2u);
     DkQueueMaker qmaker;
     dkQueueMakerDefaults(&qmaker, device);
     qmaker.flags = DkQueueFlags_Graphics;
     queue = dkQueueCreate(&qmaker);
     if (!queue) goto cleanup;
+    progress(3u);
     cmds_mem = command_memory(device);
     read_cmds_mem = command_memory(device);
     if (!cmds_mem || !read_cmds_mem) goto cleanup;
     cmd = new_command_buffer(device, cmds_mem);
     read_cmd = new_command_buffer(device, read_cmds_mem);
     if (!cmd || !read_cmd) goto cleanup;
+    progress(4u);
 
     const FojStage332DdsInfo info = { W, H, 1u, FOJ_STAGE332_BGRA8, PIXEL_BYTES };
     if (!foj_stage336_native_record_rgba_upload(device, cmd, &info,
             source_rgba, sizeof(source_rgba), 64u, &uploaded)) goto cleanup;
+    progress(5u);
     const DkCmdList submit = dkCmdBufFinishList(cmd);
     if (!submit) goto cleanup;
     dkQueueSubmitCommands(queue, submit);
+    progress(6u);
     dkQueueWaitIdle(queue);
+    progress(7u);
     if (dkQueueIsInErrorState(queue)) goto cleanup;
 
     DkMemBlockMaker rm;
@@ -95,17 +117,22 @@ static int run_native(void) {
     const DkGpuAddr read_gpu = dkMemBlockGetGpuAddr(read_mem);
     if (!read_cpu || read_gpu == DK_GPU_ADDR_INVALID) goto cleanup;
     memset(read_cpu, 0xa5, uploaded.plan.staging_allocation_bytes);
+    progress(8u);
     const DkCopyBuf dst = {read_gpu, uploaded.plan.rows.row_length_pixels, H};
     const DkImageRect rect = {0, 0, 0, W, H, 1};
     dkCmdBufCopyImageToBuffer(read_cmd, &uploaded.image_view, &rect, &dst, 0);
+    progress(9u);
     /* Delimit the readback and request a full copy-engine/cache barrier. */
     dkCmdBufBarrier(read_cmd, DkBarrier_Full, DkInvalidateFlags_L2Cache);
     const DkCmdList read_submit = dkCmdBufFinishList(read_cmd);
     if (!read_submit) goto cleanup;
     dkQueueSubmitCommands(queue, read_submit);
+    progress(10u);
     dkQueueWaitIdle(queue);
+    progress(11u);
     if (dkQueueIsInErrorState(queue)) goto cleanup;
     if (!verify_pixels(read_cpu, uploaded.plan.rows.row_length_pixels)) goto cleanup;
+    progress(12u);
     rc = 0;
 cleanup:
     if (queue && !dkQueueIsInErrorState(queue)) dkQueueWaitIdle(queue);
@@ -122,7 +149,14 @@ cleanup:
 
 int main(void) {
     (void)fsdevMountSdmc();
+    progress_file = fopen("sdmc:/switch/foj/gpu/foj-stage337-progress.txt", "wx");
+    progress(0u);
     const int success = run_native() == 0;
+    progress(success ? 13u : 98u);
+    if (progress_file) {
+        fclose(progress_file);
+        progress_file = NULL;
+    }
     const char *const path =
         "sdmc:/switch/foj/gpu/foj-stage337-native-roundtrip.txt";
     if (success) {

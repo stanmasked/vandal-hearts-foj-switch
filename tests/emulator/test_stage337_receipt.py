@@ -20,6 +20,17 @@ class TestStage337Receipt(unittest.TestCase):
             with self.assertRaises(ValueError):
                 publish(receipt, folder)
 
+    def test_progress_is_not_success(self):
+        # Numerical milestones are diagnostics only; a stale or synthetic
+        # progress log must never become a passing GPU receipt.
+        with TemporaryDirectory() as d:
+            root = Path(d)
+            path = root / "native.txt"
+            for stage in (0, 5, 6, 7, 10, 11, 12, 13, 98):
+                path.write_text(f"FOJ337P1 stage={stage:02d}\n")
+                with self.assertRaises(ValueError):
+                    check(path)
+
     def test_refuse_forged_or_stale(self):
         with TemporaryDirectory() as d:
             root = Path(d)

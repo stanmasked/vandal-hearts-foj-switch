@@ -32,3 +32,25 @@ if the NeXium job passes. It does not draw the image to a framebuffer, capture
 an onscreen texture, or verify the Nintendo Switch physical console. A fresh,
 independent rendered-frame gate is needed before using original DDS. The
 owner-local original source and its CPU-parity reports remain in private Drive.
+
+## Stage337.1 — failure-only bounded execution telemetry
+
+The initial run on `c5ef61a6` confirmed a valid NRO and evidence parser but
+**failed** its real NeXium job: no native readback receipt appeared during 150
+seconds; the driver reported a timeout. The first run cannot distinguish
+emulator startup, device creation, upload submission, GPU idle wait or actual
+pixel comparison. Do not claim the texture reached or failed a particular GPU
+phase without fresh execution evidence.
+
+Stage337.1 therefore adds a separate, best-effort, exclusive synthetic numeric
+progress file (`FOJ337P1 stage=NN`) with a cap of 24 records and flushes between
+phases. Numeric checkpoints are recorded before and after device/queue
+creation, recording upload, waiting for GPU completion, readback, and comparing
+RGBA pixels. On failure the driver prints **only** the validated final
+2-digit phase, or `none` for absent or malformed evidence. Original/raw guest
+logs remain unpublished, and the progress file is never a success condition or
+public artifact. New unit fixtures assert that progress markers cannot be
+accepted by the receipt checker.
+
+The follow-up GitHub run is the only authority for the diagnosis. This change
+does not increase pixel/texture scope or modify Stage336's buffer allocation.
