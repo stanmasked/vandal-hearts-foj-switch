@@ -251,14 +251,14 @@ def publish_public(report_path: Path, evidence: Path, output: Path) -> dict:
        report.get("original_ps3_assets_used") is not False:
         raise ValueError("Stage341 refuses to publish non-generated source evidence")
     _check_tree(evidence, True)
-    generated = _valid_generated_input(
-        evidence / "generated-input.json",
-        str(report.get("source_sha256", "")),
-        int(report.get("source_bytes", -1)),
-    )
-    if _hash_file(evidence / "source-before.sha256") != report.get("source_sha256") or \
-       _hash_file(evidence / "source-after.sha256") != report.get("source_sha256"):
+    source_hash = report.get("source_sha256")
+    source_bytes = report.get("source_bytes")
+    if not isinstance(source_hash, str) or type(source_bytes) is not int or \
+       _hash_file(evidence / "source-before.sha256") != source_hash or \
+       _hash_file(evidence / "source-after.sha256") != source_hash:
         raise ValueError("Stage341 public source/provenance hash mismatch")
+    _valid_generated_input(evidence / "generated-input.json",
+                           source_hash, source_bytes)
     if report.get("native_upload_marker_verified") is not True or \
        report.get("real_neixium_frame_count") != 2 or \
        report.get("physical_switch_verified") is not False or \
