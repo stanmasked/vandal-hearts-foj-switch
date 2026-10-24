@@ -31,9 +31,9 @@ SOURCE_FILES = {"nexium-archive.sha256"} | {
         "generated-input.json", MARKER_NAME, *FRAMES, RECEIPT_NAME, "guest.log"
     )
 }
-ARCHIVE_RE = re.compile(rb"[0-9a-f]{64}  /tmp/nexium\\.tar\\.gz\\n")
+ARCHIVE_RE = re.compile(rb"[0-9a-f]{64}  /tmp/nexium\.tar\.gz\n")
 MARKER_BYTES = (
-    b"FOJ_STAGE340_PRIVATE_DDS_GPU_V1 frame=1 upload=1 sample_draw=1\\n"
+    b"FOJ_STAGE340_PRIVATE_DDS_GPU_V1 frame=1 upload=1 sample_draw=1\n"
 )
 DDS_LIMIT = 32 * 1024 * 1024
 FRAME_SIZE = (1280, 720)
@@ -235,6 +235,13 @@ def prepare(sd_root: Path, evidence: Path) -> dict:
     return {"schema": SCHEMA, "generated_only": True, "fixture_ready": True}
 
 
+def _validate_marker(evidence: Path) -> bytes:
+    marker = _regular(Path(evidence) / MARKER_NAME, 1024)
+    if marker != MARKER_BYTES:
+        raise ValueError("native upload/sample receipt missing or malformed")
+    return marker
+
+
 def audit(source_dds: Path, evidence: Path, expected_sha256: str | None = None,
           original_ps3: bool = False) -> dict:
     source_dds, evidence = Path(source_dds), Path(evidence)
@@ -243,9 +250,7 @@ def audit(source_dds: Path, evidence: Path, expected_sha256: str | None = None,
     source_hash = hashlib.sha256(dds_data).hexdigest()
     if expected_sha256 is not None and source_hash != expected_sha256:
         raise ValueError("source DDS changed during the GPU run")
-    marker = _regular(evidence / MARKER_NAME, 1024)
-    if marker != MARKER_BYTES:
-        raise ValueError("native upload/sample receipt missing or malformed")
+    _validate_marker(evidence)
     generated_path = evidence / "generated-input.json"
     generated = False
     if generated_path.exists() or generated_path.is_symlink():
@@ -308,9 +313,7 @@ def verify_and_aggregate(source: Path) -> dict:
     saved_input = json.loads(_regular(bridge / "generated-input.json", 65536))
     if saved_input != expected_input:
         raise ValueError("public evidence does not describe the fixed generated fixture")
-    marker = _regular(bridge / MARKER_NAME, 1024)
-    if marker != MARKER_BYTES:
-        raise ValueError("native GPU receipt is missing")
+    _validate_marker(bridge)
     receipt = json.loads(_regular(bridge / RECEIPT_NAME, 65536))
     if (receipt.get("schema") != SCHEMA or
             receipt.get("source_kind") != "generated-only" or
