@@ -144,3 +144,26 @@ If no alternate pitch fully matches, the prior code 91 remains for a
 matching first row and mismatched later rows. A new NeXium run must prove
 any result before changing deko3d copy arguments. No private PS3 assets,
 raw guest logs or pixel arrays are exported.
+
+
+## Stage337.8 — confirmed byte-versus-pixel SDK copy contract bug
+
+The exact Stage337.7 NeXium run 40051273169 failed with code 91, so
+none of the tested alternate byte pitches resolved the first-row-only
+mismatch. Inspection of upstream **actual deko3d source**, not an assumption
+from field names, identified a concrete unit mismatch in our Stage336 and
+Stage337 code. Both `dkCmdBufCopyBufferToImage` and
+`dkCmdBufCopyImageToBuffer` in deko3d `source/dk_image.cpp` assign
+`src/dst->rowLength` directly to their internal byte stride
+`m_horizontal`. The `imageHeight` input is directly used as a byte layer
+stride, defaulting when zero. Our earlier `DkCopyBuf` values mistakenly
+supplied 80/128 **pixels** in `rowLength` where the SDK expects 320/512
+**bytes**, causing only the first row to line up. The correction passes
+`plan.rows.row_pitch_bytes` in both directions with a zero default byte
+layer-stride. Generated-only C regression tests check odd width 74 at
+64-byte and 256-byte alignments, including actual byte pitch, logical
+pixel count and padded allocation capacity. This is a source-level confirmed
+bug, but the FIX's GPU success remains pending until fresh actual NeXium
+pixel readback returns the strictly authenticated diff=0 receipt.
+
+Upstream implementation: https://github.com/devkitPro/deko3d/blob/master/source/dk_image.cpp .

@@ -119,7 +119,8 @@ static int run_native(void) {
     if (!read_cpu || read_gpu == DK_GPU_ADDR_INVALID) goto cleanup;
     memset(read_cpu, 0xa5, uploaded.plan.staging_allocation_bytes);
     progress(8u);
-    const DkCopyBuf dst = {read_gpu, uploaded.plan.rows.row_length_pixels, H};
+    /* Native deko3d copy expects byte pitch, not count of RGBA pixels. */
+    const DkCopyBuf dst = {read_gpu, uploaded.plan.rows.row_pitch_bytes, 0u};
     const DkImageRect rect = {0, 0, 0, W, H, 1};
     dkCmdBufCopyImageToBuffer(read_cmd, &uploaded.image_view, &rect, &dst, 0);
     progress(9u);

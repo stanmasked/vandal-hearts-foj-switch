@@ -12,8 +12,10 @@ frame or an original-game upload. This remains a Draft child of Stage335.
   `DkImageLayoutMaker`, `dkImageLayoutGetSize/Alignment`,
   `DkMemBlockMaker`, `dkImageInitialize`, `DkCopyBuf`, `DkImageRect`, and
   `dkCmdBufCopyBufferToImage`. Its source address points to a separately
-  allocated, zero-padded, GPU-visible staging block. Copy `rowLength` is in
-  *pixels*, never bytes. The dynamic device image is `RGBA8_Unorm`, with one
+  allocated, zero-padded, GPU-visible staging block. Copy `rowLength` is the *byte stride*, never the pixel count
+  (as implemented in upstream deko3d `source/dk_image.cpp`).
+  `imageHeight` is a byte layer stride and can be zero for one layer.
+  Both upload and reverse readback must pass `row_pitch_bytes`. The dynamic device image is `RGBA8_Unorm`, with one
   mip level; source mip >0 upload is explicitly out of scope.
 - The function records exactly one deko3d copy only **after** validating and
   allocating GPU buffers. The caller must keep both allocations alive until

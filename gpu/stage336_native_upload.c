@@ -64,8 +64,12 @@ int foj_stage336_native_record_rgba_upload(
     temp.plan=plan;
     dkImageInitialize(&temp.image,&layout,image_mem,0);
     dkImageViewDefaults(&temp.image_view,&temp.image);
-    const DkCopyBuf src={gpu,plan.rows.row_length_pixels,
-                         plan.rows.height};
+    /*
+     * deko3d source/dk_image.cpp: DkCopyBuf.rowLength is a byte stride,
+     * NOT a pixel count. imageHeight is a byte layer stride (0=default).
+     * This single-layer RGBA8 copy must preserve the Stage335 byte pitch.
+     */
+    const DkCopyBuf src={gpu,plan.rows.row_pitch_bytes,0u};
     const DkImageRect rect={0u,0u,0u,plan.rows.width,
                             plan.rows.height,1u};
     dkCmdBufCopyBufferToImage(cmd,&src,&temp.image_view,&rect,0u);
