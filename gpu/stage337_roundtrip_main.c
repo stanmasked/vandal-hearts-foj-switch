@@ -152,7 +152,9 @@ int main(void) {
     progress_file = fopen("sdmc:/switch/foj/gpu/foj-stage337-progress.txt", "wx");
     progress(0u);
     const int success = run_native() == 0;
-    progress(success ? 13u : 98u);
+    /* Preserve the last completed milestone on failure. Only full success
+     * advances to 13, after both GPU submissions and exact pixel comparison. */
+    if (success) progress(13u);
     if (progress_file) {
         fclose(progress_file);
         progress_file = NULL;

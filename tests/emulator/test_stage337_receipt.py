@@ -31,6 +31,13 @@ class TestStage337Receipt(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     check(path)
 
+    def test_progress_is_not_success(self):
+        with TemporaryDirectory() as d:
+            path = Path(d) / "native.txt"
+            path.write_text("FOJ337P1 stage=07\\n")
+            with self.assertRaises(ValueError):
+                check(path)
+
     def test_refuse_forged_or_stale(self):
         with TemporaryDirectory() as d:
             root = Path(d)

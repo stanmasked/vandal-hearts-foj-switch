@@ -54,3 +54,12 @@ accepted by the receipt checker.
 
 The follow-up GitHub run is the only authority for the diagnosis. This change
 does not increase pixel/texture scope or modify Stage336's buffer allocation.
+
+
+## Stage337.2 diagnostic correction
+
+A failure must preserve the last reached stage, rather than append a generic
+failure code that hides it. The guest now emits stage 13 only after a successful
+byte-for-byte readback. On any failure, the last record remains the last
+completed milestone. A numeric progress record is diagnostic only and never
+accepted as a GPU success receipt.
