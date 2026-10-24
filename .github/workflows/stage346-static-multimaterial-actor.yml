@@ -111,7 +111,7 @@ jobs:
             -p 'test_stage346_generated_static_gpu_sd.py' -v
       - name: Fetch NeXium and verify release asset SHA-256
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p runtime-evidence /tmp/nexium
