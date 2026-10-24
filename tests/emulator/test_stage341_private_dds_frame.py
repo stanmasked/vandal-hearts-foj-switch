@@ -109,7 +109,7 @@ class Stage341FrameGateTests(unittest.TestCase):
             self.evidence / "nexium-runtime.sha256"
         )
         (self.evidence / "nexium-runtime.sha256").write_text(
-            "b" * 64 + "  run-nexium.sh\\n", encoding="ascii"
+            "b" * 64 + "  run-nexium.sh\n", encoding="ascii"
         )
         result = audit_frames(self.source, self.sd, self.evidence, False)
         self.assertEqual(result["generated_only"], False)
