@@ -168,6 +168,18 @@ jobs:
           bundle="$RUNNER_TEMP/stage340-owner-runtime"
           mkdir -p "$bundle/nexium" "$bundle/lib" "$bundle/icd"
           cp -a /tmp/nexium/. "$bundle/nexium/"
+          case "$NEXIUM_BIN" in
+            /tmp/nexium/*) bin_rel="${NEXIUM_BIN#/tmp/nexium/}" ;;
+            *)
+              echo "Stage340 runtime bundle: NeXium executable is outside the pinned extraction root" >&2
+              exit 1
+              ;;
+          esac
+          if [[ -z "$bin_rel" || "$bin_rel" == /* || "$bin_rel" == *../* ]]; then
+            echo "Stage340 runtime bundle: unsafe relative NeXium executable path" >&2
+            exit 1
+          fi
+          test -x "$bundle/nexium/$bin_rel"
 
           driver_spec="$(jq -er '.ICD.library_path' "$VK_ICD_FILENAMES")"
           if [[ "$driver_spec" == /* ]]; then
@@ -186,6 +198,17 @@ jobs:
           fi
           cp -L "$driver" "$bundle/lib/libvulkan_lvp.so"
           cp -L "$loader" "$bundle/lib/libvulkan.so.1"
+
+          # Ship the runner's matching ELF interpreter together with the
+          # recursively copied GLIBC and other shared libraries. Running the
+          # executable directly would select the host's older interpreter.
+          elf_loader="$(readlink -f /lib64/ld-linux-x86-64.so.2)"
+          if [[ ! -f "$elf_loader" ]]; then
+            echo "Stage340 runtime bundle: cannot resolve matching ELF loader" >&2
+            exit 1
+          fi
+          cp -L "$elf_loader" "$bundle/lib/ld-linux-x86-64.so.2"
+
           python3 - "$VK_ICD_FILENAMES" "$bundle/icd/lvp_icd.json" <<'PY'
           import json, sys
           source, output = sys.argv[1:]
@@ -225,10 +248,37 @@ jobs:
               fi
             done < <(printf '%s\n' "$deps" | awk '/=> \// {print $3} /^\// {print $1}')
           done
+
+          # Use the bundled loader and its matching copied GLIBC. This makes
+          # the package independent of the verification host's GLIBC minor
+          # version, while still refusing missing symbols/dependencies.
+          cat > "$bundle/run-nexium.sh" <<EOF
+          #!/usr/bin/env bash
+          set -euo pipefail
+          HERE="\$(cd -- "\$(dirname -- "\${BASH_SOURCE[0]}")" && pwd)"
+          exec "\$HERE/lib/ld-linux-x86-64.so.2" --library-path "\$HERE/lib" "\$HERE/nexium/$bin_rel" "\$@"
+          EOF
+          chmod 755 "$bundle/run-nexium.sh"
+          bash -n "$bundle/run-nexium.sh"
+          smoke="$(timeout --kill-after=3s 30s "$bundle/lib/ld-linux-x86-64.so.2" \
+            --library-path "$bundle/lib" --list "$bundle/nexium/$bin_rel" 2>&1)"
+          if grep -Eq 'not found|version .* not found' <<< "$smoke"; then
+            printf 'Stage340 bundled NeXium loader smoke test failed:\n%s\n' "$smoke" >&2
+            exit 1
+          fi
+          if [[ ! -f "$bundle/lib/libc.so.6" ]] || \
+             ! grep -F "$bundle/lib/libc.so.6" <<< "$smoke" >/dev/null; then
+            printf 'Stage340 smoke test did not select the bundled matching GLIBC:\n%s\n' "$smoke" >&2
+            exit 1
+          fi
+          printf '%s\n' "$smoke" > "$bundle/runtime-smoke.txt"
+
           cat > "$bundle/README.txt" <<'EOF'
           Temporary owner-local NeXium+Mesa software Vulkan runtime bundle.
           Contains only third-party emulator/runtime binaries and their shared-library dependencies.
           Contains no original game data, DDS images, private hashes, captures or guest logs.
+          On Linux, launch NeXium with ./run-nexium.sh so the bundled ELF loader and matching GLIBC are used.
+          For a private NRO run, set NEXIUM_DATA_ROOT and VK_ICD_FILENAMES to the bundled icd/lvp_icd.json; use Xvfb if headless.
           Use with the matching Stage340 NRO and a private local SD root; do not publish game inputs.
           EOF
           tar -czf "$RUNNER_TEMP/foj-stage340-owner-local-runtime.tar.gz" -C "$RUNNER_TEMP" stage340-owner-runtime
