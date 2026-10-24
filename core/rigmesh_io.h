@@ -1,7 +1,8 @@
 #ifndef FOJ_RIGMESH_IO_H
 #define FOJ_RIGMESH_IO_H
-/* Private user-local FOJRM001: portable first-to-last section FoJ geometry,
- * UVs, normals, original BMODEL bind bones and skin weights.
+/* Private user-local FOJRM001: portable sectioned FoJ geometry, UVs and
+ * normals, with optional original BMODEL bind bones and skin weights.
+ * Static meshes have zero bones and every vertex must have zero influences.
  * The format is a research container produced from the user's OWN assets.
  * No game geometry is distributed in the native executable.
  */
