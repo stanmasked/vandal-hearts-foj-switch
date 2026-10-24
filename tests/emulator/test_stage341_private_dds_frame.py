@@ -252,6 +252,35 @@ class Stage341FrameGateTests(unittest.TestCase):
             self.assertEqual(result[frame]["best_integer_texel_offset_bad_channels"], 0)
             self.assertGreater(result[frame]["identity_bad_channels"], 0)
 
+
+    def test_generated_failure_diagnostic_detects_alpha_premultiplication(self):
+        rgba = decode_bgra8_dds(self.source.read_bytes())
+        for name in ("gpu-initial.png", "gpu-later.png"):
+            path = self.evidence / name
+            with Image.open(path) as original:
+                image = original.convert("RGB")
+            for y in SAMPLE_Y:
+                for x in SAMPLE_X:
+                    u, v = _sample_uv(x, y)
+                    tx = min(255, max(0, int(u * 256)))
+                    ty = min(255, max(0, int(v * 256)))
+                    offset = (ty * 256 + tx) * 4
+                    alpha = rgba[offset + 3]
+                    image.putpixel((x, y), tuple(
+                        (rgba[offset + k] * alpha + 127) // 255
+                        for k in range(3)
+                    ))
+            image.save(path)
+        result = diagnose(self.sd, self.evidence)
+        self.assertFalse(result["accepted"])
+        for frame in ("frame_a", "frame_b"):
+            self.assertEqual(
+                result[frame]["alpha_composite_hypothesis_bad_channels"][
+                    "premultiplied_black"
+                ], 0
+            )
+            self.assertGreater(result[frame]["identity_bad_channels"], 0)
+
     def test_generated_failure_diagnostic_rejects_private_source(self):
         source = bytearray(self.source.read_bytes())
         source[-1] ^= 1

@@ -66,6 +66,12 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
             raise ValueError("Stage341 diagnosis expects 1280x720")
         pixel = image.load()
         totals = {candidate: 0 for candidate in CANDIDATES}
+        alpha_hypotheses = {
+            "premultiplied_black": 0,
+            "source_over_clear_phase_0": 0,
+            "source_over_clear_phase_1": 0,
+        }
+        clear_phase_colors = ((54, 31, 59), (112, 145, 110))
         sampled_triplets = []
         positions_and_rgb = []
         for y in SAMPLE_Y:
@@ -74,6 +80,24 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
                 observed = pixel[x, y]
                 sampled_triplets.append(observed)
                 positions_and_rgb.append((u, v, observed))
+                tx0 = min(WIDTH - 1, max(0, int(u * WIDTH)))
+                ty0 = min(HEIGHT - 1, max(0, int(v * HEIGHT)))
+                source_offset = (ty0 * WIDTH + tx0) * 4
+                alpha = rgba[source_offset + 3]
+                for channel in range(3):
+                    source_rgb = rgba[source_offset + channel]
+                    premultiplied = (source_rgb * alpha + 127) // 255
+                    alpha_hypotheses["premultiplied_black"] += (
+                        abs(int(observed[channel]) - premultiplied) > CHANNEL_TOLERANCE
+                    )
+                    for phase, clear in enumerate(clear_phase_colors):
+                        over_clear = (
+                            source_rgb * alpha
+                            + clear[channel] * (255 - alpha) + 127
+                        ) // 255
+                        alpha_hypotheses[f"source_over_clear_phase_{phase}"] += (
+                            abs(int(observed[channel]) - over_clear) > CHANNEL_TOLERANCE
+                        )
                 for candidate in CANDIDATES:
                     flip_u = candidate.endswith("flip_u") or candidate.endswith("flip_uv")
                     flip_v = candidate.endswith("flip_v") or candidate.endswith("flip_uv")
@@ -111,6 +135,7 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
             "capture_sha256": hashlib.sha256(data).hexdigest(),
             "samples_checked": len(SAMPLE_X) * len(SAMPLE_Y),
             "identity_bad_channels": totals["identity"],
+            "alpha_composite_hypothesis_bad_channels": alpha_hypotheses,
             "distinct_rgb_triplets_at_grid": len(set(sampled_triplets)),
             "largest_repeated_rgb_triplet_count": max(
                 sampled_triplets.count(value) for value in set(sampled_triplets)
