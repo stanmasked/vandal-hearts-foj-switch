@@ -10,6 +10,7 @@ test -s "$FOJ_NRO"
 sd="$NEXIUM_DATA_ROOT/sdmc/switch/foj/gpu"
 source_dds="$sd/material0.dds"
 marker="$sd/foj-stage340-private-dds-gpu.txt"
+MARKER_NAME="foj-stage340-private-dds-gpu.txt"
 test -d "$sd" && test ! -L "$sd"
 test -f "$source_dds" && test ! -L "$source_dds" && test -s "$source_dds"
 test "$(wc -c < "$source_dds")" -le 33554432
@@ -19,7 +20,10 @@ test ! -e "$marker" && test ! -L "$marker" || {
   echo "Stage340 refuses a stale native GPU receipt" >&2
   exit 2
 }
-mkdir -p "$FOJ_EVIDENCE_DIR"
+test -d "$FOJ_EVIDENCE_DIR" && test ! -L "$FOJ_EVIDENCE_DIR" || {
+  echo "Stage340 evidence directory must be pre-created and private" >&2
+  exit 2
+}
 for name in "$marker" "$FOJ_EVIDENCE_DIR/gpu-initial.png" \
             "$FOJ_EVIDENCE_DIR/gpu-later.png" \
             "$FOJ_EVIDENCE_DIR/$MARKER_NAME" \
