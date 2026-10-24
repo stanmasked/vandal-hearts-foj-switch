@@ -126,3 +126,21 @@ synthetic-only; success still requires all 5994 RGBA pixels to match.
 A new independent native NeXium run must establish whether this alignment
 experiment works. It must not be reported as a proven SDK alignment
 requirement from one trial.
+
+
+## Stage337.7 — bounded alternate row-pitch readback probe
+
+Stage337.6's live NeXium run 40050810337 FAILED with last_stage=91
+with 256-byte requested alignment and a 512-byte row pitch (128 pixels).
+This reproduces the first-row-only success and rules out a simple
+64-byte-to-256-byte row-alignment fix. Stage337.7 keeps the generated
+74x81 texture and 512-byte declared pitch, but on FAILURE probes whether
+the complete synthetic RGBA image appears in the readback allocation with
+another uniform row byte pitch: 320 (code 92), 384 (code 93), or 448
+(code 94). Each probe explicitly bounds the final row within the original
+allocated buffer. These are numeric failure diagnostics only, not a
+success witness or permission to relax the exact pixel comparison.
+If no alternate pitch fully matches, the prior code 91 remains for a
+matching first row and mismatched later rows. A new NeXium run must prove
+any result before changing deko3d copy arguments. No private PS3 assets,
+raw guest logs or pixel arrays are exported.

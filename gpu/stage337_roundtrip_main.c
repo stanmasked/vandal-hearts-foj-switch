@@ -202,11 +202,41 @@ static int run_native(void) {
         else if (bgr_swap) progress(88u); /* RGBA/BGRA swap. */
         else if (tight_rows) progress(89u); /* Row pitch mismatch. */
         else if (upside_down) progress(90u); /* Reversed row order. */
-        else if (!memcmp(read_cpu,source_rgba,W*4u)) progress(91u);
-        else if (!rgb_bad && alpha_bad) progress(82u);
-        else if (rgb_bad && !alpha_bad) progress(83u);
-        else progress(84u); /* Other mixed-channel mismatch. */
+        else {
+            /*
+             * Stage337.7: determine if a GPU driver used a different
+             * uniform row pitch than the requested padded DkCopyBuf.
+             * The declared layout uses 512 B per row for this 74x81
+             * fixture. Examine only alternative candidate byte pitches
+             * whose LAST row fits within the allocated readback buffer.
+             */
+            static const uint32_t other_pitches[] = {320u,384u,448u};
+            unsigned alternate = 0u;
+            for (unsigned p = 0u; p < 3u; ++p) {
+                const size_t pitch = other_pitches[p];
+                if (pitch < W*4u ||
+                    (size_t)(H-1u)*pitch + W*4u >
+                    uploaded.plan.staging_allocation_bytes) continue;
+                int matches = 1;
+                for (unsigned y = 0u; y < H; ++y) {
+                    const uint8_t *row = read_cpu + (size_t)y * pitch;
+                    const uint8_t *expect = source_rgba + (size_t)y*W*4u;
+                    if (memcmp(row,expect,W*4u)) { matches=0; break; }
+                }
+                if (matches) { alternate = 92u + p; break; }
+            }
+            if (alternate) progress(alternate); /* alternate full pitch */
+            else if (!memcmp(read_cpu,source_rgba,W*4u)) progress(91u);
+            else if (!rgb_bad && alpha_bad) progress(82u);
+            else if (rgb_bad && !alpha_bad) progress(83u);
+            else progress(84u);
+        }
+        /*
+         * Failure remains failure: numeric reports are not accepted as
+         * a GPU success receipt, even when one alternate pitch matched.
+         */
         goto cleanup;
+
     }
     progress(13u); /* Validated byte-for-byte copy. */
     rc = 0;
