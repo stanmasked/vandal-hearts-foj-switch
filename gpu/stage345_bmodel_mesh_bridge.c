@@ -309,25 +309,88 @@ int foj_stage345_mesh_integrity_ready(const FojStage345BmodelMesh *mesh) {
         mesh->mesh.vertices == NULL || mesh->mesh.attributes == NULL ||
         mesh->mesh.sections == NULL || mesh->section_material_indices == NULL ||
         mesh->materials == NULL || mesh->mesh.bone_count == 0u ||
-        mesh->mesh.vertex_count == 0u || mesh->mesh.section_count == 0u ||
-        mesh->material_count == 0u) return 0;
+        mesh->mesh.bone_count > FOJ_SKIN_MAX_BONES ||
+        mesh->mesh.vertex_count < 3u ||
+        mesh->mesh.vertex_count > FOJ_RIGMESH_MAX_VERTICES ||
+        mesh->mesh.section_count == 0u ||
+        mesh->mesh.section_count > FOJ_RIGMESH_MAX_SECTIONS ||
+        mesh->material_count == 0u ||
+        mesh->material_count > FOJ_STAGE343_MAX_MATERIALS ||
+        mesh->texture_count > FOJ_STAGE343_MAX_TEXTURE_REFS ||
+        mesh->textures == NULL) return 0;
+
+    for (size_t i = 0u; i < mesh->mesh.bone_count; ++i) {
+        const FojBoneTransform *bone = &mesh->mesh.bind_bones[i];
+        float norm = 0.0f;
+        if (bone->parent < -1 ||
+            (bone->parent >= 0 && (size_t)bone->parent >= i)) return 0;
+        for (size_t j = 0u; j < 4u; ++j) {
+            if (!isfinite(bone->rotation_xyzw[j])) return 0;
+            norm += bone->rotation_xyzw[j] * bone->rotation_xyzw[j];
+        }
+        if (!isfinite(norm) || fabsf(norm - 1.0f) > 0.04f) return 0;
+        for (size_t j = 0u; j < 3u; ++j)
+            if (!isfinite(bone->translation_xyz[j]) ||
+                fabsf(bone->translation_xyz[j]) >= 1000000.0f) return 0;
+    }
+
+    for (size_t i = 0u; i < mesh->material_count; ++i) {
+        const FojStage343Material *material = &mesh->materials[i];
+        if (material->name.offset > mesh->source_size ||
+            material->name.length > mesh->source_size - material->name.offset ||
+            material->first_texture > mesh->texture_count ||
+            material->texture_count > mesh->texture_count - material->first_texture)
+            return 0;
+        for (size_t j = 0u; j < material->texture_count; ++j) {
+            const FojStage343TextureRef *texture =
+                &mesh->textures[(size_t)material->first_texture + j];
+            if (texture->material_index != i ||
+                texture->basename.offset > mesh->source_size ||
+                texture->basename.length >
+                    mesh->source_size - texture->basename.offset) return 0;
+        }
+    }
+
+    size_t covered = 0u;
     for (size_t i = 0u; i < mesh->mesh.section_count; ++i) {
         const FojRigSection *section = &mesh->mesh.sections[i];
         if (mesh->section_material_indices[i] >= mesh->material_count ||
+            section->start_vertex != covered ||
             section->vertex_count == 0u ||
+            section->vertex_count % 3u != 0u ||
             section->start_vertex > mesh->mesh.vertex_count ||
             section->vertex_count > mesh->mesh.vertex_count - section->start_vertex)
             return 0;
+        covered += section->vertex_count;
     }
+    if (covered != mesh->mesh.vertex_count) return 0;
+
     for (size_t i = 0u; i < mesh->mesh.vertex_count; ++i) {
         const FojSkinnedVertex *vertex = &mesh->mesh.vertices[i];
+        float total_weight = 0.0f;
         if (vertex->influence_count > FOJ_SKIN_MAX_INFLUENCES) return 0;
-        for (unsigned j = 0u; j < vertex->influence_count; ++j) {
-            if (vertex->influences[j].bone >= mesh->mesh.bone_count ||
-                !isfinite(vertex->influences[j].weight) ||
-                vertex->influences[j].weight < 0.0f ||
-                vertex->influences[j].weight > 1.001f) return 0;
+        for (size_t axis = 0u; axis < 3u; ++axis) {
+            if (!isfinite(vertex->xyz[axis]) ||
+                fabsf(vertex->xyz[axis]) > 1000000.0f ||
+                !isfinite(mesh->mesh.attributes[i].normal[axis]) ||
+                fabsf(mesh->mesh.attributes[i].normal[axis]) > 1000000.0f)
+                return 0;
         }
+        for (size_t axis = 0u; axis < 2u; ++axis)
+            if (!isfinite(mesh->mesh.attributes[i].uv[axis]) ||
+                fabsf(mesh->mesh.attributes[i].uv[axis]) > 1000000.0f)
+                return 0;
+        for (unsigned j = 0u; j < vertex->influence_count; ++j) {
+            const FojSkinInfluence *influence = &vertex->influences[j];
+            if (influence->bone >= mesh->mesh.bone_count ||
+                !isfinite(influence->weight) ||
+                influence->weight < 0.0f || influence->weight > 1.001f)
+                return 0;
+            total_weight += influence->weight;
+        }
+        if (vertex->influence_count != 0u &&
+            (!isfinite(total_weight) || fabsf(total_weight - 1.0f) > 0.002f))
+            return 0;
     }
     return 1;
 }
