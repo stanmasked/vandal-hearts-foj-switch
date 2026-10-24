@@ -11,7 +11,7 @@ from pathlib import Path
 import re
 import struct
 import time
-from PIL import Image
+from PIL import Image, ImageChops
 
 SCHEMA = "foj.stage341.private_dds_shader_frame.v1"
 MARKER_NAME = "foj-stage341-texture-sample.txt"
@@ -166,8 +166,11 @@ def audit_frames(dds_path: Path, sd_root: Path, evidence: Path,
     first_path, later_path = evidence / "gpu-initial.png", evidence / "gpu-later.png"
     first = _frame_audit(first_path, rgba, marker_time)
     later = _frame_audit(later_path, rgba, marker_time)
-    if first["capture_sha256"] == later["capture_sha256"]:
-        raise ValueError("Stage341 duplicate framebuffer captures rejected")
+    with Image.open(io.BytesIO(_regular(first_path, 12 * 1024 * 1024))) as a, \
+         Image.open(io.BytesIO(_regular(later_path, 12 * 1024 * 1024))) as b:
+        first_rgb, later_rgb = a.convert("RGB"), b.convert("RGB")
+    if ImageChops.difference(first_rgb, later_rgb).getbbox() is None:
+        raise ValueError("Stage341 duplicate framebuffer pixels rejected")
     if first["bad_channels"] or later["bad_channels"]:
         raise ValueError("Stage341 frame/reference comparison failed")
     if require_generated_metadata:
