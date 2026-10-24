@@ -30,6 +30,9 @@ EVIDENCE_FILES = {
     "generated-source.json", "nexium-archive.sha256", "guest.log",
     "gpu-initial.png", "gpu-later.png",
 }
+PRIVATE_EVIDENCE_FILES = {
+    "nexium-runtime.sha256", "guest.log", "gpu-initial.png", "gpu-later.png",
+}
 
 
 def _regular(path: Path, limit: int) -> bytes:
@@ -153,7 +156,7 @@ def audit_frames(dds_path: Path, sd_root: Path, evidence: Path,
         if item.is_symlink() or not item.is_file():
             raise ValueError("Stage341 evidence directory may contain regular files only")
         actual.add(item.name)
-    expected_evidence = EVIDENCE_FILES if require_generated_metadata else EVIDENCE_FILES - {"generated-source.json"}
+    expected_evidence = EVIDENCE_FILES if require_generated_metadata else PRIVATE_EVIDENCE_FILES
     if actual != expected_evidence:
         raise ValueError("Stage341 evidence directory differs from strict allowlist")
     source = _regular(dds_path, DDS_BYTES)
@@ -184,7 +187,8 @@ def audit_frames(dds_path: Path, sd_root: Path, evidence: Path,
         # The public run is the only mode allowed to publish a source hash.
     elif (evidence / "generated-source.json").exists():
         raise ValueError("Stage341 private evidence must not be mislabeled as generated-only")
-    runtime_hash = _regular(evidence / "nexium-archive.sha256", 256).decode("ascii").strip()
+    checksum_name = "nexium-archive.sha256" if require_generated_metadata else "nexium-runtime.sha256"
+    runtime_hash = _regular(evidence / checksum_name, 256).decode("ascii").strip()
     runtime_pattern = (
         r"[0-9a-f]{64}  nexium-linux-x86_64\.tar\.gz"
         if require_generated_metadata else
