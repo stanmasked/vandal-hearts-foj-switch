@@ -131,10 +131,10 @@ void dkCmdBufDraw(DkCmdBuf,uint32_t,uint32_t,uint32_t,uint32_t,uint32_t);
 typedef uint32_t DkResHandle;
 typedef struct { unsigned char data[32]; } DkImageDescriptor;
 typedef struct { unsigned char data[32]; } DkSamplerDescriptor;
-typedef struct { unsigned wrapMode[3]; } DkSampler;
+typedef struct { unsigned minFilter,magFilter,wrapMode[3]; } DkSampler;
 typedef struct { uint32_t x,y,z,width,height,depth; } DkImageRect;
 typedef struct { DkGpuAddr addr; uint32_t rowLength,imageHeight; } DkCopyBuf;
-enum { DkWrapMode_ClampToEdge=3 };
+enum { DkWrapMode_ClampToEdge=3, DkFilter_Nearest=0, DkFilter_Linear=1 };
 void dkCmdBufClear(DkCmdBuf);
 void dkCmdBufCopyBufferToImage(DkCmdBuf,const DkCopyBuf*,
                               const DkImageView*,const DkImageRect*,uint32_t);
