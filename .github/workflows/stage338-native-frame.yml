@@ -185,7 +185,7 @@ jobs:
           timeout --kill-after=5s 390s xvfb-run -a \
             -s "-screen 0 1280x720x24" bash tools/foj_stage330_nexium_drive.sh
           echo STAGE338_REAL_NEIXIUM_SAMPLED_TEXTURE_FRAME_PASS
-      - name: Publish safe aggregate ONLY: exclude both raw frames and guest log
+      - name: 'Publish safe aggregate ONLY: exclude both raw frames and guest log'
         shell: bash
         run: |
           set -euo pipefail
