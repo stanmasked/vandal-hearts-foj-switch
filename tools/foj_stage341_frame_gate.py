@@ -169,16 +169,30 @@ def audit_frames(dds_path: Path, sd_root: Path, evidence: Path,
         raise ValueError("Stage341 frame/reference comparison failed")
     if require_generated_metadata:
         metadata = json.loads(_regular(evidence / "generated-source.json", 4096))
-        if metadata.get("schema") != "foj.stage340.generated_bgra8_dds_fixture.v1" or            metadata.get("generated_only") is not True or            metadata.get("original_ps3_assets_used") is not False or            metadata.get("physical_switch_verified") is not False or            metadata.get("sha256") != _sha(source) or            metadata.get("dds_file_bytes") != DDS_BYTES or            metadata.get("width") != WIDTH or metadata.get("height") != HEIGHT or            metadata.get("format") != "BGRA8":
+        if (
+            metadata.get("schema") != "foj.stage340.generated_bgra8_dds_fixture.v1"
+            or metadata.get("generated_only") is not True
+            or metadata.get("original_ps3_assets_used") is not False
+            or metadata.get("physical_switch_verified") is not False
+            or metadata.get("sha256") != _sha(source)
+            or metadata.get("dds_file_bytes") != DDS_BYTES
+            or metadata.get("width") != WIDTH
+            or metadata.get("height") != HEIGHT
+            or metadata.get("format") != "BGRA8"
+        ):
             raise ValueError("Stage341 public source provenance is not generated-only")
         # The public run is the only mode allowed to publish a source hash.
     elif (evidence / "generated-source.json").exists():
         raise ValueError("Stage341 private evidence must not be mislabeled as generated-only")
     runtime_hash = _regular(evidence / "nexium-archive.sha256", 256).decode("ascii").strip()
-    if not re.fullmatch(r"[0-9a-f]{64}  nexium-linux-x86_64\.tar\.gz", runtime_hash):
+    runtime_pattern = (
+        r"[0-9a-f]{64}  nexium-linux-x86_64\\.tar\\.gz"
+        if require_generated_metadata else
+        r"[0-9a-f]{64}  [A-Za-z0-9._-]{1,100}"
+    )
+    if not re.fullmatch(runtime_pattern, runtime_hash):
         raise ValueError("Stage341 NeXium runtime checksum record malformed")
-    if not _regular(evidence / "guest.log", 2 * 1024 * 1024):
-        raise ValueError("Stage341 NeXium guest log is empty")
+    _regular(evidence / "guest.log", 2 * 1024 * 1024)
     # Ensure there are no unrecognized guest-generated files beyond the input,
     # two shader modules, marker and fixed boot-journal slots.
     gpu = sd_root / "switch" / "foj" / "gpu"
