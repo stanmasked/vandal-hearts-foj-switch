@@ -158,8 +158,6 @@ static void test_duplicate_texture_names_share_one_slot(void) {
     assert(plan.texture_count == 1u);
     assert(plan.upload.material_mask == 1u);
     assert(batches[0].texture_index == 0u && batches[1].texture_index == 0u);
-    foj_gpu_stage346_bmodel_prepare(data, size, &kCamera, 1280u, 720u,
-           256u, vertices, 6u, batches, 2u, &plan);
 }
 
 static void test_multi_texture_material_is_refused_transactionally(void) {
