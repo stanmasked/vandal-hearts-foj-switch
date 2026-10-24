@@ -48,6 +48,7 @@
 #if !defined(FOJ_GPU_DRAW_TRIANGLE) || defined(FOJ_GPU_STAGE329_PATCH_STREAM) || defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
 #error "Stage341 requires the isolated private-DDS textured-quad path"
 #endif
+#include "stage332_dds_source.h"
 #include "stage336_native_upload.h"
 #endif
 #if defined(FOJ_GPU_STAGE302_GENERATED_PAGE_PROBE)
@@ -93,6 +94,97 @@ _Static_assert((size_t)FOJ_RESEARCH_MATERIAL_COUNT ==
 
 enum { SCREEN_WIDTH=1280, SCREEN_HEIGHT=720, BUFFER_COUNT=2 };
 enum { CMD_MEMORY_SIZE=0x10000 };
+
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+enum { FOJ_STAGE341_SOURCE_DDS_BYTES=128+256*256*4 };
+static uint8_t stage341_source_dds[FOJ_STAGE341_SOURCE_DDS_BYTES];
+
+/* Stage340-compatible bounded BGRA8 intake. This reads the source twice and
+ * decodes through Stage332, so the owner-profile DDS header is accepted only
+ * when the same strict parser accepts it. No synthetic fallback is permitted
+ * for material zero in Stage341. */
+static int stage341_read_source_dds(
+    const char *path,uint8_t *rgba,size_t capacity,
+    FojAtlasRgba8Info *atlas,FojAtlasDdsStatus *status) {
+    FILE *file=NULL;
+    long measured;
+    size_t length;
+    uint8_t check[4096];
+    if (!path || !rgba || !atlas || !status ||
+        capacity<256u*256u*4u) {
+        if (status) *status=FOJ_ATLAS_DDS_INVALID_ARGUMENT;
+        return -1;
+    }
+    file=fopen(path,"rb");
+    if (!file) {
+        *status=FOJ_ATLAS_DDS_MISSING;
+        return 0;
+    }
+    if (fseek(file,0,SEEK_END)!=0) {
+        *status=FOJ_ATLAS_DDS_IO_FAILURE;
+        goto fail;
+    }
+    measured=ftell(file);
+    if (measured!=(long)sizeof(stage341_source_dds) ||
+        fseek(file,0,SEEK_SET)!=0) {
+        *status=FOJ_ATLAS_DDS_INVALID_FORMAT;
+        goto fail;
+    }
+    length=(size_t)measured;
+    if (fread(stage341_source_dds,1u,length,file)!=length ||
+        fgetc(file)!=EOF || ferror(file)) {
+        *status=FOJ_ATLAS_DDS_IO_FAILURE;
+        goto fail;
+    }
+    if (fseek(file,0,SEEK_SET)!=0) {
+        *status=FOJ_ATLAS_DDS_IO_FAILURE;
+        goto fail;
+    }
+    for (size_t offset=0u;offset<length;) {
+        const size_t amount=length-offset<sizeof(check)?
+            length-offset:sizeof(check);
+        if (fread(check,1u,amount,file)!=amount ||
+            memcmp(check,stage341_source_dds+offset,amount)!=0) {
+            *status=FOJ_ATLAS_DDS_SOURCE_CHANGED;
+            goto fail;
+        }
+        offset+=amount;
+    }
+    if (fgetc(file)!=EOF || ferror(file)) {
+        *status=FOJ_ATLAS_DDS_IO_FAILURE;
+        goto fail;
+    }
+    if (fclose(file)!=0) {
+        *status=FOJ_ATLAS_DDS_IO_FAILURE;
+        return -1;
+    }
+    file=NULL;
+    FojStage332DdsInfo inspected={0},decoded={0};
+    if (!foj_stage332_dds_inspect(stage341_source_dds,length,&inspected) ||
+        inspected.width!=256u || inspected.height!=256u ||
+        inspected.mip_levels!=1u ||
+        inspected.format!=FOJ_STAGE332_BGRA8 ||
+        inspected.rgba_bytes!=256u*256u*4u ||
+        !foj_stage332_dds_decode(stage341_source_dds,length,rgba,capacity,
+                                 &decoded) ||
+        decoded.width!=inspected.width ||
+        decoded.height!=inspected.height ||
+        decoded.mip_levels!=inspected.mip_levels ||
+        decoded.format!=inspected.format ||
+        decoded.rgba_bytes!=inspected.rgba_bytes) {
+        *status=FOJ_ATLAS_DDS_INVALID_FORMAT;
+        return -1;
+    }
+    atlas->width=inspected.width;
+    atlas->height=inspected.height;
+    atlas->pixel_bytes=inspected.rgba_bytes;
+    *status=FOJ_ATLAS_DDS_LOADED;
+    return 1;
+fail:
+    if (file) (void)fclose(file);
+    return -1;
+}
+#endif
 
 /* 24-byte GPU upload format used by original FoJ vertex staging too.
  * The vertices are invented and do not encode commercial game assets.
@@ -1228,7 +1320,16 @@ int main(int argc,char **argv) {
                         i*PIXEL_STAGING_STRIDE;
         FojAtlasRgba8Info atlas={0};
         FojAtlasDdsStatus dds_status=FOJ_ATLAS_DDS_INVALID_ARGUMENT;
-#if defined(FOJ_GPU_STAGE329_PATCH_STREAM)
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+        int loaded;
+        if (i==0u) {
+            loaded=stage341_read_source_dds(
+                atlas_paths[i],pixels,PIXEL_STAGING_STRIDE,&atlas,&dds_status);
+        } else {
+            loaded=0;
+            dds_status=FOJ_ATLAS_DDS_MISSING;
+        }
+#elif defined(FOJ_GPU_STAGE329_PATCH_STREAM)
         /* Stage329 never reads user DDS files. Slot 0 is an invented fallback;
          * slot 1 is the tile prepared by Stage328 from four generated pages. */
         const int loaded=1;
