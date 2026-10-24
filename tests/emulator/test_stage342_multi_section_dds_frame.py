@@ -11,6 +11,7 @@ import unittest
 from PIL import Image
 
 from tools.foj_stage340_fixture import create
+from tools.foj_stage342_generated_diagnose import diagnose
 from tools.foj_stage342_frame_gate import (
     DDS_BYTES, FRAME_HEIGHT, FRAME_WIDTH, HEIGHT, MARKER, MARKER_NAME,
     SAMPLE_X_LEFT, SAMPLE_X_RIGHT, SAMPLE_Y, WIDTH, _sample_uv,
@@ -35,6 +36,34 @@ def sample_reference(dds: bytes, wrong_one: bool = False) -> Image.Image:
                     color = tuple(255 - channel for channel in color)
                 pixels[x, y] = color
                 visited += 1
+    return image
+
+
+def diagnostic_reference(dds: bytes) -> Image.Image:
+    rgba = decode_bgra8_dds(dds)
+    image = Image.new("RGB", (FRAME_WIDTH, FRAME_HEIGHT), (11, 17, 23))
+    pixels = image.load()
+
+    def put_sample(x: int, y: int, section: str) -> None:
+        u, v = _sample_uv(x, y, section)
+        tx = min(WIDTH - 1, max(0, int(u * WIDTH)))
+        ty = min(HEIGHT - 1, max(0, int(v * HEIGHT)))
+        offset = (ty * WIDTH + tx) * 4
+        pixels[x, y] = tuple(rgba[offset:offset + 3])
+
+    # Populate the exact generated-only centerlines needed to bound both
+    # quads, then all 50 oracle samples. No full screenshot is required.
+    for x in range(64, 608):
+        put_sample(x, FRAME_HEIGHT // 2, "left")
+    for x in range(672, 1216):
+        put_sample(x, FRAME_HEIGHT // 2, "right")
+    for y in range(72, 648):
+        put_sample(336, y, "left")
+        put_sample(944, y, "right")
+    for section, xs in (("left", SAMPLE_X_LEFT), ("right", SAMPLE_X_RIGHT)):
+        for y in SAMPLE_Y:
+            for x in xs:
+                put_sample(x, y, section)
     return image
 
 
@@ -153,6 +182,27 @@ class Stage342MultiSectionFrameTests(unittest.TestCase):
         self.assertIn("under(shader_dir.resolve(), REPO_ROOT)", runner)
         self.assertIn("under(library_path.resolve(), REPO_ROOT)", runner)
         self.assertIn("under(icd.resolve(), REPO_ROOT)", runner)
+
+    def test_generated_failure_diagnostic_accepts_two_section_contract(self):
+        source_bytes = self.source.read_bytes()
+        diagnostic_reference(source_bytes).save(self.evidence / "gpu-initial.png")
+        later = diagnostic_reference(source_bytes)
+        later.putpixel((2, 2), (250, 240, 230))
+        later.save(self.evidence / "gpu-later.png")
+        result = diagnose(self.sd, self.evidence)
+        self.assertTrue(result["generated_only"])
+        self.assertFalse(result["accepted"])
+        self.assertEqual(result["frame_a"]["samples_checked"], 50)
+        self.assertEqual(
+            result["frame_a"]["generated_quad_centerline_bounds"]
+                  ["horizontal_xy_pixels"],
+            [[64, 607], [672, 1215]],
+        )
+        self.assertEqual(
+            result["frame_a"]["generated_quad_centerline_bounds"]
+                  ["vertical_xy_pixels"],
+            [[[72, 647]], [[72, 647]]],
+        )
 
 
 if __name__ == "__main__":

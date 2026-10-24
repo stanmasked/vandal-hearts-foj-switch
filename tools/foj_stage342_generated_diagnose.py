@@ -14,9 +14,9 @@ from PIL import Image, ImageChops
 
 from tools.foj_stage340_fixture import fixture_bytes, summary as fixture_summary
 from tools.foj_stage342_frame_gate import (
-    EVIDENCE_FILES, FRAME_HEIGHT, FRAME_WIDTH, SAMPLE_X, SAMPLE_Y,
-    CHANNEL_TOLERANCE, WIDTH, HEIGHT, _marker, _regular, _sample_uv,
-    decode_bgra8_dds,
+    EVIDENCE_FILES, FRAME_HEIGHT, FRAME_WIDTH, MARKER_NAME,
+    SAMPLE_X_LEFT, SAMPLE_X_RIGHT, SAMPLE_Y, CHANNEL_TOLERANCE,
+    WIDTH, HEIGHT, _marker, _regular, _sample_uv, decode_bgra8_dds,
 )
 
 SCHEMA = "foj.stage342.generated_only_failure_diagnostic.v1"
@@ -98,39 +98,36 @@ def _fit_generated_affine_texels(
     }
 
 
-def _longest_provenance_run(
+def _provenance_runs(
     pixels, *, horizontal: bool, position: int, extent: int,
-) -> list[int] | None:
-    """Find quad centerline bounds using only exact generated DDS RGB colors.
+) -> list[list[int]]:
+    """Return long contiguous runs of exact generated-fixture RGB pixels.
 
-    Accidental valid colors outside the quad cannot set the bounds unless
-    they form a contiguous run longer than one third of the capture axis.
-    The returned aggregate contains no observed color or private texture.
+    Stage342 draws two separate quads, so the horizontal centerline must
+    report both regions instead of selecting only one. Vertical centerlines
+    are queried independently for the left and right section.
     """
-    longest_start = -1
-    longest_length = 0
+    runs: list[list[int]] = []
     current_start = -1
     current_length = 0
+    minimum_length = extent // 3
     for axis_position in range(extent):
         rgb = (
             pixels[axis_position, position] if horizontal
             else pixels[position, axis_position]
         )
-        valid = invert_generated_rgb(rgb) is not None
-        if valid:
+        if invert_generated_rgb(rgb) is not None:
             if current_start < 0:
                 current_start = axis_position
                 current_length = 0
             current_length += 1
         else:
-            if current_length > longest_length:
-                longest_start, longest_length = current_start, current_length
+            if current_start >= 0 and current_length >= minimum_length:
+                runs.append([current_start, current_start + current_length - 1])
             current_start, current_length = -1, 0
-    if current_length > longest_length:
-        longest_start, longest_length = current_start, current_length
-    if longest_start < 0 or longest_length < extent // 3:
-        return None
-    return [longest_start, longest_start + longest_length - 1]
+    if current_start >= 0 and current_length >= minimum_length:
+        runs.append([current_start, current_start + current_length - 1])
+    return runs
 
 
 def diagnose(sd_root: Path, evidence: Path) -> dict:
@@ -146,7 +143,7 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
             or any(p.is_symlink() or not p.is_file() for p in gpu.iterdir())):
         raise ValueError("Stage342 diagnosis SD directory invalid")
     allowed = {"source.dds", "foj_actor.vert.dksh", "foj_triangle.frag.dksh",
-               "foj-stage342-texture-sample.txt"}
+               MARKER_NAME}
     for path in gpu.iterdir():
         if path.name not in allowed and not re.fullmatch(r"foj-boot-[0-9]{2}\.txt", path.name):
             raise ValueError("Stage342 diagnosis unexpected SD file")
@@ -172,14 +169,18 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
         if image.size != (FRAME_WIDTH, FRAME_HEIGHT):
             raise ValueError("Stage342 diagnosis expects 1280x720")
         pixel = image.load()
-        horizontal_bounds = _longest_provenance_run(
+        horizontal_bounds = _provenance_runs(
             pixel, horizontal=True, position=FRAME_HEIGHT // 2,
             extent=FRAME_WIDTH,
         )
-        vertical_bounds = _longest_provenance_run(
-            pixel, horizontal=False, position=FRAME_WIDTH // 2,
-            extent=FRAME_HEIGHT,
-        )
+        vertical_bounds = [
+            _provenance_runs(
+                pixel, horizontal=False, position=336, extent=FRAME_HEIGHT,
+            ),
+            _provenance_runs(
+                pixel, horizontal=False, position=944, extent=FRAME_HEIGHT,
+            ),
+        ]
         totals = {candidate: 0 for candidate in CANDIDATES}
         alpha_hypotheses = {
             "premultiplied_black": 0,
@@ -193,56 +194,59 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
         affine_points = []
         exact_source_colors = 0
         exact_expected_texels = 0
-        for y in SAMPLE_Y:
-            for x in SAMPLE_X:
-                u, v = _sample_uv(x, y)
-                observed = pixel[x, y]
-                sampled_triplets.append(observed)
-                positions_and_rgb.append((u, v, observed))
-                source_xy = invert_generated_rgb(observed)
-                if source_xy is not None:
-                    exact_source_colors += 1
-                    ideal_xy = (
-                        min(WIDTH - 1, max(0, int(u * WIDTH))),
-                        min(HEIGHT - 1, max(0, int(v * HEIGHT))),
-                    )
-                    exact_expected_texels += source_xy == ideal_xy
-                    dx = ((source_xy[0] - ideal_xy[0] + 128) & 255) - 128
-                    dy = ((source_xy[1] - ideal_xy[1] + 128) & 255) - 128
-                    inverse_offsets.append((dx, dy))
-                    affine_points.append((*ideal_xy, *source_xy))
-                tx0 = min(WIDTH - 1, max(0, int(u * WIDTH)))
-                ty0 = min(HEIGHT - 1, max(0, int(v * HEIGHT)))
-                source_offset = (ty0 * WIDTH + tx0) * 4
-                alpha = rgba[source_offset + 3]
-                for channel in range(3):
-                    source_rgb = rgba[source_offset + channel]
-                    premultiplied = (source_rgb * alpha + 127) // 255
-                    alpha_hypotheses["premultiplied_black"] += (
-                        abs(int(observed[channel]) - premultiplied) > CHANNEL_TOLERANCE
-                    )
-                    for phase, clear in enumerate(clear_phase_colors):
-                        over_clear = (
-                            source_rgb * alpha
-                            + clear[channel] * (255 - alpha) + 127
-                        ) // 255
-                        alpha_hypotheses[f"source_over_clear_phase_{phase}"] += (
-                            abs(int(observed[channel]) - over_clear) > CHANNEL_TOLERANCE
+        for section, sample_xs in (
+            ("left", SAMPLE_X_LEFT), ("right", SAMPLE_X_RIGHT)
+        ):
+            for y in SAMPLE_Y:
+                for x in sample_xs:
+                    u, v = _sample_uv(x, y, section)
+                    observed = pixel[x, y]
+                    sampled_triplets.append(observed)
+                    positions_and_rgb.append((u, v, observed))
+                    source_xy = invert_generated_rgb(observed)
+                    if source_xy is not None:
+                        exact_source_colors += 1
+                        ideal_xy = (
+                            min(WIDTH - 1, max(0, int(u * WIDTH))),
+                            min(HEIGHT - 1, max(0, int(v * HEIGHT))),
                         )
-                for candidate in CANDIDATES:
-                    flip_u = candidate.endswith("flip_u") or candidate.endswith("flip_uv")
-                    flip_v = candidate.endswith("flip_v") or candidate.endswith("flip_uv")
-                    tx = min(WIDTH - 1, max(0, int((1.0 - u if flip_u else u) * WIDTH)))
-                    ty = min(HEIGHT - 1, max(0, int((1.0 - v if flip_v else v) * HEIGHT)))
-                    start = (ty * WIDTH + tx) * 4
-                    expected = rgba[start:start + 3]
-                    if candidate.startswith("swap_rb"):
-                        expected = (expected[2], expected[1], expected[0])
-                    totals[candidate] += sum(
-                        abs(int(observed[channel]) - int(expected[channel])) >
-                        CHANNEL_TOLERANCE for channel in range(3)
-                    )
-        # RGB provenance is uniquely invertible for the canonical synthetic
+                        exact_expected_texels += source_xy == ideal_xy
+                        dx = ((source_xy[0] - ideal_xy[0] + 128) & 255) - 128
+                        dy = ((source_xy[1] - ideal_xy[1] + 128) & 255) - 128
+                        inverse_offsets.append((dx, dy))
+                        affine_points.append((*ideal_xy, *source_xy))
+                    tx0 = min(WIDTH - 1, max(0, int(u * WIDTH)))
+                    ty0 = min(HEIGHT - 1, max(0, int(v * HEIGHT)))
+                    source_offset = (ty0 * WIDTH + tx0) * 4
+                    alpha = rgba[source_offset + 3]
+                    for channel in range(3):
+                        source_rgb = rgba[source_offset + channel]
+                        premultiplied = (source_rgb * alpha + 127) // 255
+                        alpha_hypotheses["premultiplied_black"] += (
+                            abs(int(observed[channel]) - premultiplied) > CHANNEL_TOLERANCE
+                        )
+                        for phase, clear in enumerate(clear_phase_colors):
+                            over_clear = (
+                                source_rgb * alpha
+                                + clear[channel] * (255 - alpha) + 127
+                            ) // 255
+                            alpha_hypotheses[f"source_over_clear_phase_{phase}"] += (
+                                abs(int(observed[channel]) - over_clear) > CHANNEL_TOLERANCE
+                            )
+                    for candidate in CANDIDATES:
+                        flip_u = candidate.endswith("flip_u") or candidate.endswith("flip_uv")
+                        flip_v = candidate.endswith("flip_v") or candidate.endswith("flip_uv")
+                        tx = min(WIDTH - 1, max(0, int((1.0 - u if flip_u else u) * WIDTH)))
+                        ty = min(HEIGHT - 1, max(0, int((1.0 - v if flip_v else v) * HEIGHT)))
+                        start = (ty * WIDTH + tx) * 4
+                        expected = rgba[start:start + 3]
+                        if candidate.startswith("swap_rb"):
+                            expected = (expected[2], expected[1], expected[0])
+                        totals[candidate] += sum(
+                            abs(int(observed[channel]) - int(expected[channel])) >
+                            CHANNEL_TOLERANCE for channel in range(3)
+                        )
+        # RGB provenance is uniquely invertible/s for the canonical synthetic
         # fixture. Export only counts and one aggregate displacement mode,
         # never observed channels or individual recovered texel positions.
         offset_votes = {
@@ -277,7 +281,7 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
         best = min(CANDIDATES, key=lambda candidate: totals[candidate])
         return ({
             "capture_sha256": hashlib.sha256(data).hexdigest(),
-            "samples_checked": len(SAMPLE_X) * len(SAMPLE_Y),
+            "samples_checked": 2 * len(SAMPLE_X_LEFT) * len(SAMPLE_Y),
             "identity_bad_channels": totals["identity"],
             "exact_generated_fixture_rgb_matches": exact_source_colors,
             "generated_texel_affine_mapping": _fit_generated_affine_texels(affine_points),
@@ -295,8 +299,8 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
             "generated_quad_centerline_bounds": {
                 "horizontal_xy_pixels": horizontal_bounds,
                 "vertical_xy_pixels": vertical_bounds,
-                "expected_horizontal_xy_pixels": [128, 1151],
-                "expected_vertical_xy_pixels": [72, 647],
+                "expected_horizontal_xy_pixels": [[64, 607], [672, 1215]],
+                "expected_vertical_xy_pixels": [[[72, 647]], [[72, 647]]],
                 "independent_of_sample_grid": True,
             },
             "best_integer_texel_offset": [best_shift[2], best_shift[3]],
