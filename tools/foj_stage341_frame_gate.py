@@ -223,8 +223,12 @@ def audit_frames(dds_path: Path, sd_root: Path, evidence: Path,
         "samples_per_frame": len(SAMPLE_X) * len(SAMPLE_Y),
         "channel_tolerance": CHANNEL_TOLERANCE,
         "max_bad_rgb_channels": MAX_BAD_CHANNELS,
-        "frame_a": {k: v for k, v in first.items() if k != "samples_private"},
-        "frame_b": {k: v for k, v in later.items() if k != "samples_private"},
+        # The owner-private archive requires the full 25-point evidence for
+        # each frame. Generated-only public CI MUST omit all per-pixel values.
+        "frame_a": ({k: v for k, v in first.items() if k != "samples_private"}
+                    if require_generated_metadata else first),
+        "frame_b": ({k: v for k, v in later.items() if k != "samples_private"}
+                    if require_generated_metadata else later),
         "physical_switch_verified": False,
         "full_game_fidelity_verified": False,
     }

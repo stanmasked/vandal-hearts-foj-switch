@@ -132,6 +132,10 @@ class Stage341FrameGateTests(unittest.TestCase):
         self.assertEqual(result["samples_per_frame"], 25)
         self.assertEqual(result["frame_a"]["bad_channels"], 0)
         self.assertEqual(result["frame_b"]["bad_channels"], 0)
+        self.assertNotIn("samples_private", result["frame_a"])
+        self.assertNotIn("samples_private", result["frame_b"])
+        self.assertNotIn("expected_rgb", json.dumps(result))
+        self.assertNotIn("observed_rgb", json.dumps(result))
         self.assertFalse(result["physical_switch_verified"])
 
     def test_private_mode_uses_separate_runtime_checksum_and_no_public_metadata(self):
@@ -145,6 +149,13 @@ class Stage341FrameGateTests(unittest.TestCase):
         result = audit_frames(self.source, self.sd, self.evidence, False)
         self.assertEqual(result["generated_only"], False)
         self.assertEqual(result["independent_frames_verified"], 2)
+        for frame in ("frame_a", "frame_b"):
+            samples = result[frame]["samples_private"]
+            self.assertEqual(len(samples), 25)
+            self.assertEqual(samples[0]["frame_xy"], [SAMPLE_X[0], SAMPLE_Y[0]])
+            self.assertEqual(len(samples[0]["expected_rgb"]), 3)
+            self.assertEqual(len(samples[0]["observed_rgb"]), 3)
+            self.assertEqual(samples[0]["absolute_rgb_error"], [0, 0, 0])
         with self.assertRaises(ValueError):
             audit_frames(self.source, self.sd, self.evidence, True)
 
