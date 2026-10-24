@@ -342,7 +342,7 @@ def verify_and_aggregate(source: Path) -> dict:
         "source_texture_kind": "generated-only-fixture",
         "generated_only": True,
         "gpu_texture_sampling_verified": True,
-        "real_neixium_frames_verified": 2,
+        "real_nexium_frames_verified": 2,
         "independent_cpu_dds_pixel_oracle": True,
         "sampled_pixels_per_frame_min": min(x["matched_samples"] for x in frame_results),
         "uv_orientation": "top-left",
