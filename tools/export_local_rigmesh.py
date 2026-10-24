@@ -41,8 +41,13 @@ def pack_rig_mesh(data: bytes) -> tuple[bytes, dict]:
     original content and must be kept on user-controlled local storage.
     """
     model = decode_model(data)
-    rig = parse_bmodel_rig(data[-model.footer_bytes:])
-    bones = rig.bones
+    footer = data[-model.footer_bytes:]
+    if footer == b"\\x0c":
+        # A single 0x0C footer denotes valid static geometry without a rig.
+        bones = ()
+    else:
+        rig = parse_bmodel_rig(footer)
+        bones = rig.bones
     vertex_count = sum(s.vertex_count for s in model.shapes)
     if (len(bones) > MAX_BONES or
         not 1 <= len(model.shapes) <= MAX_SECTIONS or
