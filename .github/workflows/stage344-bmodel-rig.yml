@@ -1,0 +1,90 @@
+name: Stage344 native BMODEL rig and skin-index contract
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage344-bmodel-rig.yml'
+      - 'gpu/stage344_bmodel_rig.c'
+      - 'gpu/stage344_bmodel_rig.h'
+      - 'gpu/stage343_bmodel_source.h'
+      - 'gpu/stage343_bmodel_source.c'
+      - 'tests/gpu/test_stage344_bmodel_rig.c'
+      - 'tests/gpu/test_stage343_bmodel_source.c'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    name: GCC and Clang strict C99 source tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: GCC Stage343 and Stage344 synthetic tests
+        run: |
+          set -euo pipefail
+          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
+            -Igpu gpu/stage343_bmodel_source.c \
+            tests/gpu/test_stage343_bmodel_source.c -lm -o /tmp/stage343-gcc
+          /tmp/stage343-gcc
+          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
+            -Igpu gpu/stage344_bmodel_rig.c \
+            tests/gpu/test_stage344_bmodel_rig.c -lm -o /tmp/stage344-gcc
+          /tmp/stage344-gcc
+      - name: Clang Stage343 and Stage344 synthetic tests
+        run: |
+          set -euo pipefail
+          clang -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
+            -Igpu gpu/stage343_bmodel_source.c \
+            tests/gpu/test_stage343_bmodel_source.c -lm -o /tmp/stage343-clang
+          /tmp/stage343-clang
+          clang -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
+            -Igpu gpu/stage344_bmodel_rig.c \
+            tests/gpu/test_stage344_bmodel_rig.c -lm -o /tmp/stage344-clang
+          /tmp/stage344-clang
+
+  sanitizers:
+    name: Clang ASan and UBSan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run sanitized Stage343 and Stage344 fixtures
+        run: |
+          set -euo pipefail
+          clang -std=c99 -O1 -g -Wall -Wextra -Werror -pedantic \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -Igpu gpu/stage343_bmodel_source.c \
+            tests/gpu/test_stage343_bmodel_source.c -lm -o /tmp/stage343-sanitize
+          ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
+            UBSAN_OPTIONS=halt_on_error=1 /tmp/stage343-sanitize
+          clang -std=c99 -O1 -g -Wall -Wextra -Werror -pedantic \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -Igpu gpu/stage344_bmodel_rig.c \
+            tests/gpu/test_stage344_bmodel_rig.c -lm -o /tmp/stage344-sanitize
+          ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
+            UBSAN_OPTIONS=halt_on_error=1 /tmp/stage344-sanitize
+
+  devkita64:
+    name: Nintendo Switch AArch64 compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      image: devkitpro/devkita64:20260219
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile both bounded source validators for devkitA64
+        run: |
+          set -eu
+          compiler="/opt/devkitpro/devkitA64/bin/aarch64-none-elf-gcc"
+          test -x "$compiler"
+          "$compiler" -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
+            -ffreestanding -Igpu -c gpu/stage343_bmodel_source.c \
+            -o /tmp/stage343_bmodel_source.o
+          "$compiler" -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
+            -ffreestanding -Igpu -c gpu/stage344_bmodel_rig.c \
+            -o /tmp/stage344_bmodel_rig.o
+          test -s /tmp/stage343_bmodel_source.o
+          test -s /tmp/stage344_bmodel_rig.o
