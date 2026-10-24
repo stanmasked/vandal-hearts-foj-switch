@@ -39,7 +39,7 @@ FojRigMeshStatus foj_rigmesh_parse(const uint8_t *data,size_t length,
         return FOJ_RIGMESH_FORMAT;
     const size_t bones=read32(data+12),vertices=read32(data+16);
     const size_t sections=read32(data+20);
-    if (!bones || bones>FOJ_SKIN_MAX_BONES ||
+    if (bones>FOJ_SKIN_MAX_BONES ||
         vertices<3 || vertices>FOJ_RIGMESH_MAX_VERTICES ||
         !sections || sections>FOJ_RIGMESH_MAX_SECTIONS ||
         vertices%3)
@@ -49,11 +49,11 @@ FojRigMeshStatus foj_rigmesh_parse(const uint8_t *data,size_t length,
     out->bone_count=bones;
     out->vertex_count=vertices;
     out->section_count=sections;
-    out->bind_bones=calloc(bones,sizeof(*out->bind_bones));
+    out->bind_bones=bones ? calloc(bones,sizeof(*out->bind_bones)) : NULL;
     out->vertices=calloc(vertices,sizeof(*out->vertices));
     out->attributes=calloc(vertices,sizeof(*out->attributes));
     out->sections=calloc(sections,sizeof(*out->sections));
-    if (!out->bind_bones || !out->vertices || !out->attributes ||
+    if ((bones && !out->bind_bones) || !out->vertices || !out->attributes ||
         !out->sections) {
         foj_rigmesh_free(out);
         return FOJ_RIGMESH_MEMORY;
