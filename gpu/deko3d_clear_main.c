@@ -1846,8 +1846,8 @@ int main(int argc,char **argv) {
 #endif
         dkQueuePresentImage(queue,swapchain,slot);
 #if defined(FOJ_GPU_STAGE340_PRIVATE_DDS_TEXTURE)
-        if (frame == 0u) {
-            /* Receipt only after a real upload+draw submission has drained. */
+        if (frame == 0u && !dds_fatal) {
+            /* Receipt only after a valid source upload+draw has drained. */
             dkQueueWaitIdle(queue);
             FILE *const proof = fopen(
                 "sdmc:/switch/foj/gpu/foj-stage340-private-dds-gpu.txt", "wx");
