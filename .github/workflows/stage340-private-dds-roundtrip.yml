@@ -1,0 +1,163 @@
+name: Stage340 native DDS GPU upload/readback in NeXium
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage340-private-dds-roundtrip.yml'
+      - 'gpu/stage340_private_dds_roundtrip_main.c'
+      - 'gpu/stage340_private_dds_roundtrip.mk'
+      - 'gpu/stage339_private_dds_bridge.c'
+      - 'gpu/stage339_private_dds_bridge.h'
+      - 'gpu/stage336_native_upload.c'
+      - 'gpu/stage336_native_upload.h'
+      - 'gpu/stage336_gpu_copy_plan.c'
+      - 'gpu/stage336_gpu_copy_plan.h'
+      - 'gpu/stage335_source_staging.c'
+      - 'gpu/stage335_source_staging.h'
+      - 'gpu/stage332_dds_source.c'
+      - 'gpu/stage332_dds_source.h'
+      - 'tools/foj_stage340_fixture.py'
+      - 'tools/foj_stage340_receipt.py'
+      - 'tools/foj_stage340_private_run.py'
+      - 'tools/foj_stage340_nexium_drive.sh'
+      - 'tests/emulator/test_stage340_private_dds_roundtrip.py'
+      - 'docs/GPU_STAGE340_PRIVATE_DDS_ROUNDTRIP.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage340-private-dds-roundtrip-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host:
+    name: Generated fixture and strict receipt refusal tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run generated-only fixture and native receipt contract tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/emulator -p 'test_stage340_private_dds_roundtrip.py' -v
+          python3 -m unittest discover -s tests/emulator -p 'test_stage338_frame_gate.py' -v
+          python3 -m compileall -q tools/foj_stage340_fixture.py tools/foj_stage340_receipt.py tools/foj_stage340_private_run.py
+          bash -n tools/foj_stage340_nexium_drive.sh
+          echo STAGE340_GENERATED_DDS_AND_EVIDENCE_GATES_PASS
+
+  native:
+    name: Build Stage340 native Stage339+336 DDS GPU roundtrip NRO
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    container:
+      image: devkitpro/devkita64:20260219
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cross-compile the private-source-agnostic DDS roundtrip NRO
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f gpu/stage340_private_dds_roundtrip.mk verify
+          python3 tools/validate_nro.py build/foj-deko3d-stage340-private-dds-roundtrip.nro
+          echo STAGE340_NATIVE_DDS_GPU_ROUNDTRIP_NRO_PASS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage340-native-dds-roundtrip-nro
+          path: build/foj-deko3d-stage340-private-dds-roundtrip.nro
+          if-no-files-found: error
+          retention-days: 7
+
+  nexium:
+    name: Real NeXium native GPU upload and image-to-buffer readback
+    needs: [host, native]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: foj-stage340-native-dds-roundtrip-nro
+          path: native
+      - name: Install NeXium Vulkan guest dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt_options=(-o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+          timeout --kill-after=15s 360s sudo apt-get "${apt_options[@]}" update
+          timeout --kill-after=15s 1500s sudo apt-get "${apt_options[@]}" install -y \
+            curl jq xvfb xauth python3-pil \
+            libgtk-3-0t64 libasound2t64 libudev1 libxkbcommon0 libxkbcommon-x11-0 \
+            libx11-xcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 \
+            libxcb-randr0 libxcb-render0 libxcb-shape0 libxcb-xkb1 \
+            libvulkan1 mesa-vulkan-drivers
+          icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 -name 'lvp_icd*.json' -print -quit)"
+          test -n "$icd"
+          echo "VK_ICD_FILENAMES=$icd" >> "$GITHUB_ENV"
+      - name: Pin downloaded NeXium emulator identity
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/nexium runtime-evidence/bridge
+          release="$(curl -fsSL --retry 3 --retry-all-errors --connect-timeout 20 --max-time 120 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/nexium-emu/nexium-nightly/releases/tags/nightly)"
+          asset="$(printf '%s' "$release" | jq -er \
+            '.assets[] | select(.name=="nexium-linux-x86_64.tar.gz") | .browser_download_url')"
+          curl -fL --retry 3 --retry-all-errors --connect-timeout 20 --max-time 300 \
+            "$asset" -o /tmp/nexium.tar.gz
+          sha256sum /tmp/nexium.tar.gz > runtime-evidence/nexium-archive.sha256
+          tar -xzf /tmp/nexium.tar.gz -C /tmp/nexium
+          bin="$(find /tmp/nexium -type f -executable \
+            \( -name 'nexium-gui' -o -name 'nexium' \) -print -quit)"
+          test -n "$bin"
+          echo "NEXIUM_BIN=$bin" >> "$GITHUB_ENV"
+      - name: Stage exactly one generated-only DDS in fresh SD root
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/stage340-generated-sd"
+          gpu="$work/sdmc/switch/foj/gpu"
+          mkdir -p "$gpu"
+          python3 -m tools.foj_stage340_fixture create --path "$gpu/source.dds" \
+            > runtime-evidence/generated-input.json
+          python3 -m tools.foj_stage340_fixture verify --path "$gpu/source.dds" >/dev/null
+          echo "NEXIUM_DATA_ROOT=$work" >> "$GITHUB_ENV"
+          echo "FOJ_NRO=$GITHUB_WORKSPACE/native/foj-deko3d-stage340-private-dds-roundtrip.nro" >> "$GITHUB_ENV"
+          echo "FOJ_EVIDENCE_DIR=$GITHUB_WORKSPACE/runtime-evidence/bridge" >> "$GITHUB_ENV"
+      - name: Execute real native GPU upload and independent image readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --kill-after=5s 230s xvfb-run -a \
+            -s "-screen 0 1280x720x24" bash tools/foj_stage340_nexium_drive.sh
+          python3 -m tools.foj_stage340_receipt publish \
+            --sd-root "$NEXIUM_DATA_ROOT/sdmc" \
+            --evidence "$FOJ_EVIDENCE_DIR" \
+            --output "$RUNNER_TEMP/stage340-gpu-roundtrip.json"
+          echo STAGE340_REAL_NEIXIUM_NATIVE_DDS_GPU_ROUNDTRIP_PASS
+      - name: Export allowlisted generated-only aggregate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-evidence-public
+          cp -- "$RUNNER_TEMP/stage340-gpu-roundtrip.json" runtime-evidence-public/
+          cp -- runtime-evidence/nexium-archive.sha256 runtime-evidence-public/
+          test "$(find runtime-evidence-public -type f | wc -l)" -eq 2
+          test ! -e runtime-evidence-public/guest.log
+          test ! -e runtime-evidence-public/source.dds
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: foj-stage340-generated-real-gpu-roundtrip-proof
+          path: runtime-evidence-public/
+          if-no-files-found: error
+          retention-days: 7
