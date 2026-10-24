@@ -1,0 +1,133 @@
+name: Stage337 native generated RGBA GPU image transfer/readback in NeXium
+on:
+  pull_request:
+    paths:
+      - 'gpu/stage337_roundtrip_main.c'
+      - 'gpu/stage337_roundtrip.mk'
+      - 'tools/foj_stage337_receipt.py'
+      - 'tools/foj_stage337_nexium_drive.sh'
+      - 'tests/emulator/test_stage337_receipt.py'
+      - '.github/workflows/stage337-native-roundtrip.yml'
+      - 'docs/GPU_STAGE337_NATIVE_ROUNDTRIP.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: stage337-native-roundtrip-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  host:
+    name: Validate generated evidence parser and refusal tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generated-only safe receipt and driver checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=. python3 -m unittest discover -s tests/emulator -p 'test_stage337_receipt.py' -v
+          python3 -m compileall -q tools/foj_stage337_receipt.py
+          bash -n tools/foj_stage337_nexium_drive.sh
+          echo STAGE337_SAFE_EVIDENCE_HOST_PASS
+  native:
+    name: Build independent Stage337 deko3d GPU roundtrip NRO
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    container:
+      image: devkitpro/devkita64:20260219
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cross-compile and validate real SDK image-copy NRO
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f gpu/stage337_roundtrip.mk verify
+          python3 tools/validate_nro.py build/foj-deko3d-stage337-roundtrip.nro
+          echo STAGE337_SDK_NATIVE_ROUNDTRIP_NRO_PASS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage337-generated-roundtrip-nro
+          path: build/foj-deko3d-stage337-roundtrip.nro
+          if-no-files-found: error
+          retention-days: 7
+  nexium:
+    name: Real NeXium executes GPU copy and independent guest readback
+    needs: [host, native]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: foj-stage337-generated-roundtrip-nro
+          path: native
+      - name: Install NeXium Vulkan guest dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt_options=(-o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+          timeout --kill-after=15s 360s sudo apt-get "${apt_options[@]}" update
+          timeout --kill-after=15s 1500s sudo apt-get "${apt_options[@]}" install -y \
+            curl jq xvfb xauth python3-pil \
+            libgtk-3-0t64 libasound2t64 libudev1 libxkbcommon0 libxkbcommon-x11-0 \
+            libx11-xcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 \
+            libxcb-randr0 libxcb-render0 libxcb-shape0 libxcb-xkb1 \
+            libvulkan1 mesa-vulkan-drivers
+          icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 -name 'lvp_icd*.json' -print -quit)"
+          test -n "$icd"
+          echo "VK_ICD_FILENAMES=$icd" >> "$GITHUB_ENV"
+      - name: Pin native NeXium emulator identity
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/nexium runtime-evidence/bridge
+          release="$(curl -fsSL --retry 3 --retry-all-errors --connect-timeout 20 --max-time 120 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/nexium-emu/nexium-nightly/releases/tags/nightly)"
+          asset="$(printf '%s' "$release" | jq -er \
+            '.assets[] | select(.name=="nexium-linux-x86_64.tar.gz") | .browser_download_url')"
+          curl -fL --retry 3 --retry-all-errors --connect-timeout 20 --max-time 300 \
+            "$asset" -o /tmp/nexium.tar.gz
+          sha256sum /tmp/nexium.tar.gz > runtime-evidence/nexium-archive.sha256
+          tar -xzf /tmp/nexium.tar.gz -C /tmp/nexium
+          bin="$(find /tmp/nexium -type f -executable \
+              \( -name 'nexium-gui' -o -name 'nexium' \) -print -quit)"
+          test -n "$bin"
+          echo "NEXIUM_BIN=$bin" >> "$GITHUB_ENV"
+      - name: Stage clean synthetic-only SD filesystem
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/stage337-clean-sd"
+          mkdir -p "$work/sdmc/switch/foj/gpu"
+          echo "NEXIUM_DATA_ROOT=$work" >> "$GITHUB_ENV"
+          echo "FOJ_NRO=$GITHUB_WORKSPACE/native/foj-deko3d-stage337-roundtrip.nro" >> "$GITHUB_ENV"
+          echo "FOJ_EVIDENCE_DIR=$GITHUB_WORKSPACE/runtime-evidence/bridge" >> "$GITHUB_ENV"
+      - name: Execute actual GPU upload and readback in NeXium
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --kill-after=5s 230s xvfb-run -a \
+            -s "-screen 0 1280x720x24" bash tools/foj_stage337_nexium_drive.sh
+          test -s runtime-evidence/bridge/stage337-gpu-readback.json
+          echo STAGE337_INDEPENDENT_REAL_GPU_ROUNDTRIP_PASS
+      - name: Export only generated-only allowlisted proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-evidence-public
+          cp -- runtime-evidence/nexium-archive.sha256 \
+                runtime-evidence/bridge/stage337-gpu-readback.json \
+                runtime-evidence-public/
+          test "$(find runtime-evidence-public -type f | wc -l)" -eq 2
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: foj-stage337-generated-real-gpu-roundtrip-proof
+          path: runtime-evidence-public/
+          if-no-files-found: error
+          retention-days: 7
