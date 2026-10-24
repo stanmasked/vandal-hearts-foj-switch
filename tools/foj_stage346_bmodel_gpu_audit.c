@@ -28,8 +28,9 @@ static int run_audit(const char *path) {
         puts("{\"ok\":false,\"reason\":\"allocation\"}");
         return 2;
     }
-    if (fread(bytes, 1u, (size_t)length, file) != (size_t)length ||
-        fclose(file) != 0) {
+    const size_t read_count = fread(bytes, 1u, (size_t)length, file);
+    const int close_status = fclose(file);
+    if (read_count != (size_t)length || close_status != 0) {
         free(bytes);
         puts("{\"ok\":false,\"reason\":\"input_read\"}");
         return 2;
