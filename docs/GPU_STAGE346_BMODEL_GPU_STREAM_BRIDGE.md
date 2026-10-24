@@ -8,14 +8,14 @@ Connect the Stage345 in-memory BMODEL-to-FojRigMesh conversion to the existing C
 
 - Accepts only Stage345-integrity-ready BMODELs.
 - Maps each used material to exactly one texture reference. Multi-texture materials are rejected; there is no guessed diffuse-map selection or fallback. Sections sharing the same material share a slot, but different material records keep separate slots even when their basenames match, because a basename alone does not prove that both references identify the same PSARC resource.
-- Deduplicates repeated texture basenames into at most eight slots, then produces ordered triangle-soup sections and matching GPU batches.
+- Assigns one texture slot per used material record, reusing that slot when multiple sections reference the same material. Different material records retain separate slots even if their basenames match, because basename equality alone does not prove identical PSARC asset identity. At most eight used materials are supported.
 - Reuses the existing orthographic camera projection and upload allocation planner.
 - Returns only source-relative texture-name references and aggregate stream/upload metadata. The original bytes are borrowed, never copied to disk or freed by this bridge.
 - Rejects overlapping buffers, insufficient capacities, invalid camera/geometry, invalid alignment and unsupported material layouts before committing outputs.
 
 ## Verification
 
-Generated-only tests cover two sections/two textures, duplicate-texture deduplication, upload byte alignment, UV transfer, multi-texture refusal, insufficient capacity and invalid-camera transactional behavior. CI runs strict GCC/Clang C99 tests, Clang ASan/UBSan, devkitA64 compilation and a code-only owner-local audit executable.
+Generated-only tests cover two sections/two textures, slot reuse for sections sharing one material, upload byte alignment, UV transfer, multi-texture refusal, insufficient capacity and invalid-camera transactional behavior. CI runs strict GCC/Clang C99 tests, Clang ASan/UBSan, devkitA64 compilation and a code-only owner-local audit executable.
 
 ## Limits
 
