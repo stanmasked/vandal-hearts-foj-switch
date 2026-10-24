@@ -239,7 +239,7 @@ static void test_more_than_five_influences_and_truncation_are_rejected(void) {
 
     size = make_fixture(data, sizeof(data), 2u);
     assert(foj_stage345_bmodel_to_rigmesh(data, size - 3u, &mesh) ==
-           FOJ_STAGE345_FORMAT);
+           FOJ_STAGE345_RIG);
     assert(memcmp(&mesh, &before, sizeof(mesh)) == 0);
 }
 
