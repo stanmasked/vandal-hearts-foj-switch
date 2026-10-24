@@ -21,6 +21,7 @@ on:
       - 'tools/foj_stage341_private_run.py'
       - 'tools/foj_stage341_nexium_drive.sh'
       - 'tests/emulator/test_stage341_private_dds_frame.py'
+      - 'tests/mock_switch_sdk/deko3d.h'
       - 'gpu/clear.mk'
   workflow_dispatch:
 
