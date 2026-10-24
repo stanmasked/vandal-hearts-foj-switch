@@ -175,6 +175,25 @@ class Stage342MultiSectionFrameTests(unittest.TestCase):
         self.assertNotIn("FoJ_Stage340_Selected_Original_DDS", workflow)
         self.assertNotIn("path: runtime-evidence/", workflow)
 
+    def test_public_workflow_verifies_neixium_release_asset_digest_before_extract(self):
+        root = Path(__file__).resolve().parents[2]
+        workflow = (root / ".github" / "workflows" /
+                    "stage342-multi-section-dds-frame.yml").read_text()
+        self.assertIn(
+            '.assets[] | select(.name=="nexium-linux-x86_64.tar.gz") | {url:.browser_download_url,digest:.digest}',
+            workflow,
+        )
+        self.assertIn(
+            '.digest | strings | select(test("^sha256:[0-9a-f]{64}$")) | sub("^sha256:";"")',
+            workflow,
+        )
+        self.assertIn('if [[ "$actual_digest" != "$expected_digest" ]]; then', workflow)
+        self.assertLess(
+            workflow.index('if [[ "$actual_digest" != "$expected_digest" ]]; then'),
+            workflow.index('tar -xzf /tmp/nexium-linux-x86_64.tar.gz'),
+        )
+        self.assertIn('nexium-archive.sha256', workflow)
+
     def test_private_runner_requires_external_originals_and_runtime(self):
         root = Path(__file__).resolve().parents[2]
         runner = (root / "tools" / "foj_stage342_private_run.py").read_text()
