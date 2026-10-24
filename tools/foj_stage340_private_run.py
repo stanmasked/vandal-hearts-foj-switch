@@ -124,7 +124,9 @@ def write_report(path: Path, report: dict) -> None:
 
 
 def run(source: Path, nexium: Path, nro: Path, data_root: Path,
-        report_path: Path, timeout_seconds: int = 180) -> dict:
+        report_path: Path, timeout_seconds: int = 180,
+        ld_library_path: Path | None = None,
+        vulkan_icd: Path | None = None) -> dict:
     blob, info, source_hash = private_source(source)
     source = Path(source).resolve()
     nexium_input, nro_input = Path(nexium), Path(nro)
@@ -162,6 +164,18 @@ def run(source: Path, nexium: Path, nro: Path, data_root: Path,
 
     env = os.environ.copy()
     env["NEXIUM_DATA_ROOT"] = str(data_root)
+    if ld_library_path is not None:
+        ld_path = Path(ld_library_path)
+        if ld_path.is_symlink() or not ld_path.is_dir():
+            raise ValueError("Stage340 Vulkan runtime library directory is invalid")
+        env["LD_LIBRARY_PATH"] = str(ld_path.resolve()) + (
+            ":" + env["LD_LIBRARY_PATH"] if env.get("LD_LIBRARY_PATH") else ""
+        )
+    if vulkan_icd is not None:
+        icd_path = Path(vulkan_icd)
+        if icd_path.is_symlink() or not icd_path.is_file():
+            raise ValueError("Stage340 Vulkan ICD file is invalid")
+        env["VK_ICD_FILENAMES"] = str(icd_path.resolve())
     proc = subprocess.Popen(
         [str(nexium), str(nro)],
         cwd=str(REPO_ROOT),
@@ -236,10 +250,13 @@ def main() -> int:
     parser.add_argument("--data-root", type=Path, required=True)
     parser.add_argument("--private-report", type=Path, required=True)
     parser.add_argument("--timeout-seconds", type=int, default=180)
+    parser.add_argument("--ld-library-path", type=Path)
+    parser.add_argument("--vulkan-icd", type=Path)
     args = parser.parse_args()
     try:
         run(args.source_dds, args.nexium, args.nro, args.data_root,
-            args.private_report, args.timeout_seconds)
+            args.private_report, args.timeout_seconds,
+            args.ld_library_path, args.vulkan_icd)
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
         parser.error(str(exc))
     print("STAGE340_OWNER_PRIVATE_ORIGINAL_DDS_GPU_READBACK_PASS")

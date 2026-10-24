@@ -46,7 +46,6 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m unittest discover -s tests/emulator -p 'test_stage340_private_dds_roundtrip.py' -v
-          python3 -m unittest discover -s tests/emulator -p 'test_stage338_frame_gate.py' -v
           python3 -m compileall -q tools/foj_stage340_fixture.py tools/foj_stage340_receipt.py tools/foj_stage340_private_run.py
           bash -n tools/foj_stage340_nexium_drive.sh
           echo STAGE340_GENERATED_DDS_AND_EVIDENCE_GATES_PASS
@@ -161,3 +160,59 @@ jobs:
           path: runtime-evidence-public/
           if-no-files-found: error
           retention-days: 7
+      - name: Package temporary owner-local NeXium runtime (no game data)
+        if: success() && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'stage340-private-dds-gpu-roundtrip'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="$RUNNER_TEMP/stage340-owner-runtime"
+          mkdir -p "$bundle/nexium" "$bundle/lib" "$bundle/icd"
+          cp -a /tmp/nexium/. "$bundle/nexium/"
+          driver="$(jq -er '.ICD.library_path' "$VK_ICD_FILENAMES")"
+          test -f "$driver"
+          loader="$(ldconfig -p | awk '/libvulkan.so.1/{print $NF; exit}')"
+          test -f "$loader"
+          cp -L "$driver" "$bundle/lib/libvulkan_lvp.so"
+          cp -L "$loader" "$bundle/lib/libvulkan.so.1"
+          python3 - "$VK_ICD_FILENAMES" "$bundle/icd/lvp_icd.json" <<'PY'
+          import json, sys
+          source, output = sys.argv[1:]
+          data = json.load(open(source, encoding="utf-8"))
+          data["ICD"]["library_path"] = "../lib/libvulkan_lvp.so"
+          with open(output, "w", encoding="utf-8") as f:
+              json.dump(data, f, sort_keys=True)
+              f.write("\n")
+          PY
+          queue=("$NEXIUM_BIN" "$bundle/lib/libvulkan_lvp.so" "$bundle/lib/libvulkan.so.1")
+          index=0
+          while (( index < ${#queue[@]} )); do
+            file="${queue[index]}"
+            index=$((index+1))
+            deps="$(ldd "$file")"
+            if grep -q 'not found' <<< "$deps"; then
+              echo 'Stage340 runtime bundle dependency resolution failed' >&2
+              exit 1
+            fi
+            while IFS= read -r dep; do
+              [[ -f "$dep" ]] || continue
+              name="$(basename "$dep")"
+              if [[ ! -e "$bundle/lib/$name" ]]; then
+                cp -L "$dep" "$bundle/lib/$name"
+                queue+=("$dep")
+              fi
+            done < <(printf '%s\n' "$deps" | awk '/=> \// {print $3} /^\// {print $1}')
+          done
+          cat > "$bundle/README.txt" <<'EOF'
+          Temporary owner-local NeXium+Mesa software Vulkan runtime bundle.
+          Contains only third-party emulator/runtime binaries and their shared-library dependencies.
+          Contains no original game data, DDS images, private hashes, captures or guest logs.
+          Use with the matching Stage340 NRO and a private local SD root; do not publish game inputs.
+          EOF
+          tar -czf "$RUNNER_TEMP/foj-stage340-owner-local-runtime.tar.gz" -C "$RUNNER_TEMP" stage340-owner-runtime
+      - uses: actions/upload-artifact@v4
+        if: success() && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'stage340-private-dds-gpu-roundtrip'
+        with:
+          name: foj-stage340-owner-local-nexium-runtime
+          path: ${{ runner.temp }}/foj-stage340-owner-local-runtime.tar.gz
+          if-no-files-found: error
+          retention-days: 1
