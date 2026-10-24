@@ -12,7 +12,8 @@
 #include <string.h>
 #include "stage336_native_upload.h"
 
-enum { W = 74, H = 81, PIXEL_BYTES = W * H * 4, CMD_BYTES = 0x10000 };
+enum { W = 74, H = 81, PIXEL_BYTES = W * H * 4,
+       CMD_BYTES = 0x10000, GPU_ROW_ALIGNMENT = 256 };
 
 static uint8_t source_rgba[PIXEL_BYTES];
 /* Diagnostic progress is numeric and bounded; never includes guest logs,
@@ -98,7 +99,7 @@ static int run_native(void) {
 
     const FojStage332DdsInfo info = { W, H, 1u, FOJ_STAGE332_BGRA8, PIXEL_BYTES };
     if (!foj_stage336_native_record_rgba_upload(device, cmd, &info,
-            source_rgba, sizeof(source_rgba), 64u, &uploaded)) goto cleanup;
+            source_rgba, sizeof(source_rgba), GPU_ROW_ALIGNMENT, &uploaded)) goto cleanup;
     progress(5u);
     const DkCmdList submit = dkCmdBufFinishList(cmd);
     if (!submit) goto cleanup;

@@ -109,3 +109,20 @@ Stage337.5 adds bounded numeric-only synthetic-data categorization:
 12/13 semantics remain unchanged. These codes are strictly diagnostic and
 never accepted as a native success receipt. No GPU pixels, guest logs,
 original PS3 resources or paths are sent to public CI artifacts.
+
+
+## Stage337.6 — isolate NeXium image copy row alignment
+
+The exact Stage337.5 NeXium job 120741774047 failed with stage 91:
+the first 74-pixel RGBA row matched the generated source exactly, while
+subsequent rows did not. This is NOT GPU image-copy success, and it is not
+proof that row pitch is the only cause. No generic cache flush resolved the
+previous mixed-channel error. Stage337.6 changes ONLY the synthetic test
+texture row-alignment input to Stage336 from 64 to 256 bytes. The 74x81
+RGBA8 test surface now has a 512-byte (128-pixel) source/readback pitch
+rather than the previous 320-byte (80-pixel) pitch. Both fit the strict
+Stage335/336 bounded allocation contract. All guest output remains
+synthetic-only; success still requires all 5994 RGBA pixels to match.
+A new independent native NeXium run must establish whether this alignment
+experiment works. It must not be reported as a proven SDK alignment
+requirement from one trial.
