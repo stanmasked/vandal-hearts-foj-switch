@@ -82,7 +82,8 @@ def run(source: Path, nexium: Path, nro: Path, shader_dir: Path,
         out.write(blob)
         out.flush()
         os.fsync(out.fileno())
-    if sha_file(source_copy) != source_hash:
+    staged_copy_hash_before = sha_file(source_copy)
+    if staged_copy_hash_before != source_hash:
         raise ValueError("Stage341 private SD source copy differs from source")
     for name, payload in shaders.items():
         target = gpu / name
@@ -208,9 +209,6 @@ def run(source: Path, nexium: Path, nro: Path, shader_dir: Path,
             nro_hash_after != nro_hash_before or
             runtime_hash_after != runtime_hash):
         raise ValueError("Stage341 source, staged copy, NRO or runtime changed during the run")
-    staged_copy_hash_before = sha_file(source_copy)
-    if staged_copy_hash_before != source_hash:
-        raise ValueError("Stage341 staged source identity changed before final evidence audit")
     audit = audit_frames(source_copy, sd, evidence, require_generated_metadata=False)
     report = {
         "schema": "foj.stage341.owner_private_original_dds_shader_frame.v1",
@@ -218,7 +216,7 @@ def run(source: Path, nexium: Path, nro: Path, shader_dir: Path,
         "source_sha256": source_hash,
         "source_sha256_before": source_hash,
         "source_sha256_after": source_hash_after,
-        "staged_copy_sha256_before": source_hash,
+        "staged_copy_sha256_before": staged_copy_hash_before,
         "staged_copy_sha256_after": staged_copy_hash_after,
         "decoded_rgba_sha256_reference": source_info["decoded_rgba_sha256_reference"],
         "source_format": source_info["format"],
@@ -226,7 +224,7 @@ def run(source: Path, nexium: Path, nro: Path, shader_dir: Path,
         "source_height": source_info["height"],
         "source_bytes": source_info["source_bytes"],
         "source_unchanged": source_hash_after == source_hash,
-        "staged_copy_unchanged": staged_copy_hash_after == source_hash,
+        "staged_copy_unchanged": staged_copy_hash_after == staged_copy_hash_before,
         "nro_sha256": nro_hash_after,
         "nro_sha256_before": nro_hash_before,
         "nro_sha256_after": nro_hash_after,
