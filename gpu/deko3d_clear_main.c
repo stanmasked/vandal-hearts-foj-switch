@@ -1756,7 +1756,7 @@ int main(int argc,char **argv) {
         }
         const DkCmdList chosen=dds_fatal?
             dds_status_lists[slot][status_index]:
-            commands[slot][foj_smoke_color_for_frame(frame)];
+            commands[slot][frame%2u];
 #else
 #if defined(FOJ_GPU_THREE_LAYER_BLEND)
         /* Three-slot diagnostics are isolated from the legacy two-slot
