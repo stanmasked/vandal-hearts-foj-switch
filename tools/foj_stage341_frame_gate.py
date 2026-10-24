@@ -251,10 +251,19 @@ def publish_public(report_path: Path, evidence: Path, output: Path) -> dict:
        report.get("original_ps3_assets_used") is not False:
         raise ValueError("Stage341 refuses to publish non-generated source evidence")
     _check_tree(evidence, True)
-    generated = json.loads(_regular(evidence / "generated-input.json", 4096))
-    if generated.get("generated_only") is not True or \
-       generated.get("original_ps3_assets_used") is not False:
-        raise ValueError("Stage341 public provenance is not generated-only")
+    generated = _valid_generated_input(
+        evidence / "generated-input.json",
+        str(report.get("source_sha256", "")),
+        int(report.get("source_bytes", -1)),
+    )
+    if _hash_file(evidence / "source-before.sha256") != report.get("source_sha256") or \
+       _hash_file(evidence / "source-after.sha256") != report.get("source_sha256"):
+        raise ValueError("Stage341 public source/provenance hash mismatch")
+    if report.get("native_upload_marker_verified") is not True or \
+       report.get("real_neixium_frame_count") != 2 or \
+       report.get("physical_switch_verified") is not False or \
+       set(report.get("samples", {})) != {"initial", "later"}:
+        raise ValueError("Stage341 public evidence contract mismatch")
     if output.exists() or output.is_symlink() or not output.parent.is_dir():
         raise ValueError("Stage341 public output must be a fresh path")
     output.mkdir(mode=0o700)
