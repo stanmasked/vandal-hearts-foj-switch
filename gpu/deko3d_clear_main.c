@@ -51,6 +51,14 @@
 #include "stage332_dds_source.h"
 #include "stage336_native_upload.h"
 #endif
+
+#if defined(FOJ_GPU_STAGE342_MULTI_SECTION_DDS_DRAW)
+#if !defined(FOJ_GPU_DRAW_TRIANGLE) || defined(FOJ_GPU_STAGE329_PATCH_STREAM) || defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW) || defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+#error "Stage342 requires the isolated two-section private-DDS path"
+#endif
+#include "stage332_dds_source.h"
+#include "stage336_native_upload.h"
+#endif
 #if defined(FOJ_GPU_STAGE302_GENERATED_PAGE_PROBE)
 #include "stage302_synthetic_page_probe.h"
 #endif
@@ -95,7 +103,7 @@ _Static_assert((size_t)FOJ_RESEARCH_MATERIAL_COUNT ==
 enum { SCREEN_WIDTH=1280, SCREEN_HEIGHT=720, BUFFER_COUNT=2 };
 enum { CMD_MEMORY_SIZE=0x10000 };
 
-#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW) || defined(FOJ_GPU_STAGE342_MULTI_SECTION_DDS_DRAW)
 enum { FOJ_STAGE341_SOURCE_DDS_BYTES=128+256*256*4 };
 static uint8_t stage341_source_dds[FOJ_STAGE341_SOURCE_DDS_BYTES];
 
@@ -890,9 +898,9 @@ int main(int argc,char **argv) {
     /* Owned until all issued draw commands have completed. */
     FojStage336NativeTexture stage338_source={0};
 #endif
-#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW) || defined(FOJ_GPU_STAGE342_MULTI_SECTION_DDS_DRAW)
     /* The selected private DDS stays external to the NRO and alive through
-     * all submitted draws. Stage341 uses Stage336's native image uploader. */
+     * all submitted draws. Stage341/342 use Stage336's native image uploader. */
     FojStage336NativeTexture stage341_source={0};
 #endif
     DkMemBlock texture_images_mem[FOJ_RESEARCH_TEXTURE_COUNT]={0};
@@ -1074,7 +1082,30 @@ int main(int argc,char **argv) {
     vertex_count=stage329_gpu_info.vertices_written;
     batch_count=stage329_gpu_info.batches_written;
 #else
-#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+#if defined(FOJ_GPU_STAGE342_MULTI_SECTION_DDS_DRAW)
+    /* Two ordered synthetic geometry sections sample different halves of
+     * the same owner-supplied DDS. Material 1 explicitly aliases material 0;
+     * neither section can fall back to a generated replacement texture. */
+    FojGpuVertex stage342_sections[12]={
+        {-0.90f,-0.80f,0.5f,1.0f,0.0f,1.0f},
+        {-0.05f,-0.80f,0.5f,1.0f,0.5f,1.0f},
+        {-0.90f, 0.80f,0.5f,1.0f,0.0f,0.0f},
+        {-0.05f,-0.80f,0.5f,1.0f,0.5f,1.0f},
+        {-0.05f, 0.80f,0.5f,1.0f,0.5f,0.0f},
+        {-0.90f, 0.80f,0.5f,1.0f,0.0f,0.0f},
+        { 0.05f,-0.80f,0.5f,1.0f,0.5f,1.0f},
+        { 0.90f,-0.80f,0.5f,1.0f,1.0f,1.0f},
+        { 0.05f, 0.80f,0.5f,1.0f,0.5f,0.0f},
+        { 0.90f,-0.80f,0.5f,1.0f,1.0f,1.0f},
+        { 0.90f, 0.80f,0.5f,1.0f,1.0f,0.0f},
+        { 0.05f, 0.80f,0.5f,1.0f,0.5f,0.0f}
+    };
+    FojGpuBatch stage342_batches[2]={{0u,6u,0u},{6u,6u,1u}};
+    vertex_source=stage342_sections;
+    batch_source=stage342_batches;
+    vertex_count=12u;
+    batch_count=2u;
+#elif defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
     /* Fixed bounded clip-space quad. Top-left framebuffer UV is (0,0),
      * bottom-right is (1,1); samples are nearest/clamp-to-edge. */
     /* Keep both triangles counter-clockwise in clip space, matching the
@@ -1119,7 +1150,10 @@ int main(int argc,char **argv) {
                                   FOJ_RESEARCH_TEXTURE_COUNT,
                                   DK_MEMBLOCK_ALIGNMENT,&actor_upload)!=FOJ_GPU_STREAM_OK ||
         actor_upload.payload_bytes!=vertex_count*sizeof(FojGpuVertex) ||
-#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+#if defined(FOJ_GPU_STAGE342_MULTI_SECTION_DDS_DRAW)
+        actor_upload.material_mask!=
+            ((UINT32_C(1)<<0u)|(UINT32_C(1)<<1u)))
+#elif defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
         actor_upload.material_mask!=(UINT32_C(1)<<0u))
 #elif defined(FOJ_GPU_STAGE329_PATCH_STREAM) && \
     defined(FOJ_GPU_STAGE330_PARTITION_DRAW)
@@ -1303,7 +1337,7 @@ int main(int argc,char **argv) {
     if (!texture_data_cpu || texture_data_addr==DK_GPU_ADDR_INVALID)
         goto cleanup;
 
-#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW) || defined(FOJ_GPU_STAGE342_MULTI_SECTION_DDS_DRAW)
     const char *const atlas_paths[FOJ_RESEARCH_TEXTURE_COUNT]={
         "sdmc:/switch/foj/gpu/source.dds",
         "sdmc:/switch/foj/gpu/material1.dds"
@@ -1316,11 +1350,27 @@ int main(int argc,char **argv) {
     };
 #endif
     for (unsigned i=0;i<FOJ_RESEARCH_TEXTURE_COUNT;++i) {
+#if defined(FOJ_GPU_STAGE342_MULTI_SECTION_DDS_DRAW)
+        if (i==1u) {
+            /* A second material ID deliberately aliases the already-uploaded
+             * owner source image. Both ordered sections sample the same DDS
+             * object through separate descriptor indices and texture handles. */
+            texture_views[i]=stage341_source.image_view;
+            dds_states[i]=FOJ_ATLAS_DDS_LOADED;
+            dds_observed_slots=i+1u;
+            fprintf(stderr,"FoJ GPU DDS material %u: source material 0 alias\n",i);
+            DkImageDescriptor alias_desc;
+            dkImageDescriptorInitialize(&alias_desc,&texture_views[i],false,false);
+            memcpy(texture_data_cpu+IMAGE_DESCRIPTORS_OFFSET+
+                   i*sizeof(alias_desc),&alias_desc,sizeof(alias_desc));
+            continue;
+        }
+#endif
         uint8_t *pixels=texture_data_cpu+PIXEL_STAGING_OFFSET+
                         i*PIXEL_STAGING_STRIDE;
         FojAtlasRgba8Info atlas={0};
         FojAtlasDdsStatus dds_status=FOJ_ATLAS_DDS_INVALID_ARGUMENT;
-#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW) || defined(FOJ_GPU_STAGE342_MULTI_SECTION_DDS_DRAW)
         int loaded;
         if (i==0u) {
             loaded=stage341_read_source_dds(
@@ -1383,7 +1433,7 @@ int main(int argc,char **argv) {
                 i,foj_atlas_dds_status_name(dds_status));
         dds_states[i]=dds_status;
         dds_observed_slots=i+1u;
-#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW) || defined(FOJ_GPU_STAGE342_MULTI_SECTION_DDS_DRAW)
         /* The original-source slot must be a successfully decoded DDS.
          * Missing or rejected input is fatal; never substitute a synthetic
          * texture for slot 0 in this owner-private evidence mode. */
@@ -1409,7 +1459,7 @@ int main(int argc,char **argv) {
                                       FOJ_RESEARCH_TEXTURE_BYTES};
         }
 
-#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW) || defined(FOJ_GPU_STAGE342_MULTI_SECTION_DDS_DRAW)
         if(i==0u) {
             /* The same external source.dds accepted by the private intake
              * gate is decoded to RGBA8, then uploaded through Stage336.
@@ -1479,7 +1529,8 @@ int main(int argc,char **argv) {
          * Single-layer copy: imageHeight=0 uses the SDK's default.
          */
 #if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW) || \
-    defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+    defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW) || \
+    defined(FOJ_GPU_STAGE342_MULTI_SECTION_DDS_DRAW)
         if(atlas.width>UINT32_MAX/4u)goto cleanup;
         const DkCopyBuf source={
             texture_data_addr+PIXEL_STAGING_OFFSET+i*PIXEL_STAGING_STRIDE,
@@ -1520,7 +1571,7 @@ int main(int argc,char **argv) {
 #error "Stage307 only permits explicit nearest=0 or linear=1"
 #endif
 #endif
-#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW) || defined(FOJ_GPU_STAGE342_MULTI_SECTION_DDS_DRAW)
     sampler.minFilter=DkFilter_Nearest;
     sampler.magFilter=DkFilter_Nearest;
 #endif
@@ -1848,7 +1899,7 @@ int main(int argc,char **argv) {
          * host simulation: never submit a scene list after a fatal DDS,
          * select only the actual acquired framebuffer's lists, and keep
          * the first 120 frames of each observed material in order. */
-#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW) || defined(FOJ_GPU_STAGE342_MULTI_SECTION_DDS_DRAW)
         /* Do not spend the first N frames on diagnostic status screens.
          * If source intake failed, keep the explicit failure color visible;
          * a success marker is emitted only after two real quad presents. */
@@ -1915,6 +1966,23 @@ int main(int argc,char **argv) {
             }
         }
 #endif
+#if defined(FOJ_GPU_STAGE342_MULTI_SECTION_DDS_DRAW)
+        if (!dds_fatal && frame==2u) {
+            static const char marker[]=
+                "FOJ_STAGE342_PRIVATE_DDS_MULTI_SECTION_V1 width=256 height=256 "
+                "sections=2 left_uv=0:0.5 right_uv=0.5:1 nearest=1 frames-presented=2\n";
+            FILE *const receipt=fopen(
+                "sdmc:/switch/foj/gpu/foj-stage342-multi-section-sample.txt","wx");
+            if (!receipt) { exit_status=7; break; }
+            const size_t written=fwrite(marker,1u,sizeof(marker)-1u,receipt);
+            const int flushed=fflush(receipt);
+            const int closed=fclose(receipt);
+            if (written!=sizeof(marker)-1u || flushed!=0 || closed!=0) {
+                exit_status=7;
+                break;
+            }
+        }
+#endif
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
         ++boot_frames;
         exit_status=dds_fatal?5:0;
@@ -1941,7 +2009,7 @@ cleanup:
 #if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
     foj_stage336_native_release(&stage338_source);
 #endif
-#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
+#if defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW) || defined(FOJ_GPU_STAGE342_MULTI_SECTION_DDS_DRAW)
     foj_stage336_native_release(&stage341_source);
 #endif
     if (texture_data_mem)dkMemBlockDestroy(texture_data_mem);
