@@ -14,6 +14,8 @@ import stat
 import subprocess
 import time
 
+from PIL import Image, ImageChops
+
 from tools.foj_stage340_private_run import REPO_ROOT, private_source, write_report
 from tools.foj_stage341_frame_gate import (
     MARKER, MARKER_NAME, audit_frames, decode_bgra8_dds,
@@ -182,17 +184,41 @@ def run(source: Path, nexium: Path, nro: Path, shader_dir: Path,
             for name in ("gpu-initial.png", "gpu-later.png"):
                 if (evidence / name).exists() or (evidence / name).is_symlink():
                     raise ValueError("Stage341 refuses stale capture output")
+            first_frame = evidence / "gpu-initial.png"
+            later_frame = evidence / "gpu-later.png"
+            candidate = data_root / "stage341-frame-candidate.png"
+            if candidate.exists() or candidate.is_symlink():
+                raise ValueError("Stage341 refuses a stale candidate frame")
             subprocess.run(
-                ["import", "-window", window, str(evidence / "gpu-initial.png")],
+                ["import", "-window", window, str(first_frame)],
                 timeout=12, check=True,
             )
-            time.sleep(1)
-            if proc.poll() is not None:
-                raise RuntimeError("Stage341 NeXium exited between independent captures")
-            subprocess.run(
-                ["import", "-window", window, str(evidence / "gpu-later.png")],
-                timeout=12, check=True,
-            )
+            # The scene intentionally alternates its clear phase every frame.
+            # Capture until that phase changes instead of assuming a 1-second
+            # delay lands on the opposite parity of a vsynced presentation loop.
+            distinct = False
+            for _ in range(60):
+                if proc.poll() is not None:
+                    raise RuntimeError("Stage341 NeXium exited between independent captures")
+                subprocess.run(
+                    ["import", "-window", window, str(candidate)],
+                    timeout=12, check=True,
+                )
+                with Image.open(first_frame) as first, Image.open(candidate) as later:
+                    if first.size != later.size:
+                        raise ValueError("Stage341 candidate frame dimensions changed")
+                    distinct = ImageChops.difference(
+                        first.convert("RGB"), later.convert("RGB")
+                    ).getbbox() is not None
+                if distinct:
+                    if later_frame.exists() or later_frame.is_symlink():
+                        raise ValueError("Stage341 refuses a stale second capture")
+                    os.replace(candidate, later_frame)
+                    break
+                candidate.unlink()
+                time.sleep(0.05)
+            if not distinct or not later_frame.is_file() or later_frame.is_symlink():
+                raise RuntimeError("Stage341 could not capture a distinct presented frame")
         finally:
             try:
                 os.killpg(proc.pid, signal.SIGTERM)
