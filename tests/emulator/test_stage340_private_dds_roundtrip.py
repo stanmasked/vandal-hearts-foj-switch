@@ -87,7 +87,7 @@ class Stage340PrivateDdsRoundtripTests(unittest.TestCase):
         self.assertEqual(info["width"], 256)
         self.assertEqual(info["format"], "BGRA8")
         self.assertEqual(len(digest), 64)
-        self.assertEqual(len(info["decoded_rgba_sha256_pillow"]), 64)
+        self.assertEqual(len(info["decoded_rgba_sha256_reference"]), 64)
 
     def test_owner_private_preflight_rejects_checkout_input_and_report(self):
         with self.assertRaises(ValueError):

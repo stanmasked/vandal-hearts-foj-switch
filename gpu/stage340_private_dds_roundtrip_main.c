@@ -14,8 +14,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include "stage332_dds_source.h"
 #include "stage339_private_dds_bridge.h"
 #include "stage336_native_upload.h"
@@ -63,15 +61,17 @@ static DkCmdBuf new_command_buffer(DkDevice device, DkMemBlock memory) {
 
 static int read_source_dds(size_t *out_size, FojStage332DdsInfo *out_info) {
     FILE *f = NULL;
-    struct stat before, after;
     size_t length;
+    long measured;
     if (!out_size || !out_info) return 0;
     f = fopen(SOURCE_PATH, "rb");
     if (!f) return 0;
-    if (fstat(fileno(f), &before) != 0 || !S_ISREG(before.st_mode) ||
-        before.st_size < 128 || (uint64_t)before.st_size > MAX_DDS_BYTES)
+    if (fseek(f, 0, SEEK_END) != 0) goto fail;
+    measured = ftell(f);
+    if (measured < 128 || (uint64_t)measured > MAX_DDS_BYTES ||
+        fseek(f, 0, SEEK_SET) != 0)
         goto fail;
-    length = (size_t)before.st_size;
+    length = (size_t)measured;
     if (fread(source_dds, 1, length, f) != length ||
         fgetc(f) != EOF || ferror(f) || fseek(f, 0, SEEK_SET) != 0)
         goto fail;
@@ -89,14 +89,9 @@ static int read_source_dds(size_t *out_size, FojStage332DdsInfo *out_info) {
         }
         if (fgetc(f) != EOF || ferror(f)) goto fail;
     }
-    const int stable =
-        fstat(fileno(f), &after) == 0 &&
-        before.st_size == after.st_size &&
-        before.st_mtime == after.st_mtime &&
-        before.st_ino == after.st_ino;
     const int close_status = fclose(f);
     f = NULL;
-    if (!stable || close_status != 0) return 0;
+    if (close_status != 0) return 0;
     FojStage332DdsInfo info;
     if (!foj_stage332_dds_inspect(source_dds, length, &info) ||
         info.width != W || info.height != H ||

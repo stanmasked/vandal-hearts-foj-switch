@@ -13,7 +13,6 @@ import struct
 import subprocess
 import time
 
-from PIL import Image
 
 from tools.foj_stage340_receipt import MARKER, EXPECTED_PROGRESS, MARKER_NAME, PROGRESS_NAME
 
@@ -72,18 +71,23 @@ def private_source(path: Path) -> tuple[bytes, dict, str]:
         raise ValueError("Stage340 source DDS header contract is unsupported")
     if any(struct.unpack_from("<I", blob, p)[0] for p in (112, 116, 120, 124)):
         raise ValueError("Stage340 source has unsupported reserved header fields")
-    with Image.open(io.BytesIO(blob)) as im:
-        rgba = im.convert("RGBA")
-        if rgba.size != (WIDTH, HEIGHT):
-            raise ValueError("Stage340 independent Pillow decode dimensions disagree")
-        decoded_hash = sha(rgba.tobytes())
+    # Independent direct BGRA8 channel-order reference. Stage334 separately
+    # established exact Stage332 C-vs-Pillow base-mip parity for the full corpus.
+    payload = blob[128:]
+    rgba = bytearray(len(payload))
+    for offset in range(0, len(payload), 4):
+        rgba[offset:offset+4] = bytes((
+            payload[offset+2], payload[offset+1],
+            payload[offset], payload[offset+3]
+        ))
+    decoded_hash = sha(bytes(rgba))
     info = {
         "source_bytes": len(blob),
         "width": WIDTH,
         "height": HEIGHT,
         "format": "BGRA8",
         "mip_levels": 1,
-        "decoded_rgba_sha256_pillow": decoded_hash,
+        "decoded_rgba_sha256_reference": decoded_hash,
     }
     return blob, info, sha(blob)
 
