@@ -38,6 +38,12 @@
 #include "alpha_pass_contract.h"
 #endif
 #include "atlas_dds.h"
+#if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
+#if !defined(FOJ_GPU_STAGE329_PATCH_STREAM) || !defined(FOJ_GPU_STAGE330_PARTITION_DRAW)
+#error "Stage338 is a generated-only opt-in textured Stage330 partition draw"
+#endif
+#include "stage336_native_upload.h"
+#endif
 #if defined(FOJ_GPU_STAGE302_GENERATED_PAGE_PROBE)
 #include "stage302_synthetic_page_probe.h"
 #endif
@@ -782,6 +788,10 @@ int main(int argc,char **argv) {
 #if defined(FOJ_GPU_DRAW_TRIANGLE)
     DkMemBlock shader_mem=NULL;
     DkMemBlock texture_data_mem=NULL;
+#if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
+    /* Owned until all issued draw commands have completed. */
+    FojStage336NativeTexture stage338_source={0};
+#endif
     DkMemBlock texture_images_mem[FOJ_RESEARCH_TEXTURE_COUNT]={0};
     DkImage texture_images[FOJ_RESEARCH_TEXTURE_COUNT];
     DkImageView texture_views[FOJ_RESEARCH_TEXTURE_COUNT];
@@ -1249,6 +1259,27 @@ int main(int argc,char **argv) {
                                       FOJ_RESEARCH_TEXTURE_BYTES};
         }
 
+#if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
+        if(i==0u) {
+            /*
+             * Stage338 samples the exact Stage336 *native-uploaded* GPU
+             * image. The 256x256 four-quadrant atlas is invented at runtime;
+             * no original PS3 data or host-painted framebuffer is loaded.
+             */
+            const FojStage332DdsInfo info={
+                atlas.width,atlas.height,1u,FOJ_STAGE332_BGRA8,
+                atlas.pixel_bytes
+            };
+            if(atlas.width!=256u || atlas.height!=256u ||
+               atlas.pixel_bytes!=FOJ_BC1_PAGE_RGBA_BYTES ||
+               !foj_stage336_native_record_rgba_upload(
+                   device,cmd,&info,pixels,atlas.pixel_bytes,
+                   256u,&stage338_source))
+                goto cleanup;
+            texture_views[i]=stage338_source.image_view;
+        } else
+#endif
+        {
         DkImageLayout texture_layout;
         DkImageLayoutMaker texture_layout_maker;
         dkImageLayoutMakerDefaults(&texture_layout_maker,device);
@@ -1273,20 +1304,33 @@ int main(int argc,char **argv) {
         dkImageInitialize(&texture_images[i],&texture_layout,
                           texture_images_mem[i],0);
         dkImageViewDefaults(&texture_views[i],&texture_images[i]);
+        /*
+         * Native deko3d source/dk_image.cpp expects DkCopyBuf.rowLength
+         * as byte stride, NOT the pixel count. The 16x16 generated patch
+         * has a 64-byte (not 16-byte) RGBA8 source row.
+         * Single-layer copy: imageHeight=0 uses the SDK's default.
+         */
+#if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
+        if(atlas.width>UINT32_MAX/4u)goto cleanup;
+        const DkCopyBuf source={
+            texture_data_addr+PIXEL_STAGING_OFFSET+i*PIXEL_STAGING_STRIDE,
+            atlas.width*4u,0u
+        };
+#else
+        /* Legacy generated scene unchanged outside isolated Stage338. */
+        const DkCopyBuf source={
+            texture_data_addr+PIXEL_STAGING_OFFSET+i*PIXEL_STAGING_STRIDE,
+            atlas.width,atlas.height
+        };
+#endif
+        const DkImageRect rect={0,0,0,atlas.width,atlas.height,1};
+        dkCmdBufCopyBufferToImage(cmd,&source,&texture_views[i],&rect,0);
+        }
         DkImageDescriptor image_desc;
         dkImageDescriptorInitialize(&image_desc,&texture_views[i],false,false);
         memcpy(texture_data_cpu+IMAGE_DESCRIPTORS_OFFSET+
                i*sizeof(image_desc),&image_desc,sizeof(image_desc));
 
-        /* Decoded destination is always tightly packed RGBA8.
-         * Copy row length is in pixels; width multiple-of-8 ensures
-         * ensures 32-byte-aligned linear source pitch for RGBA8. */
-        const DkCopyBuf source={
-            texture_data_addr+PIXEL_STAGING_OFFSET+i*PIXEL_STAGING_STRIDE,
-            atlas.width,atlas.height
-        };
-        const DkImageRect rect={0,0,0,atlas.width,atlas.height,1};
-        dkCmdBufCopyBufferToImage(cmd,&source,&texture_views[i],&rect,0);
     }
 
     if (!dds_fatal) {
@@ -1689,6 +1733,9 @@ cleanup:
     if (shader_mem)dkMemBlockDestroy(shader_mem);
     for (unsigned i=0;i<FOJ_RESEARCH_TEXTURE_COUNT;++i)
         if (texture_images_mem[i])dkMemBlockDestroy(texture_images_mem[i]);
+#if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
+    foj_stage336_native_release(&stage338_source);
+#endif
     if (texture_data_mem)dkMemBlockDestroy(texture_data_mem);
 #endif
     if (cmd_mem)dkMemBlockDestroy(cmd_mem);
