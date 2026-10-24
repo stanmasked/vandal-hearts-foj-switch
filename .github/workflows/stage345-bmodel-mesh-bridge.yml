@@ -17,6 +17,7 @@ on:
       - 'core/banim_core.c'
       - 'core/banim_core.h'
       - 'tests/gpu/test_stage345_bmodel_mesh_bridge.c'
+      - 'tools/foj_stage345_bmodel_audit.c'
   workflow_dispatch:
 
 permissions:
@@ -68,6 +69,31 @@ jobs:
             -o /tmp/stage345-sanitize
           ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
             UBSAN_OPTIONS=halt_on_error=1 /tmp/stage345-sanitize
+
+
+  private-audit-cli:
+    name: Build aggregate-only owner-local audit executable
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile host audit executable
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic \
+            -Igpu -Icore gpu/stage343_bmodel_source.c \
+            gpu/stage344_bmodel_rig.c gpu/stage345_bmodel_mesh_bridge.c \
+            core/rigmesh_io.c tools/foj_stage345_bmodel_audit.c -lm \
+            -o build/foj-stage345-bmodel-audit
+          test -x build/foj-stage345-bmodel-audit
+      - name: Publish code-only audit executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: foj-stage345-bmodel-audit-linux-x86_64
+          path: build/foj-stage345-bmodel-audit
+          if-no-files-found: error
+          retention-days: 3
 
   devkita64:
     name: Nintendo Switch AArch64 compile
