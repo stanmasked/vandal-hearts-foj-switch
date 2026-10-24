@@ -22,6 +22,7 @@ on:
       - 'tools/foj_stage341_frame_gate.py'
       - 'tools/foj_stage341_generated_diagnose.py'
       - 'tools/foj_stage341_private_run.py'
+      - 'tools/foj_stage341_nexium_display.py'
       - 'tools/foj_stage341_nexium_drive.sh'
       - 'tests/emulator/test_stage341_private_dds_frame.py'
       - 'tests/mock_switch_sdk/deko3d.h'
@@ -145,6 +146,9 @@ jobs:
           work="$RUNNER_TEMP/stage341-sdroot"
           gpu="$work/sdmc/switch/foj/gpu"
           mkdir -p "$gpu"
+          # Use a new profile only: disable NeXium's 26 px default bottom
+          # game bar, which otherwise changes the letterboxed viewport.
+          python3 -m tools.foj_stage341_nexium_display install --root "$work"
           cp native/gpu/build/foj_actor.vert.dksh "$gpu/"
           cp native/gpu/build/foj_triangle.frag.dksh "$gpu/"
           python3 -m tools.foj_stage340_fixture create --path "$gpu/source.dds"

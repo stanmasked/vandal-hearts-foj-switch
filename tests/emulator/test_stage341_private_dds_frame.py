@@ -8,6 +8,7 @@ from PIL import Image
 
 from tools.foj_stage340_fixture import create, fixture_bytes
 from tools.foj_stage341_generated_diagnose import diagnose, invert_generated_rgb
+from tools.foj_stage341_nexium_display import SETTINGS, install as install_display, verify as verify_display
 from tools.foj_stage341_frame_gate import (
     DDS_BYTES, EVIDENCE_FILES, FRAME_HEIGHT, FRAME_WIDTH, MARKER,
     MARKER_NAME, SAMPLE_X, SAMPLE_Y, SCHEMA, _sample_uv, audit_frames,
@@ -122,6 +123,36 @@ class Stage341FrameGateTests(unittest.TestCase):
         self.assertIn("ImageChops.difference", public_runner)
         self.assertIn("could not capture a distinct presented frame", public_runner)
         self.assertIn("gpu-later-candidate.png", private_runner)
+
+
+    def test_isolated_nexium_display_matches_full_frame_and_is_fail_closed(self):
+        isolated = self.root / "nexium-profile"
+        isolated.mkdir(mode=0o700)
+        path = install_display(isolated)
+        self.assertEqual(verify_display(isolated), path)
+        self.assertEqual(json.loads(path.read_text()), SETTINGS)
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+        self.assertFalse(SETTINGS["game_bar"])
+        self.assertEqual(SETTINGS["aspect"], "Letterbox")
+        self.assertEqual(SETTINGS["filter"], "Nearest")
+        with self.assertRaises(FileExistsError):
+            install_display(isolated)
+        path.write_text('{"log_level":"Info","game_bar":true}', encoding="utf-8")
+        with self.assertRaises(ValueError):
+            verify_display(isolated)
+        path.unlink()
+        path.symlink_to(self.source)
+        with self.assertRaises(ValueError):
+            verify_display(isolated)
+
+    def test_both_stage341_runners_request_isolated_full_display(self):
+        root = Path(__file__).resolve().parents[2]
+        workflow = (root / ".github/workflows/stage341-private-dds-frame.yml").read_text()
+        private = (root / "tools/foj_stage341_private_run.py").read_text()
+        self.assertIn("tools.foj_stage341_nexium_display install", workflow)
+        self.assertIn("install_display(data_root)", private)
+        self.assertIn("tools/foj_stage341_nexium_display.py", workflow)
+        self.assertNotIn("path: $NEXIUM_DATA_ROOT", workflow)
 
     def test_fixed_source_and_two_distinct_frames_pass(self):
         result = audit_frames(self.source, self.sd, self.evidence, True)

@@ -17,6 +17,7 @@ import time
 from PIL import Image, ImageChops
 
 from tools.foj_stage340_private_run import REPO_ROOT, private_source, write_report
+from tools.foj_stage341_nexium_display import install as install_display
 from tools.foj_stage341_frame_gate import (
     MARKER, MARKER_NAME, audit_frames, decode_bgra8_dds,
 )
@@ -79,6 +80,7 @@ def run(source: Path, nexium: Path, nro: Path, shader_dir: Path,
         raise ValueError("Stage341 NeXium launcher name is not safe for evidence metadata")
 
     data_root.mkdir(mode=0o700)
+    install_display(data_root)
     evidence.mkdir(mode=0o700)
     sd = data_root / "sdmc"
     gpu = sd / "switch" / "foj" / "gpu"
