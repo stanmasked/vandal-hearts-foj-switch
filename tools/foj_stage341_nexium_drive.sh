@@ -13,6 +13,10 @@ test -d "$sd" && test ! -L "$sd"
 test -f "$sd/source.dds" && test ! -L "$sd/source.dds"
 test -s "$sd/foj_actor.vert.dksh" && test ! -L "$sd/foj_actor.vert.dksh"
 test -s "$sd/foj_triangle.frag.dksh" && test ! -L "$sd/foj_triangle.frag.dksh"
+expected_entries="$(printf '%s\\n' foj_actor.vert.dksh foj_triangle.frag.dksh source.dds | sort)"
+actual_entries="$(find "$sd" -mindepth 1 -maxdepth 1 -type f -printf '%f\\n' | sort)"
+test "$actual_entries" = "$expected_entries"
+test -z "$(find "$sd" -mindepth 1 -maxdepth 1 ! -type f -print -quit)"
 [[ "$(stat -c %s "$sd/source.dds")" -eq 262272 ]]
 for path in "$marker" "$sd/foj-native-stage330-partition-draw-upload.txt"; do
   test ! -e "$path" && test ! -L "$path" || {
