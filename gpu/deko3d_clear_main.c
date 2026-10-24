@@ -1375,7 +1375,8 @@ int main(int argc,char **argv) {
          * has a 64-byte (not 16-byte) RGBA8 source row.
          * Single-layer copy: imageHeight=0 uses the SDK's default.
          */
-#if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW)
+#if defined(FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW) || \
+    defined(FOJ_GPU_STAGE341_PRIVATE_DDS_DRAW)
         if(atlas.width>UINT32_MAX/4u)goto cleanup;
         const DkCopyBuf source={
             texture_data_addr+PIXEL_STAGING_OFFSET+i*PIXEL_STAGING_STRIDE,
