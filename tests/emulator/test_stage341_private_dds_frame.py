@@ -201,6 +201,9 @@ class Stage341FrameGateTests(unittest.TestCase):
         self.assertEqual(result["frame_a"]["exact_generated_fixture_rgb_matches"], 25)
         self.assertEqual(result["frame_a"]["exact_expected_generated_texel_matches"], 25)
         self.assertEqual(result["frame_a"]["most_common_inverse_texel_offset"], [0, 0])
+        self.assertEqual(
+            result["frame_a"]["generated_texel_affine_mapping"]["rmse_texels"], 0.0
+        )
         self.assertEqual(result["frame_b"]["identity_bad_channels"], 0)
         encoded = json.dumps(result)
         self.assertNotIn("expected_rgb", encoded)
@@ -256,6 +259,11 @@ class Stage341FrameGateTests(unittest.TestCase):
             self.assertEqual(result[frame]["exact_generated_fixture_rgb_matches"], 25)
             self.assertEqual(result[frame]["most_common_inverse_texel_offset"], [3, -2])
             self.assertEqual(result[frame]["largest_consistent_inverse_offset_votes"], 25)
+            fit = result[frame]["generated_texel_affine_mapping"]
+            self.assertEqual(fit["fit_points"], 25)
+            self.assertLess(fit["max_abs_residual_texels"], 0.001)
+            self.assertEqual(fit["source_texel_x_from_expected_xy"], [1.0, 0.0, 3.0])
+            self.assertEqual(fit["source_texel_y_from_expected_xy"], [0.0, 1.0, -2.0])
             self.assertGreater(result[frame]["identity_bad_channels"], 0)
 
 

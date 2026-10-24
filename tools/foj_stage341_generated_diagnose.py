@@ -43,6 +43,61 @@ def invert_generated_rgb(rgb: tuple[int, int, int]) -> tuple[int, int] | None:
     return x, y
 
 
+def _fit_generated_affine_texels(
+    points: list[tuple[int, int, int, int]],
+) -> dict | None:
+    """Fit recovered generated-only texels to expected grid, aggregate only."""
+    if len(points) < 9:
+        return None
+    matrix = [[0.0] * 3 for _ in range(3)]
+    outputs = [[0.0] * 3 for _ in range(2)]
+    for expected_x, expected_y, recovered_x, recovered_y in points:
+        row = (float(expected_x), float(expected_y), 1.0)
+        for i in range(3):
+            for j in range(3):
+                matrix[i][j] += row[i] * row[j]
+            outputs[0][i] += row[i] * recovered_x
+            outputs[1][i] += row[i] * recovered_y
+
+    def solve(rhs: list[float]) -> list[float] | None:
+        augmented = [matrix[i][:] + [rhs[i]] for i in range(3)]
+        for column in range(3):
+            pivot = max(range(column, 3), key=lambda i: abs(augmented[i][column]))
+            if abs(augmented[pivot][column]) < 1e-9:
+                return None
+            augmented[column], augmented[pivot] = augmented[pivot], augmented[column]
+            value = augmented[column][column]
+            augmented[column] = [v / value for v in augmented[column]]
+            for i in range(3):
+                if i == column:
+                    continue
+                factor = augmented[i][column]
+                augmented[i] = [
+                    augmented[i][k] - factor * augmented[column][k]
+                    for k in range(4)
+                ]
+        return [augmented[i][3] for i in range(3)]
+
+    x_map, y_map = solve(outputs[0]), solve(outputs[1])
+    if x_map is None or y_map is None:
+        return None
+    total_squared = 0.0
+    max_abs_error = 0.0
+    for expected_x, expected_y, recovered_x, recovered_y in points:
+        sx = sum(c * q for c, q in zip(x_map, (expected_x, expected_y, 1.0)))
+        sy = sum(c * q for c, q in zip(y_map, (expected_x, expected_y, 1.0)))
+        dx, dy = sx - recovered_x, sy - recovered_y
+        total_squared += dx * dx + dy * dy
+        max_abs_error = max(max_abs_error, abs(dx), abs(dy))
+    return {
+        "fit_points": len(points),
+        "source_texel_x_from_expected_xy": [round(x, 4) for x in x_map],
+        "source_texel_y_from_expected_xy": [round(y, 4) for y in y_map],
+        "rmse_texels": round((total_squared / (2 * len(points))) ** 0.5, 4),
+        "max_abs_residual_texels": round(max_abs_error, 4),
+    }
+
+
 def diagnose(sd_root: Path, evidence: Path) -> dict:
     sd_root, evidence = Path(sd_root), Path(evidence)
     gpu = sd_root / "switch" / "foj" / "gpu"
@@ -92,6 +147,7 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
         sampled_triplets = []
         positions_and_rgb = []
         inverse_offsets = []
+        affine_points = []
         exact_source_colors = 0
         exact_expected_texels = 0
         for y in SAMPLE_Y:
@@ -111,6 +167,7 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
                     dx = ((source_xy[0] - ideal_xy[0] + 128) & 255) - 128
                     dy = ((source_xy[1] - ideal_xy[1] + 128) & 255) - 128
                     inverse_offsets.append((dx, dy))
+                    affine_points.append((*ideal_xy, *source_xy))
                 tx0 = min(WIDTH - 1, max(0, int(u * WIDTH)))
                 ty0 = min(HEIGHT - 1, max(0, int(v * HEIGHT)))
                 source_offset = (ty0 * WIDTH + tx0) * 4
@@ -180,6 +237,7 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
             "samples_checked": len(SAMPLE_X) * len(SAMPLE_Y),
             "identity_bad_channels": totals["identity"],
             "exact_generated_fixture_rgb_matches": exact_source_colors,
+            "generated_texel_affine_mapping": _fit_generated_affine_texels(affine_points),
             "exact_expected_generated_texel_matches": exact_expected_texels,
             "largest_consistent_inverse_offset_votes": strongest_votes,
             "most_common_inverse_texel_offset": (
