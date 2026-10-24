@@ -4,8 +4,8 @@ on:
   pull_request:
     paths:
       - '.github/workflows/stage340-private-dds-gpu.yml'
-      - 'gpu/stage340_private_dds_main.c'
-      - 'gpu/stage340_private_dds.mk'
+      - 'research/stage340_private_dds_main.c'
+      - 'tools/stage340_private_dds.mk'
       - 'gpu/stage332_dds_source.c'
       - 'gpu/stage332_dds_source.h'
       - 'gpu/stage335_source_staging.c'
@@ -18,7 +18,7 @@ on:
       - 'gpu/stage339_private_dds_bridge.h'
       - 'tools/foj_stage340_private_dds_gate.py'
       - 'tools/foj_stage340_nexium_drive.sh'
-      - 'tests/emulator/test_stage340_private_dds_gate.py'
+      - 'tools/test_stage340_private_dds_gate.py'
       - 'docs/GPU_STAGE340_PRIVATE_DDS_GPU.md'
   workflow_dispatch:
 
@@ -44,7 +44,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m pip install Pillow
-          python3 -m unittest discover -s tests/emulator -p 'test_stage340_private_dds_gate.py' -v
+          python3 -m unittest tools.test_stage340_private_dds_gate -v
           for compiler in gcc clang; do
             "$compiler" -std=c11 -O2 -Wall -Wextra -Werror -pedantic -Igpu \
               gpu/stage332_dds_source.c gpu/stage335_source_staging.c \
@@ -65,7 +65,7 @@ jobs:
           bash -n tools/foj_stage340_nexium_drive.sh
           cc -std=c11 -Wall -Wextra -Werror -pedantic \
             -DFOJ_GPU_DRAW_TRIANGLE=1 -DFOJ_GPU_STAGE340_PRIVATE_DDS_TEXTURE=1 \
-            -fsyntax-only -Itests/mock_switch_sdk -Icore -Igpu gpu/stage340_private_dds_main.c
+            -fsyntax-only -Itests/mock_switch_sdk -Icore -Igpu research/stage340_private_dds_main.c
           echo STAGE340_HOST_DDS_ORACLE_AND_FAIL_CLOSED_REFUSAL_PASS
 
   build:
@@ -80,7 +80,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          make -f gpu/stage340_private_dds.mk verify
+          make -f tools/stage340_private_dds.mk verify
           make -f gpu/Makefile triangle-verify
           python3 tools/validate_nro.py build/foj-deko3d-stage340-private-dds.nro
           python3 tools/validate_dksh.py gpu/build/foj_actor.vert.dksh
