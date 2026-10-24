@@ -62,7 +62,7 @@ class FrameGateTests(unittest.TestCase):
         self.assertIn("dkCmdBufDraw(cmd,DkPrimitive_Triangles", source)
         self.assertIn("gpu/stage336_native_upload.c", mk)
         self.assertIn("FOJ_GPU_STAGE338_NATIVE_TEXTURE_DRAW=1", mk)
-        self.assertIn("foj_stage338_frame_gate publish", workflow)
+        self.assertIn("python3 -m tools.foj_stage338_frame_gate", workflow)
         self.assertNotIn("runtime-evidence-public/bridge/gpu-initial.png", workflow)
 
 if __name__ == "__main__":
