@@ -50,12 +50,24 @@ FojGpuStreamStatus foj_gpu_stage346_bmodel_prepare(
     FojGpuStreamInfo stream = {0};
     FojGpuStreamStatus result = FOJ_GPU_STREAM_INVALID;
     if (bmodel_bytes == NULL || camera == NULL || vertices_out == NULL ||
-        batches_out == NULL || plan == NULL || !plan_is_empty(plan))
+        batches_out == NULL || plan == NULL)
         return FOJ_GPU_STREAM_ARGUMENT;
     if (bmodel_size > FOJ_STAGE343_MAX_MODEL_BYTES)
         return FOJ_GPU_STREAM_BOUNDS;
-    if (overlaps(bmodel_bytes, bmodel_size, plan, sizeof(*plan)))
+    if (vertex_capacity > SIZE_MAX / sizeof(*vertices_out) ||
+        batch_capacity > SIZE_MAX / sizeof(*batches_out))
+        return FOJ_GPU_STREAM_BOUNDS;
+    /* Check plan aliasing before reading its fields: otherwise a plan pointer
+     * overlapping a short input/camera object could make plan_is_empty read
+     * beyond that object's storage. */
+    if (overlaps(bmodel_bytes, bmodel_size, plan, sizeof(*plan)) ||
+        overlaps(camera, sizeof(*camera), plan, sizeof(*plan)) ||
+        overlaps(vertices_out, vertex_capacity * sizeof(*vertices_out),
+                 plan, sizeof(*plan)) ||
+        overlaps(batches_out, batch_capacity * sizeof(*batches_out),
+                 plan, sizeof(*plan)))
         return FOJ_GPU_STREAM_ARGUMENT;
+    if (!plan_is_empty(plan)) return FOJ_GPU_STREAM_ARGUMENT;
 
     FojStage345Status parsed = foj_stage345_bmodel_to_rigmesh(
         bmodel_bytes, bmodel_size, &mesh);

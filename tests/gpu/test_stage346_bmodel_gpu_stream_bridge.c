@@ -225,12 +225,31 @@ static void test_camera_aliasing_output_is_rejected_transactionally(void) {
     assert(memcmp(&plan, &before_plan, sizeof(plan)) == 0);
 }
 
+static void test_plan_aliasing_input_is_rejected_before_plan_read(void) {
+    union {
+        uint8_t data[4096];
+        FojStage346BmodelGpuPlan plan;
+    } alias;
+    FojGpuVertex vertices[6];
+    FojGpuBatch batches[2];
+    uint8_t before[4096];
+    size_t size;
+    memset(&alias, 0x2b, sizeof(alias));
+    size = make_fixture(alias.data, sizeof(alias.data), 0, 0);
+    memcpy(before, alias.data, size);
+    assert(foj_gpu_stage346_bmodel_prepare(alias.data, size, &kCamera,
+           1280u, 720u, 256u, vertices, 6u, batches, 2u, &alias.plan) ==
+           FOJ_GPU_STREAM_ARGUMENT);
+    assert(memcmp(alias.data, before, size) == 0);
+}
+
 int main(void) {
     test_two_sections_create_ordered_gpu_batches();
     test_sections_sharing_one_material_share_one_slot();
     test_multi_texture_material_is_refused_transactionally();
     test_capacity_and_camera_failures_leave_outputs_unchanged();
     test_camera_aliasing_output_is_rejected_transactionally();
+    test_plan_aliasing_input_is_rejected_before_plan_read();
     puts("Stage346 BMODEL GPU stream bridge tests passed");
     return 0;
 }
