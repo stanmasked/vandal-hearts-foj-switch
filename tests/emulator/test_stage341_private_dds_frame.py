@@ -7,7 +7,7 @@ import unittest
 from PIL import Image
 
 from tools.foj_stage340_fixture import create, fixture_bytes
-from tools.foj_stage341_generated_diagnose import diagnose
+from tools.foj_stage341_generated_diagnose import diagnose, invert_generated_rgb
 from tools.foj_stage341_frame_gate import (
     DDS_BYTES, EVIDENCE_FILES, FRAME_HEIGHT, FRAME_WIDTH, MARKER,
     MARKER_NAME, SAMPLE_X, SAMPLE_Y, SCHEMA, _sample_uv, audit_frames,
@@ -198,6 +198,9 @@ class Stage341FrameGateTests(unittest.TestCase):
         self.assertFalse(result["accepted"])
         self.assertEqual(result["frame_a"]["identity_bad_channels"], 0)
         self.assertEqual(result["frame_a"]["distinct_rgb_triplets_at_grid"], 25)
+        self.assertEqual(result["frame_a"]["exact_generated_fixture_rgb_matches"], 25)
+        self.assertEqual(result["frame_a"]["exact_expected_generated_texel_matches"], 25)
+        self.assertEqual(result["frame_a"]["most_common_inverse_texel_offset"], [0, 0])
         self.assertEqual(result["frame_b"]["identity_bad_channels"], 0)
         encoded = json.dumps(result)
         self.assertNotIn("expected_rgb", encoded)
@@ -250,6 +253,9 @@ class Stage341FrameGateTests(unittest.TestCase):
         for frame in ("frame_a", "frame_b"):
             self.assertEqual(result[frame]["best_integer_texel_offset"], [3, -2])
             self.assertEqual(result[frame]["best_integer_texel_offset_bad_channels"], 0)
+            self.assertEqual(result[frame]["exact_generated_fixture_rgb_matches"], 25)
+            self.assertEqual(result[frame]["most_common_inverse_texel_offset"], [3, -2])
+            self.assertEqual(result[frame]["largest_consistent_inverse_offset_votes"], 25)
             self.assertGreater(result[frame]["identity_bad_channels"], 0)
 
 
@@ -280,6 +286,20 @@ class Stage341FrameGateTests(unittest.TestCase):
                 ], 0
             )
             self.assertGreater(result[frame]["identity_bad_channels"], 0)
+
+    def test_generated_fixture_rgb_inversion_unique_over_all_texels(self):
+        for y in range(256):
+            for x in range(256):
+                rgb = ((3*x+5*y+17)&255, (11*x+7*y+23)&255,
+                       (13*x+2*y+91)&255)
+                self.assertEqual(invert_generated_rgb(rgb), (x,y))
+
+    def test_generated_rgb_inversion_rejects_green_channel_tampering(self):
+        for x, y in ((5, 6), (127, 127), (250, 248)):
+            rgb = ((3*x+5*y+17)&255, (11*x+7*y+23)&255,
+                   (13*x+2*y+91)&255)
+            altered = (rgb[0], (rgb[1] + 1) & 255, rgb[2])
+            self.assertIsNone(invert_generated_rgb(altered))
 
     def test_generated_failure_diagnostic_rejects_private_source(self):
         source = bytearray(self.source.read_bytes())

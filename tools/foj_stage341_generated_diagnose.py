@@ -26,6 +26,23 @@ CANDIDATES = (
 )
 
 
+
+def invert_generated_rgb(rgb: tuple[int, int, int]) -> tuple[int, int] | None:
+    """Invert the public fixture's RGB map; no original-source data accepted.
+
+    R=3x+5y+17, G=11x+7y+23, B=13x+2y+91, modulo 256.
+    det([[3,5],[13,2]])=-59; inverse of -59 mod 256 is 13.
+    The green channel independently validates the recovered coordinates.
+    """
+    r, g, b = rgb
+    pr, pb = (int(r) - 17) & 255, (int(b) - 91) & 255
+    x = (13 * (2 * pr - 5 * pb)) & 255
+    y = (13 * (-13 * pr + 3 * pb)) & 255
+    if (11 * x + 7 * y + 23) & 255 != int(g):
+        return None
+    return x, y
+
+
 def diagnose(sd_root: Path, evidence: Path) -> dict:
     sd_root, evidence = Path(sd_root), Path(evidence)
     gpu = sd_root / "switch" / "foj" / "gpu"
@@ -74,12 +91,26 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
         clear_phase_colors = ((54, 31, 59), (112, 145, 110))
         sampled_triplets = []
         positions_and_rgb = []
+        inverse_offsets = []
+        exact_source_colors = 0
+        exact_expected_texels = 0
         for y in SAMPLE_Y:
             for x in SAMPLE_X:
                 u, v = _sample_uv(x, y)
                 observed = pixel[x, y]
                 sampled_triplets.append(observed)
                 positions_and_rgb.append((u, v, observed))
+                source_xy = invert_generated_rgb(observed)
+                if source_xy is not None:
+                    exact_source_colors += 1
+                    ideal_xy = (
+                        min(WIDTH - 1, max(0, int(u * WIDTH))),
+                        min(HEIGHT - 1, max(0, int(v * HEIGHT))),
+                    )
+                    exact_expected_texels += source_xy == ideal_xy
+                    dx = ((source_xy[0] - ideal_xy[0] + 128) & 255) - 128
+                    dy = ((source_xy[1] - ideal_xy[1] + 128) & 255) - 128
+                    inverse_offsets.append((dx, dy))
                 tx0 = min(WIDTH - 1, max(0, int(u * WIDTH)))
                 ty0 = min(HEIGHT - 1, max(0, int(v * HEIGHT)))
                 source_offset = (ty0 * WIDTH + tx0) * 4
@@ -111,6 +142,19 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
                         abs(int(observed[channel]) - int(expected[channel])) >
                         CHANNEL_TOLERANCE for channel in range(3)
                     )
+        # RGB provenance is uniquely invertible for the canonical synthetic
+        # fixture. Export only counts and one aggregate displacement mode,
+        # never observed channels or individual recovered texel positions.
+        offset_votes = {
+            offset: inverse_offsets.count(offset)
+            for offset in set(inverse_offsets)
+        }
+        strongest_offset = (
+            min(offset_votes, key=lambda offset: (
+                -offset_votes[offset], abs(offset[0]) + abs(offset[1]), offset
+            )) if offset_votes else None
+        )
+        strongest_votes = offset_votes[strongest_offset] if strongest_offset is not None else 0
         # Diagnostic-only exhaustive search for a *constant* whole-texel
         # displacement. Source must already be the canonical generated DDS.
         # Neither capture pixels nor decoded DDS bytes enter the output JSON.
@@ -135,6 +179,12 @@ def diagnose(sd_root: Path, evidence: Path) -> dict:
             "capture_sha256": hashlib.sha256(data).hexdigest(),
             "samples_checked": len(SAMPLE_X) * len(SAMPLE_Y),
             "identity_bad_channels": totals["identity"],
+            "exact_generated_fixture_rgb_matches": exact_source_colors,
+            "exact_expected_generated_texel_matches": exact_expected_texels,
+            "largest_consistent_inverse_offset_votes": strongest_votes,
+            "most_common_inverse_texel_offset": (
+                list(strongest_offset) if strongest_votes >= 2 else None
+            ),
             "alpha_composite_hypothesis_bad_channels": alpha_hypotheses,
             "distinct_rgb_triplets_at_grid": len(set(sampled_triplets)),
             "largest_repeated_rgb_triplet_count": max(
