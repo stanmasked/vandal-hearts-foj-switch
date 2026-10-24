@@ -153,7 +153,8 @@ def audit_frames(dds_path: Path, sd_root: Path, evidence: Path,
         if item.is_symlink() or not item.is_file():
             raise ValueError("Stage341 evidence directory may contain regular files only")
         actual.add(item.name)
-    if actual != EVIDENCE_FILES:
+    expected_evidence = EVIDENCE_FILES if require_generated_metadata else EVIDENCE_FILES - {"generated-source.json"}
+    if actual != expected_evidence:
         raise ValueError("Stage341 evidence directory differs from strict allowlist")
     source = _regular(dds_path, DDS_BYTES)
     rgba = decode_bgra8_dds(source)
@@ -258,6 +259,23 @@ def main() -> int:
                 Path(args.sd_root) / "switch" / "foj" / "gpu" / "source.dds",
                 args.sd_root, args.evidence, require_generated_metadata=args.generated_only,
             )
+            if args.generated_only:
+                result = {
+                    "schema": result["schema"],
+                    "generated_only": True,
+                    "original_ps3_assets_used": False,
+                    "native_stage336_upload_receipt_verified": True,
+                    "native_texture_sampled_in_neixium_frame": True,
+                    "independent_frames_verified": 2,
+                    "sample_grid": result["sample_grid"],
+                    "samples_per_frame": result["samples_per_frame"],
+                    "channel_tolerance": result["channel_tolerance"],
+                    "max_bad_rgb_channels": result["max_bad_rgb_channels"],
+                    "frame_a_max_rgb_channel_error": result["frame_a"]["max_rgb_channel_error"],
+                    "frame_b_max_rgb_channel_error": result["frame_b"]["max_rgb_channel_error"],
+                    "physical_switch_verified": False,
+                    "full_game_fidelity_verified": False,
+                }
         else:
             result = publish(args.sd_root, args.evidence, args.output)
     except (OSError, ValueError, json.JSONDecodeError, struct.error) as exc:
